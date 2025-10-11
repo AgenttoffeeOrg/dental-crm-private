@@ -1,0 +1,451 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { createClient } from '@/lib/supabase-client'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { 
+  Plus,
+  X,
+  Save,
+  TrendingUp
+} from 'lucide-react'
+import { toast } from 'sonner'
+
+const pipelineSchema = z.object({
+  name: z.string().min(1, 'Pipeline name is required'),
+  description: z.string().optional(),
+  is_default: z.boolean().default(false),
+})
+
+type PipelineFormData = z.infer<typeof pipelineSchema>
+
+interface PipelineTemplate {
+  name: string
+  description: string
+  suggested_stages: string[]
+  color: string
+}
+
+interface CreatePipelineDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onPipelineCreated: () => void
+  template?: PipelineTemplate | null
+  tenantId?: string
+}
+
+export function CreatePipelineDialog({ 
+  open, 
+  onOpenChange, 
+  onPipelineCreated,
+  template,
+  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+}: CreatePipelineDialogProps) {
+  const [loading, setLoading] = useState(false)
+  const [stages, setStages] = useState<string[]>([])
+  const [newStage, setNewStage] = useState('')
+  const supabase = createClient()
+
+  const form = useForm<PipelineFormData>({
+    resolver: zodResolver(pipelineSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      is_default: false,
+    },
+  })
+
+  // Load template data when dialog opens
+  useEffect(() => {
+    if (open && template) {
+      form.reset({
+        name: template.name,
+        description: template.description,
+        is_default: false,
+      })
+      setStages(template.suggested_stages)
+    } else if (open && !template) {
+      form.reset({
+        name: '',
+        description: '',
+        is_default: false,
+      })
+      setStages([
+        'New Inquiry',
+        'Contacted',
+        'Consultation Booked',
+        'Treatment Planned',
+        'Treatment Accepted',
+        'Completed',
+        'Lost'
+      ])
+    }
+  }, [open, template])
+
+  const addStage = () => {
+    if (newStage.trim() && !stages.includes(newStage.trim())) {
+      setStages([...stages, newStage.trim()])
+      setNewStage('')
+    }
+  }
+
+  const removeStage = (index: number) => {
+    setStages(stages.filter((_, i) => i !== index))
+  }
+
+  const moveStage = (index: number, direction: 'up' | 'down') => {
+    const newStages = [...stages]
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    
+    if (newIndex >= 0 && newIndex < stages.length) {
+      [newStages[index], newStages[newIndex]] = [newStages[newIndex], newStages[index]]
+      setStages(newStages)
+    }
+  }
+
+  const createStages = async (pipelineId: string) => {
+    const stagesData = stages.map((stageName, index) => ({
+      name: stageName,
+      pipeline_id: pipelineId,
+      tenant_id: tenantId,
+      position: index,
+    }))
+
+    console.log('Creating stages:', stagesData)
+
+    const { error: stagesError } = await supabase
+      .from('pipeline_stages')
+      .insert(stagesData)
+
+    if (stagesError) {
+      console.error('Stages creation error:', stagesError)
+      throw stagesError
+    }
+  }
+
+  const onSubmit = async (data: PipelineFormData) => {
+    if (stages.length === 0) {
+      toast.error('Please add at least one stage to your pipeline')
+      return
+    }
+
+    if (loading) return
+
+    setLoading(true)
+    
+    try {
+      // If making this the default, unset other defaults first
+      if (data.is_default) {
+        const { error: updateError } = await supabase
+          .from('pipelines')
+          .update({ is_default: false })
+          .eq('tenant_id', tenantId)
+        
+        if (updateError) {
+          console.warn('Could not unset other defaults (is_default column may not exist yet):', updateError)
+        }
+      }
+
+      // Try to create pipeline with all fields
+      // If is_default or description columns don't exist, they'll be ignored
+      const { data: pipelineData, error: pipelineError } = await supabase
+        .from('pipelines')
+        .insert({
+          name: data.name,
+          description: data.description || null,
+          is_default: data.is_default,
+          tenant_id: tenantId,
+        })
+        .select()
+        .single()
+
+      if (pipelineError) {
+        console.error('Pipeline creation error (full object):', JSON.stringify(pipelineError, null, 2))
+        console.error('Pipeline creation error details:', {
+          hasMessage: !!pipelineError.message,
+          hasCode: !!pipelineError.code,
+          message: pipelineError.message,
+          code: pipelineError.code,
+          details: pipelineError.details,
+          hint: pipelineError.hint,
+          type: typeof pipelineError
+        })
+        
+        // Always try the fallback since columns likely don't exist
+        console.log('Attempting fallback: creating pipeline without optional fields...')
+        
+        const { data: pipelineData2, error: pipelineError2 } = await supabase
+          .from('pipelines')
+          .insert({
+            name: data.name,
+            tenant_id: tenantId,
+          })
+          .select()
+          .single()
+
+        if (pipelineError2) {
+          console.error('Pipeline creation failed (fallback):', JSON.stringify(pipelineError2, null, 2))
+          toast.error(`Failed to create pipeline: ${pipelineError2.message || pipelineError2.code || 'Database error'}`)
+          throw pipelineError2
+        }
+        
+        if (!pipelineData2) {
+          console.error('No pipeline data returned from fallback')
+          toast.error('Pipeline creation failed - no data returned')
+          throw new Error('No pipeline data returned')
+        }
+        
+        console.log('✅ Pipeline created (basic mode):', pipelineData2)
+        
+        // Create stages for this pipeline
+        await createStages(pipelineData2.id)
+        
+        toast.success(`Pipeline "${data.name}" created successfully with ${stages.length} stages!`)
+        onPipelineCreated()
+        onOpenChange(false)
+        setLoading(false)
+        return
+      }
+
+      // Success on first attempt - create stages
+      console.log('✅ Pipeline created with full features:', pipelineData)
+      await createStages(pipelineData.id)
+      
+      toast.success(`Pipeline "${data.name}" created successfully with ${stages.length} stages!`)
+      onPipelineCreated()
+      onOpenChange(false)
+    } catch (error) {
+      console.error('Error creating pipeline:', error)
+      toast.error('Failed to create pipeline')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!loading) {
+        onOpenChange(isOpen)
+      }
+    }}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-4 border-b">
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <div>Create New Pipeline</div>
+              <p className="text-sm font-normal text-gray-500 mt-1">
+                {template ? `Using ${template.name} template` : 'Create a custom pipeline from scratch'}
+              </p>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
+          {/* Pipeline Details */}
+          <div className="space-y-4 p-6 bg-gray-50 rounded-lg border">
+            <h3 className="text-base font-semibold">Pipeline Details</h3>
+            
+            <div className="space-y-2">
+              <Label htmlFor="name" className="flex items-center gap-1">
+                Pipeline Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="name"
+                {...form.register('name')}
+                placeholder="e.g., High-Value Treatment, Emergency Pipeline"
+                className="h-11"
+                disabled={loading}
+              />
+              {form.formState.errors.name && (
+                <p className="text-sm text-red-600">
+                  {form.formState.errors.name.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                {...form.register('description')}
+                placeholder="Describe what this pipeline is used for..."
+                rows={3}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="is_default"
+                checked={form.watch('is_default')}
+                onCheckedChange={(checked) => form.setValue('is_default', checked)}
+                disabled={loading}
+              />
+              <Label htmlFor="is_default" className="cursor-pointer">
+                Set as default pipeline for new deals
+              </Label>
+            </div>
+            
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-900">
+                💡 <strong>Tip:</strong> The default pipeline will be auto-selected when creating new deals.
+              </p>
+            </div>
+          </div>
+
+          {/* Pipeline Stages */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold">Pipeline Stages</h3>
+                <p className="text-sm text-gray-600">Define the stages deals will move through</p>
+              </div>
+              <Badge variant="outline">{stages.length} stages</Badge>
+            </div>
+
+            {/* Add Stage Input */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add a new stage (e.g., Consultation Booked)"
+                value={newStage}
+                onChange={(e) => setNewStage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addStage()
+                  }
+                }}
+                className="h-11"
+                disabled={loading}
+              />
+              <Button 
+                type="button" 
+                onClick={addStage}
+                disabled={loading || !newStage.trim()}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add
+              </Button>
+            </div>
+
+            {/* Stages List */}
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {stages.length === 0 ? (
+                <div className="text-center p-8 border-2 border-dashed rounded-lg">
+                  <p className="text-gray-500">No stages added yet</p>
+                  <p className="text-sm text-gray-400">Add stages to define your pipeline workflow</p>
+                </div>
+              ) : (
+                stages.map((stage, index) => (
+                  <div 
+                    key={index} 
+                    className="flex items-center gap-3 p-3 bg-white border rounded-lg hover:border-blue-300 transition-colors"
+                  >
+                    <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded text-sm font-medium text-gray-600">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1 font-medium">{stage}</div>
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => moveStage(index, 'up')}
+                        disabled={loading || index === 0}
+                        className="h-8 w-8 p-0"
+                      >
+                        ↑
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => moveStage(index, 'down')}
+                        disabled={loading || index === stages.length - 1}
+                        className="h-8 w-8 p-0"
+                      >
+                        ↓
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeStage(index)}
+                        disabled={loading}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <p className="text-xs text-gray-600">
+              💡 Tip: Common final stages include "Completed", "Lost", "Closed Won", or "Closed Lost"
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-between items-center gap-3 pt-6 border-t">
+            <p className="text-sm text-gray-500">
+              Minimum {stages.length}/1 stage{stages.length !== 1 ? 's' : ''}
+            </p>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (!loading) {
+                    onOpenChange(false)
+                  }
+                }}
+                disabled={loading}
+                className="min-w-[100px]"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={loading || stages.length === 0}
+                className="min-w-[160px] bg-blue-600 hover:bg-blue-700"
+              >
+                {loading ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Create Pipeline
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+

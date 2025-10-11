@@ -1,0 +1,12 @@
+{
+  "name": "process-call-activity",
+  "version": "1.0.0",
+  "description": "Supabase Edge Function to process call activities with AI transcription and analysis",
+  "main": "index.ts",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.75.0"
+  },
+  "scripts": {
+    "deploy": "supabase functions deploy process-call-activity"
+  }
+}
