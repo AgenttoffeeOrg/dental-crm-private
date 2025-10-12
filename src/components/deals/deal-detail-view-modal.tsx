@@ -43,7 +43,8 @@ import {
   Target,
   Clock,
   TrendingUp,
-  ArrowRight
+  ArrowRight,
+  Bot
 } from 'lucide-react'
 import { formatDateTime } from '@/lib/dates'
 import { toast } from 'sonner'
@@ -259,10 +260,10 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
     )
   }
 
+  const [showAI, setShowAI] = useState(false)
+
   return (
-    <div className="fixed inset-0 bg-white z-50 flex">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-white z-50 flex flex-col">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -288,6 +289,15 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
             </div>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="hover:bg-gray-50"
+              onClick={() => setShowAI(!showAI)}
+            >
+              <Bot className="h-4 w-4 mr-2" />
+              AI Assistant
+            </Button>
             <Button 
               variant="outline" 
               size="sm" 
@@ -693,15 +703,17 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
           </div>
         </DialogContent>
       </Dialog>
-      </div>
 
-      {/* AI Assistant Sidebar */}
-      <div className="w-96 border-l border-gray-200 flex flex-col overflow-hidden bg-white">
-        <AIAssistantChat
-          context="deal"
-          contextId={dealId}
-        />
-      </div>
+      {/* AI Assistant - Toggleable Sidebar */}
+      {showAI && (
+        <div className="fixed right-0 top-0 bottom-0 w-96 bg-white border-l border-gray-200 shadow-2xl z-50 animate-in slide-in-from-right">
+          <AIAssistantChat
+            context="deal"
+            contextId={dealId}
+            onClose={() => setShowAI(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }

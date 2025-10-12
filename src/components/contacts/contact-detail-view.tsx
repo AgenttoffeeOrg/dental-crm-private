@@ -29,7 +29,8 @@ import {
   Brain,
   Sparkles,
   Target,
-  TrendingUp
+  TrendingUp,
+  Bot
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { Contact, Deal, DealWithRelations, PipelineStage } from '@/types/database'
@@ -52,6 +53,7 @@ export function ContactDetailView({
   const [createActivityDialogOpen, setCreateActivityDialogOpen] = useState(false)
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null)
   const [showActivityTimeline, setShowActivityTimeline] = useState(false)
+  const [showAI, setShowAI] = useState(false)
 
   const fetchContactData = async () => {
     try {
@@ -165,6 +167,10 @@ export function ContactDetailView({
           </div>
           
           <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowAI(!showAI)}>
+              <Bot className="h-4 w-4 mr-1" />
+              AI Assistant
+            </Button>
             <Button size="sm" onClick={() => setEditDialogOpen(true)} disabled={!contact}>
               <Edit className="h-4 w-4 mr-1" />
               Edit Profile
@@ -691,13 +697,16 @@ export function ContactDetailView({
         />
       )}
 
-      {/* AI Assistant Sidebar */}
-      <div className="w-96 border-l border-gray-200 flex flex-col overflow-hidden bg-white">
-        <AIAssistantChat
-          context="contact"
-          contextId={contactId}
-        />
-      </div>
+      {/* AI Assistant - Toggleable Overlay */}
+      {showAI && (
+        <div className="fixed right-0 top-0 bottom-0 w-96 bg-white border-l border-gray-200 shadow-2xl z-50 animate-in slide-in-from-right">
+          <AIAssistantChat
+            context="contact"
+            contextId={contactId}
+            onClose={() => setShowAI(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }
