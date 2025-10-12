@@ -20,6 +20,8 @@ import {
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
 import { TaskQueuePanel } from '@/components/tasks/task-queue-panel'
 import { BulkActionsMenu } from '@/components/tasks/bulk-actions-menu'
+import { TaskCalendarView } from '@/components/tasks/task-calendar-view'
+import { TaskAnalyticsDashboard } from '@/components/analytics/task-analytics-dashboard'
 import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { formatDistanceToNow, isToday, isTomorrow, isPast, isThisWeek, addDays } from 'date-fns'
@@ -51,6 +53,7 @@ export default function TasksPage() {
   const [queueOpen, setQueueOpen] = useState(false)
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
   const [focusedTaskIndex, setFocusedTaskIndex] = useState(0)
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'analytics'>('list')
 
   useEffect(() => {
     loadTasks()
@@ -345,8 +348,20 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Task List - Table Format */}
+      {/* Content Area */}
       <div className="flex-1 overflow-auto px-8 py-6">
+        {viewMode === 'calendar' ? (
+          <TaskCalendarView
+            tasks={tasks}
+            onTaskClick={(id) => setSelectedTaskId(id)}
+            onDateClick={(date) => {
+              // TODO: Open create dialog with pre-filled date
+              setCreateDialogOpen(true)
+            }}
+          />
+        ) : viewMode === 'analytics' ? (
+          <TaskAnalyticsDashboard />
+        ) : (
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -502,7 +517,7 @@ export default function TasksPage() {
               })}
             </div>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Dialogs */}
