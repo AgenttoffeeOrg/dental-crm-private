@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Checkbox } from '@/components/ui/checkbox'
 import { 
   Plus,
   CheckCircle2,
@@ -13,12 +14,18 @@ import {
   AlertCircle,
   User,
   Calendar,
-  MoreHorizontal
+  MoreHorizontal,
+  Play,
+  ExternalLink
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CreateTaskPanel } from '@/components/tasks/create-task-panel'
+import { TaskQueuePanel } from '@/components/tasks/task-queue-panel'
 import { formatDateTime, getActivityAge } from '@/lib/dates'
+import { formatDistanceToNow, isPast, isToday } from 'date-fns'
+import { cn } from '@/lib/utils'
 import type { Task } from '@/types/database'
+import Link from 'next/link'
 
 interface DealTasksProps {
   dealId: string
@@ -33,9 +40,11 @@ export function DealTasks({
   onTaskUpdate,
   tenantId = '550e8400-e29b-41d4-a716-446655440000' 
 }: DealTasksProps) {
-  const [tasks, setTasks] = useState<Task[]>([])
+  const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [queueOpen, setQueueOpen] = useState(false)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const supabase = createClient()
 
   const fetchTasks = async () => {
