@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Shield, Plus, Edit, Trash2, Lock, Check, X } from 'lucide-react'
+import { PermissionMatrixModal } from './permission-matrix-modal'
 import type { CustomRole } from '@/types/database'
 
 interface CreateRoleDialogProps {
@@ -213,6 +214,8 @@ export function CustomRolesTab({ tenantId = '550e8400-e29b-41d4-a716-44665544000
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<CustomRole | null>(null)
+  const [permissionModalOpen, setPermissionModalOpen] = useState(false)
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -272,8 +275,8 @@ export function CustomRolesTab({ tenantId = '550e8400-e29b-41d4-a716-44665544000
   }
 
   const handleEditPermissions = (roleId: string) => {
-    // Navigate to permission matrix editor
-    window.location.href = `/settings?tab=permissions&role=${roleId}`
+    setSelectedRoleId(roleId)
+    setPermissionModalOpen(true)
   }
 
   return (
@@ -455,6 +458,16 @@ export function CustomRolesTab({ tenantId = '550e8400-e29b-41d4-a716-44665544000
         onCreated={loadRoles}
         editingRole={editingRole}
       />
+
+      {/* Permission Matrix Modal */}
+      {selectedRoleId && (
+        <PermissionMatrixModal
+          roleId={selectedRoleId}
+          tenantId={tenantId}
+          open={permissionModalOpen}
+          onOpenChange={setPermissionModalOpen}
+        />
+      )}
     </div>
   )
 }
