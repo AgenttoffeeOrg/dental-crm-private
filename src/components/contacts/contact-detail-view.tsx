@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ActivityTimeline } from '@/components/deals/activity-timeline'
+import { ActivityFeedEnterprise } from '@/components/activities/activity-feed-enterprise'
 import { ContactProfileDialog } from './contact-profile-dialog'
 import { CreateDealDialog } from '@/components/pipeline/create-deal-dialog'
 import { CreateActivityDialog } from '@/components/deals/create-activity-dialog'
@@ -798,11 +798,11 @@ export function ContactDetailView({
           {/* Activities Tab */}
           <TabsContent value="activities" className="flex-1 overflow-y-auto mt-0">
             <div className="p-6 bg-gray-50">
-              <ActivityTimeline 
-                dealId=""
+              <ActivityFeedEnterprise
                 contactId={contactId}
-                onActivityAdded={fetchContactData}
+                onActivityCreated={fetchContactData}
                 showAllContactActivities={true}
+                tenantId={tenantId}
               />
             </div>
           </TabsContent>

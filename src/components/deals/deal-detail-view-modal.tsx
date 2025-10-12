@@ -563,12 +563,12 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
                     compact={false}
                   />
                   
-                  {/* Simple, Clean Activity Feed */}
-                  <ActivityFeedSimple
-                    activities={activities}
+                  {/* Enterprise Activity Feed */}
+                  <ActivityFeedEnterprise
                     contactId={contact.id}
                     dealId={dealId}
                     onActivityCreated={fetchDealData}
+                    tenantId={deal.tenant_id}
                   />
                 </div>
               </TabsContent>
