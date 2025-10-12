@@ -152,9 +152,30 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
 
   useEffect(() => {
     fetchContacts()
-  }, [searchQuery, filterType, sortBy])
+  }, [filterType, sortBy])
+
+  // Debounced search - only fetch after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchContacts()
+    }, 300) // 300ms delay
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   const handleUpdateField = async (contactId: string, field: 'primary_email' | 'primary_phone', value: string) => {
+    if (!value.trim()) {
+      toast.error(`${field === 'primary_email' ? 'Email' : 'Phone'} cannot be empty`)
+      return
+    }
+
+    // Optimistic update - update UI immediately
+    setContacts(prev => prev.map(c => 
+      c.id === contactId ? { ...c, [field]: value } : c
+    ))
+    setEditingField(null)
+    setEditValue('')
+
     try {
       const { error } = await supabase
         .from('contacts')
@@ -167,12 +188,11 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
       if (error) throw error
 
       toast.success(`${field === 'primary_email' ? 'Email' : 'Phone'} updated!`)
-      setEditingField(null)
-      setEditValue('')
-      fetchContacts()
     } catch (error) {
       console.error('Error updating contact:', error)
       toast.error('Failed to update contact')
+      // Revert on error
+      fetchContacts()
     }
   }
 
