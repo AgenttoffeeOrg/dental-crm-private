@@ -11,8 +11,141 @@ export interface AppUser {
   id: string;
   tenant_id: string;
   full_name: string;
-  role: 'owner' | 'manager' | 'staff';
+  email?: string;
+  status?: string;
+  avatar_url?: string;
+  timezone?: string;
+  profile_id?: string;
+  custom_role_id?: string;
+  last_seen_at?: string;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface CustomRole {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description?: string;
+  is_admin: boolean;
+  is_system_role: boolean;
+  color: string;
+  icon?: string;
+  display_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PermissionDefinition {
+  key: string;
+  category: string;
+  subcategory?: string;
+  label: string;
+  description?: string;
+  requires_ownership: boolean;
+  display_order: number;
+  created_at: string;
+}
+
+export interface RolePermission {
+  id: string;
+  role_id: string;
+  permission_key: string;
+  granted: boolean;
+  created_at: string;
+}
+
+export interface UserProfile {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description?: string;
+  role_id?: string;
+  settings: Record<string, any>;
+  created_by_user_id?: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuditTrail {
+  id: string;
+  tenant_id: string;
+  user_id?: string;
+  action_type: string;
+  action_category: string;
+  action_description?: string;
+  entity_type: string;
+  entity_id?: string;
+  entity_name?: string;
+  before_state?: Record<string, any>;
+  after_state?: Record<string, any>;
+  changed_fields?: string[];
+  ip_address?: string;
+  user_agent?: string;
+  session_id?: string;
+  visible_to_admin_only: boolean;
+  sensitive_data: boolean;
+  tags?: string[];
+  severity: string;
+  created_at: string;
+}
+
+export interface PipelineSettings {
+  id: string;
+  pipeline_id: string;
+  tenant_id: string;
+  icon?: string;
+  color?: string;
+  visibility: string;
+  visible_to_role_ids?: string[];
+  auto_assignment_enabled: boolean;
+  auto_assignment_rules?: Record<string, any>;
+  enforce_stage_order: boolean;
+  stage_time_limits?: Record<string, any>;
+  required_fields_per_stage?: Record<string, any>;
+  notify_on_stage_change: boolean;
+  notify_on_stuck_deal: boolean;
+  stuck_deal_threshold_days: number;
+  email_templates_per_stage?: Record<string, any>;
+  duplicate_prevention: boolean;
+  value_min_threshold_cents?: number;
+  value_max_threshold_cents?: number;
+  require_treatment_tags: boolean;
+  webhook_url?: string;
+  webhook_events?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DealSettings {
+  id: string;
+  tenant_id: string;
+  required_fields?: string[];
+  custom_fields?: Record<string, any>;
+  field_visibility_by_role?: Record<string, any>;
+  value_min_cents: number;
+  value_max_cents?: number;
+  allow_zero_value: boolean;
+  currency_options?: string[];
+  default_currency: string;
+  duplicate_detection_enabled: boolean;
+  duplicate_check_fields?: string[];
+  auto_archive_after_days?: number;
+  auto_close_lost_after_days?: number;
+  required_treatment_tags: boolean;
+  min_treatment_tags: number;
+  max_treatment_tags?: number;
+  allowed_treatment_tags?: string[];
+  allow_unassigned: boolean;
+  auto_assign_new_deals: boolean;
+  assignment_method: string;
+  default_stage_id?: string;
+  won_stage_ids?: string[];
+  lost_stage_ids?: string[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Contact {

@@ -349,8 +349,15 @@ export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardPro
 
               {/* Owner */}
               {deal.owner && (
-                <div className="text-xs text-gray-500">
-                  Owner: {deal.owner.full_name}
+                <div className="flex items-center gap-2 mt-2">
+                  <Avatar className="h-4 w-4">
+                    <AvatarFallback className="text-[8px] bg-purple-100 text-purple-700">
+                      {deal.owner.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-gray-500">
+                    {deal.owner.full_name}
+                  </span>
                 </div>
               )}
             </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
 import { createClient } from '@/lib/supabase-client'
 import { Card, CardContent } from '@/components/ui/card'
@@ -250,13 +250,26 @@ function DealListRow({ deal, onUpdate, showPipeline = false }: { deal: DealWithR
           <Badge variant="secondary">{deal.stage?.name || 'No stage'}</Badge>
         </div>
 
+        {/* Owner */}
+        <div className="col-span-1">
+          {deal.owner ? (
+            <div className="flex items-center gap-1" title={deal.owner.full_name}>
+              <div className="h-6 w-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-[10px] font-semibold">
+                {deal.owner.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+              </div>
+            </div>
+          ) : (
+            <span className="text-xs text-gray-400">Unassigned</span>
+          )}
+        </div>
+
         {/* Value */}
-        <div className="col-span-2 font-semibold text-green-700">
+        <div className="col-span-1 font-semibold text-green-700 text-sm">
           {formatCurrency(deal.value_estimate_cents)}
         </div>
 
         {/* Last Activity */}
-        <div className="col-span-2 text-sm text-gray-600">
+        <div className="col-span-1 text-xs text-gray-600">
           {new Date(deal.last_activity_at).toLocaleDateString()}
         </div>
 
@@ -305,6 +318,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('list') // Default to list for All Deals
   const [draggedDeal, setDraggedDeal] = useState<DealWithRelations | null>(null)
+  const [ownerFilter, setOwnerFilter] = useState<'all' | 'my' | 'unassigned' | 'team'>('all')
   
   // Dialog state
   const [createDealDialogOpen, setCreateDealDialogOpen] = useState(false)
@@ -557,6 +571,28 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
     return deals.filter(deal => deal.stage_id === stageId)
   }
 
+  // Filter deals based on owner filter
+  const filteredDeals = React.useMemo(() => {
+    if (ownerFilter === 'all') return deals
+    
+    // TODO: Replace with actual current user ID from auth
+    const currentUserId = '550e8400-e29b-41d4-a716-446655440000' // Placeholder
+    
+    if (ownerFilter === 'my') {
+      return deals.filter(deal => deal.owner_user_id === currentUserId)
+    }
+    
+    if (ownerFilter === 'unassigned') {
+      return deals.filter(deal => !deal.owner_user_id)
+    }
+    
+    if (ownerFilter === 'team') {
+      return deals.filter(deal => deal.owner_user_id && deal.owner_user_id !== currentUserId)
+    }
+    
+    return deals
+  }, [deals, ownerFilter])
+
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat('en-GB', {
       style: 'currency',
@@ -759,16 +795,35 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
             {/* Stats */}
             <div className="flex gap-3">
               <Badge variant="outline" className="font-medium px-3 py-1.5">
-                {deals.length} deals
+                {filteredDeals.length} deals
+                {ownerFilter !== 'all' && ` (${deals.length} total)`}
               </Badge>
               <Badge variant="secondary" className="font-medium px-3 py-1.5 bg-green-100 text-green-800">
-                {formatCurrency(deals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))}
+                {formatCurrency(filteredDeals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))}
               </Badge>
             </div>
           </div>
 
           {/* Right side - Actions */}
           <div className="flex gap-2">
+            {/* Owner Filter - Only for All Deals view */}
+            {selectedPipelineId === '_all_deals' && (
+              <Select
+                value={ownerFilter}
+                onValueChange={setOwnerFilter}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Filter by owner" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Deals</SelectItem>
+                  <SelectItem value="my">My Deals</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  <SelectItem value="team">Team Deals</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
             {/* View Toggle */}
             <div className="flex border rounded-lg overflow-hidden">
               <Button 
@@ -791,7 +846,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
             </div>
 
             {/* Auto-Categorize Button - Only for All Deals view */}
-            {selectedPipelineId === '_all_deals' && deals.length > 0 && (
+            {selectedPipelineId === '_all_deals' && filteredDeals.length > 0 && (
               <Button 
                 variant="outline" 
                 size="sm"
@@ -842,7 +897,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
             <div className="h-full overflow-x-auto">
               <div className="flex gap-6 p-6 min-w-max h-full">
                 {pipelines.map(pipeline => {
-                  const pipelineDeals = deals.filter(d => d.pipeline_id === pipeline.id)
+                  const pipelineDeals = filteredDeals.filter(d => d.pipeline_id === pipeline.id)
                   if (pipelineDeals.length === 0) return null
                   
                   return (
@@ -917,17 +972,18 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
               <CardContent className="p-0">
                 {/* Table Header */}
                 <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b font-semibold text-sm text-gray-700">
-                  <div className={selectedPipelineId === '_all_deals' ? "col-span-2" : "col-span-3"}>Deal Name</div>
+                  <div className={selectedPipelineId === '_all_deals' ? "col-span-2" : "col-span-2"}>Deal Name</div>
                   {selectedPipelineId === '_all_deals' && <div className="col-span-2">Pipeline</div>}
                   <div className="col-span-2">Contact</div>
                   <div className="col-span-2">Stage</div>
-                  <div className="col-span-2">Value</div>
-                  <div className="col-span-2">Last Activity</div>
+                  <div className="col-span-1">Owner</div>
+                  <div className="col-span-1">Value</div>
+                  <div className="col-span-1">Last Activity</div>
                   <div className="col-span-1">Actions</div>
                 </div>
 
                 {/* Table Body */}
-                {deals.length === 0 ? (
+                {filteredDeals.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
                     <p>No deals {selectedPipelineId === '_all_deals' ? 'found' : 'in this pipeline'}</p>
                     <Button 
@@ -939,7 +995,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
                     </Button>
                   </div>
                 ) : (
-                  deals.map(deal => (
+                  filteredDeals.map(deal => (
                     <DealListRow 
                       key={deal.id} 
                       deal={deal}

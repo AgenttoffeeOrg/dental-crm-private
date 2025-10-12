@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select'
 import { ActivityTimeline } from '@/components/deals/activity-timeline'
 import { DealTasks } from '@/components/deals/deal-tasks'
+import { AssignDealDropdown } from '@/components/deals/assign-deal-dropdown'
 import { 
   ArrowLeft,
   Edit,
@@ -424,6 +425,17 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
                   </div>
                 </div>
               )}
+
+              {/* Assigned To - NEW! */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Assigned To</h3>
+                <AssignDealDropdown
+                  dealId={deal.id}
+                  currentOwnerId={deal.owner_user_id}
+                  tenantId={deal.tenant_id}
+                  onAssigned={loadDeal}
+                />
+              </div>
 
               {/* Deal Information */}
               <div>

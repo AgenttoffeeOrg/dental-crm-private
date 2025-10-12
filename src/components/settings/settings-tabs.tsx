@@ -1,259 +1,131 @@
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Settings, Users, Zap, Database } from 'lucide-react'
-import { toast } from 'sonner'
 import { TreatmentConfig } from './treatment-config'
+import { PipelinePreferencesTab } from './pipeline-preferences-tab'
+import { TeamMembersTab } from './team-members-tab'
+import { ActivityFeedTab } from './activity-feed-tab'
+import { TeamAnalyticsTab } from './team-analytics-tab'
+import { UserProfileEditor } from './user-profile-editor'
+import { CustomRolesTab } from './custom-roles-tab'
+import { AuditTrailViewer } from './audit-trail-viewer'
+import { ComprehensiveDealSettings } from './comprehensive-deal-settings'
+import { UserProfilesTab } from './user-profiles-tab'
 
 export function SettingsTabs() {
+  const tenantId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
+  const currentUserId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
+  const isAdmin = true // TODO: Get from user role
+
   return (
-    <Tabs defaultValue="categorization" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-5">
-        <TabsTrigger value="categorization">Smart Categorization</TabsTrigger>
-        <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-        <TabsTrigger value="treatments">Treatments</TabsTrigger>
-        <TabsTrigger value="team">Team</TabsTrigger>
-        <TabsTrigger value="integrations">Integrations</TabsTrigger>
-      </TabsList>
+    <Tabs defaultValue="profile" className="space-y-6">
+      {/* Scrollable Tabs with emojis for visual clarity */}
+      <div className="border-b border-gray-200 overflow-x-auto -mx-6 px-6">
+        <TabsList className="inline-flex h-auto bg-transparent border-none p-0 space-x-1">
+          <TabsTrigger 
+            value="profile" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            👤 Profile
+          </TabsTrigger>
+          <TabsTrigger 
+            value="preferences" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            ⚙️ Preferences
+          </TabsTrigger>
+          <TabsTrigger 
+            value="team" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            👥 Team
+          </TabsTrigger>
+          <TabsTrigger 
+            value="roles" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            🛡️ Roles
+          </TabsTrigger>
+          <TabsTrigger 
+            value="profiles" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            📋 Profiles
+          </TabsTrigger>
+          <TabsTrigger 
+            value="activity" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            📰 Activity
+          </TabsTrigger>
+          <TabsTrigger 
+            value="analytics" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            📊 Analytics
+          </TabsTrigger>
+          <TabsTrigger 
+            value="audit" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            🔒 Audit
+          </TabsTrigger>
+          <TabsTrigger 
+            value="deals" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            💼 Deals
+          </TabsTrigger>
+          <TabsTrigger 
+            value="categorization" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            🤖 Smart AI
+          </TabsTrigger>
+        </TabsList>
+      </div>
+
+      {/* Tab Content - All working features */}
+      <TabsContent value="profile" className="space-y-6">
+        <UserProfileEditor userId={currentUserId} tenantId={tenantId} />
+      </TabsContent>
+
+      <TabsContent value="preferences" className="space-y-6">
+        <PipelinePreferencesTab />
+      </TabsContent>
+
+      <TabsContent value="team" className="space-y-6">
+        <TeamMembersTab />
+      </TabsContent>
+
+      <TabsContent value="activity" className="space-y-6">
+        <ActivityFeedTab />
+      </TabsContent>
+
+      <TabsContent value="analytics" className="space-y-6">
+        <TeamAnalyticsTab />
+      </TabsContent>
+
+      <TabsContent value="roles" className="space-y-6">
+        <CustomRolesTab tenantId={tenantId} />
+      </TabsContent>
+
+      <TabsContent value="profiles" className="space-y-6">
+        <UserProfilesTab tenantId={tenantId} />
+      </TabsContent>
+
+      <TabsContent value="audit" className="space-y-6">
+        <AuditTrailViewer tenantId={tenantId} isAdmin={isAdmin} />
+      </TabsContent>
+
+      <TabsContent value="deals" className="space-y-6">
+        <ComprehensiveDealSettings tenantId={tenantId} />
+      </TabsContent>
 
       <TabsContent value="categorization" className="space-y-6">
         <TreatmentConfig />
       </TabsContent>
-
-      <TabsContent value="pipeline" className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pipeline Stages</CardTitle>
-            <CardDescription>
-              Manage your sales pipeline stages and their order
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[
-                'New Inquiry',
-                'Contacted',
-                'Consultation Booked',
-                'Treatment Planned',
-                'Treatment Accepted',
-                'Completed',
-                'Lost'
-              ].map((stage, index) => (
-                <div key={stage} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs flex items-center justify-center font-medium">
-                      {index + 1}
-                    </div>
-                    <span className="font-medium">{stage}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">Active</Badge>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => {
-                        toast.info('Stage editing will be available in the Pipeline page')
-                      }}
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4">
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  toast.info('To add stages, go to Pipeline page and click Settings')
-                }}
-              >
-                Add Stage
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="treatments" className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Treatment Tags</CardTitle>
-            <CardDescription>
-              Manage available treatment tags for deals and activities
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {[
-                'implants', 'invisalign', 'whitening', 'hygiene', 'emergency',
-                'root_canal', 'extraction', 'veneers', 'crowns', 'bridges',
-                'dentures', 'orthodontics', 'periodontics', 'endodontics',
-                'oral_surgery', 'cosmetic', 'preventive', 'restorative'
-              ].map(tag => (
-                <Badge key={tag} variant="secondary" className="cursor-pointer hover:bg-gray-200">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-            <Button 
-              variant="outline"
-              onClick={() => {
-                toast.info('Treatment tag management will be available in a future update')
-              }}
-            >
-              Add Treatment Tag
-            </Button>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="team" className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Team Members</CardTitle>
-            <CardDescription>
-              Manage user accounts and permissions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium">
-                    DU
-                  </div>
-                  <div>
-                    <div className="font-medium">Demo User</div>
-                    <div className="text-sm text-gray-500">demo@dental.com</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge>Owner</Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                      toast.info('User management will be available in a future update')
-                    }}
-                  >
-                    Edit
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4">
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  toast.info('Team member invitations will be available in a future update')
-                }}
-              >
-                Invite Team Member
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="integrations" className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                Telephony
-              </CardTitle>
-              <CardDescription>
-                Connect your phone system for automatic call logging
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="text-sm text-gray-600">
-                  Webhook URL (reserved):
-                </div>
-                <code className="block p-2 bg-gray-100 rounded text-xs break-all">
-                  https://your-domain.vercel.app/api/webhooks/telephony
-                </code>
-                <Badge variant="outline">Coming Soon</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                WhatsApp Business
-              </CardTitle>
-              <CardDescription>
-                Integrate WhatsApp for patient communication
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="text-sm text-gray-600">
-                  Webhook URL (reserved):
-                </div>
-                <code className="block p-2 bg-gray-100 rounded text-xs break-all">
-                  https://your-domain.vercel.app/api/webhooks/whatsapp
-                </code>
-                <Badge variant="outline">Coming Soon</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Practice Management
-              </CardTitle>
-              <CardDescription>
-                Sync with CareStack and other PMS systems
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="text-sm text-gray-600">
-                  API Endpoint (reserved):
-                </div>
-                <code className="block p-2 bg-gray-100 rounded text-xs break-all">
-                  https://your-domain.vercel.app/api/integrations/pms
-                </code>
-                <Badge variant="outline">Coming Soon</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Email Integration
-              </CardTitle>
-              <CardDescription>
-                Two-way email sync with Gmail/Outlook
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="text-sm text-gray-600">
-                  OAuth Redirect (reserved):
-                </div>
-                <code className="block p-2 bg-gray-100 rounded text-xs break-all">
-                  https://your-domain.vercel.app/api/auth/email/callback
-                </code>
-                <Badge variant="outline">Coming Soon</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </TabsContent>
     </Tabs>
   )
 }
+
