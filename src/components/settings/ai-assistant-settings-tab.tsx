@@ -320,7 +320,7 @@ export function AIAssistantSettingsTab({ tenantId = '550e8400-e29b-41d4-a716-446
           </div>
 
           <p className="text-xs text-gray-500">
-            💡 Examples: "Always ask about insurance for deals >£3k", "Mention sedation for anxious patients", "Include video links for complex treatments"
+            💡 Examples: "Always ask about insurance for deals &gt;£3k", "Mention sedation for anxious patients", "Include video links for complex treatments"
           </p>
         </CardContent>
       </Card>
