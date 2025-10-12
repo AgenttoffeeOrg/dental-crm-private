@@ -39,6 +39,7 @@ interface LogActivityPanelProps {
   dealId?: string
   onActivityLogged?: () => void
   tenantId?: string
+  defaultType?: string
 }
 
 const ACTIVITY_TYPES = [
@@ -69,9 +70,10 @@ export function LogActivityPanel({
   contactId,
   dealId,
   onActivityLogged,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId = '550e8400-e29b-41d4-a716-446655440000',
+  defaultType = 'call'
 }: LogActivityPanelProps) {
-  const [selectedType, setSelectedType] = useState<string>('call')
+  const [selectedType, setSelectedType] = useState<string>(defaultType)
   const [direction, setDirection] = useState<'inbound' | 'outbound'>('outbound')
   const [subject, setSubject] = useState('')
   const [notes, setNotes] = useState('')
@@ -157,11 +159,11 @@ export function LogActivityPanel({
 
       {/* Content */}
       <ScrollArea className="h-[calc(100vh-140px)]">
-        <div className="p-6 space-y-5">
-          {/* Activity Type Selection */}
+        <div className="p-6 space-y-4">
+          {/* Activity Type Selection - Compact */}
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-3 block">Activity Type</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <Label className="text-sm font-medium text-gray-700 mb-2 block">Activity Type</Label>
+            <div className="grid grid-cols-3 gap-1.5">
               {ACTIVITY_TYPES.map(type => {
                 const Icon = type.icon
                 const isSelected = selectedType === type.value
@@ -170,13 +172,13 @@ export function LogActivityPanel({
                     key={type.value}
                     onClick={() => setSelectedType(type.value)}
                     className={cn(
-                      "flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
+                      "flex flex-col items-center gap-1 p-2 rounded-md border-2 transition-all",
                       isSelected 
                         ? `${type.bg} ${type.color} border-current font-medium`
                         : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
                     )}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-4 w-4" />
                     <span className="text-xs">{type.label}</span>
                   </button>
                 )
@@ -305,7 +307,7 @@ export function LogActivityPanel({
                 selectedType === 'meeting' ? 'Meeting agenda, discussion points, action items...' :
                 'Activity details...'
               }
-              rows={6}
+              rows={4}
               className="text-sm resize-none"
             />
           </div>

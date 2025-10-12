@@ -448,7 +448,9 @@ export function ActivityFeedEnterprise({
             </div>
           </div>
         </div>
-        <Button size="sm" onClick={() => setLogPanelOpen(true)}>
+        <Button size="sm" onClick={() => {
+          setLogPanelOpen(true)
+        }}>
           <Plus className="h-4 w-4 mr-2" />
           Log Activity
         </Button>
@@ -568,6 +570,7 @@ export function ActivityFeedEnterprise({
         onClose={() => setLogPanelOpen(false)}
         contactId={contactId}
         dealId={dealId}
+        defaultType={filterType === 'all' ? 'call' : filterType}
         onActivityLogged={() => {
           fetchActivities()
           onActivityCreated?.()
