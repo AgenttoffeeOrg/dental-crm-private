@@ -37,7 +37,14 @@ export function UserProfileEditor({ userId, tenantId }: UserProfileProps) {
         .single()
 
       if (error) {
-        console.error('Error loading user:', JSON.stringify(error, null, 2))
+        // PGRST116 = No rows found - this is expected for new users
+        const isNewUser = error.code === 'PGRST116'
+        
+        if (isNewUser) {
+          console.info('👤 New user detected - profile will be created on first save')
+        } else {
+          console.error('Error loading user:', JSON.stringify(error, null, 2))
+        }
         
         // User doesn't exist - create a placeholder
         setUser({
@@ -49,7 +56,10 @@ export function UserProfileEditor({ userId, tenantId }: UserProfileProps) {
         })
         setFullName('Current User')
         setEmail('')
-        toast.info('User profile will be created on first save')
+        
+        if (isNewUser) {
+          toast.info('👋 Welcome! Your profile will be created when you save')
+        }
       } else {
         setUser(data)
         setFullName(data.full_name)
