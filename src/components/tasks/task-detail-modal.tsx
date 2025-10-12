@@ -32,9 +32,12 @@ interface TaskDetailModalProps {
   open: boolean
   onClose: () => void
   onUpdate?: () => void
+  onComplete?: (taskId: string) => void
+  queueMode?: boolean
+  onNext?: () => void
 }
 
-export function TaskDetailModal({ taskId, open, onClose, onUpdate }: TaskDetailModalProps) {
+export function TaskDetailModal({ taskId, open, onClose, onUpdate, onComplete, queueMode, onNext }: TaskDetailModalProps) {
   const [task, setTask] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -247,6 +250,31 @@ export function TaskDetailModal({ taskId, open, onClose, onUpdate }: TaskDetailM
 
               {/* Sidebar */}
               <div className="space-y-4">
+                {/* Queue Mode Actions */}
+                {queueMode && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                    <p className="text-sm font-medium text-blue-900">Task Queue Mode</p>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        onClick={() => {
+                          if (taskId) {
+                            onComplete?.(taskId)
+                            onClose()
+                          }
+                        }}
+                        className="w-full"
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Complete & Next
+                      </Button>
+                      <Button variant="outline" onClick={onNext} className="w-full">
+                        <ArrowRight className="h-4 w-4 mr-2" />
+                        Skip to Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Status */}
                 <div>
                   <Label className="text-xs text-gray-500 uppercase mb-2 block">Status</Label>
