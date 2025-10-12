@@ -8,6 +8,8 @@ import { TeamMembersTab } from './team-members-tab'
 import { UserProfileEditor } from './user-profile-editor'
 import { CustomRolesTab } from './custom-roles-tab'
 import { ComprehensiveDealSettings } from './comprehensive-deal-settings'
+import { AIAssistantSettingsTab } from './ai-assistant-settings-tab'
+import { AIAnalyticsTab } from './ai-analytics-tab'
 
 export function SettingsTabs() {
   const tenantId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
@@ -73,6 +75,18 @@ export function SettingsTabs() {
           >
             🏷️ Auto-Categorization
           </TabsTrigger>
+          <TabsTrigger 
+            value="ai" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            🤖 AI Assistant
+          </TabsTrigger>
+          <TabsTrigger 
+            value="ai-analytics" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            📊 AI Analytics
+          </TabsTrigger>
         </TabsList>
       </div>
 
@@ -123,6 +137,14 @@ export function SettingsTabs() {
           </div>
           <TreatmentConfig />
         </div>
+      </TabsContent>
+
+      <TabsContent value="ai" className="space-y-6">
+        <AIAssistantSettingsTab tenantId={tenantId} />
+      </TabsContent>
+
+      <TabsContent value="ai-analytics" className="space-y-6">
+        <AIAnalyticsTab tenantId={tenantId} />
       </TabsContent>
     </Tabs>
   )

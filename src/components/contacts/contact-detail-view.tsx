@@ -9,6 +9,7 @@ import { ContactProfileDialog } from './contact-profile-dialog'
 import { CreateDealDialog } from '@/components/pipeline/create-deal-dialog'
 import { CreateActivityDialog } from '@/components/deals/create-activity-dialog'
 import { DealDetailView } from '@/components/deals/deal-detail-view-modal'
+import { AIAssistantChat } from '@/components/ai/ai-assistant-chat'
 import { 
   Phone, 
   Mail, 
@@ -689,6 +690,14 @@ export function ContactDetailView({
           }}
         />
       )}
+
+      {/* AI Assistant Sidebar */}
+      <div className="w-96 border-l border-gray-200 flex flex-col overflow-hidden bg-white">
+        <AIAssistantChat
+          context="contact"
+          contextId={contactId}
+        />
+      </div>
     </div>
   )
 }
