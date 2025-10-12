@@ -285,8 +285,8 @@ export function DealTasks({
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
         onTaskCreated={fetchTasks}
-        preselectedDealId={dealId}
-        preselectedContactId={contactId}
+        prefilledDealId={dealId}
+        prefilledContactId={contactId}
       />
     </div>
   )
