@@ -131,6 +131,8 @@ export function CreateTaskDialog({
         title: '',
         description: '',
         priority: 'normal',
+        task_type: 'todo',
+        estimated_duration_minutes: 30,
         assignee_user_id: '',
         due_at: '',
         contact_id: preselectedContactId || '',
@@ -143,7 +145,11 @@ export function CreateTaskDialog({
     setLoading(true)
     try {
       const taskData = {
-        ...data,
+        title: data.title,
+        description: data.description || null,
+        priority: data.priority,
+        task_type: data.task_type || 'todo',
+        estimated_duration_minutes: data.estimated_duration_minutes || null,
         tenant_id: tenantId,
         status: 'open' as const,
         auto_created: false,

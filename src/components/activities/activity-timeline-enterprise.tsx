@@ -15,12 +15,12 @@ import {
   Edit2,
   Check,
   X,
-  Play,
+  Plus,
   Clock,
   Users,
-  ChevronDown,
   Reply
 } from 'lucide-react'
+import { CreateActivityDialog } from '@/components/activities/create-activity-dialog'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow, format, isToday, isYesterday, isThisWeek } from 'date-fns'
 
@@ -41,9 +41,11 @@ interface Activity {
 
 interface ActivityTimelineEnterpriseProps {
   activities: Activity[]
+  contactId: string
+  dealId?: string
   onEdit?: (activityId: string, updates: { subject?: string; snippet?: string }) => void
   onReply?: (activityId: string) => void
-  onUploadRecording?: () => void
+  onActivityCreated?: () => void
 }
 
 const ACTIVITY_CONFIG = {
@@ -67,15 +69,17 @@ const OUTCOME_LABELS = {
 
 export function ActivityTimelineEnterprise({ 
   activities, 
+  contactId,
+  dealId,
   onEdit, 
   onReply,
-  onUploadRecording 
+  onActivityCreated 
 }: ActivityTimelineEnterpriseProps) {
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [editingActivity, setEditingActivity] = useState<string | null>(null)
   const [editedSubject, setEditedSubject] = useState('')
   const [editedSnippet, setEditedSnippet] = useState('')
-  const [showUploadForm, setShowUploadForm] = useState(false)
+  const [createActivityOpen, setCreateActivityOpen] = useState(false)
 
   // Group activities by date
   const groupedActivities = useMemo(() => {
@@ -189,24 +193,12 @@ export function ActivityTimelineEnterprise({
         })}
       </div>
 
-      {/* Upload Recording (Collapsible) */}
+      {/* Log Activity Button */}
       <div>
-        <button
-          onClick={() => setShowUploadForm(!showUploadForm)}
-          className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1.5"
-        >
-          <Play className="h-3.5 w-3.5" />
-          {showUploadForm ? 'Hide Upload' : 'Upload Call Recording'}
-          <ChevronDown className={cn("h-3 w-3 transition-transform", showUploadForm && "rotate-180")} />
-        </button>
-        
-        {showUploadForm && (
-          <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <Button size="sm" onClick={onUploadRecording}>
-              Choose File
-            </Button>
-          </div>
-        )}
+        <Button onClick={() => setCreateActivityOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Log Activity
+        </Button>
       </div>
 
       {/* Timeline */}
