@@ -2,6 +2,7 @@
 
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { TaskInbox } from '@/components/tasks/task-inbox'
+import { GlobalAIAssistant } from '@/components/ai/global-ai-assistant'
 
 export default function TasksPage() {
   return (
@@ -13,6 +14,7 @@ export default function TasksPage() {
         </div>
         <TaskInbox />
       </div>
+      <GlobalAIAssistant />
     </DashboardLayout>
   )
 }
