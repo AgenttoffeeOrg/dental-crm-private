@@ -161,6 +161,7 @@ export function TaskDetailModal({ taskId, open, onClose, onUpdate }: TaskDetailM
             <DialogHeader className="mb-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
+                  <DialogTitle className="sr-only">Task Details</DialogTitle>
                   <Input
                     value={task.title}
                     onChange={(e) => updateTask({ title: e.target.value })}
