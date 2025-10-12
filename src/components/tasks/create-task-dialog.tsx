@@ -279,14 +279,17 @@ export function CreateTaskDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Assignee</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === 'unassigned' ? '' : value)} 
+                      defaultValue={field.value || 'unassigned'}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Unassigned" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
                         {users.map(user => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.full_name}
@@ -376,14 +379,17 @@ export function CreateTaskDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Related Contact</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} 
+                      defaultValue={field.value || 'none'}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="None" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {contacts.map(contact => (
                           <SelectItem key={contact.id} value={contact.id}>
                             {contact.full_name}
@@ -402,14 +408,17 @@ export function CreateTaskDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Related Deal</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} 
+                      defaultValue={field.value || 'none'}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="None" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {deals.map(deal => (
                           <SelectItem key={deal.id} value={deal.id}>
                             {deal.title}
