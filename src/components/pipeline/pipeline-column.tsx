@@ -11,9 +11,10 @@ interface PipelineColumnProps {
   stage: PipelineStage
   deals: DealWithRelations[]
   onDealUpdate?: () => void
+  onDealClick?: (dealId: string) => void
 }
 
-export function PipelineColumn({ stage, deals, onDealUpdate }: PipelineColumnProps) {
+export function PipelineColumn({ stage, deals, onDealUpdate, onDealClick }: PipelineColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
   })
@@ -60,6 +61,7 @@ export function PipelineColumn({ stage, deals, onDealUpdate }: PipelineColumnPro
                   key={deal.id} 
                   deal={deal} 
                   onDealUpdate={onDealUpdate}
+                  onDealClick={onDealClick}
                 />
               ))}
             </SortableContext>
