@@ -251,10 +251,9 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
               </div>
             </Link>
           ))}
-        
-        {contacts.length === 0 && (
-          <Card>
-            <CardContent className="text-center py-12 text-gray-500">
+          
+          {contacts.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
               <Avatar className="h-12 w-12 mx-auto mb-4">
                 <AvatarFallback>
                   <Plus className="h-6 w-6" />
@@ -264,10 +263,10 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
               <p className="text-sm">
                 {searchQuery ? 'Try adjusting your search' : 'Create your first contact to get started'}
               </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      </Card>
 
           <ContactProfileDialog
             contact={null}
