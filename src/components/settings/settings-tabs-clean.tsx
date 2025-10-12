@@ -8,27 +8,17 @@ import { ActivityFeedTab } from './activity-feed-tab'
 import { TeamAnalyticsTab } from './team-analytics-tab'
 import { UserProfileEditor } from './user-profile-editor'
 import { CustomRolesTab } from './custom-roles-tab'
-import { PermissionMatrixEditor } from './permission-matrix-editor'
 import { AuditTrailViewer } from './audit-trail-viewer'
 import { ComprehensiveDealSettings } from './comprehensive-deal-settings'
 import { UserProfilesTab } from './user-profiles-tab'
-import { useSearchParams } from 'next/navigation'
 
 export function SettingsTabs() {
-  const searchParams = useSearchParams()
   const tenantId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
   const currentUserId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
   const isAdmin = true // TODO: Get from user role
-  
-  // Get role ID from URL params for permission editing
-  const roleIdFromUrl = searchParams.get('role')
-  const tabFromUrl = searchParams.get('tab')
-  
-  // If we have a role ID and tab=permissions, show permission editor
-  const defaultTab = roleIdFromUrl && tabFromUrl === 'permissions' ? 'permissions' : 'profile'
 
   return (
-    <Tabs defaultValue={defaultTab} className="space-y-6">
+    <Tabs defaultValue="profile" className="space-y-6">
       {/* Scrollable Tabs with emojis for visual clarity */}
       <div className="border-b border-gray-200 overflow-x-auto -mx-6 px-6">
         <TabsList className="inline-flex h-auto bg-transparent border-none p-0 space-x-1">
@@ -92,24 +82,10 @@ export function SettingsTabs() {
           >
             🤖 Smart AI
           </TabsTrigger>
-          {roleIdFromUrl && (
-            <TabsTrigger 
-              value="permissions" 
-              className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-            >
-              🔑 Permissions
-            </TabsTrigger>
-          )}
         </TabsList>
       </div>
 
       {/* Tab Content - All working features */}
-      {roleIdFromUrl && (
-        <TabsContent value="permissions" className="space-y-6">
-          <PermissionMatrixEditor roleId={roleIdFromUrl} tenantId={tenantId} />
-        </TabsContent>
-      )}
-
       <TabsContent value="profile" className="space-y-6">
         <UserProfileEditor userId={currentUserId} tenantId={tenantId} />
       </TabsContent>
