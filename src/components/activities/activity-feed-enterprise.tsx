@@ -47,6 +47,8 @@ import { toast } from 'sonner'
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek, startOfDay, startOfWeek } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { LogActivityPanel } from './log-activity-panel'
+import { DealTasks } from '@/components/deals/deal-tasks'
+import { CheckSquare } from 'lucide-react'
 
 interface Activity {
   id: string
@@ -107,6 +109,7 @@ export function ActivityFeedEnterprise({
   const [editSubject, setEditSubject] = useState('')
   const [editSnippet, setEditSnippet] = useState('')
   const [logPanelOpen, setLogPanelOpen] = useState(false)
+  const [showTasks, setShowTasks] = useState(false)
   const supabase = createClient()
 
   const fetchActivities = async () => {
@@ -433,6 +436,43 @@ export function ActivityFeedEnterprise({
     )
   }
 
+  // If showing tasks, render DealTasks component
+  if (showTasks) {
+    if (!dealId) {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
+            <Button size="sm" variant="outline" onClick={() => setShowTasks(false)}>
+              Back to Activities
+            </Button>
+          </div>
+          <Card>
+            <CardContent className="text-center py-12">
+              <p className="text-gray-500">Create a deal first to manage tasks</p>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
+          <Button size="sm" variant="outline" onClick={() => setShowTasks(false)}>
+            Back to Activities
+          </Button>
+        </div>
+        <DealTasks
+          dealId={dealId}
+          contactId={contactId}
+          onTaskUpdate={onActivityCreated}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       {/* Header with Stats */}
@@ -448,12 +488,18 @@ export function ActivityFeedEnterprise({
             </div>
           </div>
         </div>
-        <Button size="sm" onClick={() => {
-          setLogPanelOpen(true)
-        }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Log Activity
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setShowTasks(true)}>
+            <CheckSquare className="h-4 w-4 mr-2" />
+            Tasks
+          </Button>
+          <Button size="sm" onClick={() => {
+            setLogPanelOpen(true)
+          }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Log Activity
+          </Button>
+        </div>
       </div>
 
       {/* Filters & Search */}
