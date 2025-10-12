@@ -16,7 +16,9 @@ import {
   Download,
   Calendar,
   User,
-  Plus
+  Plus,
+  Upload,
+  Edit
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AudioUpload } from '@/components/audio/audio-upload'
@@ -46,6 +48,9 @@ export function ActivityTimeline({
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [selectedActivityType, setSelectedActivityType] = useState<'call' | 'email' | 'whatsapp' | 'note' | null>(null)
   const [playingAudio, setPlayingAudio] = useState<string | null>(null)
+  const [editingActivity, setEditingActivity] = useState<string | null>(null)
+  const [editedSubject, setEditedSubject] = useState('')
+  const [editedSnippet, setEditedSnippet] = useState('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -175,6 +180,40 @@ export function ActivityTimeline({
     setSelectedActivityType(null)
   }
 
+  const startEditActivity = (activity: ActivityWithRelations) => {
+    setEditingActivity(activity.id)
+    setEditedSubject(activity.subject || '')
+    setEditedSnippet(activity.snippet || '')
+  }
+
+  const saveActivityEdit = async (activityId: string) => {
+    try {
+      const { error } = await supabase
+        .from('activities')
+        .update({
+          subject: editedSubject,
+          snippet: editedSnippet,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activityId)
+
+      if (error) throw error
+
+      toast.success('Activity updated!')
+      setEditingActivity(null)
+      fetchActivities()
+    } catch (error) {
+      console.error('Error updating activity:', error)
+      toast.error('Failed to update activity')
+    }
+  }
+
+  const cancelEditActivity = () => {
+    setEditingActivity(null)
+    setEditedSubject('')
+    setEditedSnippet('')
+  }
+
   const handleActivityTypeClick = (type: 'call' | 'email' | 'whatsapp' | 'note') => {
     setSelectedActivityType(type)
     setCreateDialogOpen(true)
@@ -259,75 +298,101 @@ export function ActivityTimeline({
           <p className="text-xs text-gray-500">Get started by logging your first interaction</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {activities.map((activity, index) => (
-            <div key={activity.id} className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-              {/* Activity Header */}
-              <div className="px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${getActivityColor(activity.type)}`}>
+        <div className="space-y-2">
+          {activities.map((activity, index) => {
+            const isEditing = editingActivity === activity.id
+            
+            return (
+              <div key={activity.id} className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+                {/* Compact Activity Header */}
+                <div className="px-3 py-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${getActivityColor(activity.type)} bg-opacity-10`}>
                       {getActivityIcon(activity.type)}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-medium text-gray-900">
-                          {activity.subject || `${activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}`}
-                        </h4>
-                        {getDirectionBadge(activity.direction)}
+                    
+                    {isEditing ? (
+                      <Input
+                        value={editedSubject}
+                        onChange={(e) => setEditedSubject(e.target.value)}
+                        className="h-7 text-sm flex-1"
+                        placeholder="Subject"
+                      />
+                    ) : (
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-medium text-gray-900 truncate">
+                            {activity.subject || `${activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}`}
+                          </h4>
+                          {getDirectionBadge(activity.direction)}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          {activity.agent && <span>{activity.agent.full_name}</span>}
+                          <span>•</span>
+                          <span>{getActivityAge(activity.occurred_at)}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-                        {activity.agent && (
-                          <span>{activity.agent.full_name}</span>
-                        )}
-                        <span>{formatDateTime(activity.occurred_at)}</span>
-                        <span>•</span>
-                        <span>{getActivityAge(activity.occurred_at)}</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    {activity.type}
-                  </Badge>
+                  
+                  <div className="flex items-center gap-1">
+                    {isEditing ? (
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => saveActivityEdit(activity.id)} className="h-6 px-2 text-xs">
+                          Save
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={cancelEditActivity} className="h-6 px-2 text-xs">
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <Button size="sm" variant="ghost" onClick={() => startEditActivity(activity)} className="h-6 w-6 p-0">
+                        <Edit className="h-3 w-3 text-gray-400" />
+                      </Button>
+                    )}
+                    <Badge variant="outline" className="text-xs">{activity.type}</Badge>
+                  </div>
                 </div>
-              </div>
 
               {/* Activity Content */}
-              <div className="px-4 py-3">
-                {/* Activity Snippet */}
-                {activity.snippet && (
-                  <div className="mb-3">
-                    <p className="text-sm text-gray-700 leading-relaxed">{activity.snippet}</p>
-                  </div>
-                )}
+              <div className="px-3 py-2 border-t border-gray-50">
+                {/* Activity Snippet - Editable */}
+                {isEditing ? (
+                  <Textarea
+                    value={editedSnippet}
+                    onChange={(e) => setEditedSnippet(e.target.value)}
+                    className="text-sm min-h-[60px]"
+                    placeholder="Notes..."
+                  />
+                ) : activity.snippet ? (
+                  <p className="text-sm text-gray-700 leading-relaxed">{activity.snippet}</p>
+                ) : null}
 
-                {/* Audio Player for Call Activities */}
-                {activity.type === 'call' && activity.activity_files && activity.activity_files.length > 0 && (
-                  <div className="mb-3">
+                {/* Compact Audio Player for Call Activities */}
+                {!isEditing && activity.type === 'call' && activity.activity_files && activity.activity_files.length > 0 && (
+                  <div className="mt-2">
                     {activity.activity_files
                       .filter(af => af.files.kind === 'audio')
                       .map(audioFile => (
-                        <div key={audioFile.file_id} className="flex items-center gap-3 p-3 bg-blue-50 rounded-md border border-blue-100">
+                        <div key={audioFile.file_id} className="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-100">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => handlePlayAudio(activity)}
-                            className="h-8 w-8 p-0 border-blue-200"
+                            className="h-6 w-6 p-0"
                           >
                             {playingAudio === activity.id ? (
-                              <Pause className="h-3 w-3" />
+                              <Pause className="h-3 w-3 text-blue-600" />
                             ) : (
-                              <Play className="h-3 w-3" />
+                              <Play className="h-3 w-3 text-blue-600" />
                             )}
                           </Button>
-                          <div className="flex-1">
-                            <p className="text-xs font-medium text-blue-900">Call Recording</p>
-                            <p className="text-xs text-blue-700">
-                              {((audioFile.files.size_bytes || 0) / 1024 / 1024).toFixed(1)} MB
-                            </p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-blue-900 truncate">Recording</p>
                           </div>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <Download className="h-3 w-3" />
+                          <span className="text-xs text-blue-700">{((audioFile.files.size_bytes || 0) / 1024 / 1024).toFixed(1)} MB</span>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <Download className="h-3 w-3 text-blue-600" />
                           </Button>
                         </div>
                       ))
@@ -338,23 +403,27 @@ export function ActivityTimeline({
                 {/* AI Artifacts Display */}
                 <AIArtifactsDisplay activityId={activity.id} />
 
-                {/* Upload Audio for Call Activities without recordings */}
-                {activity.type === 'call' && (!activity.activity_files || activity.activity_files.filter(af => af.files.kind === 'audio').length === 0) && (
-                  <div className="border border-dashed border-blue-200 rounded-md p-4 bg-blue-50/30">
-                    <div className="text-center mb-3">
-                      <Phone className="h-5 w-5 text-blue-600 mx-auto mb-2" />
-                      <h4 className="text-sm font-medium text-gray-900">Upload Call Recording</h4>
-                      <p className="text-xs text-gray-600">Add audio for AI transcription and analysis</p>
-                    </div>
-                    <AudioUpload
-                      activityId={activity.id}
-                      onProcessingComplete={handleAudioProcessingComplete}
-                    />
+                {/* Compact Upload for Call Activities without recordings */}
+                {!isEditing && activity.type === 'call' && (!activity.activity_files || activity.activity_files.filter(af => af.files.kind === 'audio').length === 0) && (
+                  <div className="mt-2">
+                    <details className="group">
+                      <summary className="flex items-center gap-2 text-xs text-blue-600 cursor-pointer hover:text-blue-700 list-none">
+                        <Upload className="h-3 w-3" />
+                        <span>Upload Recording</span>
+                      </summary>
+                      <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-100">
+                        <AudioUpload
+                          activityId={activity.id}
+                          onProcessingComplete={handleAudioProcessingComplete}
+                        />
+                      </div>
+                    </details>
                   </div>
                 )}
               </div>
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </div>
       )}
 

@@ -28,6 +28,7 @@ import {
 import { ActivityTimeline } from '@/components/deals/activity-timeline'
 import { DealTasks } from '@/components/deals/deal-tasks'
 import { AssignDealDropdown } from '@/components/deals/assign-deal-dropdown'
+import { DealIntelligenceCard } from '@/components/deals/deal-intelligence-card'
 import { 
   ArrowLeft,
   Edit,
@@ -537,7 +538,15 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
               </div>
 
               <TabsContent value="activities" className="flex-1 overflow-y-auto mt-0">
-                <div className="p-6">
+                <div className="p-6 space-y-4">
+                  {/* AI-Powered Deal Intelligence Dashboard */}
+                  <DealIntelligenceCard
+                    dealId={dealId}
+                    contactId={contact.id}
+                    compact={false}
+                  />
+                  
+                  {/* Activity Timeline */}
                   <ActivityTimeline
                     dealId={dealId}
                     contactId={contact.id}

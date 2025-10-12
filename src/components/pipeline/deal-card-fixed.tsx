@@ -9,10 +9,10 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { DealDetailView } from '../deals/deal-detail-view-modal'
+import { DealIntelligenceCard } from '../deals/deal-intelligence-card'
 import { getActivityAge } from '@/lib/dates'
-import { Edit, Eye, GripVertical, Check, X, Pencil, TrendingUp, TrendingDown, Activity as ActivityIcon } from 'lucide-react'
+import { Edit, Eye, GripVertical, Check, X, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
-import { analyzeConversations, getDealHealthIndicator } from '@/lib/conversation-analyzer'
 import type { DealWithRelations } from '@/types/database'
 
 interface DealCardProps {
@@ -26,14 +26,6 @@ export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardPro
   const [editingTitle, setEditingTitle] = useState(false)
   const [tempTitle, setTempTitle] = useState(deal.title)
   const supabase = require('@/lib/supabase-client').createClient()
-
-  // Analyze conversations for deal intelligence
-  const conversationAnalysis = deal.activities 
-    ? analyzeConversations(deal.activities)
-    : null
-  const healthIndicator = conversationAnalysis 
-    ? getDealHealthIndicator(conversationAnalysis.dealHealthScore)
-    : null
 
   const {
     attributes,
@@ -305,34 +297,14 @@ export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardPro
                 </div>
               )}
 
-              {/* Deal Intelligence - Health & Likelihood */}
-              {conversationAnalysis && healthIndicator && (
-                <div className="mt-2 mb-3 p-2 bg-gray-50 rounded border border-gray-200">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm">{healthIndicator.icon}</span>
-                      <span className="font-medium" style={{ color: healthIndicator.color === 'green' ? '#10b981' : healthIndicator.color === 'yellow' ? '#f59e0b' : '#ef4444' }}>
-                        {healthIndicator.label}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {conversationAnalysis.sentimentScore > 0.3 ? (
-                        <TrendingUp className="h-3 w-3 text-green-600" />
-                      ) : conversationAnalysis.sentimentScore < -0.3 ? (
-                        <TrendingDown className="h-3 w-3 text-red-600" />
-                      ) : (
-                        <ActivityIcon className="h-3 w-3 text-gray-600" />
-                      )}
-                      <span className="font-semibold">{Math.round(conversationAnalysis.dealHealthScore)}%</span>
-                    </div>
-                  </div>
-                  {conversationAnalysis.recommendedAction && (
-                    <div className="mt-1 text-xs text-gray-600 italic truncate" title={conversationAnalysis.recommendedAction}>
-                      💡 {conversationAnalysis.recommendedAction}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* AI-Powered Deal Intelligence Mini-Dashboard */}
+              <div className="mb-3">
+                <DealIntelligenceCard
+                  dealId={deal.id}
+                  contactId={deal.contact_id}
+                  compact={true}
+                />
+              </div>
 
               {/* Value and last activity */}
               <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
