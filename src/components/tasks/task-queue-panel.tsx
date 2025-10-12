@@ -19,7 +19,9 @@ import {
   MapPin,
   Building2,
   Copy,
-  MessageSquare
+  MessageSquare,
+  Sparkles,
+  AlertCircle
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { cn } from '@/lib/utils'
@@ -173,7 +175,7 @@ export function TaskQueuePanel({
 
   return (
     <div className={cn(
-      "fixed right-0 top-0 h-full w-[500px] bg-white border-l border-gray-200 shadow-2xl z-50 transform transition-transform duration-300",
+      "fixed right-0 top-0 h-full w-[900px] bg-white border-l border-gray-200 shadow-2xl z-50 transform transition-transform duration-300",
       open ? "translate-x-0" : "translate-x-full"
     )}>
       {/* Header */}
@@ -197,9 +199,11 @@ export function TaskQueuePanel({
         />
       </div>
 
-      {/* Task Content */}
-      <ScrollArea className="h-[calc(100vh-200px)]">
-        <div className="p-6 space-y-6">
+      {/* Task Content - 2 Column Layout */}
+      <div className="h-[calc(100vh-200px)] grid grid-cols-2 gap-0">
+        {/* LEFT COLUMN: Task Details */}
+        <ScrollArea className="border-r border-gray-200">
+          <div className="p-6 space-y-6">
           {/* Task Title & Type */}
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -383,8 +387,133 @@ export function TaskQueuePanel({
               </p>
             </div>
           )}
-        </div>
-      </ScrollArea>
+          </div>
+        </ScrollArea>
+
+        {/* RIGHT COLUMN: AI-Powered Deal Insights */}
+        <ScrollArea className="bg-gradient-to-b from-purple-50 to-blue-50">
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">AI Briefing</h3>
+                <p className="text-xs text-gray-500">Everything you need to know</p>
+              </div>
+            </div>
+
+            {dealDetails ? (
+              <>
+                {/* Deal Summary */}
+                <div className="p-4 bg-white rounded-lg border border-purple-200 shadow-sm">
+                  <h4 className="text-xs font-semibold text-purple-900 mb-2">📊 Deal Overview</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Value:</span>
+                      <span className="font-semibold text-green-700">
+                        £{((dealDetails.value_estimate_cents || 0) / 100).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Stage:</span>
+                      <Badge variant="secondary">{dealDetails.stage?.name}</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Treatment:</span>
+                      <span className="text-gray-900">{dealDetails.treatment_tags?.[0] || 'General'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI-Generated Talking Points */}
+                <div className="p-4 bg-white rounded-lg border border-blue-200 shadow-sm">
+                  <h4 className="text-xs font-semibold text-blue-900 mb-3">💬 Key Discussion Points</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold text-xs">1.</span>
+                      <p className="text-xs text-gray-700">
+                        Patient expressed interest in {dealDetails.treatment_tags?.[0] || 'treatment'} during last conversation
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold text-xs">2.</span>
+                      <p className="text-xs text-gray-700">
+                        Quote sent {formatDistanceToNow(new Date(dealDetails.created_at), { addSuffix: true })} - follow up on pricing questions
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold text-xs">3.</span>
+                      <p className="text-xs text-gray-700">
+                        Discuss payment plan options and insurance coverage
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Critical Alerts */}
+                <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <h4 className="text-xs font-semibold text-orange-900 mb-2 flex items-center gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Important Notes
+                  </h4>
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-orange-800">
+                      • High-value deal (&gt;£5k) - priority follow-up
+                    </p>
+                    <p className="text-xs text-orange-800">
+                      • Last contact was {dealDetails.last_activity_at ? formatDistanceToNow(new Date(dealDetails.last_activity_at), { addSuffix: true }) : 'unknown'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Suggested Opening Lines */}
+                <div className="p-4 bg-white rounded-lg border border-green-200 shadow-sm">
+                  <h4 className="text-xs font-semibold text-green-900 mb-3">✨ Suggested Opening</h4>
+                  <div className="p-3 bg-green-50 rounded border border-green-200">
+                    <p className="text-xs text-gray-700 italic">
+                      "Hi {contactDetails?.full_name?.split(' ')[0]}, this is [Your Name] from [Practice Name]. 
+                      I'm following up on the {dealDetails.treatment_tags?.[0] || 'treatment'} plan we discussed. 
+                      Do you have a few minutes to go over the details?"
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quick Actions Based on Task Type */}
+                {currentTask.task_type === 'call' && (
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="text-xs font-semibold text-blue-900 mb-2">📋 Call Checklist</h4>
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-2 text-xs text-gray-700">
+                        <input type="checkbox" className="rounded" />
+                        Confirm patient availability
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-gray-700">
+                        <input type="checkbox" className="rounded" />
+                        Discuss treatment timeline
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-gray-700">
+                        <input type="checkbox" className="rounded" />
+                        Address pricing questions
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-gray-700">
+                        <input type="checkbox" className="rounded" />
+                        Schedule next appointment
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <Sparkles className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">No deal associated</p>
+                <p className="text-xs mt-1">AI insights available when linked to a deal</p>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
 
       {/* Actions Footer */}
       <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white space-y-2">
