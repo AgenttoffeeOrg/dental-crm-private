@@ -16,7 +16,7 @@ import {
   MoreHorizontal
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
+import { CreateTaskPanel } from '@/components/tasks/create-task-panel'
 import { formatDateTime, getActivityAge } from '@/lib/dates'
 import type { Task } from '@/types/database'
 
@@ -280,10 +280,10 @@ export function DealTasks({
         </div>
       )}
 
-      {/* Create Task Dialog */}
-      <CreateTaskDialog
+      {/* Create Task Panel */}
+      <CreateTaskPanel
         open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
         onTaskCreated={fetchTasks}
         preselectedDealId={dealId}
         preselectedContactId={contactId}
