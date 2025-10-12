@@ -496,11 +496,10 @@ export function ContactDetailView({
       <div className="flex-1 flex flex-col overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
-            <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+            <TabsList className="grid w-full grid-cols-3 max-w-xl">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
-              <TabsTrigger value="activities">Activities</TabsTrigger>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsTrigger value="activities">Activities & Tasks</TabsTrigger>
             </TabsList>
           </div>
 
@@ -795,37 +794,16 @@ export function ContactDetailView({
             </div>
           </TabsContent>
 
-          {/* Activities Tab */}
+          {/* Activities & Tasks Tab */}
           <TabsContent value="activities" className="flex-1 overflow-y-auto mt-0">
             <div className="p-6 bg-gray-50">
               <ActivityFeedEnterprise
                 contactId={contactId}
+                dealId={deals.length > 0 ? deals[0].id : undefined}
                 onActivityCreated={fetchContactData}
                 showAllContactActivities={true}
                 tenantId={tenantId}
               />
-            </div>
-          </TabsContent>
-
-          {/* Tasks Tab */}
-          <TabsContent value="tasks" className="flex-1 overflow-y-auto mt-0">
-            <div className="p-6 bg-gray-50">
-              {deals.length > 0 ? (
-                <DealTasks
-                  dealId={deals[0].id}
-                  contactId={contactId}
-                  onTaskUpdate={fetchContactData}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="text-center py-12">
-                    <div className="text-gray-500">
-                      <p className="mb-2">No tasks yet</p>
-                      <p className="text-sm">Create a deal first to add tasks</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </TabsContent>
         </Tabs>
