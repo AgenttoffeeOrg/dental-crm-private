@@ -305,7 +305,7 @@ export async function buildContactContext(contactId: string, tenantId: string): 
       .from('activities')
       .select(`
         *,
-        agent:app_users(*)
+        agent:app_users!activities_agent_user_id_fkey(*)
       `)
       .eq('contact_id', contactId)
       .order('occurred_at', { ascending: false })
