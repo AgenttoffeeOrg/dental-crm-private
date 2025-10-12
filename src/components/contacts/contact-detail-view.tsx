@@ -877,7 +877,7 @@ export function ContactDetailView({
       )}
 
       {/* AI Assistant Sidebar - Always Visible */}
-      <div className="w-96 border-l border-gray-200 bg-white flex-shrink-0">
+      <div className="w-96 border-l border-gray-200 bg-white flex-shrink-0 overflow-hidden">
         <AIAssistantChat
           context="contact"
           contextId={contactId}
