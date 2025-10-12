@@ -88,8 +88,17 @@ interface PipelineBoardProps {
 type ViewMode = 'board' | 'list'
 
 // List Row Component with clickable elements  
-function DealListRow({ deal, onUpdate, showPipeline = false }: { deal: DealWithRelations; onUpdate: () => void; showPipeline?: boolean }) {
-  const [showDealDetail, setShowDealDetail] = useState(false)
+function DealListRow({ 
+  deal, 
+  onUpdate, 
+  onDealClick,
+  showPipeline = false 
+}: { 
+  deal: DealWithRelations; 
+  onUpdate: () => void;
+  onDealClick: (dealId: string) => void;
+  showPipeline?: boolean;
+}) {
   const [editingTitle, setEditingTitle] = useState(false)
   const [tempTitle, setTempTitle] = useState(deal.title)
   const supabase = createClient()
@@ -108,7 +117,7 @@ function DealListRow({ deal, onUpdate, showPipeline = false }: { deal: DealWithR
 
   const handleDealClick = () => {
     if (!editingTitle) {
-      setShowDealDetail(true)
+      onDealClick(deal.id)
     }
   }
 
@@ -353,6 +362,31 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
     const dealId = searchParams?.get('deal')
     setSelectedDealId(dealId)
   }, [searchParams])
+
+  // Helper functions to update URL
+  const openDealModal = (dealId: string) => {
+    setSelectedDealId(dealId)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('deal', dealId)
+      window.history.pushState({}, '', url.toString())
+    }
+  }
+
+  const closeDealModal = () => {
+    setSelectedDealId(null)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('deal')
+      window.history.pushState({}, '', url.toString())
+    }
+    // Refresh data
+    if (selectedPipelineId === '_all_deals') {
+      fetchAllDeals()
+    } else {
+      fetchPipelineData()
+    }
+  }
 
   // Load pipelines on mount
   useEffect(() => {
@@ -1013,6 +1047,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
                       key={deal.id} 
                       deal={deal}
                       onUpdate={selectedPipelineId === '_all_deals' ? fetchAllDeals : fetchPipelineData}
+                      onDealClick={openDealModal}
                       showPipeline={selectedPipelineId === '_all_deals'}
                     />
                   ))
