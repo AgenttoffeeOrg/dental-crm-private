@@ -72,23 +72,11 @@ export default function TasksPage() {
       switch (e.key.toLowerCase()) {
         case 'j': // Next task
           e.preventDefault()
-          setFocusedTaskIndex(prev => Math.min(prev + 1, filteredTasks.length - 1))
+          setFocusedTaskIndex(prev => Math.min(prev + 1, tasks.length - 1))
           break
         case 'k': // Previous task
           e.preventDefault()
           setFocusedTaskIndex(prev => Math.max(prev - 1, 0))
-          break
-        case 'x': // Complete focused task
-          e.preventDefault()
-          if (filteredTasks[focusedTaskIndex]) {
-            handleCompleteTask(filteredTasks[focusedTaskIndex].id)
-          }
-          break
-        case 'enter': // Open focused task
-          e.preventDefault()
-          if (filteredTasks[focusedTaskIndex]) {
-            setSelectedTaskId(filteredTasks[focusedTaskIndex].id)
-          }
           break
         case 'n': // New task
           if (e.ctrlKey || e.metaKey) {
@@ -107,7 +95,7 @@ export default function TasksPage() {
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [filteredTasks, focusedTaskIndex])
+  }, [tasks, focusedTaskIndex])
 
   const loadTasks = async () => {
     setLoading(true)
