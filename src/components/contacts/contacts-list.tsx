@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -15,45 +16,132 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Plus, Search, Mail, Phone, Settings } from 'lucide-react'
+import { 
+  Plus, 
+  Search, 
+  Mail, 
+  Phone, 
+  Settings,
+  Filter,
+  ArrowUpDown,
+  TrendingUp,
+  Check,
+  X,
+  Edit
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { ContactProfileDialog } from './contact-profile-dialog'
 import { CreateContactDialog } from './create-contact-dialog'
 import { formatDate } from '@/lib/dates'
+import { formatDistanceToNow } from 'date-fns'
+import { cn } from '@/lib/utils'
 import type { Contact } from '@/types/database'
+
+type FilterType = 'all' | 'active' | 'leads' | 'patients' | 'cold'
+type SortType = 'name' | 'created' | 'activity' | 'value'
 
 interface ContactsListProps {
   tenantId?: string
 }
 
 export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: ContactsListProps) {
-  const [contacts, setContacts] = useState<Contact[]>([])
+  const [contacts, setContacts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
+  const [filterType, setFilterType] = useState<FilterType>('all')
+  const [sortBy, setSortBy] = useState<SortType>('created')
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set())
+  const [editingField, setEditingField] = useState<{contactId: string, field: 'email' | 'phone'} | null>(null)
+  const [editValue, setEditValue] = useState('')
   const supabase = createClient()
 
   const fetchContacts = async () => {
     try {
       setLoading(true)
 
-      let query = supabase
+      // Fetch contacts with deal and activity counts
+      const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
         .select('*')
         .eq('tenant_id', tenantId)
 
-      // Apply search
+      if (contactsError) throw contactsError
+
+      // Fetch deal counts and values for each contact
+      const { data: dealStats, error: dealsError } = await supabase
+        .from('deals')
+        .select('contact_id, value_estimate_cents, status')
+        .eq('tenant_id', tenantId)
+
+      // Fetch last activity for each contact
+      const { data: lastActivities, error: activitiesError } = await supabase
+        .from('activities')
+        .select('contact_id, created_at')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+
+      // Aggregate data
+      const enrichedContacts = (contactsData || []).map(contact => {
+        const contactDeals = (dealStats || []).filter(d => d.contact_id === contact.id && d.status !== 'lost' && d.status !== 'won')
+        const dealCount = contactDeals.length
+        const dealValue = contactDeals.reduce((sum, d) => sum + (d.value_estimate_cents || 0), 0)
+        
+        const contactActivities = (lastActivities || []).filter(a => a.contact_id === contact.id)
+        const lastActivity = contactActivities[0]?.created_at
+
+        return {
+          ...contact,
+          deal_count: dealCount,
+          deal_value: dealValue,
+          last_activity_at: lastActivity
+        }
+      })
+
+      // Apply search filter
+      let filtered = enrichedContacts
       if (searchQuery) {
-        query = query.or(`full_name.ilike.%${searchQuery}%,primary_email.ilike.%${searchQuery}%,primary_phone.ilike.%${searchQuery}%`)
+        filtered = filtered.filter(c => 
+          c.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.primary_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.primary_phone?.includes(searchQuery)
+        )
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false })
+      // Apply status filter
+      if (filterType !== 'all') {
+        filtered = filtered.filter(c => {
+          switch(filterType) {
+            case 'active': return c.deal_count > 0
+            case 'leads': return c.lifecycle_stage === 'lead' || c.lifecycle_stage === 'new_lead'
+            case 'patients': return c.lifecycle_stage === 'patient' || c.lifecycle_stage === 'active_patient'
+            case 'cold': return !c.last_activity_at || (new Date().getTime() - new Date(c.last_activity_at).getTime()) > 30 * 24 * 60 * 60 * 1000
+            default: return true
+          }
+        })
+      }
 
-      if (error) throw error
+      // Apply sorting
+      filtered.sort((a, b) => {
+        switch(sortBy) {
+          case 'name': return a.full_name.localeCompare(b.full_name)
+          case 'created': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          case 'activity': return (b.last_activity_at ? new Date(b.last_activity_at).getTime() : 0) - (a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0)
+          case 'value': return (b.deal_value || 0) - (a.deal_value || 0)
+          default: return 0
+        }
+      })
 
-      setContacts(data || [])
+      setContacts(filtered)
     } catch (error) {
       console.error('Error fetching contacts:', error)
       toast.error('Failed to load contacts')
@@ -64,7 +152,68 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
 
   useEffect(() => {
     fetchContacts()
-  }, [searchQuery])
+  }, [searchQuery, filterType, sortBy])
+
+  const handleUpdateField = async (contactId: string, field: 'primary_email' | 'primary_phone', value: string) => {
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .update({ 
+          [field]: value,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', contactId)
+
+      if (error) throw error
+
+      toast.success(`${field === 'primary_email' ? 'Email' : 'Phone'} updated!`)
+      setEditingField(null)
+      setEditValue('')
+      fetchContacts()
+    } catch (error) {
+      console.error('Error updating contact:', error)
+      toast.error('Failed to update contact')
+    }
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedContacts.size === contacts.length) {
+      setSelectedContacts(new Set())
+    } else {
+      setSelectedContacts(new Set(contacts.map(c => c.id)))
+    }
+  }
+
+  const toggleSelectContact = (contactId: string) => {
+    const newSet = new Set(selectedContacts)
+    if (newSet.has(contactId)) {
+      newSet.delete(contactId)
+    } else {
+      newSet.add(contactId)
+    }
+    setSelectedContacts(newSet)
+  }
+
+  const getContactStatus = (contact: any) => {
+    if (contact.deal_count > 0 && contact.deal_value > 500000) return { label: 'Hot Lead', color: 'bg-red-100 text-red-800 border-red-200' }
+    if (contact.deal_count > 0) return { label: 'Active', color: 'bg-green-100 text-green-800 border-green-200' }
+    if (contact.lifecycle_stage === 'patient') return { label: 'Patient', color: 'bg-blue-100 text-blue-800 border-blue-200' }
+    if (!contact.last_activity_at || (new Date().getTime() - new Date(contact.last_activity_at).getTime()) > 30 * 24 * 60 * 60 * 1000) {
+      return { label: 'Cold', color: 'bg-gray-100 text-gray-600 border-gray-200' }
+    }
+    return { label: 'Lead', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' }
+  }
+
+  const getCounts = () => {
+    const all = contacts.length
+    const active = contacts.filter(c => c.deal_count > 0).length
+    const leads = contacts.filter(c => c.lifecycle_stage === 'lead' || c.lifecycle_stage === 'new_lead').length
+    const patients = contacts.filter(c => c.lifecycle_stage === 'patient' || c.lifecycle_stage === 'active_patient').length
+    const cold = contacts.filter(c => !c.last_activity_at || (new Date().getTime() - new Date(c.last_activity_at).getTime()) > 30 * 24 * 60 * 60 * 1000).length
+    return { all, active, leads, patients, cold }
+  }
+
+  const counts = getCounts()
 
   const getContactInitials = (name: string) => {
     return name
