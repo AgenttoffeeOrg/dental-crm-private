@@ -433,7 +433,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
                   dealId={deal.id}
                   currentOwnerId={deal.owner_user_id}
                   tenantId={deal.tenant_id}
-                  onAssigned={loadDeal}
+                  onAssigned={fetchDealData}
                 />
               </div>
 
