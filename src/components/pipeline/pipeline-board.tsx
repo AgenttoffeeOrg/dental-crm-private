@@ -308,9 +308,16 @@ function DealListRow({ deal, onUpdate, showPipeline = false }: { deal: DealWithR
 }
 
 export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: PipelineBoardProps) {
-  // Pipeline state
+  // Pipeline state - Initialize from URL to persist on reload!
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
-  const [selectedPipelineId, setSelectedPipelineId] = useState<string>('_all_deals') // Default to All Deals
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string>(() => {
+    // Read from URL on initial render
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      return params.get('pipeline') || '_all_deals'
+    }
+    return '_all_deals'
+  })
   const [stages, setStages] = useState<PipelineStage[]>([])
   const [deals, setDeals] = useState<DealWithRelations[]>([])
   
@@ -329,17 +336,6 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
   const [tempPipelineName, setTempPipelineName] = useState('')
   
   const supabase = createClient()
-
-  // Check URL parameters for pipeline selection
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const pipelineParam = params.get('pipeline')
-      if (pipelineParam) {
-        setSelectedPipelineId(pipelineParam)
-      }
-    }
-  }, [])
 
   // Load pipelines on mount
   useEffect(() => {
