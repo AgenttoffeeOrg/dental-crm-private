@@ -16,6 +16,7 @@ import {
   CheckSquare,
   Calendar,
   Repeat
+  HelpCircle
 } from 'lucide-react'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
 import { TaskQueuePanel } from '@/components/tasks/task-queue-panel'
