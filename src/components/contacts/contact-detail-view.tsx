@@ -10,6 +10,10 @@ import { CreateDealDialog } from '@/components/pipeline/create-deal-dialog'
 import { CreateActivityDialog } from '@/components/deals/create-activity-dialog'
 import { DealDetailView } from '@/components/deals/deal-detail-view-modal'
 import { AIAssistantChat } from '@/components/ai/ai-assistant-chat'
+import { DealTasks } from '@/components/deals/deal-tasks'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { 
   Phone, 
   Mail, 
@@ -54,6 +58,9 @@ export function ContactDetailView({
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null)
   const [showActivityTimeline, setShowActivityTimeline] = useState(false)
   const [showAI, setShowAI] = useState(false)
+  const [activeTab, setActiveTab] = useState<string>('overview')
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState<string>('')
 
   const fetchContactData = async () => {
     try {
@@ -187,36 +194,103 @@ export function ContactDetailView({
             </div>
           ) : contact ? (
             <>
-              {/* Basic Info */}
+              {/* Basic Info - With Quick Add */}
               <div>
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Contact Information</h3>
                 <div className="space-y-3">
-                  {contact.primary_phone && (
-                    <div className="flex items-center gap-3">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-900">{contact.primary_phone}</span>
+                  {/* Phone */}
+                  <div className="flex items-center justify-between gap-3 group/field">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      {contact.primary_phone ? (
+                        <span className="text-sm text-gray-900 truncate">{contact.primary_phone}</span>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">No phone number</span>
+                      )}
                     </div>
-                  )}
-                  {contact.primary_email && (
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-900">{contact.primary_email}</span>
+                    {!contact.primary_phone && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs text-green-600 hover:bg-green-50 opacity-0 group-hover/field:opacity-100"
+                        onClick={() => setEditDialogOpen(true)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div className="flex items-center justify-between gap-3 group/field">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      {contact.primary_email ? (
+                        <span className="text-sm text-gray-900 truncate">{contact.primary_email}</span>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">No email address</span>
+                      )}
                     </div>
-                  )}
-                  {contact.date_of_birth && (
-                    <div className="flex items-center gap-3">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-900">
-                        {new Date(contact.date_of_birth).toLocaleDateString()}
-                      </span>
+                    {!contact.primary_email && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs text-blue-600 hover:bg-blue-50 opacity-0 group-hover/field:opacity-100"
+                        onClick={() => setEditDialogOpen(true)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Date of Birth */}
+                  <div className="flex items-center justify-between gap-3 group/field">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      {contact.date_of_birth ? (
+                        <span className="text-sm text-gray-900">
+                          {new Date(contact.date_of_birth).toLocaleDateString()}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">No date of birth</span>
+                      )}
                     </div>
-                  )}
-                  {contact.address && (
-                    <div className="flex items-center gap-3">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-900">{contact.address}</span>
+                    {!contact.date_of_birth && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs text-gray-600 hover:bg-gray-100 opacity-0 group-hover/field:opacity-100"
+                        onClick={() => setEditDialogOpen(true)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Address */}
+                  <div className="flex items-center justify-between gap-3 group/field">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      {contact.address ? (
+                        <span className="text-sm text-gray-900 truncate">{contact.address}</span>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">No address</span>
+                      )}
                     </div>
-                  )}
+                    {!contact.address && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs text-gray-600 hover:bg-gray-100 opacity-0 group-hover/field:opacity-100"
+                        onClick={() => setEditDialogOpen(true)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -418,46 +492,26 @@ export function ContactDetailView({
         </div>
       </div>
 
-      {/* Main Content - Executive Summary or Activity Timeline */}
+      {/* Main Content - Tabs */}
       <div className="flex-1 flex flex-col">
-        <div className="p-6 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                {showActivityTimeline ? 'Activity Timeline' : 'Customer Overview'}
-              </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {showActivityTimeline 
-                  ? 'Complete history of interactions and activities'
-                  : 'AI-powered insights and deal summaries'
-                }
-              </p>
-            </div>
-            <Button
-              variant={showActivityTimeline ? "default" : "outline"}
-              onClick={() => setShowActivityTimeline(!showActivityTimeline)}
-              className="flex items-center gap-2"
-            >
-              <ActivityIcon className="h-4 w-4" />
-              {showActivityTimeline ? 'Show Overview' : 'View Activities'}
-            </Button>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+          <div className="px-6 py-4 border-b border-gray-200 bg-white">
+            <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
+              <TabsTrigger value="activities">Activities</TabsTrigger>
+              <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            </TabsList>
           </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="flex-1 overflow-y-auto mt-0">
+            <div className="p-6 bg-gray-50">
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-600">Loading...</p>
             </div>
-          ) : showActivityTimeline ? (
-            /* Activity Timeline View */
-            <ActivityTimeline 
-              dealId=""
-              contactId={contactId}
-              onActivityAdded={fetchContactData}
-              showAllContactActivities={true}
-            />
           ) : (
             /* Executive Summary View */
             <div className="space-y-6">
