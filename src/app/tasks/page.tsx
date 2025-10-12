@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
 import { TaskQueuePanel } from '@/components/tasks/task-queue-panel'
+import { BulkActionsMenu } from '@/components/tasks/bulk-actions-menu'
 import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { formatDistanceToNow, isToday, isTomorrow, isPast, isThisWeek, addDays } from 'date-fns'
@@ -283,11 +284,14 @@ export default function TasksPage() {
             />
           </div>
           {selectedTasks.length > 0 && (
-            <div className="flex items-center gap-2">
+            <>
               <Badge>{selectedTasks.length} selected</Badge>
-              <Button size="sm" variant="outline">Complete Selected</Button>
-              <Button size="sm" variant="outline">Reassign</Button>
-            </div>
+              <BulkActionsMenu
+                selectedTaskIds={selectedTasks}
+                onClearSelection={() => setSelectedTasks([])}
+                onRefresh={loadTasks}
+              />
+            </>
           )}
         </div>
       </div>
