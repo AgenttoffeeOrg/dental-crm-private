@@ -19,7 +19,7 @@ import {
   Repeat,
   HelpCircle
 } from 'lucide-react'
-import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
+import { CreateTaskPanel } from '@/components/tasks/create-task-panel'
 import { TaskQueuePanel } from '@/components/tasks/task-queue-panel'
 import { BulkActionsMenu } from '@/components/tasks/bulk-actions-menu'
 import { TaskCalendarView } from '@/components/tasks/task-calendar-view'
@@ -526,10 +526,10 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* Dialogs */}
-      <CreateTaskDialog
+      {/* Create Task Panel */}
+      <CreateTaskPanel
         open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
         onTaskCreated={loadTasks}
       />
 
