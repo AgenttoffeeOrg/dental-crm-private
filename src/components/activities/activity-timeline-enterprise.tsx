@@ -369,6 +369,17 @@ export function ActivityTimelineEnterprise({
           )}
         </div>
       </ScrollArea>
+
+      {/* Create Activity Dialog */}
+      <CreateActivityDialog
+        open={createActivityOpen}
+        onOpenChange={setCreateActivityOpen}
+        contactId={contactId}
+        dealId={dealId}
+        onActivityCreated={() => {
+          onActivityCreated?.()
+        }}
+      />
     </div>
   )
 }

@@ -60,6 +60,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
   const [deal, setDeal] = useState<Deal | null>(null)
   const [contact, setContact] = useState<Contact | null>(null)
   const [stage, setStage] = useState<PipelineStage | null>(null)
+  const [activities, setActivities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editField, setEditField] = useState<'value' | 'stage' | 'tags' | 'source' | 'description' | 'title' | null>(null)
@@ -95,6 +96,17 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
       setDeal(dealData)
       setContact(dealData.contact)
       setStage(dealData.stage)
+
+      // Fetch activities
+      const { data: activitiesData, error: activitiesError } = await supabase
+        .from('activities_with_associations')
+        .select('*')
+        .eq('deal_id', dealId)
+        .order('occurred_at', { ascending: false })
+
+      if (!activitiesError && activitiesData) {
+        setActivities(activitiesData)
+      }
     } catch (error) {
       console.error('Error fetching deal data:', error)
       toast.error('Failed to load deal details')
@@ -552,18 +564,32 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
                   
                   {/* Activity Timeline - ENTERPRISE VERSION */}
                   <ActivityTimelineEnterprise
-                    activities={[]} // TODO: Load from database
+                    activities={activities}
+                    contactId={contact.id}
+                    dealId={dealId}
                     onEdit={async (id, updates) => {
-                      // TODO: Implement edit
-                      toast.success('Activity updated')
+                      try {
+                        const { error } = await supabase
+                          .from('activities')
+                          .update({
+                            ...updates,
+                            is_edited: true,
+                            edited_at: new Date().toISOString()
+                          })
+                          .eq('id', id)
+
+                        if (error) throw error
+                        toast.success('Activity updated')
+                        await fetchDealData()
+                      } catch (error) {
+                        console.error('Error updating activity:', error)
+                        toast.error('Failed to update activity')
+                      }
                     }}
                     onReply={(id) => {
-                      // TODO: Implement reply
                       toast.info('Reply feature coming soon')
                     }}
-                    onUploadRecording={() => {
-                      // TODO: Implement upload
-                    }}
+                    onActivityCreated={fetchDealData}
                   />
                 </div>
               </TabsContent>
