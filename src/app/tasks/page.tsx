@@ -199,12 +199,13 @@ export default function TasksPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredTasks.map((task) => (
-              <TaskCardEnterprise
-                key={task.id}
-                task={task}
-                onComplete={handleCompleteTask}
-                onClick={(id) => setSelectedTaskId(id)}
-              />
+              <div key={task.id} onClick={() => setSelectedTaskId(task.id)} className="cursor-pointer">
+                <TaskCardEnterprise
+                  task={task}
+                  onComplete={handleCompleteTask}
+                  onClick={(id) => setSelectedTaskId(id)}
+                />
+              </div>
             ))}
           </div>
         )}

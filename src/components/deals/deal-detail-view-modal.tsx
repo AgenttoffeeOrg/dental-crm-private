@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ActivityTimelineEnterprise } from '@/components/activities/activity-timeline-enterprise'
+import { ActivityFeedSimple } from '@/components/activities/activity-feed-simple'
 import { DealTasks } from '@/components/deals/deal-tasks'
 import { AssignDealDropdown } from '@/components/deals/assign-deal-dropdown'
 import { DealIntelligenceCard } from '@/components/deals/deal-intelligence-card'
@@ -562,33 +562,11 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
                     compact={false}
                   />
                   
-                  {/* Activity Timeline - ENTERPRISE VERSION */}
-                  <ActivityTimelineEnterprise
+                  {/* Simple, Clean Activity Feed */}
+                  <ActivityFeedSimple
                     activities={activities}
                     contactId={contact.id}
                     dealId={dealId}
-                    onEdit={async (id, updates) => {
-                      try {
-                        const { error } = await supabase
-                          .from('activities')
-                          .update({
-                            ...updates,
-                            is_edited: true,
-                            edited_at: new Date().toISOString()
-                          })
-                          .eq('id', id)
-
-                        if (error) throw error
-                        toast.success('Activity updated')
-                        await fetchDealData()
-                      } catch (error) {
-                        console.error('Error updating activity:', error)
-                        toast.error('Failed to update activity')
-                      }
-                    }}
-                    onReply={(id) => {
-                      toast.info('Reply feature coming soon')
-                    }}
                     onActivityCreated={fetchDealData}
                   />
                 </div>
