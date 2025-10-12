@@ -1084,6 +1084,17 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
         pipelineId={selectedPipelineId}
         tenantId={tenantId}
       />
+
+      {/* Deal Detail Modal - Controlled by URL */}
+      {selectedDealId && (
+        <DealDetailView
+          dealId={selectedDealId}
+          onClose={closeDealModal}
+          onContactClick={(contactId) => {
+            window.location.href = `/contacts/${contactId}`
+          }}
+        />
+      )}
     </div>
   )
 }
