@@ -114,7 +114,7 @@ export async function buildDealContext(dealId: string, tenantId: string): Promis
       .from('activities')
       .select(`
         *,
-        agent:app_users(*),
+        agent:app_users!activities_agent_user_id_fkey(*),
         activity_files(
           file_id,
           files(*)
