@@ -521,7 +521,7 @@ export default function TasksPage() {
               })}
             </div>
           </div>
-        ))}
+        )}
       </div>
 
       {/* Dialogs */}
