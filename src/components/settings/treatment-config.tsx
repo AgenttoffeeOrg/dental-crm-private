@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, X, DollarSign, AlertTriangle, Sparkles } from 'lucide-react'
+import { Plus, X, DollarSign, AlertTriangle, Sparkles, Edit } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TreatmentConfig {
@@ -89,6 +89,7 @@ export function TreatmentConfig() {
   const [newTreatment, setNewTreatment] = useState<Partial<TreatmentConfig>>({
     keywords: []
   })
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [newKeyword, setNewKeyword] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -123,9 +124,38 @@ export function TreatmentConfig() {
       auto_pipeline: newTreatment.auto_pipeline
     }
 
-    setTreatments([...treatments, treatment])
+    if (editingIndex !== null) {
+      // Update existing treatment
+      const updated = [...treatments]
+      updated[editingIndex] = treatment
+      setTreatments(updated)
+      setEditingIndex(null)
+      toast.success('Treatment rule updated!')
+    } else {
+      // Add new treatment
+      setTreatments([...treatments, treatment])
+      toast.success('Treatment rule added!')
+    }
+    
     setNewTreatment({ keywords: [] })
-    toast.success('Treatment configuration added')
+  }
+  
+  const editTreatment = (index: number) => {
+    const treatment = treatments[index]
+    setNewTreatment({
+      name: treatment.name,
+      category: treatment.category,
+      min_value: treatment.min_value,
+      keywords: [...treatment.keywords],
+      auto_pipeline: treatment.auto_pipeline
+    })
+    setEditingIndex(index)
+    toast.info('Editing treatment - modify the form below')
+  }
+  
+  const cancelEdit = () => {
+    setNewTreatment({ keywords: [] })
+    setEditingIndex(null)
   }
 
   const removeTreatment = (index: number) => {
@@ -216,14 +246,24 @@ export function TreatmentConfig() {
                         </div>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeTreatment(index)}
-                      className="text-red-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editTreatment(index)}
+                        className="text-blue-600"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeTreatment(index)}
+                        className="text-red-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -231,9 +271,18 @@ export function TreatmentConfig() {
           </div>
 
           {/* Add New Treatment */}
-          <Card className="border-2 border-dashed">
+          <Card className={editingIndex !== null ? "border-2 border-blue-500" : "border-2 border-dashed"}>
             <CardHeader>
-              <CardTitle className="text-base">Add New Treatment Rule</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">
+                  {editingIndex !== null ? '✏️ Edit Treatment Rule' : 'Add New Treatment Rule'}
+                </CardTitle>
+                {editingIndex !== null && (
+                  <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                    Cancel Edit
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -341,8 +390,17 @@ export function TreatmentConfig() {
               </div>
 
               <Button onClick={addTreatment} className="w-full">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Treatment Rule
+                {editingIndex !== null ? (
+                  <>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Update Treatment Rule
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Treatment Rule
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>

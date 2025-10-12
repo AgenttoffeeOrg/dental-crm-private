@@ -51,7 +51,7 @@ export function SettingsTabs() {
             value="categorization" 
             className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
           >
-            🤖 Smart AI
+            🏷️ Auto-Categorization
           </TabsTrigger>
         </TabsList>
       </div>
@@ -98,8 +98,8 @@ export function SettingsTabs() {
       <TabsContent value="categorization" className="space-y-6">
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold">Smart AI Categorization</h3>
-            <p className="text-sm text-gray-600">Configure automatic deal categorization based on treatments and keywords</p>
+            <h3 className="text-lg font-semibold">Auto-Categorization Rules</h3>
+            <p className="text-sm text-gray-600">Configure automatic deal categorization based on treatments, keywords, and deal values</p>
           </div>
           <TreatmentConfig />
         </div>
