@@ -15,7 +15,7 @@ import {
   Mail,
   CheckSquare,
   Calendar,
-  Repeat
+  Repeat,
   HelpCircle
 } from 'lucide-react'
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
