@@ -166,10 +166,30 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
   const handleUpdateField = async (contactId: string, field: 'primary_email' | 'primary_phone', value: string) => {
     if (!value.trim()) {
       toast.error(`${field === 'primary_email' ? 'Email' : 'Phone'} cannot be empty`)
+      setEditingField(null)
+      setEditValue('')
       return
     }
 
-    // Optimistic update - update UI immediately
+    // Validate email format
+    if (field === 'primary_email') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(value)) {
+        toast.error('Please enter a valid email address')
+        return
+      }
+    }
+
+    // Validate phone format (basic check)
+    if (field === 'primary_phone') {
+      const phoneRegex = /^[\d\s\-\+\(\)]+$/
+      if (!phoneRegex.test(value)) {
+        toast.error('Please enter a valid phone number')
+        return
+      }
+    }
+
+    // Optimistic update - update UI immediately (no page refresh!)
     setContacts(prev => prev.map(c => 
       c.id === contactId ? { ...c, [field]: value } : c
     ))
@@ -187,11 +207,14 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
 
       if (error) throw error
 
-      toast.success(`${field === 'primary_email' ? 'Email' : 'Phone'} updated!`)
+      // Success - no page refresh needed!
+      toast.success(`${field === 'primary_email' ? 'Email' : 'Phone'} updated successfully!`, {
+        description: `Contact's ${field === 'primary_email' ? 'email' : 'phone number'} has been saved`
+      })
     } catch (error) {
       console.error('Error updating contact:', error)
       toast.error('Failed to update contact')
-      // Revert on error
+      // Revert on error - reload from database
       fetchContacts()
     }
   }
