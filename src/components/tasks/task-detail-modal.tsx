@@ -22,7 +22,9 @@ import {
   MessageSquare,
   X,
   Plus,
-  User
+  User,
+  CheckCircle2,
+  ArrowRight
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
