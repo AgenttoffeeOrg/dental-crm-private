@@ -50,10 +50,59 @@ export default function TasksPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [queueOpen, setQueueOpen] = useState(false)
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
+  const [focusedTaskIndex, setFocusedTaskIndex] = useState(0)
 
   useEffect(() => {
     loadTasks()
   }, [])
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      switch (e.key.toLowerCase()) {
+        case 'j': // Next task
+          e.preventDefault()
+          setFocusedTaskIndex(prev => Math.min(prev + 1, filteredTasks.length - 1))
+          break
+        case 'k': // Previous task
+          e.preventDefault()
+          setFocusedTaskIndex(prev => Math.max(prev - 1, 0))
+          break
+        case 'x': // Complete focused task
+          e.preventDefault()
+          if (filteredTasks[focusedTaskIndex]) {
+            handleCompleteTask(filteredTasks[focusedTaskIndex].id)
+          }
+          break
+        case 'enter': // Open focused task
+          e.preventDefault()
+          if (filteredTasks[focusedTaskIndex]) {
+            setSelectedTaskId(filteredTasks[focusedTaskIndex].id)
+          }
+          break
+        case 'n': // New task
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault()
+            setCreateDialogOpen(true)
+          }
+          break
+        case 'q': // Start queue
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault()
+            setQueueOpen(true)
+          }
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [filteredTasks, focusedTaskIndex])
 
   const loadTasks = async () => {
     setLoading(true)
