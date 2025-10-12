@@ -141,74 +141,74 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
         </CardContent>
       </Card>
 
-      {/* Contacts Table */}
-      <Card>
-        <div className="space-y-4">
-          {contacts.map(contact => (
-            <Link key={contact.id} href={`/contacts/${contact.id}`}>
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback>
-                        {getContactInitials(contact.full_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{contact.full_name}</h3>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                        {contact.primary_phone && (
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-4 w-4" />
-                            {contact.primary_phone}
-                          </div>
-                        )}
-                        {contact.primary_email && (
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-4 w-4" />
-                            {contact.primary_email}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-2">
-                        {getSourceBadge(contact.source)}
-                        {contact.tags.slice(0, 2).map(tag => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag.replace('_', ' ')}
-                          </Badge>
-                        ))}
-                        {contact.tags.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{contact.tags.length - 2}
-                          </Badge>
-                        )}
-                      </div>
+      {/* Contacts List */}
+      <div className="space-y-3">
+        {contacts.map(contact => (
+          <Link key={contact.id} href={`/contacts/${contact.id}`}>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarFallback>
+                      {getContactInitials(contact.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{contact.full_name}</h3>
+                    <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+                      {contact.primary_phone && (
+                        <div className="flex items-center gap-1">
+                          <Phone className="h-4 w-4" />
+                          {contact.primary_phone}
+                        </div>
+                      )}
+                      {contact.primary_email && (
+                        <div className="flex items-center gap-1">
+                          <Mail className="h-4 w-4" />
+                          {contact.primary_email}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right text-sm text-gray-500">
-                      <div>Created</div>
-                      <div>{formatDate(contact.created_at, 'MMM d, yyyy')}</div>
+                    <div className="flex items-center gap-2 mt-2">
+                      {getSourceBadge(contact.source)}
+                      {contact.tags.slice(0, 2).map(tag => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                          {tag.replace('_', ' ')}
+                        </Badge>
+                      ))}
+                      {contact.tags.length > 2 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{contact.tags.length - 2}
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                  <div className="text-right text-sm text-gray-500">
+                    <div>Created</div>
+                    <div>{formatDate(contact.created_at, 'MMM d, yyyy')}</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
         
         {contacts.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            <Avatar className="h-12 w-12 mx-auto mb-4">
-              <AvatarFallback>
-                <Plus className="h-6 w-6" />
-              </AvatarFallback>
-            </Avatar>
-            <p>No contacts found</p>
-            <p className="text-sm">
-              {searchQuery ? 'Try adjusting your search' : 'Create your first contact to get started'}
-            </p>
-          </div>
+          <Card>
+            <CardContent className="text-center py-12 text-gray-500">
+              <Avatar className="h-12 w-12 mx-auto mb-4">
+                <AvatarFallback>
+                  <Plus className="h-6 w-6" />
+                </AvatarFallback>
+              </Avatar>
+              <p>No contacts found</p>
+              <p className="text-sm">
+                {searchQuery ? 'Try adjusting your search' : 'Create your first contact to get started'}
+              </p>
+            </CardContent>
+          </Card>
         )}
-      </Card>
+      </div>
 
           <ContactProfileDialog
             contact={null}
