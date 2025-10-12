@@ -54,6 +54,7 @@ export default function TasksPage() {
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
   const [focusedTaskIndex, setFocusedTaskIndex] = useState(0)
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'analytics'>('list')
+  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     loadTasks()
@@ -323,6 +324,21 @@ export default function TasksPage() {
             )}
           </button>
         </div>
+
+        {/* Keyboard Shortcuts Help */}
+        {showHelp && viewMode === 'list' && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-sm font-semibold text-blue-900 mb-3">Keyboard Shortcuts</h3>
+            <div className="grid grid-cols-2 gap-2 text-xs text-blue-800">
+              <div><kbd className="px-2 py-1 bg-white rounded border border-blue-300">j</kbd> Next task</div>
+              <div><kbd className="px-2 py-1 bg-white rounded border border-blue-300">k</kbd> Previous task</div>
+              <div><kbd className="px-2 py-1 bg-white rounded border border-blue-300">x</kbd> Complete task</div>
+              <div><kbd className="px-2 py-1 bg-white rounded border border-blue-300">Enter</kbd> Open task</div>
+              <div><kbd className="px-2 py-1 bg-white rounded border border-blue-300">Cmd+N</kbd> New task</div>
+              <div><kbd className="px-2 py-1 bg-white rounded border border-blue-300">Cmd+Q</kbd> Start queue</div>
+            </div>
+          </div>
+        )}
 
         {/* Search & Bulk Actions */}
         <div className="flex items-center gap-4">
