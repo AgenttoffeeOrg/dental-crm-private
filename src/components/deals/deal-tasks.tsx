@@ -51,15 +51,12 @@ export function DealTasks({
     try {
       setLoading(true)
 
-      const { data, error } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          assignee:app_users(*)
-        `)
+      const { data, error} = await supabase
+        .from('tasks_with_associations')
+        .select('*')
         .eq('deal_id', dealId)
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
+        .neq('status', 'done')
+        .order('due_at', { ascending: true, nullsFirst: false })
 
       if (error) {
         console.error('Error fetching tasks:', error)
@@ -73,6 +70,56 @@ export function DealTasks({
       setTasks([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'done',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', taskId)
+
+      if (error) throw error
+
+      toast.success('Task completed!')
+      fetchTasks()
+      onTaskUpdate?.()
+    } catch (error) {
+      console.error('Error completing task:', error)
+      toast.error('Failed to complete task')
+    }
+  }
+
+  const handleStartQueue = () => {
+    if (tasks.length > 0) {
+      setQueueOpen(true)
+    } else {
+      toast.info('No tasks to queue')
+    }
+  }
+
+  const getPriorityBadgeColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 text-red-800 border-red-200'
+      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200'
+      case 'normal': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'low': return 'bg-gray-100 text-gray-800 border-gray-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getTaskTypeIcon = (taskType: string) => {
+    switch (taskType) {
+      case 'call': return '📞'
+      case 'email': return '📧'
+      case 'meeting': return '🗓️'
+      case 'follow_up': return '🔄'
+      default: return '✓'
     }
   }
 
@@ -159,16 +206,37 @@ export function DealTasks({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <div>
+        <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-gray-900">Deal Tasks</h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Tasks specific to this deal
-          </p>
+          {tasks.length > 0 && (
+            <Badge variant="secondary" className="h-6">
+              {tasks.length}
+            </Badge>
+          )}
         </div>
-        <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Task
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/tasks">
+            <Button size="sm" variant="outline">
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+              View All Tasks
+            </Button>
+          </Link>
+          {tasks.length > 0 && (
+            <Button 
+              size="sm" 
+              variant="default"
+              onClick={handleStartQueue}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
+              <Play className="h-3.5 w-3.5 mr-1.5" />
+              Start Queue
+            </Button>
+          )}
+          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Task
+          </Button>
+        </div>
       </div>
 
       {/* Tasks List */}
@@ -187,105 +255,99 @@ export function DealTasks({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {tasks.map(task => (
-            <Card key={task.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  {/* Status Icon */}
-                  <div className="flex-shrink-0 mt-1">
-                    {getStatusIcon(task.status)}
+        <div className="space-y-2">
+          {/* HubSpot-Style Task List */}
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            {tasks.map((task, index) => {
+              const isOverdue = task.due_at && isPast(new Date(task.due_at)) && !isToday(new Date(task.due_at))
+              const isDueToday = task.due_at && isToday(new Date(task.due_at))
+              
+              return (
+                <div
+                  key={task.id}
+                  className={cn(
+                    "flex items-center gap-4 p-3 hover:bg-gray-50 transition-colors cursor-pointer group",
+                    index !== tasks.length - 1 && "border-b border-gray-100"
+                  )}
+                  onClick={() => {
+                    setSelectedTaskId(task.id)
+                    setQueueOpen(true)
+                  }}
+                >
+                  {/* Checkbox */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox 
+                      checked={false}
+                      onCheckedChange={() => handleCompleteTask(task.id)}
+                      className="h-5 w-5"
+                    />
+                  </div>
+
+                  {/* Task Type Icon */}
+                  <div className="flex-shrink-0 text-lg">
+                    {getTaskTypeIcon(task.task_type)}
                   </div>
 
                   {/* Task Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm text-gray-900 truncate">
+                        <h4 className="font-medium text-sm text-gray-900 group-hover:text-blue-600 transition-colors truncate">
                           {task.title}
                         </h4>
-                        {task.description && (
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                            {task.description}
+                        {task.notes && (
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">
+                            {task.notes}
                           </p>
                         )}
                       </div>
-
-                      {/* Status Badge */}
-                      <Badge className={`ml-3 text-xs ${getStatusColor(task.status)}`}>
-                        {task.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-
-                    {/* Task Meta */}
-                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
-                      {/* Priority */}
-                      <div className="flex items-center gap-1">
-                        <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`} />
-                        <span className="capitalize">{task.priority} priority</span>
-                      </div>
-
-                      {/* Due Date */}
-                      {task.due_date && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>Due {formatDateTime(task.due_date)}</span>
-                        </div>
-                      )}
-
-                      {/* Assignee */}
-                      {task.assignee && (
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          <span>{task.assignee.full_name}</span>
-                        </div>
-                      )}
-
-                      {/* Created */}
-                      <div className="ml-auto">
-                        {getActivityAge(task.created_at)}
-                      </div>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="flex items-center gap-2 mt-3">
-                      {task.status !== 'completed' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => handleTaskStatusChange(task.id, 'completed')}
-                        >
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Complete
-                        </Button>
-                      )}
-                      
-                      {task.status === 'pending' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => handleTaskStatusChange(task.id, 'in_progress')}
-                        >
-                          <Clock className="h-3 w-3 mr-1" />
-                          Start
-                        </Button>
-                      )}
-
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0"
-                      >
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
                     </div>
                   </div>
+
+                  {/* Priority Badge */}
+                  <Badge 
+                    variant="outline" 
+                    className={cn("text-xs font-normal", getPriorityBadgeColor(task.priority))}
+                  >
+                    {task.priority}
+                  </Badge>
+
+                  {/* Due Date */}
+                  {task.due_at && (
+                    <div className={cn(
+                      "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md",
+                      isOverdue && "bg-red-50 text-red-700",
+                      isDueToday && "bg-orange-50 text-orange-700",
+                      !isOverdue && !isDueToday && "text-gray-600"
+                    )}>
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span className="font-medium">
+                        {isOverdue && 'Overdue'}
+                        {isDueToday && 'Today'}
+                        {!isOverdue && !isDueToday && formatDistanceToNow(new Date(task.due_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Assignee */}
+                  {task.assignee_name && (
+                    <div className="flex items-center gap-1.5">
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                          {task.assignee_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                  )}
+
+                  {/* Click Indicator */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ExternalLink className="h-4 w-4 text-gray-400" />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -296,6 +358,21 @@ export function DealTasks({
         onTaskCreated={fetchTasks}
         prefilledDealId={dealId}
         prefilledContactId={contactId}
+      />
+
+      {/* Task Queue Panel */}
+      <TaskQueuePanel
+        open={queueOpen}
+        onClose={() => {
+          setQueueOpen(false)
+          setSelectedTaskId(null)
+        }}
+        tasks={tasks}
+        initialTaskId={selectedTaskId || undefined}
+        onTaskComplete={() => {
+          fetchTasks()
+          onTaskUpdate?.()
+        }}
       />
     </div>
   )
