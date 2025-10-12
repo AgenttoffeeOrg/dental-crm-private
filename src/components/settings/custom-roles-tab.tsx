@@ -372,26 +372,19 @@ export function CustomRolesTab({ tenantId = '550e8400-e29b-41d4-a716-44665544000
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleEditPermissions(role.id)}
-                  >
-                    <Check className="h-3 w-3 mr-2" />
-                    Permissions
-                  </Button>
                   {!role.is_system_role && (
                     <>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
+                        className="flex-1"
                         onClick={() => {
                           setEditingRole(role)
                           setCreateDialogOpen(true)
                         }}
                       >
-                        <Edit className="h-3 w-3" />
+                        <Edit className="h-3 w-3 mr-2" />
+                        Edit
                       </Button>
                       <Button
                         variant="ghost"

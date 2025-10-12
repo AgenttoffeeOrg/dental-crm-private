@@ -4,31 +4,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TreatmentConfig } from './treatment-config'
 import { PipelinePreferencesTab } from './pipeline-preferences-tab'
 import { TeamMembersTab } from './team-members-tab'
-import { ActivityFeedTab } from './activity-feed-tab'
-import { TeamAnalyticsTab } from './team-analytics-tab'
 import { UserProfileEditor } from './user-profile-editor'
 import { CustomRolesTab } from './custom-roles-tab'
-import { PermissionMatrixEditor } from './permission-matrix-editor'
-import { AuditTrailViewer } from './audit-trail-viewer'
 import { ComprehensiveDealSettings } from './comprehensive-deal-settings'
-import { UserProfilesTab } from './user-profiles-tab'
-import { useSearchParams } from 'next/navigation'
 
 export function SettingsTabs() {
-  const searchParams = useSearchParams()
   const tenantId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
   const currentUserId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
-  const isAdmin = true // TODO: Get from user role
-  
-  // Get role ID from URL params for permission editing
-  const roleIdFromUrl = searchParams.get('role')
-  const tabFromUrl = searchParams.get('tab')
-  
-  // If we have a role ID and tab=permissions, show permission editor
-  const defaultTab = roleIdFromUrl && tabFromUrl === 'permissions' ? 'permissions' : 'profile'
 
   return (
-    <Tabs defaultValue={defaultTab} className="space-y-6">
+    <Tabs defaultValue="profile" className="space-y-6">
       {/* Scrollable Tabs with emojis for visual clarity */}
       <div className="border-b border-gray-200 overflow-x-auto -mx-6 px-6">
         <TabsList className="inline-flex h-auto bg-transparent border-none p-0 space-x-1">
@@ -36,13 +21,7 @@ export function SettingsTabs() {
             value="profile" 
             className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
           >
-            👤 Profile
-          </TabsTrigger>
-          <TabsTrigger 
-            value="preferences" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            ⚙️ Preferences
+            👤 My Profile
           </TabsTrigger>
           <TabsTrigger 
             value="team" 
@@ -57,34 +36,16 @@ export function SettingsTabs() {
             🛡️ Roles
           </TabsTrigger>
           <TabsTrigger 
-            value="profiles" 
+            value="preferences" 
             className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
           >
-            📋 Profiles
-          </TabsTrigger>
-          <TabsTrigger 
-            value="activity" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            📰 Activity
-          </TabsTrigger>
-          <TabsTrigger 
-            value="analytics" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            📊 Analytics
-          </TabsTrigger>
-          <TabsTrigger 
-            value="audit" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            🔒 Audit
+            🔄 Pipeline Settings
           </TabsTrigger>
           <TabsTrigger 
             value="deals" 
             className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
           >
-            💼 Deals
+            💼 Deal Settings
           </TabsTrigger>
           <TabsTrigger 
             value="categorization" 
@@ -92,62 +53,56 @@ export function SettingsTabs() {
           >
             🤖 Smart AI
           </TabsTrigger>
-          {roleIdFromUrl && (
-            <TabsTrigger 
-              value="permissions" 
-              className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-            >
-              🔑 Permissions
-            </TabsTrigger>
-          )}
         </TabsList>
       </div>
 
-      {/* Tab Content - All working features */}
-      {roleIdFromUrl && (
-        <TabsContent value="permissions" className="space-y-6">
-          <PermissionMatrixEditor roleId={roleIdFromUrl} tenantId={tenantId} />
-        </TabsContent>
-      )}
-
+      {/* Tab Content - Simple and clear */}
       <TabsContent value="profile" className="space-y-6">
         <UserProfileEditor userId={currentUserId} tenantId={tenantId} />
       </TabsContent>
 
-      <TabsContent value="preferences" className="space-y-6">
-        <PipelinePreferencesTab />
-      </TabsContent>
-
       <TabsContent value="team" className="space-y-6">
-        <TeamMembersTab />
-      </TabsContent>
-
-      <TabsContent value="activity" className="space-y-6">
-        <ActivityFeedTab />
-      </TabsContent>
-
-      <TabsContent value="analytics" className="space-y-6">
-        <TeamAnalyticsTab />
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold">Team Management</h3>
+            <p className="text-sm text-gray-600">Invite and manage your team members</p>
+          </div>
+          <TeamMembersTab />
+        </div>
       </TabsContent>
 
       <TabsContent value="roles" className="space-y-6">
         <CustomRolesTab tenantId={tenantId} />
       </TabsContent>
 
-      <TabsContent value="profiles" className="space-y-6">
-        <UserProfilesTab tenantId={tenantId} />
-      </TabsContent>
-
-      <TabsContent value="audit" className="space-y-6">
-        <AuditTrailViewer tenantId={tenantId} isAdmin={isAdmin} />
+      <TabsContent value="preferences" className="space-y-6">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold">Pipeline Display Settings</h3>
+            <p className="text-sm text-gray-600">Customize how you view pipelines and deals</p>
+          </div>
+          <PipelinePreferencesTab />
+        </div>
       </TabsContent>
 
       <TabsContent value="deals" className="space-y-6">
-        <ComprehensiveDealSettings tenantId={tenantId} />
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold">Deal Configuration</h3>
+            <p className="text-sm text-gray-600">Set global rules for deals (required fields, validation, etc.)</p>
+          </div>
+          <ComprehensiveDealSettings tenantId={tenantId} />
+        </div>
       </TabsContent>
 
       <TabsContent value="categorization" className="space-y-6">
-        <TreatmentConfig />
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold">Smart AI Categorization</h3>
+            <p className="text-sm text-gray-600">Configure automatic deal categorization based on treatments and keywords</p>
+          </div>
+          <TreatmentConfig />
+        </div>
       </TabsContent>
     </Tabs>
   )
