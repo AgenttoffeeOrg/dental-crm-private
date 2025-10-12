@@ -369,7 +369,7 @@ export function DealTasks({
         }}
         tasks={tasks}
         initialTaskId={selectedTaskId || undefined}
-        onTaskComplete={() => {
+        onTasksChange={() => {
           fetchTasks()
           onTaskUpdate?.()
         }}

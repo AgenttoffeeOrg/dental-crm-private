@@ -32,8 +32,9 @@ interface TaskQueuePanelProps {
   open: boolean
   onClose: () => void
   tasks: any[]
-  onTaskComplete: (taskId: string) => Promise<void>
-  onTasksChange: () => void
+  onTaskComplete?: (taskId: string) => Promise<void>
+  onTasksChange?: () => void
+  initialTaskId?: string
 }
 
 export function TaskQueuePanel({ 
@@ -41,13 +42,25 @@ export function TaskQueuePanel({
   onClose, 
   tasks,
   onTaskComplete,
-  onTasksChange
+  onTasksChange,
+  initialTaskId
 }: TaskQueuePanelProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [notes, setNotes] = useState('')
   const [completing, setCompleting] = useState(false)
   const [contactDetails, setContactDetails] = useState<any>(null)
   const [dealDetails, setDealDetails] = useState<any>(null)
+  const supabase = createClient()
+
+  // Find initial task index if initialTaskId is provided
+  useEffect(() => {
+    if (initialTaskId && tasks.length > 0) {
+      const index = tasks.findIndex(t => t.id === initialTaskId)
+      if (index !== -1) {
+        setCurrentIndex(index)
+      }
+    }
+  }, [initialTaskId, tasks])
 
   const currentTask = tasks[currentIndex]
   const hasNext = currentIndex < tasks.length - 1
@@ -117,7 +130,28 @@ export function TaskQueuePanel({
     
     setCompleting(true)
     try {
-      await onTaskComplete(currentTask.id)
+      // Complete the task in database
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'done',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentTask.id)
+
+      if (error) throw error
+
+      toast.success('Task completed!')
+      
+      // Call parent callback if provided
+      if (onTaskComplete) {
+        await onTaskComplete(currentTask.id)
+      }
+      if (onTasksChange) {
+        onTasksChange()
+      }
       
       // Move to next task
       if (hasNext) {
@@ -128,7 +162,8 @@ export function TaskQueuePanel({
         onClose()
       }
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error completing task:', error)
+      toast.error('Failed to complete task')
     } finally {
       setCompleting(false)
     }
