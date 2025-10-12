@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -191,7 +192,8 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col">
+    <DashboardLayout>
+      <div className="flex-1 overflow-hidden flex flex-col">
       {/* Header */}
       <div className="flex-shrink-0 px-8 py-6 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between mb-6">
@@ -538,6 +540,7 @@ export default function TasksPage() {
         onTaskComplete={handleCompleteTask}
         onTasksChange={loadTasks}
       />
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }
