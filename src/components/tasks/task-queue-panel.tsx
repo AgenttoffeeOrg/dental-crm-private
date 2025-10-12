@@ -15,8 +15,13 @@ import {
   Mail,
   ExternalLink,
   Calendar,
-  User
+  User,
+  MapPin,
+  Building2,
+  Copy,
+  MessageSquare
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase-client'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
@@ -39,10 +44,13 @@ export function TaskQueuePanel({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [notes, setNotes] = useState('')
   const [completing, setCompleting] = useState(false)
+  const [contactDetails, setContactDetails] = useState<any>(null)
+  const [dealDetails, setDealDetails] = useState<any>(null)
 
   const currentTask = tasks[currentIndex]
   const hasNext = currentIndex < tasks.length - 1
   const hasPrev = currentIndex > 0
+  const supabase = createClient()
 
   useEffect(() => {
     if (open) {
@@ -54,8 +62,53 @@ export function TaskQueuePanel({
   useEffect(() => {
     if (currentTask) {
       setNotes(currentTask.notes || '')
+      loadTaskContext()
     }
   }, [currentIndex, currentTask])
+
+  const loadTaskContext = async () => {
+    if (!currentTask) return
+
+    try {
+      // Load contact details with ALL info
+      if (currentTask.contact_id) {
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('*')
+          .eq('id', currentTask.contact_id)
+          .single()
+        
+        setContactDetails(contact)
+      } else {
+        setContactDetails(null)
+      }
+
+      // Load deal details with ALL info
+      if (currentTask.deal_id) {
+        const { data: deal } = await supabase
+          .from('deals')
+          .select(`
+            *,
+            contact:contacts(*),
+            stage:pipeline_stages(*),
+            pipeline:pipelines(*)
+          `)
+          .eq('id', currentTask.deal_id)
+          .single()
+        
+        setDealDetails(deal)
+        
+        // If deal has contact but task doesn't, use deal's contact
+        if (deal?.contact && !currentTask.contact_id) {
+          setContactDetails(deal.contact)
+        }
+      } else {
+        setDealDetails(null)
+      }
+    } catch (error) {
+      console.error('Error loading context:', error)
+    }
+  }
 
   const handleComplete = async () => {
     if (!currentTask) return
@@ -183,34 +236,116 @@ export function TaskQueuePanel({
 
           <Separator />
 
-          {/* Associated Deal */}
-          {currentTask.deal_title && (
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold text-blue-900">Associated Deal</h4>
-                <Button size="sm" variant="ghost" onClick={openDeal}>
-                  <ExternalLink className="h-3.5 w-3.5" />
+          {/* CONTACT INFORMATION - ACTIONABLE */}
+          {contactDetails && (
+            <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-blue-900">Contact Information</h4>
+                <Button size="sm" variant="ghost" onClick={openContact} className="h-7 px-2">
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  <span className="text-xs">View</span>
                 </Button>
               </div>
-              <p className="text-sm text-blue-700">{currentTask.deal_title}</p>
-              {currentTask.deal_value && (
-                <p className="text-xs text-blue-600 mt-1">
-                  £{(currentTask.deal_value / 100).toLocaleString()}
-                </p>
-              )}
+
+              <div className="space-y-2">
+                {/* Name */}
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{contactDetails.full_name}</p>
+                </div>
+
+                {/* Phone - CLICKABLE */}
+                {contactDetails.primary_phone && (
+                  <div className="flex items-center gap-2 group">
+                    <Phone className="h-4 w-4 text-green-600" />
+                    <a 
+                      href={`tel:${contactDetails.primary_phone}`}
+                      className="text-sm text-green-700 hover:text-green-800 font-medium hover:underline"
+                    >
+                      {contactDetails.primary_phone}
+                    </a>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                      onClick={() => {
+                        navigator.clipboard.writeText(contactDetails.primary_phone)
+                        toast.success('Phone copied!')
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Email - CLICKABLE */}
+                {contactDetails.primary_email && (
+                  <div className="flex items-center gap-2 group">
+                    <Mail className="h-4 w-4 text-blue-600" />
+                    <a 
+                      href={`mailto:${contactDetails.primary_email}`}
+                      className="text-sm text-blue-700 hover:text-blue-800 hover:underline truncate"
+                    >
+                      {contactDetails.primary_email}
+                    </a>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                      onClick={() => {
+                        navigator.clipboard.writeText(contactDetails.primary_email)
+                        toast.success('Email copied!')
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Address */}
+                {contactDetails.address && (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
+                    <p className="text-xs text-gray-600 line-clamp-2">{contactDetails.address}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Associated Contact */}
-          {currentTask.contact_name && (
-            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold text-purple-900">Contact</h4>
-                <Button size="sm" variant="ghost" onClick={openContact}>
-                  <ExternalLink className="h-3.5 w-3.5" />
+          {/* DEAL INFORMATION - CONTEXT */}
+          {dealDetails && (
+            <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-green-900">Deal Context</h4>
+                <Button size="sm" variant="ghost" onClick={openDeal} className="h-7 px-2">
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  <span className="text-xs">View</span>
                 </Button>
               </div>
-              <p className="text-sm text-purple-700">{currentTask.contact_name}</p>
+
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{dealDetails.title}</p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {dealDetails.pipeline?.name} • {dealDetails.stage?.name}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Value</p>
+                    <p className="text-sm font-semibold text-green-700">
+                      £{((dealDetails.value_estimate_cents || 0) / 100).toLocaleString()}
+                    </p>
+                  </div>
+                  {dealDetails.treatment_tags && dealDetails.treatment_tags.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500">Treatment</p>
+                      <p className="text-sm font-medium text-gray-700">{dealDetails.treatment_tags[0]}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
