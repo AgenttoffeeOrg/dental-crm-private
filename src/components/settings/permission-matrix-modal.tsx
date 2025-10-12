@@ -253,49 +253,49 @@ export function PermissionMatrixModal({ roleId, tenantId, open, onOpenChange }: 
                     value={group.category}
                     className={`border rounded-lg ${colorClass}`}
                   >
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                      <div className="flex items-center justify-between w-full pr-4">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{icon}</span>
-                          <div className="text-left">
-                            <div className="font-semibold capitalize text-base">
-                              {group.category}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {categoryGranted} of {categoryTotal} permissions
+                    <div className="px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        {/* Left: Category Header (clickable to expand) */}
+                        <AccordionTrigger className="flex-1 hover:no-underline py-0 pr-4">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{icon}</span>
+                            <div className="text-left">
+                              <div className="font-semibold capitalize text-base">
+                                {group.category}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {categoryGranted} of {categoryTotal} permissions
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                        </AccordionTrigger>
+                        
+                        {/* Right: Quick Action Links (NOT buttons) */}
+                        <div className="flex items-center gap-3 text-xs">
+                          <span
                             onClick={(e) => {
                               e.stopPropagation()
                               selectAll(group.category)
                             }}
-                            disabled={role.is_system_role}
-                            className="h-7 px-2 text-xs"
+                            className={`flex items-center gap-1 cursor-pointer hover:text-green-700 transition-colors ${role.is_system_role ? 'opacity-50 cursor-not-allowed' : 'text-green-600'}`}
                           >
-                            <Check className="h-3 w-3 mr-1" />
+                            <Check className="h-3 w-3" />
                             All
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          </span>
+                          <span className="text-gray-300">|</span>
+                          <span
                             onClick={(e) => {
                               e.stopPropagation()
                               deselectAll(group.category)
                             }}
-                            disabled={role.is_system_role}
-                            className="h-7 px-2 text-xs"
+                            className={`flex items-center gap-1 cursor-pointer hover:text-red-700 transition-colors ${role.is_system_role ? 'opacity-50 cursor-not-allowed' : 'text-red-600'}`}
                           >
-                            <X className="h-3 w-3 mr-1" />
+                            <X className="h-3 w-3" />
                             None
-                          </Button>
+                          </span>
                         </div>
                       </div>
-                    </AccordionTrigger>
+                    </div>
                     <AccordionContent className="px-4 pb-3">
                       <div className="space-y-2">
                         {group.permissions.map(perm => {
