@@ -79,7 +79,7 @@ export interface Task {
 export interface Activity {
   id: string;
   tenant_id: string;
-  type: 'call' | 'email' | 'whatsapp' | 'note';
+  type: 'call' | 'email' | 'whatsapp' | 'sms' | 'note';
   direction?: 'inbound' | 'outbound';
   contact_id?: string;
   deal_id?: string;
@@ -110,7 +110,7 @@ export interface AIArtifact {
   id: string;
   tenant_id: string;
   activity_id: string;
-  kind: 'transcript' | 'summary' | 'intent' | 'treatments' | 'actions';
+  kind: 'transcript' | 'summary' | 'intent' | 'treatments' | 'actions' | 'conversation_analysis' | 'sentiment' | 'urgency';
   data: Record<string, unknown>;
   confidence: number;
   created_at: string;

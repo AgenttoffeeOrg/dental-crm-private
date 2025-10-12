@@ -23,8 +23,14 @@ import {
   List,
   TrendingUp,
   ChevronDown,
-  Sparkles
+  Sparkles,
+  Wand2,
+  Edit,
+  Pencil,
+  Check,
+  X
 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { PipelineColumn } from './pipeline-column'
 import { DealCard } from './deal-card-fixed'
@@ -80,9 +86,12 @@ interface PipelineBoardProps {
 
 type ViewMode = 'board' | 'list'
 
-// List Row Component with clickable elements
-function DealListRow({ deal, onUpdate }: { deal: DealWithRelations; onUpdate: () => void }) {
+// List Row Component with clickable elements  
+function DealListRow({ deal, onUpdate, showPipeline = false }: { deal: DealWithRelations; onUpdate: () => void; showPipeline?: boolean }) {
   const [showDealDetail, setShowDealDetail] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [tempTitle, setTempTitle] = useState(deal.title)
+  const supabase = createClient()
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -97,7 +106,34 @@ function DealListRow({ deal, onUpdate }: { deal: DealWithRelations; onUpdate: ()
   }
 
   const handleDealClick = () => {
-    setShowDealDetail(true)
+    if (!editingTitle) {
+      setShowDealDetail(true)
+    }
+  }
+
+  const handleSaveTitle = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    if (!tempTitle.trim()) {
+      toast.error('Deal title cannot be empty')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('deals')
+        .update({ title: tempTitle.trim(), updated_at: new Date().toISOString() })
+        .eq('id', deal.id)
+
+      if (error) throw error
+
+      toast.success('Deal title updated')
+      setEditingTitle(false)
+      onUpdate()
+    } catch (error) {
+      console.error('Error updating deal title:', error)
+      toast.error('Failed to update deal title')
+    }
   }
 
   return (
@@ -106,12 +142,67 @@ function DealListRow({ deal, onUpdate }: { deal: DealWithRelations; onUpdate: ()
         className="grid grid-cols-12 gap-4 p-4 border-b hover:bg-blue-50 transition-colors items-center cursor-pointer group"
         onClick={handleDealClick}
       >
-        {/* Deal Name - Clickable */}
-        <div className="col-span-3">
-          <div className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
-            {deal.title}
-          </div>
-          {deal.treatment_tags.length > 0 && (
+        {/* Deal Name - Editable */}
+        <div className={showPipeline ? "col-span-2" : "col-span-3"}>
+          {editingTitle ? (
+            <div className="flex items-center gap-1">
+              <Input
+                value={tempTitle}
+                onChange={(e) => setTempTitle(e.target.value)}
+                className="h-8 text-sm"
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveTitle(e as any)
+                  } else if (e.key === 'Escape') {
+                    setEditingTitle(false)
+                    setTempTitle(deal.title)
+                  }
+                }}
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={handleSaveTitle}
+              >
+                <Check className="h-3 w-3 text-green-600" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setEditingTitle(false)
+                  setTempTitle(deal.title)
+                }}
+              >
+                <X className="h-3 w-3 text-red-600" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 group/title">
+              <div className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
+                {deal.title}
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-4 w-4 p-0 opacity-0 group-hover/title:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setTempTitle(deal.title)
+                  setEditingTitle(true)
+                }}
+                title="Edit title"
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+          {!editingTitle && deal.treatment_tags.length > 0 && (
             <div className="flex gap-1 mt-1">
               {deal.treatment_tags.slice(0, 2).map(tag => (
                 <Badge key={tag} variant="outline" className="text-xs">
@@ -126,6 +217,25 @@ function DealListRow({ deal, onUpdate }: { deal: DealWithRelations; onUpdate: ()
             </div>
           )}
         </div>
+
+        {/* Pipeline - Only shown in All Deals view - CLICKABLE */}
+        {showPipeline && (
+          <div className="col-span-2">
+            <Badge 
+              variant="secondary" 
+              className="text-xs cursor-pointer hover:bg-blue-100 hover:text-blue-700 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation()
+                const pipelineId = (deal as any).pipeline_id
+                if (pipelineId) {
+                  setSelectedPipelineId(pipelineId)
+                }
+              }}
+            >
+              {(deal as any).pipeline?.name || 'Unknown'}
+            </Badge>
+          </div>
+        )}
 
         {/* Contact - Clickable */}
         <div 
@@ -187,13 +297,13 @@ function DealListRow({ deal, onUpdate }: { deal: DealWithRelations; onUpdate: ()
 export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: PipelineBoardProps) {
   // Pipeline state
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
-  const [selectedPipelineId, setSelectedPipelineId] = useState<string>('')
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string>('_all_deals') // Default to All Deals
   const [stages, setStages] = useState<PipelineStage[]>([])
   const [deals, setDeals] = useState<DealWithRelations[]>([])
   
   // UI state
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<ViewMode>('board')
+  const [viewMode, setViewMode] = useState<ViewMode>('list') // Default to list for All Deals
   const [draggedDeal, setDraggedDeal] = useState<DealWithRelations | null>(null)
   
   // Dialog state
@@ -201,6 +311,8 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
   const [createPipelineDialogOpen, setCreatePipelineDialogOpen] = useState(false)
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<typeof PIPELINE_TEMPLATES[0] | null>(null)
+  const [editingPipelineName, setEditingPipelineName] = useState(false)
+  const [tempPipelineName, setTempPipelineName] = useState('')
   
   const supabase = createClient()
 
@@ -230,7 +342,12 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
         window.history.replaceState({}, '', url.toString())
       }
       
-      fetchPipelineData()
+      // Load data based on selection
+      if (selectedPipelineId === '_all_deals') {
+        fetchAllDeals()
+      } else {
+        fetchPipelineData()
+      }
     }
   }, [selectedPipelineId])
 
@@ -257,6 +374,34 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
     }
   }
 
+  const fetchAllDeals = async () => {
+    try {
+      setLoading(true)
+
+      // Fetch ALL deals across ALL pipelines
+      const { data: dealsData, error: dealsError } = await supabase
+        .from('deals')
+        .select(`
+          *,
+          contact:contacts(*),
+          stage:pipeline_stages(*),
+          pipeline:pipelines(name)
+        `)
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+
+      if (dealsError) throw dealsError
+
+      setStages([]) // No stages for "All Deals" view
+      setDeals(dealsData as DealWithRelations[] || [])
+    } catch (error) {
+      console.error('Error fetching all deals:', error)
+      toast.error('Failed to load deals')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const fetchPipelineData = async () => {
     try {
       setLoading(true)
@@ -277,7 +422,8 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
         .select(`
           *,
           contact:contacts(*),
-          stage:pipeline_stages(*)
+          stage:pipeline_stages(*),
+          pipeline:pipelines(name)
         `)
         .eq('pipeline_id', selectedPipelineId)
         .eq('tenant_id', tenantId)
@@ -344,6 +490,67 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
   const handleCreateFromTemplate = (template: typeof PIPELINE_TEMPLATES[0]) => {
     setSelectedTemplate(template)
     setCreatePipelineDialogOpen(true)
+  }
+
+  const handleAutoCategorize = async () => {
+    try {
+      setLoading(true)
+      toast.info('🔄 Auto-categorizing deals...')
+
+      const response = await fetch('/api/categorize-deals', {
+        method: 'POST'
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(`✅ Categorized ${result.results.moved} deals!`, {
+          description: `Moved to appropriate pipelines based on treatment type`
+        })
+        
+        // Reload data
+        if (selectedPipelineId === '_all_deals') {
+          fetchAllDeals()
+        } else {
+          fetchPipelineData()
+        }
+      } else {
+        toast.error('Failed to categorize deals')
+      }
+    } catch (error) {
+      console.error('Error auto-categorizing:', error)
+      toast.error('Failed to auto-categorize deals')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSavePipelineName = async () => {
+    if (!tempPipelineName.trim() || selectedPipelineId === '_all_deals') return
+
+    try {
+      const { error } = await supabase
+        .from('pipelines')
+        .update({ name: tempPipelineName.trim() })
+        .eq('id', selectedPipelineId)
+
+      if (error) throw error
+
+      toast.success('Pipeline renamed successfully')
+      setEditingPipelineName(false)
+      loadPipelines()
+    } catch (error) {
+      console.error('Error renaming pipeline:', error)
+      toast.error('Failed to rename pipeline')
+    }
+  }
+
+  const startEditingPipelineName = () => {
+    const currentPipeline = pipelines.find(p => p.id === selectedPipelineId)
+    if (currentPipeline) {
+      setTempPipelineName(currentPipeline.name)
+      setEditingPipelineName(true)
+    }
   }
 
   const getDealsForStage = (stageId: string) => {
@@ -424,36 +631,68 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
         <div className="flex justify-between items-center">
           {/* Left side - Pipeline Selector */}
           <div className="flex items-center gap-4">
-            <Select 
-              value={selectedPipelineId} 
-              onValueChange={(value) => {
-                // Handle special actions
-                if (value === '_create_custom') {
-                  setSelectedTemplate(null)
-                  setCreatePipelineDialogOpen(true)
-                  return
-                }
-                
-                if (value.startsWith('_template_')) {
-                  const templateName = value.replace('_template_', '')
-                  const template = PIPELINE_TEMPLATES.find(t => t.name === templateName)
-                  if (template) {
-                    handleCreateFromTemplate(template)
-                  }
-                  return
-                }
-                
-                // Regular pipeline selection
-                setSelectedPipelineId(value)
-              }}
-            >
-              <SelectTrigger className="w-[320px] h-11 text-lg font-semibold">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-blue-600" />
-                  <SelectValue />
-                </div>
-              </SelectTrigger>
+            {editingPipelineName && selectedPipelineId !== '_all_deals' ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={tempPipelineName}
+                  onChange={(e) => setTempPipelineName(e.target.value)}
+                  className="w-[280px] h-11 text-lg font-semibold"
+                  autoFocus
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSavePipelineName()
+                    } else if (e.key === 'Escape') {
+                      setEditingPipelineName(false)
+                    }
+                  }}
+                />
+                <Button size="sm" onClick={handleSavePipelineName}>Save</Button>
+                <Button size="sm" variant="outline" onClick={() => setEditingPipelineName(false)}>Cancel</Button>
+              </div>
+            ) : (
+              <>
+                <Select 
+                  value={selectedPipelineId} 
+                  onValueChange={(value) => {
+                    // Handle special actions
+                    if (value === '_create_custom') {
+                      setSelectedTemplate(null)
+                      setCreatePipelineDialogOpen(true)
+                      return
+                    }
+                    
+                    if (value.startsWith('_template_')) {
+                      const templateName = value.replace('_template_', '')
+                      const template = PIPELINE_TEMPLATES.find(t => t.name === templateName)
+                      if (template) {
+                        handleCreateFromTemplate(template)
+                      }
+                      return
+                    }
+                    
+                    // Regular pipeline selection
+                    setSelectedPipelineId(value)
+                  }}
+                >
+                  <SelectTrigger className="w-[320px] h-11 text-lg font-semibold">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-blue-600" />
+                      <SelectValue />
+                    </div>
+                  </SelectTrigger>
               <SelectContent>
+                <SelectGroup>
+                  <SelectLabel className="text-xs font-semibold text-gray-500 uppercase">Views</SelectLabel>
+                  <SelectItem value="_all_deals">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">📊 All Deals</span>
+                      <Badge variant="outline" className="text-xs">All Pipelines</Badge>
+                    </div>
+                  </SelectItem>
+                </SelectGroup>
+                
+                <SelectSeparator />
+                
                 <SelectGroup>
                   <SelectLabel className="text-xs font-semibold text-gray-500 uppercase">Your Pipelines</SelectLabel>
                   {pipelines.map((pipeline) => (
@@ -502,6 +741,21 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
               </SelectContent>
             </Select>
 
+            {/* Edit Pipeline Name Button - Only for actual pipelines, not All Deals */}
+            {selectedPipelineId !== '_all_deals' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={startEditingPipelineName}
+                className="h-8 w-8 p-0"
+                title="Rename pipeline"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+          </>
+            )}
+
             {/* Stats */}
             <div className="flex gap-3">
               <Badge variant="outline" className="font-medium px-3 py-1.5">
@@ -522,6 +776,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
                 size="sm"
                 onClick={() => setViewMode('board')}
                 className="rounded-none"
+                title="Board view"
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
@@ -535,16 +790,32 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
               </Button>
             </div>
 
-            {/* Pipeline Settings */}
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setSettingsDialogOpen(true)}
-              className="hover:bg-gray-50"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Edit Pipeline
-            </Button>
+            {/* Auto-Categorize Button - Only for All Deals view */}
+            {selectedPipelineId === '_all_deals' && deals.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleAutoCategorize}
+                className="hover:bg-purple-50 border-purple-300 text-purple-700"
+                disabled={loading}
+              >
+                <Wand2 className="h-4 w-4 mr-2" />
+                Auto-Categorize Deals
+              </Button>
+            )}
+
+            {/* Pipeline Settings - Hidden for All Deals */}
+            {selectedPipelineId !== '_all_deals' && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setSettingsDialogOpen(true)}
+                className="hover:bg-gray-50"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Edit Pipeline
+              </Button>
+            )}
 
             {/* New Deal */}
             <Button 
@@ -566,41 +837,79 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
             <div className="text-gray-500">Loading pipeline data...</div>
           </div>
         ) : viewMode === 'board' ? (
-          /* Board View */
-          <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          selectedPipelineId === '_all_deals' ? (
+            /* Board View for All Deals - Grouped by Pipeline */
             <div className="h-full overflow-x-auto">
               <div className="flex gap-6 p-6 min-w-max h-full">
-                {stages.length === 0 ? (
-                  <div className="flex items-center justify-center w-full">
-                    <div className="text-center">
-                      <Settings className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-700 mb-2">No stages in this pipeline</h3>
-                      <p className="text-gray-600 mb-4">Add stages to get started</p>
-                      <Button onClick={() => setSettingsDialogOpen(true)}>
-                        <Settings className="h-4 w-4 mr-2" />
-                        Configure Pipeline
-                      </Button>
+                {pipelines.map(pipeline => {
+                  const pipelineDeals = deals.filter(d => d.pipeline_id === pipeline.id)
+                  if (pipelineDeals.length === 0) return null
+                  
+                  return (
+                    <div key={pipeline.id} className="flex-shrink-0 w-80">
+                      <div className="bg-gray-100 rounded-lg p-4 mb-4">
+                        <div className="font-semibold text-gray-900 flex items-center justify-between">
+                          <button
+                            onClick={() => setSelectedPipelineId(pipeline.id)}
+                            className="hover:text-blue-600 transition-colors flex items-center gap-2 group"
+                          >
+                            <span>{pipeline.name}</span>
+                            <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                          </button>
+                          <Badge variant="secondary">{pipelineDeals.length}</Badge>
+                        </div>
+                      </div>
+                      <div className="space-y-3 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
+                        {pipelineDeals.map(deal => (
+                          <DealCard 
+                            key={deal.id} 
+                            deal={deal} 
+                            onDealUpdate={fetchAllDeals}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  stages.map(stage => (
-                    <PipelineColumn
-                      key={stage.id}
-                      stage={stage}
-                      deals={getDealsForStage(stage.id)}
-                      onDealUpdate={fetchPipelineData}
-                    />
-                  ))
-                )}
+                  )
+                })}
               </div>
             </div>
+          ) : (
+            /* Board View for Single Pipeline */
+            <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              <div className="h-full overflow-x-auto">
+                <div className="flex gap-6 p-6 min-w-max h-full">
+                  {stages.length === 0 ? (
+                    <div className="flex items-center justify-center w-full">
+                      <div className="text-center">
+                        <Settings className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-700 mb-2">No stages in this pipeline</h3>
+                        <p className="text-gray-600 mb-4">Add stages to get started</p>
+                        <Button onClick={() => setSettingsDialogOpen(true)}>
+                          <Settings className="h-4 w-4 mr-2" />
+                          Configure Pipeline
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    stages.map(stage => (
+                      <PipelineColumn
+                        key={stage.id}
+                        stage={stage}
+                        deals={getDealsForStage(stage.id)}
+                        onDealUpdate={fetchPipelineData}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
 
-            <DragOverlay>
-              {draggedDeal && (
-                <DealCard deal={draggedDeal} isDragging />
-              )}
-            </DragOverlay>
-          </DndContext>
+              <DragOverlay>
+                {draggedDeal && (
+                  <DealCard deal={draggedDeal} isDragging />
+                )}
+              </DragOverlay>
+            </DndContext>
+          )
         ) : (
           /* List View */
           <div className="h-full overflow-y-auto p-6">
@@ -608,7 +917,8 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
               <CardContent className="p-0">
                 {/* Table Header */}
                 <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b font-semibold text-sm text-gray-700">
-                  <div className="col-span-3">Deal Name</div>
+                  <div className={selectedPipelineId === '_all_deals' ? "col-span-2" : "col-span-3"}>Deal Name</div>
+                  {selectedPipelineId === '_all_deals' && <div className="col-span-2">Pipeline</div>}
                   <div className="col-span-2">Contact</div>
                   <div className="col-span-2">Stage</div>
                   <div className="col-span-2">Value</div>
@@ -619,7 +929,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
                 {/* Table Body */}
                 {deals.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
-                    <p>No deals in this pipeline</p>
+                    <p>No deals {selectedPipelineId === '_all_deals' ? 'found' : 'in this pipeline'}</p>
                     <Button 
                       variant="link" 
                       onClick={() => setCreateDealDialogOpen(true)}
@@ -633,7 +943,8 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
                     <DealListRow 
                       key={deal.id} 
                       deal={deal}
-                      onUpdate={fetchPipelineData}
+                      onUpdate={selectedPipelineId === '_all_deals' ? fetchAllDeals : fetchPipelineData}
+                      showPipeline={selectedPipelineId === '_all_deals'}
                     />
                   ))
                 )}

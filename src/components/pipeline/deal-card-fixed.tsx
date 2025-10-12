@@ -7,9 +7,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Input } from '@/components/ui/input'
 import { DealDetailView } from '../deals/deal-detail-view-modal'
 import { getActivityAge } from '@/lib/dates'
-import { Edit, Eye, GripVertical } from 'lucide-react'
+import { Edit, Eye, GripVertical, Check, X, Pencil, TrendingUp, TrendingDown, Activity as ActivityIcon } from 'lucide-react'
+import { toast } from 'sonner'
+import { analyzeConversations, getDealHealthIndicator } from '@/lib/conversation-analyzer'
 import type { DealWithRelations } from '@/types/database'
 
 interface DealCardProps {
@@ -20,6 +23,17 @@ interface DealCardProps {
 
 export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardProps) {
   const [showDealDetail, setShowDealDetail] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [tempTitle, setTempTitle] = useState(deal.title)
+  const supabase = require('@/lib/supabase-client').createClient()
+
+  // Analyze conversations for deal intelligence
+  const conversationAnalysis = deal.activities 
+    ? analyzeConversations(deal.activities)
+    : null
+  const healthIndicator = conversationAnalysis 
+    ? getDealHealthIndicator(conversationAnalysis.dealHealthScore)
+    : null
 
   const {
     attributes,
@@ -78,13 +92,55 @@ export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardPro
   const handleCardClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setShowDealDetail(true)
+    if (!editingTitle) {
+      setShowDealDetail(true)
+    }
   }
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    // TODO: Open edit dialog
+    setShowDealDetail(true)
+  }
+
+  const handleEditTitle = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setTempTitle(deal.title)
+    setEditingTitle(true)
+  }
+
+  const handleSaveTitle = async (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+
+    if (!tempTitle.trim()) {
+      toast.error('Deal title cannot be empty')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('deals')
+        .update({ title: tempTitle.trim(), updated_at: new Date().toISOString() })
+        .eq('id', deal.id)
+
+      if (error) throw error
+
+      toast.success('Deal title updated')
+      setEditingTitle(false)
+      if (onDealUpdate) onDealUpdate()
+    } catch (error) {
+      console.error('Error updating deal title:', error)
+      toast.error('Failed to update deal title')
+    }
+  }
+
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setEditingTitle(false)
+    setTempTitle(deal.title)
   }
 
   // Safety checks
@@ -125,42 +181,99 @@ export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardPro
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm text-gray-900 truncate hover:text-blue-600 transition-colors">
-                    {deal.title}
-                  </h4>
-                  <div className="flex items-center gap-2 mt-2">
+                  {editingTitle ? (
+                    <div className="flex items-center gap-1 mb-2">
+                      <Input
+                        value={tempTitle}
+                        onChange={(e) => setTempTitle(e.target.value)}
+                        className="h-8 text-sm"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSaveTitle()
+                          } else if (e.key === 'Escape') {
+                            handleCancelEdit(e as any)
+                          }
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 hover:bg-green-100"
+                        onClick={handleSaveTitle}
+                        title="Save"
+                      >
+                        <Check className="h-3 w-3 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 hover:bg-red-100"
+                        onClick={handleCancelEdit}
+                        title="Cancel"
+                      >
+                        <X className="h-3 w-3 text-red-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 group/title">
+                      <h4 className="font-medium text-sm text-gray-900 truncate hover:text-blue-600 transition-colors">
+                        {deal.title}
+                      </h4>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-4 w-4 p-0 opacity-0 group-hover/title:opacity-100 transition-opacity"
+                        onClick={handleEditTitle}
+                        title="Edit title"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                  <div 
+                    className="flex items-center gap-2 mt-2 cursor-pointer group/contact"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      window.location.href = `/contacts/${deal.contact_id}`
+                    }}
+                    title="View contact profile"
+                  >
                     <Avatar className="h-5 w-5">
                       <AvatarFallback className="text-xs">
                         {getContactInitials(deal.contact.full_name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-xs text-gray-600 hover:text-blue-600 transition-colors truncate">
+                    <span className="text-xs text-gray-600 group-hover/contact:text-blue-600 group-hover/contact:underline transition-colors truncate">
                       {deal.contact.full_name}
                     </span>
                   </div>
                 </div>
                 
                 {/* Action buttons */}
-                <div className="flex gap-1 ml-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 w-6 p-0 hover:bg-gray-100"
-                    onClick={handleEditClick}
-                    title="Edit Deal"
-                  >
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 w-6 p-0 hover:bg-gray-100"
-                    onClick={handleCardClick}
-                    title="View Deal Details"
-                  >
-                    <Eye className="h-3 w-3" />
-                  </Button>
-                </div>
+                {!editingTitle && (
+                  <div className="flex gap-1 ml-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 hover:bg-gray-100"
+                      onClick={handleEditClick}
+                      title="Edit Deal"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 hover:bg-gray-100"
+                      onClick={handleCardClick}
+                      title="View Deal Details"
+                    >
+                      <Eye className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Deal type badge */}
@@ -188,6 +301,35 @@ export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardPro
                     <Badge variant="outline" className="text-xs px-2 py-0">
                       +{deal.treatment_tags.length - 2}
                     </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Deal Intelligence - Health & Likelihood */}
+              {conversationAnalysis && healthIndicator && (
+                <div className="mt-2 mb-3 p-2 bg-gray-50 rounded border border-gray-200">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">{healthIndicator.icon}</span>
+                      <span className="font-medium" style={{ color: healthIndicator.color === 'green' ? '#10b981' : healthIndicator.color === 'yellow' ? '#f59e0b' : '#ef4444' }}>
+                        {healthIndicator.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {conversationAnalysis.sentimentScore > 0.3 ? (
+                        <TrendingUp className="h-3 w-3 text-green-600" />
+                      ) : conversationAnalysis.sentimentScore < -0.3 ? (
+                        <TrendingDown className="h-3 w-3 text-red-600" />
+                      ) : (
+                        <ActivityIcon className="h-3 w-3 text-gray-600" />
+                      )}
+                      <span className="font-semibold">{Math.round(conversationAnalysis.dealHealthScore)}%</span>
+                    </div>
+                  </div>
+                  {conversationAnalysis.recommendedAction && (
+                    <div className="mt-1 text-xs text-gray-600 italic truncate" title={conversationAnalysis.recommendedAction}>
+                      💡 {conversationAnalysis.recommendedAction}
+                    </div>
                   )}
                 </div>
               )}

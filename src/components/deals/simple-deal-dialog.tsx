@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-client'
+import { categorizeDeal, autoTagDeal } from '@/lib/deal-categorization'
 import {
   Dialog,
   DialogContent,
@@ -374,6 +375,11 @@ export function SimpleDealDialog({
       const newTags = [...selectedTreatmentTags, tag]
       setSelectedTreatmentTags(newTags)
       form.setValue('treatment_tags', newTags)
+      
+      // Auto-suggest pipeline based on new tags (only in create mode)
+      if (mode === 'create') {
+        suggestPipelineFromTreatment(newTags)
+      }
     }
   }
 
@@ -381,6 +387,35 @@ export function SimpleDealDialog({
     const newTags = selectedTreatmentTags.filter(t => t !== tag)
     setSelectedTreatmentTags(newTags)
     form.setValue('treatment_tags', newTags)
+    
+    // Re-suggest pipeline after removing tag
+    if (mode === 'create' && newTags.length > 0) {
+      suggestPipelineFromTreatment(newTags)
+    }
+  }
+
+  const suggestPipelineFromTreatment = async (tags: string[]) => {
+    const title = form.watch('title') || ''
+    const value = form.watch('value_estimate_cents') || 0
+    
+    // Get AI suggestion
+    const category = categorizeDeal(title, '', tags, value)
+    
+    // Find matching pipeline
+    const matchingPipeline = pipelines.find(p => 
+      p.name.toLowerCase().includes(category.pipelineType) || 
+      p.name === category.pipelineName
+    )
+    
+    if (matchingPipeline && matchingPipeline.id !== form.watch('pipeline_id')) {
+      // Auto-select the suggested pipeline
+      form.setValue('pipeline_id', matchingPipeline.id)
+      await loadStagesForPipeline(matchingPipeline.id)
+      
+      toast.success(`💡 Suggested: ${matchingPipeline.name} pipeline`, {
+        description: category.reason
+      })
+    }
   }
 
   // Don't render if in edit mode but no deal provided

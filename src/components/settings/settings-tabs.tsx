@@ -6,16 +6,22 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Settings, Users, Zap, Database } from 'lucide-react'
 import { toast } from 'sonner'
+import { TreatmentConfig } from './treatment-config'
 
 export function SettingsTabs() {
   return (
-    <Tabs defaultValue="pipeline" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-4">
+    <Tabs defaultValue="categorization" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-5">
+        <TabsTrigger value="categorization">Smart Categorization</TabsTrigger>
         <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
         <TabsTrigger value="treatments">Treatments</TabsTrigger>
         <TabsTrigger value="team">Team</TabsTrigger>
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
       </TabsList>
+
+      <TabsContent value="categorization" className="space-y-6">
+        <TreatmentConfig />
+      </TabsContent>
 
       <TabsContent value="pipeline" className="space-y-6">
         <Card>
