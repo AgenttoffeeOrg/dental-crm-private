@@ -141,111 +141,118 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
         </CardContent>
       </Card>
 
-      {/* Contacts List - Compact Design */}
+      {/* Contacts List - Uniform Grid Layout */}
       <Card>
         <div className="divide-y divide-gray-100">
           {contacts.map(contact => (
             <Link key={contact.id} href={`/contacts/${contact.id}`}>
-              <div className="p-4 hover:bg-gray-50 transition-colors cursor-pointer group">
-                <div className="flex items-center gap-4">
-                  {/* Avatar */}
-                  <Avatar className="h-10 w-10 flex-shrink-0">
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-sm">
-                      {getContactInitials(contact.full_name)}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  {/* Name & Basic Info - 25% */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                      {contact.full_name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {getSourceBadge(contact.source)}
-                      {contact.tags.slice(0, 1).map(tag => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag.replace('_', ' ')}
-                        </Badge>
-                      ))}
-                      {contact.tags.length > 1 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{contact.tags.length - 1}
-                        </Badge>
-                      )}
+              <div className="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer group">
+                <div className="grid grid-cols-12 gap-4 items-center">
+                  {/* Avatar & Name - 3 cols */}
+                  <div className="col-span-3 flex items-center gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 flex-shrink-0">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-sm font-medium">
+                        {getContactInitials(contact.full_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors text-sm">
+                        {contact.full_name}
+                      </h3>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {getSourceBadge(contact.source)}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Contact Details - 35% */}
-                  <div className="flex flex-col gap-1 min-w-0 flex-1">
-                    {contact.primary_email && (
+                  {/* Email - 3 cols */}
+                  <div className="col-span-3 min-w-0">
+                    {contact.primary_email ? (
                       <a
                         href={`mailto:${contact.primary_email}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors group/email"
+                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors min-w-0"
                       >
-                        <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                        <Mail className="h-4 w-4 flex-shrink-0 text-gray-400" />
                         <span className="truncate">{contact.primary_email}</span>
                       </a>
+                    ) : (
+                      <span className="text-sm text-gray-400 italic">No email</span>
                     )}
-                    {contact.primary_phone && (
+                  </div>
+
+                  {/* Phone - 2 cols */}
+                  <div className="col-span-2 min-w-0">
+                    {contact.primary_phone ? (
                       <a
                         href={`tel:${contact.primary_phone}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-green-600 transition-colors group/phone"
+                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-green-600 transition-colors"
                       >
-                        <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                        <Phone className="h-4 w-4 flex-shrink-0 text-gray-400" />
                         <span className="truncate">{contact.primary_phone}</span>
                       </a>
-                    )}
-                    {!contact.primary_email && !contact.primary_phone && (
-                      <span className="text-xs text-gray-400 italic">No contact info</span>
+                    ) : (
+                      <span className="text-sm text-gray-400 italic">No phone</span>
                     )}
                   </div>
 
-                  {/* Stats & Date - 20% */}
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-xs text-gray-500 mb-1">
-                      Created {formatDate(contact.created_at, 'MMM d, yyyy')}
-                    </div>
-                    {contact.lifecycle_stage && (
-                      <Badge variant="secondary" className="text-xs">
-                        {contact.lifecycle_stage.replace('_', ' ')}
+                  {/* Tags - 2 cols */}
+                  <div className="col-span-2 flex items-center gap-1.5">
+                    {contact.tags.slice(0, 1).map(tag => (
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        {tag.replace('_', ' ')}
+                      </Badge>
+                    ))}
+                    {contact.tags.length > 1 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{contact.tags.length - 1}
                       </Badge>
                     )}
+                    {contact.tags.length === 0 && (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
                   </div>
 
-                  {/* Quick Actions - appear on hover */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {contact.primary_phone && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          window.location.href = `tel:${contact.primary_phone}`
-                        }}
-                        title="Call"
-                      >
-                        <Phone className="h-4 w-4 text-green-600" />
-                      </Button>
-                    )}
-                    {contact.primary_email && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          window.location.href = `mailto:${contact.primary_email}`
-                        }}
-                        title="Email"
-                      >
-                        <Mail className="h-4 w-4 text-blue-600" />
-                      </Button>
-                    )}
+                  {/* Date & Actions - 2 cols */}
+                  <div className="col-span-2 flex items-center justify-end gap-2">
+                    <div className="text-xs text-gray-500 text-right">
+                      {formatDate(contact.created_at, 'MMM d')}
+                    </div>
+                    
+                    {/* Quick Actions - appear on hover */}
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {contact.primary_phone && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 hover:bg-green-50"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            window.location.href = `tel:${contact.primary_phone}`
+                          }}
+                          title="Call"
+                        >
+                          <Phone className="h-3.5 w-3.5 text-green-600" />
+                        </Button>
+                      )}
+                      {contact.primary_email && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 hover:bg-blue-50"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            window.location.href = `mailto:${contact.primary_email}`
+                          }}
+                          title="Email"
+                        >
+                          <Mail className="h-3.5 w-3.5 text-blue-600" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
