@@ -29,6 +29,7 @@ import { ActivityTimeline } from '@/components/deals/activity-timeline'
 import { DealTasks } from '@/components/deals/deal-tasks'
 import { AssignDealDropdown } from '@/components/deals/assign-deal-dropdown'
 import { DealIntelligenceCard } from '@/components/deals/deal-intelligence-card'
+import { AIAssistantChat } from '@/components/ai/ai-assistant-chat'
 import { 
   ArrowLeft,
   Edit,
@@ -259,7 +260,9 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
   }
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+    <div className="fixed inset-0 bg-white z-50 flex">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -690,6 +693,15 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
           </div>
         </DialogContent>
       </Dialog>
+      </div>
+
+      {/* AI Assistant Sidebar */}
+      <div className="w-96 border-l border-gray-200 flex flex-col overflow-hidden bg-white">
+        <AIAssistantChat
+          context="deal"
+          contextId={dealId}
+        />
+      </div>
     </div>
   )
 }
