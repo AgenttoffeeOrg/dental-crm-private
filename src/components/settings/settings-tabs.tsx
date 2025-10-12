@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TreatmentConfig } from './treatment-config'
 import { PipelinePreferencesTab } from './pipeline-preferences-tab'
