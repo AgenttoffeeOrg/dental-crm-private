@@ -152,23 +152,20 @@ export function CreateTaskPanel({
       open ? "translate-x-0" : "translate-x-full"
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Create New Task</h2>
-          <p className="text-sm text-gray-600 mt-0.5">Add a task to your queue</p>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <X className="h-5 w-5" />
+      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <h2 className="text-lg font-semibold text-gray-900">Create Task</h2>
+        <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
+          <X className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Form Content */}
-      <ScrollArea className="h-[calc(100vh-180px)]">
-        <div className="p-6 space-y-6">
-          {/* Task Type Selection */}
+      <ScrollArea className="h-[calc(100vh-140px)]">
+        <div className="p-5 space-y-4">
+          {/* Task Type Selection - Compact */}
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-3 block">Task Type</Label>
-            <div className="grid grid-cols-2 gap-3">
+            <Label className="text-xs font-medium text-gray-600 mb-2 block">Type</Label>
+            <div className="flex gap-2">
               {TASK_TYPES.map((type) => {
                 const Icon = type.icon
                 const isSelected = formData.task_type === type.value
@@ -178,218 +175,164 @@ export function CreateTaskPanel({
                     key={type.value}
                     onClick={() => setFormData({ ...formData, task_type: type.value })}
                     className={cn(
-                      "flex items-center gap-3 p-4 rounded-lg border-2 transition-all",
+                      "flex-1 flex flex-col items-center gap-1.5 p-2.5 rounded-lg border transition-all",
                       isSelected
-                        ? "border-blue-500 bg-blue-50"
+                        ? "border-blue-500 bg-blue-50 shadow-sm"
                         : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                     )}
                   >
-                    <div className={cn("p-2 rounded-lg", type.color)}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <span className="text-sm font-medium text-gray-900">{type.label}</span>
+                    <Icon className={cn("h-4 w-4", isSelected ? "text-blue-600" : "text-gray-600")} />
+                    <span className="text-xs font-medium text-gray-700">{type.label.split(' ')[0]}</span>
                   </button>
                 )
               })}
             </div>
           </div>
 
-          <Separator />
-
           {/* Title */}
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">Task Title *</Label>
+            <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Title *</Label>
             <Input
-              placeholder="e.g., Call Sarah about treatment plan"
+              placeholder="What needs to be done?"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="text-base h-11"
+              className="h-10"
               autoFocus
             />
           </div>
 
           {/* Description */}
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">Description</Label>
+            <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Notes</Label>
             <Textarea
-              placeholder="Add any additional details..."
+              placeholder="Additional details..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="text-sm"
+              rows={2}
+              className="text-sm resize-none"
             />
           </div>
 
-          <Separator />
-
-          {/* Due Date */}
+          {/* Due Date - Compact */}
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">Due Date</Label>
+            <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Due Date</Label>
             <Input
               type="datetime-local"
               value={formData.due_at}
               onChange={(e) => setFormData({ ...formData, due_at: e.target.value })}
-              className="mb-3"
+              className="h-9 mb-2"
             />
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickDate(4)}
-              >
-                4 hours
+            <div className="flex gap-1.5">
+              <Button type="button" variant="outline" size="sm" onClick={() => handleQuickDate(4)} className="flex-1 h-7 text-xs">
+                4h
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickDate(24)}
-              >
-                Tomorrow
+              <Button type="button" variant="outline" size="sm" onClick={() => handleQuickDate(24)} className="flex-1 h-7 text-xs">
+                1d
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickDate(72)}
-              >
-                3 days
+              <Button type="button" variant="outline" size="sm" onClick={() => handleQuickDate(72)} className="flex-1 h-7 text-xs">
+                3d
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickDate(168)}
-              >
-                1 week
+              <Button type="button" variant="outline" size="sm" onClick={() => handleQuickDate(168)} className="flex-1 h-7 text-xs">
+                1w
               </Button>
             </div>
           </div>
 
-          <Separator />
-
-          {/* Priority & Duration */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Priority, Duration, Assignee - 3 Columns */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">Priority</Label>
-              <Select
-                value={formData.priority}
-                onValueChange={(val) => setFormData({ ...formData, priority: val })}
-              >
-                <SelectTrigger>
+              <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Priority</Label>
+              <Select value={formData.priority} onValueChange={(val) => setFormData({ ...formData, priority: val })}>
+                <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="normal">Normal</SelectItem>
                   <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="urgent">🔴 Urgent</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">Duration (min)</Label>
+              <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Duration</Label>
               <Input
                 type="number"
                 value={formData.estimated_duration_minutes}
                 onChange={(e) => setFormData({ ...formData, estimated_duration_minutes: parseInt(e.target.value) || 0 })}
-                className="text-base"
+                className="h-9"
+                placeholder="30"
               />
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Assign To</Label>
+              <Select
+                value={formData.assignee_user_id || 'me'}
+                onValueChange={(val) => setFormData({ ...formData, assignee_user_id: val === 'me' ? '' : val })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="me">Me</SelectItem>
+                  {users.map(user => (
+                    <SelectItem key={user.id} value={user.id}>{user.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <Separator />
-
-          {/* Assignee */}
-          <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">Assign To</Label>
-            <Select
-              value={formData.assignee_user_id || 'unassigned'}
-              onValueChange={(val) => setFormData({ ...formData, assignee_user_id: val === 'unassigned' ? '' : val })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unassigned">Unassigned</SelectItem>
-                {users.map(user => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Separator />
-
-          {/* Associations */}
-          <div className="space-y-4">
-            <Label className="text-sm font-medium text-gray-700 block">Associate With</Label>
-            
+          {/* Associations - 2 Columns */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-gray-500 mb-1.5 block">Deal (Optional)</Label>
+              <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Deal</Label>
               <Select
                 value={formData.deal_id || 'none'}
                 onValueChange={(val) => setFormData({ ...formData, deal_id: val === 'none' ? '' : val })}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select deal" />
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="None" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No deal</SelectItem>
-                  {deals.map(deal => (
-                    <SelectItem key={deal.id} value={deal.id}>
-                      {deal.title}
-                    </SelectItem>
+                  <SelectItem value="none">None</SelectItem>
+                  {deals.slice(0, 20).map(deal => (
+                    <SelectItem key={deal.id} value={deal.id}>{deal.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label className="text-xs text-gray-500 mb-1.5 block">Contact (Optional)</Label>
+              <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Contact</Label>
               <Select
                 value={formData.contact_id || 'none'}
                 onValueChange={(val) => setFormData({ ...formData, contact_id: val === 'none' ? '' : val })}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select contact" />
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="None" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No contact</SelectItem>
-                  {contacts.map(contact => (
-                    <SelectItem key={contact.id} value={contact.id}>
-                      {contact.full_name}
-                    </SelectItem>
+                  <SelectItem value="none">None</SelectItem>
+                  {contacts.slice(0, 20).map(contact => (
+                    <SelectItem key={contact.id} value={contact.id}>{contact.full_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* AI Suggestions (Future) */}
-          <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-purple-900">AI Suggestions</span>
-            </div>
-            <p className="text-xs text-purple-700">
-              Based on this {formData.deal_id ? 'deal' : 'task'}, we recommend scheduling a follow-up call in 2 days.
-            </p>
           </div>
         </div>
       </ScrollArea>
 
       {/* Footer Actions */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-200 bg-white">
-        <div className="flex gap-3">
+      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
+        <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={onClose}
-            className="flex-1"
+            className="flex-1 h-10"
             disabled={loading}
           >
             Cancel
@@ -397,7 +340,7 @@ export function CreateTaskPanel({
           <Button
             onClick={handleSubmit}
             disabled={loading || !formData.title.trim()}
-            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            className="flex-1 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
           >
             {loading ? 'Creating...' : 'Create Task'}
           </Button>
