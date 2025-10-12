@@ -65,7 +65,6 @@ export function TaskQueuePanel({
   const currentTask = tasks[currentIndex]
   const hasNext = currentIndex < tasks.length - 1
   const hasPrev = currentIndex > 0
-  const supabase = createClient()
 
   useEffect(() => {
     if (open) {

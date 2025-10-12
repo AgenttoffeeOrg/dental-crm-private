@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
 import { createClient } from '@/lib/supabase-client'
 import { Card, CardContent } from '@/components/ui/card'
@@ -309,6 +310,7 @@ function DealListRow({ deal, onUpdate, showPipeline = false }: { deal: DealWithR
 
 export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: PipelineBoardProps) {
   // Pipeline state - Initialize from URL to persist on reload!
+  const searchParams = useSearchParams()
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>(() => {
     // Read from URL on initial render
@@ -335,7 +337,22 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
   const [editingPipelineName, setEditingPipelineName] = useState(false)
   const [tempPipelineName, setTempPipelineName] = useState('')
   
+  // Deal modal state - controlled from URL
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      return params.get('deal')
+    }
+    return null
+  })
+  
   const supabase = createClient()
+
+  // Handle deal URL parameter on mount and changes
+  useEffect(() => {
+    const dealId = searchParams?.get('deal')
+    setSelectedDealId(dealId)
+  }, [searchParams])
 
   // Load pipelines on mount
   useEffect(() => {

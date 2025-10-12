@@ -66,6 +66,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
   const [editField, setEditField] = useState<'value' | 'stage' | 'tags' | 'source' | 'description' | 'title' | null>(null)
   const [editValue, setEditValue] = useState<any>('')
   const [allStages, setAllStages] = useState<PipelineStage[]>([])
+  const [activeTab, setActiveTab] = useState<string>('activities')
   const supabase = createClient()
 
   useEffect(() => {
@@ -545,7 +546,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
           </div>
 
           <div className="flex-1 overflow-hidden">
-            <Tabs defaultValue="activities" className="h-full flex flex-col">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
               <div className="px-6 pt-4 border-b border-gray-200 bg-white">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="activities">Activities</TabsTrigger>
