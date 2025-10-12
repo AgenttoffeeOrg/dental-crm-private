@@ -167,10 +167,6 @@ export function ContactDetailView({
           </div>
           
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => setShowAI(!showAI)}>
-              <Bot className="h-4 w-4 mr-1" />
-              AI Assistant
-            </Button>
             <Button size="sm" onClick={() => setEditDialogOpen(true)} disabled={!contact}>
               <Edit className="h-4 w-4 mr-1" />
               Edit Profile
@@ -697,16 +693,13 @@ export function ContactDetailView({
         />
       )}
 
-      {/* AI Assistant - Toggleable Overlay */}
-      {showAI && (
-        <div className="fixed right-0 top-0 bottom-0 w-96 bg-white border-l border-gray-200 shadow-2xl z-50 animate-in slide-in-from-right">
-          <AIAssistantChat
-            context="contact"
-            contextId={contactId}
-            onClose={() => setShowAI(false)}
-          />
-        </div>
-      )}
+      {/* AI Assistant Sidebar - Always Visible */}
+      <div className="w-96 border-l border-gray-200 bg-white flex-shrink-0">
+        <AIAssistantChat
+          context="contact"
+          contextId={contactId}
+        />
+      </div>
     </div>
   )
 }
