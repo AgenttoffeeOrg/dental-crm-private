@@ -141,57 +141,116 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
         </CardContent>
       </Card>
 
-      {/* Contacts List */}
-      <div className="space-y-3">
-        {contacts.map(contact => (
-          <Link key={contact.id} href={`/contacts/${contact.id}`}>
-            <Card className="cursor-pointer hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
+      {/* Contacts List - Compact Design */}
+      <Card>
+        <div className="divide-y divide-gray-100">
+          {contacts.map(contact => (
+            <Link key={contact.id} href={`/contacts/${contact.id}`}>
+              <div className="p-4 hover:bg-gray-50 transition-colors cursor-pointer group">
                 <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback>
+                  {/* Avatar */}
+                  <Avatar className="h-10 w-10 flex-shrink-0">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-sm">
                       {getContactInitials(contact.full_name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{contact.full_name}</h3>
-                    <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                      {contact.primary_phone && (
-                        <div className="flex items-center gap-1">
-                          <Phone className="h-4 w-4" />
-                          {contact.primary_phone}
-                        </div>
-                      )}
-                      {contact.primary_email && (
-                        <div className="flex items-center gap-1">
-                          <Mail className="h-4 w-4" />
-                          {contact.primary_email}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
+
+                  {/* Name & Basic Info - 25% */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                      {contact.full_name}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-0.5">
                       {getSourceBadge(contact.source)}
-                      {contact.tags.slice(0, 2).map(tag => (
+                      {contact.tags.slice(0, 1).map(tag => (
                         <Badge key={tag} variant="outline" className="text-xs">
                           {tag.replace('_', ' ')}
                         </Badge>
                       ))}
-                      {contact.tags.length > 2 && (
+                      {contact.tags.length > 1 && (
                         <Badge variant="outline" className="text-xs">
-                          +{contact.tags.length - 2}
+                          +{contact.tags.length - 1}
                         </Badge>
                       )}
                     </div>
                   </div>
-                  <div className="text-right text-sm text-gray-500">
-                    <div>Created</div>
-                    <div>{formatDate(contact.created_at, 'MMM d, yyyy')}</div>
+
+                  {/* Contact Details - 35% */}
+                  <div className="flex flex-col gap-1 min-w-0 flex-1">
+                    {contact.primary_email && (
+                      <a
+                        href={`mailto:${contact.primary_email}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors group/email"
+                      >
+                        <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="truncate">{contact.primary_email}</span>
+                      </a>
+                    )}
+                    {contact.primary_phone && (
+                      <a
+                        href={`tel:${contact.primary_phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-green-600 transition-colors group/phone"
+                      >
+                        <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="truncate">{contact.primary_phone}</span>
+                      </a>
+                    )}
+                    {!contact.primary_email && !contact.primary_phone && (
+                      <span className="text-xs text-gray-400 italic">No contact info</span>
+                    )}
+                  </div>
+
+                  {/* Stats & Date - 20% */}
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-xs text-gray-500 mb-1">
+                      Created {formatDate(contact.created_at, 'MMM d, yyyy')}
+                    </div>
+                    {contact.lifecycle_stage && (
+                      <Badge variant="secondary" className="text-xs">
+                        {contact.lifecycle_stage.replace('_', ' ')}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Quick Actions - appear on hover */}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {contact.primary_phone && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          window.location.href = `tel:${contact.primary_phone}`
+                        }}
+                        title="Call"
+                      >
+                        <Phone className="h-4 w-4 text-green-600" />
+                      </Button>
+                    )}
+                    {contact.primary_email && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          window.location.href = `mailto:${contact.primary_email}`
+                        }}
+                        title="Email"
+                      >
+                        <Mail className="h-4 w-4 text-blue-600" />
+                      </Button>
+                    )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+              </div>
+            </Link>
+          ))}
         
         {contacts.length === 0 && (
           <Card>
