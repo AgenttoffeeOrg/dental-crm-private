@@ -12,8 +12,27 @@ export function SettingsTabs() {
   const tenantId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
   const currentUserId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
 
+  // Get initial tab from URL to persist on reload
+  const getInitialTab = () => {
+    if (typeof window === 'undefined') return 'profile'
+    const params = new URLSearchParams(window.location.search)
+    return params.get('tab') || 'profile'
+  }
+
+  const [currentTab, setCurrentTab] = React.useState(getInitialTab())
+
+  // Update URL when tab changes
+  const handleTabChange = (value: string) => {
+    setCurrentTab(value)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('tab', value)
+      window.history.replaceState({}, '', url.toString())
+    }
+  }
+
   return (
-    <Tabs defaultValue="profile" className="space-y-6">
+    <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
       {/* Scrollable Tabs with emojis for visual clarity */}
       <div className="border-b border-gray-200 overflow-x-auto -mx-6 px-6">
         <TabsList className="inline-flex h-auto bg-transparent border-none p-0 space-x-1">
