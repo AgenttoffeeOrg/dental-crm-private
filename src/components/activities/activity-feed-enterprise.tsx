@@ -46,6 +46,7 @@ import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek, startOfDay, startOfWeek } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { LogActivityPanel } from './log-activity-panel'
 
 interface Activity {
   id: string
@@ -561,16 +562,18 @@ export function ActivityFeedEnterprise({
         )}
       </div>
 
-      {/* Log Activity Panel - Will be built next */}
-      {logPanelOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Log Activity Panel</h3>
-            <p className="text-sm text-gray-600 mb-4">Building comprehensive panel next...</p>
-            <Button onClick={() => setLogPanelOpen(false)}>Close</Button>
-          </div>
-        </div>
-      )}
+      {/* Log Activity Panel */}
+      <LogActivityPanel
+        open={logPanelOpen}
+        onClose={() => setLogPanelOpen(false)}
+        contactId={contactId}
+        dealId={dealId}
+        onActivityLogged={() => {
+          fetchActivities()
+          onActivityCreated?.()
+        }}
+        tenantId={tenantId}
+      />
     </div>
   )
 }

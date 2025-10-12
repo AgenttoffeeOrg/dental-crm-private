@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ActivityFeedSimple } from '@/components/activities/activity-feed-simple'
+import { ActivityFeedEnterprise } from '@/components/activities/activity-feed-enterprise'
 import { DealTasks } from '@/components/deals/deal-tasks'
 import { AssignDealDropdown } from '@/components/deals/assign-deal-dropdown'
 import { DealIntelligenceCard } from '@/components/deals/deal-intelligence-card'
