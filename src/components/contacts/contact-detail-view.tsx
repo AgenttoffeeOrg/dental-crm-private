@@ -151,11 +151,11 @@ export function ContactDetailView({
   }
 
   return (
-    <div className="flex h-full bg-gray-50">
+    <div className="flex h-full bg-gray-50 overflow-hidden">
       {/* Left Sidebar - Contact Info */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
         {/* Contact Header */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
               <User className="h-8 w-8 text-blue-600" />
@@ -493,9 +493,9 @@ export function ContactDetailView({
       </div>
 
       {/* Main Content - Tabs */}
-      <div className="flex-1 flex flex-col">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <div className="px-6 py-4 border-b border-gray-200 bg-white">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
             <TabsList className="grid w-full grid-cols-4 max-w-2xl">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>

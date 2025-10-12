@@ -10,7 +10,7 @@ export default function ContactDetailPage() {
 
   return (
     <DashboardLayout>
-      <div className="h-full">
+      <div className="h-full overflow-hidden">
         <ContactDetailView contactId={contactId} />
       </div>
     </DashboardLayout>
