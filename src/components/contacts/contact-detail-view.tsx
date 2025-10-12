@@ -699,7 +699,136 @@ export function ContactDetailView({
               </div>
             </div>
           )}
-        </div>
+            </div>
+          </TabsContent>
+
+          {/* Deals Tab */}
+          <TabsContent value="deals" className="flex-1 overflow-y-auto mt-0">
+            <div className="p-6 bg-gray-50">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">All Deals</h3>
+                <Button size="sm" onClick={() => setCreateDealDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Deal
+                </Button>
+              </div>
+              
+              {deals.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {deals.map(deal => {
+                    const isWon = deal.stage?.name?.toLowerCase() === 'closed_won'
+                    const isLost = deal.stage?.name?.toLowerCase() === 'closed_lost'
+                    const isActive = !isWon && !isLost
+                    
+                    return (
+                      <div
+                        key={deal.id}
+                        onClick={() => setSelectedDealId(deal.id)}
+                        className={`p-4 rounded-lg border cursor-pointer group transition-all hover:shadow-md ${
+                          isActive ? 'bg-white border-blue-200 hover:border-blue-300' :
+                          isWon ? 'bg-green-50 border-green-200 hover:border-green-300' :
+                          isLost ? 'bg-red-50 border-red-200 hover:border-red-300' :
+                          'bg-gray-50 border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h4 className={`font-semibold text-sm mb-1 ${
+                              isActive ? 'text-blue-900' :
+                              isWon ? 'text-green-900' :
+                              isLost ? 'text-red-900' :
+                              'text-gray-900'
+                            }`}>
+                              {deal.title}
+                            </h4>
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                isActive ? 'border-blue-300 text-blue-700' :
+                                isWon ? 'border-green-300 text-green-700' :
+                                isLost ? 'border-red-300 text-red-700' :
+                                'border-gray-300 text-gray-700'
+                              }`}
+                            >
+                              {deal.stage?.name}
+                            </Badge>
+                          </div>
+                          <ArrowRight className={`h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity ${
+                            isActive ? 'text-blue-400' :
+                            isWon ? 'text-green-400' :
+                            isLost ? 'text-red-400' :
+                            'text-gray-400'
+                          }`} />
+                        </div>
+                        
+                        {deal.value_estimate_cents > 0 && (
+                          <div className={`text-lg font-bold mb-2 ${
+                            isActive ? 'text-blue-700' :
+                            isWon ? 'text-green-700' :
+                            isLost ? 'text-red-700' :
+                            'text-gray-700'
+                          }`}>
+                            {formatCurrency(deal.value_estimate_cents)}
+                          </div>
+                        )}
+                        
+                        <div className="text-xs text-gray-500">
+                          Created {new Date(deal.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="text-center py-12">
+                    <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No deals yet</h4>
+                    <p className="text-gray-600 mb-4">Create the first deal for this customer</p>
+                    <Button onClick={() => setCreateDealDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create First Deal
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Activities Tab */}
+          <TabsContent value="activities" className="flex-1 overflow-y-auto mt-0">
+            <div className="p-6 bg-gray-50">
+              <ActivityTimeline 
+                dealId=""
+                contactId={contactId}
+                onActivityAdded={fetchContactData}
+                showAllContactActivities={true}
+              />
+            </div>
+          </TabsContent>
+
+          {/* Tasks Tab */}
+          <TabsContent value="tasks" className="flex-1 overflow-y-auto mt-0">
+            <div className="p-6 bg-gray-50">
+              {deals.length > 0 ? (
+                <DealTasks
+                  dealId={deals[0].id}
+                  contactId={contactId}
+                  onTaskUpdate={fetchContactData}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="text-center py-12">
+                    <div className="text-gray-500">
+                      <p className="mb-2">No tasks yet</p>
+                      <p className="text-sm">Create a deal first to add tasks</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Dialogs - Only render when contact is loaded */}
