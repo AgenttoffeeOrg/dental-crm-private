@@ -19,10 +19,10 @@ interface DealCardProps {
   deal: DealWithRelations
   isDragging?: boolean
   onDealUpdate?: () => void
+  onDealClick?: (dealId: string) => void
 }
 
-export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardProps) {
-  const [showDealDetail, setShowDealDetail] = useState(false)
+export function DealCard({ deal, isDragging = false, onDealUpdate, onDealClick }: DealCardProps) {
   const [editingTitle, setEditingTitle] = useState(false)
   const [tempTitle, setTempTitle] = useState(deal.title)
   const supabase = require('@/lib/supabase-client').createClient()
@@ -84,15 +84,17 @@ export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardPro
   const handleCardClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!editingTitle) {
-      setShowDealDetail(true)
+    if (!editingTitle && onDealClick) {
+      onDealClick(deal.id)
     }
   }
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setShowDealDetail(true)
+    if (onDealClick) {
+      onDealClick(deal.id)
+    }
   }
 
   const handleEditTitle = (e: React.MouseEvent) => {
@@ -336,19 +338,6 @@ export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardPro
           </div>
         </CardContent>
       </Card>
-
-      {/* Deal Detail Modal */}
-      {showDealDetail && (
-        <DealDetailView
-          dealId={deal.id}
-          onClose={() => setShowDealDetail(false)}
-          onContactClick={(contactId) => {
-            // Navigate to contact profile
-            setShowDealDetail(false)
-            window.location.href = `/contacts/${contactId}`
-          }}
-        />
-      )}
     </>
   )
 }

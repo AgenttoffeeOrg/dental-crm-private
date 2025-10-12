@@ -298,21 +298,7 @@ function DealListRow({
           </Button>
         </div>
       </div>
-
-      {/* Deal Detail Modal */}
-      {showDealDetail && (
-        <DealDetailView
-          dealId={deal.id}
-          onClose={() => {
-            setShowDealDetail(false)
-            onUpdate()
-          }}
-          onContactClick={(contactId) => {
-            setShowDealDetail(false)
-            window.location.href = `/contacts/${contactId}`
-          }}
-        />
-      )}
+    </>
   )
 }
 
@@ -966,6 +952,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
                             key={deal.id} 
                             deal={deal} 
                             onDealUpdate={fetchAllDeals}
+                            onDealClick={openDealModal}
                           />
                         ))}
                       </div>
