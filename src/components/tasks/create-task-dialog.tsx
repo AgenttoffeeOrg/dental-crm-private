@@ -37,10 +37,12 @@ const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent']),
+  task_type: z.enum(['call', 'email', 'todo', 'meeting', 'follow_up']).default('todo'),
   assignee_user_id: z.string().optional(),
   due_at: z.string().optional(),
   contact_id: z.string().optional(),
   deal_id: z.string().optional(),
+  estimated_duration_minutes: z.number().optional(),
 })
 
 type TaskFormData = z.infer<typeof taskSchema>
@@ -74,10 +76,12 @@ export function CreateTaskDialog({
       title: '',
       description: '',
       priority: 'normal',
+      task_type: 'todo',
       assignee_user_id: '',
       due_at: '',
       contact_id: preselectedContactId || '',
       deal_id: preselectedDealId || '',
+      estimated_duration_minutes: 30,
     },
   })
 
@@ -213,7 +217,32 @@ export function CreateTaskDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="task_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Task Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="call">📞 Call</SelectItem>
+                      <SelectItem value="email">📧 Email</SelectItem>
+                      <SelectItem value="todo">✅ To-Do</SelectItem>
+                      <SelectItem value="meeting">📅 Meeting</SelectItem>
+                      <SelectItem value="follow_up">🔄 Follow-up</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="priority"
@@ -259,6 +288,24 @@ export function CreateTaskDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="estimated_duration_minutes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Duration (min)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
