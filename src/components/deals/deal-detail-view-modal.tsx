@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ActivityTimeline } from '@/components/deals/activity-timeline'
+import { ActivityTimelineEnterprise } from '@/components/activities/activity-timeline-enterprise'
 import { DealTasks } from '@/components/deals/deal-tasks'
 import { AssignDealDropdown } from '@/components/deals/assign-deal-dropdown'
 import { DealIntelligenceCard } from '@/components/deals/deal-intelligence-card'
@@ -550,12 +550,20 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
                     compact={false}
                   />
                   
-                  {/* Activity Timeline */}
-                  <ActivityTimeline
-                    dealId={dealId}
-                    contactId={contact.id}
-                    onActivityAdded={fetchDealData}
-                    showAllContactActivities={false}
+                  {/* Activity Timeline - ENTERPRISE VERSION */}
+                  <ActivityTimelineEnterprise
+                    activities={[]} // TODO: Load from database
+                    onEdit={async (id, updates) => {
+                      // TODO: Implement edit
+                      toast.success('Activity updated')
+                    }}
+                    onReply={(id) => {
+                      // TODO: Implement reply
+                      toast.info('Reply feature coming soon')
+                    }}
+                    onUploadRecording={() => {
+                      // TODO: Implement upload
+                    }}
                   />
                 </div>
               </TabsContent>
