@@ -212,27 +212,35 @@ export function DealIntelligenceCard({ dealId, contactId, compact = false }: Dea
   // COMPACT VERSION (for Kanban cards)
   if (compact) {
     return (
-      <div className="space-y-1.5 p-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-md border border-blue-100">
-        {/* Likelihood Score */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-gray-700">Likelihood</span>
-          <Badge className={`${getHealthColor(intelligence.healthStatus)} text-xs px-2 py-0`}>
+      <div className="p-3 bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50 rounded-lg border-2 border-blue-200 shadow-sm">
+        {/* Title */}
+        <div className="flex items-center justify-center gap-1.5 mb-2">
+          <Brain className="h-3.5 w-3.5 text-purple-600" />
+          <span className="text-xs font-bold text-gray-800">Deal Intelligence</span>
+        </div>
+
+        {/* Conversion Probability - Centered Stack */}
+        <div className="text-center mb-2">
+          <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide mb-1">
+            Conversion Probability
+          </div>
+          <Badge className={`${getHealthColor(intelligence.healthStatus)} text-2xl font-black px-4 py-1.5`}>
             {intelligence.likelihoodScore}%
           </Badge>
         </div>
         
-        {/* Mini Progress Bar */}
-        <Progress value={intelligence.likelihoodScore} className="h-1" />
+        {/* Progress Bar */}
+        <Progress value={intelligence.likelihoodScore} className="h-2 mb-2" />
         
         {/* Quick Stats */}
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center justify-between text-xs pt-2 border-t border-blue-200">
           <div className="flex items-center gap-1">
             {getSentimentIcon(intelligence.sentiment)}
-            <span className="text-gray-600 capitalize">{intelligence.sentiment}</span>
+            <span className="text-gray-700 capitalize font-medium">{intelligence.sentiment}</span>
           </div>
-          <div className="flex items-center gap-1 text-gray-500">
+          <div className="flex items-center gap-1 text-gray-600">
             <Clock className="h-3 w-3" />
-            <span>{intelligence.conversationCount} talks</span>
+            <span className="font-medium">{intelligence.conversationCount} talks</span>
           </div>
         </div>
       </div>

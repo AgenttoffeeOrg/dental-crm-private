@@ -30,6 +30,13 @@ import { DealTasks } from '@/components/deals/deal-tasks'
 import { AssignDealDropdown } from '@/components/deals/assign-deal-dropdown'
 import { DealIntelligenceCard } from '@/components/deals/deal-intelligence-card'
 import { AIAssistantChat } from '@/components/ai/ai-assistant-chat'
+import { EmailComposerPanel } from '@/components/communications/email-composer-panel'
+import { SMSComposerPanel } from '@/components/communications/sms-composer-panel'
+import { ClickToCallDialer } from '@/components/communications/click-to-call-dialer'
+import { UniversalSearchBar } from '@/components/search/universal-search-bar'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { MessageSquare } from 'lucide-react'
 import { 
   ArrowLeft,
   Edit,
@@ -44,7 +51,14 @@ import {
   Clock,
   TrendingUp,
   ArrowRight,
-  Bot
+  Bot,
+  Users,
+  CheckSquare,
+  Settings,
+  BarChart3,
+  Zap,
+  FileText,
+  X
 } from 'lucide-react'
 import { formatDateTime } from '@/lib/dates'
 import { toast } from 'sonner'
@@ -56,7 +70,18 @@ interface DealDetailViewProps {
   onContactClick?: (contactId: string) => void
 }
 
+const navigation = [
+  { name: 'Pipeline', href: '/pipeline', icon: TrendingUp },
+  { name: 'Contacts', href: '/contacts', icon: Users },
+  { name: 'Tasks', href: '/tasks', icon: CheckSquare },
+  { name: 'Forms', href: '/forms', icon: FileText },
+  { name: 'Integrations', href: '/integrations', icon: Zap },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Settings', href: '/settings', icon: Settings },
+]
+
 export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailViewProps) {
+  const pathname = usePathname()
   const [deal, setDeal] = useState<Deal | null>(null)
   const [contact, setContact] = useState<Contact | null>(null)
   const [stage, setStage] = useState<PipelineStage | null>(null)
@@ -67,6 +92,13 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
   const [editValue, setEditValue] = useState<any>('')
   const [allStages, setAllStages] = useState<PipelineStage[]>([])
   const [activeTab, setActiveTab] = useState<string>('activities')
+  
+  // Communication panels state
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false)
+  const [smsComposerOpen, setSmsComposerOpen] = useState(false)
+  const [callDialerOpen, setCallDialerOpen] = useState(false)
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false)
+  
   const supabase = createClient()
 
   useEffect(() => {
@@ -191,12 +223,29 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
     switch (action) {
       case 'call':
         if (contact?.primary_phone) {
-          window.location.href = `tel:${contact.primary_phone}`
+          setCallDialerOpen(true)
         } else {
           toast.error('No phone number available')
         }
         break
       case 'email':
+        if (contact?.primary_email) {
+          setEmailComposerOpen(true)
+        } else {
+          toast.error('No email address available')
+        }
+        break
+      case 'text':
+        if (contact?.primary_phone) {
+          setSmsComposerOpen(true)
+        } else {
+          toast.error('No phone number available')
+        }
+        break
+      case 'appointment':
+        toast.info('Appointment scheduling coming soon!')
+        break
+      default:
         if (contact?.primary_email) {
           window.location.href = `mailto:${contact.primary_email}`
         } else {
@@ -275,45 +324,96 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
 
   return (
     <div className="fixed inset-0 bg-white z-50 flex">
-      {/* Main Content Area */}
+      {/* LEFT SIDEBAR - SAME AS MAIN LAYOUT */}
+      <div className="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+        {/* Logo & Back */}
+        <div className="p-6 border-b border-gray-200">
+          <Button variant="ghost" size="sm" onClick={onClose} className="hover:bg-gray-100 -ml-2 mb-2">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight">
+            DentalCRM
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">Enterprise Edition</p>
+        </div>
+
+        {/* Navigation Menu - Vertical (same as main) */}
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {navigation.map((item) => {
+            const isActive = pathname?.startsWith(item.href)
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`
+                  flex items-center px-4 py-3 text-sm font-semibold rounded-lg transition-all group
+                  ${isActive
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                  }
+                `}
+              >
+                <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`} />
+                {item.name}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* User Info Footer */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold">
+              DU
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">Demo User</p>
+              <p className="text-xs text-gray-500">Owner</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
-      {/* Header */}
-      <div className="border-b border-gray-200 bg-white px-6 py-4 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={onClose} className="hover:bg-gray-100">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Pipeline
-            </Button>
-            <div className="border-l border-gray-300 pl-4">
-              <h1 className="text-xl font-semibold text-gray-900">{deal.title}</h1>
-              <div className="flex items-center gap-2 mt-1">
+        {/* TOP BAR - Search & Deal Title */}
+        <div className="border-b border-gray-200 bg-white flex-shrink-0">
+          <div className="px-6">
+            <div className="flex h-14 items-center justify-between">
+              {/* Deal Title & Badges */}
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-gray-900">{deal.title}</h2>
                 {deal.deal_type && (
-                  <Badge className={`text-xs ${getDealTypeColor(deal.deal_type)}`}>
+                  <Badge className={`text-xs font-semibold ${getDealTypeColor(deal.deal_type)}`}>
                     {getDealTypeLabel(deal.deal_type)}
                   </Badge>
                 )}
                 {stage && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs font-medium border-2">
                     {stage.name}
                   </Badge>
                 )}
               </div>
+
+              {/* Universal Search Bar - RIGHT SIDE */}
+              <div className="flex-1 max-w-xl ml-auto">
+                <UniversalSearchBar tenantId={deal.tenant_id} />
+              </div>
+
+              {/* Edit Button - FAR RIGHT */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="hover:bg-gray-50 hover:shadow-sm font-medium ml-4"
+                onClick={() => openEditDialog('title', deal.title)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Deal
+              </Button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="hover:bg-gray-50"
-              onClick={() => openEditDialog('title', deal.title)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Deal
-            </Button>
-          </div>
         </div>
-      </div>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
@@ -506,20 +606,29 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-full justify-start hover:bg-gray-50"
+                    className="w-full justify-start hover:bg-green-50 hover:border-green-300"
                     onClick={() => handleQuickAction('call')}
                   >
-                    <Phone className="h-4 w-4 mr-3" />
-                    Schedule Call
+                    <Phone className="h-4 w-4 mr-3 text-green-600" />
+                    Call Contact
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-full justify-start hover:bg-gray-50"
+                    className="w-full justify-start hover:bg-blue-50 hover:border-blue-300"
                     onClick={() => handleQuickAction('email')}
                   >
-                    <Mail className="h-4 w-4 mr-3" />
+                    <Mail className="h-4 w-4 mr-3 text-blue-600" />
                     Send Email
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start hover:bg-purple-50 hover:border-purple-300"
+                    onClick={() => handleQuickAction('text')}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-3 text-purple-600" />
+                    Send SMS
                   </Button>
                   <Button 
                     variant="outline" 
@@ -555,20 +664,23 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
               </div>
 
               <TabsContent value="activities" className="flex-1 overflow-y-auto mt-0">
-                <div className="p-6 space-y-4">
-                  {/* AI-Powered Deal Intelligence Dashboard */}
+                <div className="p-4 space-y-3">
+                  {/* AI-Powered Deal Intelligence - COMPACT & HIGHER */}
                   <DealIntelligenceCard
                     dealId={dealId}
                     contactId={contact.id}
-                    compact={false}
+                    compact={true}
                   />
                   
-                  {/* Enterprise Activity Feed */}
+                  {/* Enterprise Activity Feed (includes Quick Actions toolbar) */}
                   <ActivityFeedEnterprise
                     contactId={contact.id}
                     dealId={dealId}
                     onActivityCreated={fetchDealData}
                     tenantId={deal.tenant_id}
+                    contactEmail={contact.primary_email}
+                    contactPhone={contact.primary_phone}
+                    contactName={contact.full_name}
                   />
                 </div>
               </TabsContent>
@@ -709,13 +821,88 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
       </Dialog>
       </div>
 
-      {/* AI Assistant Sidebar - Always Visible, Clean Integration */}
-      <div className="w-96 border-l border-gray-200 bg-white flex-shrink-0">
-        <AIAssistantChat
-          context="deal"
-          contextId={dealId}
-        />
-      </div>
+      {/* AI Assistant - Toggleable Slider from Right */}
+      {aiAssistantOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/20 z-[60]" 
+            onClick={() => setAiAssistantOpen(false)}
+          />
+          
+          {/* AI Sidebar Panel */}
+          <div className="fixed inset-y-0 right-0 w-96 bg-white border-l border-gray-200 shadow-2xl z-[70] flex flex-col">
+            {/* Header */}
+            <div className="p-4 border-b bg-gradient-to-r from-purple-50 to-blue-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-purple-600" />
+                <h3 className="font-semibold text-gray-900">AI Assistant</h3>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setAiAssistantOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* AI Chat Content */}
+            <div className="flex-1 overflow-hidden">
+              <AIAssistantChat
+                context="deal"
+                contextId={dealId}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Floating AI Assistant Button - Premium Design */}
+      {!aiAssistantOpen && (
+        <Button
+          onClick={() => setAiAssistantOpen(true)}
+          className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-2xl bg-gradient-to-br from-purple-600 via-purple-500 to-blue-600 hover:from-purple-700 hover:via-purple-600 hover:to-blue-700 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] z-50 group border-2 border-white transition-all duration-300"
+          size="icon"
+        >
+          <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse"></div>
+          <Bot className="h-7 w-7 text-white group-hover:scale-110 transition-transform relative z-10" />
+        </Button>
+      )}
+
+      {/* Communication Panels */}
+      <EmailComposerPanel
+        isOpen={emailComposerOpen}
+        onClose={() => {
+          setEmailComposerOpen(false)
+          // No refresh on close - activities refresh themselves
+        }}
+        to={contact?.primary_email}
+        contactId={contact?.id}
+        dealId={dealId}
+        tenantId={deal?.tenant_id}
+      />
+
+      <SMSComposerPanel
+        isOpen={smsComposerOpen}
+        onClose={() => {
+          setSmsComposerOpen(false)
+          fetchDealData()
+        }}
+        to={contact?.primary_phone}
+        contactId={contact?.id}
+        dealId={dealId}
+        tenantId={deal?.tenant_id}
+      />
+
+      <ClickToCallDialer
+        isOpen={callDialerOpen}
+        onClose={() => {
+          setCallDialerOpen(false)
+          fetchDealData()
+        }}
+        phoneNumber={contact?.primary_phone || ''}
+        contactName={contact?.full_name}
+        contactId={contact?.id}
+        dealId={dealId}
+        tenantId={deal?.tenant_id}
+      />
     </div>
   )
 }

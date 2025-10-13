@@ -118,5 +118,105 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Enterprise Design System - Consistent & Professional */
+@layer components {
+  /* ==================== TYPOGRAPHY ==================== */
+  h1 {
+    @apply text-2xl font-bold tracking-tight text-gray-900;
+  }
+  h2 {
+    @apply text-xl font-bold tracking-tight text-gray-900;
+  }
+  h3 {
+    @apply text-lg font-semibold text-gray-900;
+  }
+  h4 {
+    @apply text-base font-semibold text-gray-900;
+  }
+  
+  /* ==================== BORDERS ==================== */
+  /* All borders should be consistent */
+  .border-standard {
+    @apply border border-gray-200;
+  }
+  .border-light {
+    @apply border border-gray-100;
+  }
+  
+  /* ==================== SHADOWS ==================== */
+  /* Use standard Tailwind shadows for consistency */
+  
+  /* ==================== CARDS ==================== */
+  .card-enterprise {
+    @apply bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200;
+  }
+  
+  /* ==================== BUTTONS ==================== */
+  .btn-primary {
+    @apply bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm;
+  }
+  .btn-secondary {
+    @apply bg-white text-gray-700 px-4 py-2 rounded-lg font-semibold border border-gray-200 hover:bg-gray-50 hover:shadow-sm transition-all;
+  }
+  
+  /* ==================== INPUTS ==================== */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="search"],
+  textarea,
+  select {
+    @apply transition-all duration-200;
+  }
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="tel"]:focus,
+  input[type="number"]:focus,
+  input[type="search"]:focus,
+  textarea:focus,
+  select:focus {
+    @apply ring-2 ring-blue-200 border-blue-400;
+  }
+  
+  /* ==================== BADGES ==================== */
+  .badge-primary {
+    @apply bg-blue-100 text-blue-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-blue-200;
+  }
+  .badge-success {
+    @apply bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-green-200;
+  }
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-yellow-200;
+  }
+  .badge-danger {
+    @apply bg-red-100 text-red-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-red-200;
+  }
+  
+  /* ==================== HOVER STATES ==================== */
+  .hover-lift {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md;
+  }
+  
+  /* ==================== SCROLLBARS (Subtle, Clean) ==================== */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 }

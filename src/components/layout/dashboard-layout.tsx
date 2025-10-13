@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { UniversalSearchBar } from '@/components/search/universal-search-bar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,41 +42,72 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center gap-8">
-              <h1 className="text-xl font-bold text-gray-900">DentalCRM</h1>
-              
-              {/* Horizontal Navigation */}
-              <nav className="hidden md:flex items-center space-x-1">
-                {navigation.map((item) => {
-                  const isActive = pathname.startsWith(item.href)
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`
-                        inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                        ${isActive
-                          ? 'bg-blue-100 text-blue-900'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                        }
-                      `}
-                    >
-                      <item.icon className={`mr-2 h-4 w-4 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
-                      {item.name}
-                    </Link>
-                  )
-                })}
-              </nav>
-            </div>
+    <div className="flex h-screen bg-gray-50">
+          {/* LEFT SIDEBAR - ENTERPRISE NAVIGATION */}
+          <div className="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+        {/* Logo */}
+        <div className="p-6 border-b border-gray-200">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight">
+            DentalCRM
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">Enterprise Edition</p>
+        </div>
 
-            {/* User Menu */}
-            <div className="flex items-center gap-4">
+        {/* Navigation Menu - Vertical */}
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {navigation.map((item) => {
+            const isActive = pathname.startsWith(item.href)
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`
+                  flex items-center px-4 py-3 text-sm font-semibold rounded-lg transition-all group
+                  ${isActive
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                  }
+                `}
+              >
+                <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`} />
+                {item.name}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Footer - User Info */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <Avatar className="h-9 w-9">
+              <AvatarFallback className="bg-blue-600 text-white text-sm font-semibold">
+                {appUser.full_name.split(' ').map(n => n[0]).join('')}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{appUser.full_name}</p>
+              <p className="text-xs text-gray-500 capitalize">{appUser.role}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* TOP BAR - Search & Actions */}
+        <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+          <div className="px-6">
+            <div className="flex h-14 items-center justify-between">
+              {/* Breadcrumb/Page Title (optional) */}
+              <div></div>
+
+              {/* Universal Search Bar - RIGHT SIDE */}
+              <div className="flex-1 max-w-xl ml-auto">
+                <UniversalSearchBar />
+              </div>
+
+              {/* User Actions - FAR RIGHT */}
+              <div className="flex items-center gap-3 ml-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full">
@@ -101,15 +133,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content - Full Width */}
-      <main className="flex-1 overflow-hidden">
-        {children}
-      </main>
+        {/* Main Content - Full Width */}
+        <main className="flex-1 overflow-hidden">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

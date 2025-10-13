@@ -40,7 +40,9 @@ import {
   ThumbsDown,
   Minus,
   Upload,
-  Paperclip
+  Paperclip,
+  Target,
+  AlertCircle
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
@@ -49,6 +51,11 @@ import { cn } from '@/lib/utils'
 import { LogActivityPanel } from './log-activity-panel'
 import { DealTasks } from '@/components/deals/deal-tasks'
 import { CheckSquare } from 'lucide-react'
+import { ActivityDetailSlideIn } from '@/components/communications/activity-detail-slide-in'
+import { EmailComposerPanel } from '@/components/communications/email-composer-panel'
+import { SMSComposerPanel } from '@/components/communications/sms-composer-panel'
+import { WhatsAppComposerPanel } from '@/components/communications/whatsapp-composer-panel'
+import { ClickToCallDialer } from '@/components/communications/click-to-call-dialer'
 
 interface Activity {
   id: string
@@ -65,6 +72,18 @@ interface Activity {
   edited_at?: string
   rich_content?: string
   metadata?: any
+  // Context data (from view)
+  contact_name?: string
+  contact_email?: string
+  contact_phone?: string
+  deal_id?: string
+  deal_title?: string
+  deal_value?: number
+  deal_stage?: string
+  deal_pipeline?: string
+  agent_name?: string
+  integration_provider?: string
+  message_status?: string
 }
 
 interface ActivityFeedEnterpriseProps {
@@ -73,6 +92,10 @@ interface ActivityFeedEnterpriseProps {
   onActivityCreated?: () => void
   showAllContactActivities?: boolean
   tenantId?: string
+  userId?: string
+  contactEmail?: string
+  contactPhone?: string
+  contactName?: string
 }
 
 const ACTIVITY_TYPES = {
@@ -99,7 +122,11 @@ export function ActivityFeedEnterprise({
   dealId,
   onActivityCreated,
   showAllContactActivities = false,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId = '550e8400-e29b-41d4-a716-446655440000',
+  userId = '550e8400-e29b-41d4-a716-446655440000',
+  contactEmail,
+  contactPhone,
+  contactName
 }: ActivityFeedEnterpriseProps) {
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
@@ -110,14 +137,24 @@ export function ActivityFeedEnterprise({
   const [editSnippet, setEditSnippet] = useState('')
   const [logPanelOpen, setLogPanelOpen] = useState(false)
   const [showTasks, setShowTasks] = useState(false)
+  
+  // Communication panels state
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null)
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false)
+  const [smsComposerOpen, setSmsComposerOpen] = useState(false)
+  const [whatsappComposerOpen, setWhatsappComposerOpen] = useState(false)
+  const [callDialerOpen, setCallDialerOpen] = useState(false)
+  const [composerContext, setComposerContext] = useState<any>({})
+  
   const supabase = createClient()
 
   const fetchActivities = async () => {
     try {
       setLoading(true)
 
+      // Try the enhanced view first, fall back to regular table if not migrated
       let query = supabase
-        .from('activities')
+        .from('activities_with_integrations')
         .select('*')
         .eq('tenant_id', tenantId)
         .order('occurred_at', { ascending: false })
@@ -130,12 +167,36 @@ export function ActivityFeedEnterprise({
 
       const { data, error } = await query
 
-      if (error) throw error
+      // If view doesn't exist, fall back to regular activities table
+      if (error && (error.code === 'PGRST205' || error.code === '42P01')) {
+        console.log('[Activities] View not found, using regular activities table')
+        
+        let fallbackQuery = supabase
+          .from('activities')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('occurred_at', { ascending: false })
 
-      setActivities(data || [])
+        if (showAllContactActivities || !dealId) {
+          fallbackQuery = fallbackQuery.eq('contact_id', contactId)
+        } else {
+          fallbackQuery = fallbackQuery.eq('deal_id', dealId)
+        }
+
+        const { data: fallbackData, error: fallbackError } = await fallbackQuery
+
+        if (fallbackError) throw fallbackError
+        setActivities(fallbackData || [])
+      } else if (error) {
+        throw error
+      } else {
+        setActivities(data || [])
+      }
     } catch (error) {
-      console.error('Error fetching activities:', error)
-      toast.error('Failed to load activities')
+      console.error('Error fetching activities:', JSON.stringify(error))
+      toast.error('Failed to load activities', {
+        description: 'Run the database migration to enable enhanced features'
+      })
       setActivities([])
     } finally {
       setLoading(false)
@@ -264,166 +325,226 @@ export function ActivityFeedEnterprise({
     const OutcomeIcon = outcomeConfig?.icon
 
     return (
-      <Card key={activity.id} className={cn("hover:shadow-sm transition-all", typeConfig.border, "border")}>
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            {/* Activity Type Icon */}
-            <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0", typeConfig.bg)}>
-              <TypeIcon className={cn("h-5 w-5", typeConfig.color)} />
+      <div 
+        key={activity.id} 
+        className={cn(
+          "group relative p-4 rounded-lg border border-gray-200 bg-white transition-all cursor-pointer shadow-sm",
+          "hover:shadow-md hover:border-blue-300 hover:bg-blue-50/20"
+        )}
+        onClick={() => setSelectedActivityId(activity.id)}
+      >
+        <div className="flex items-start gap-3">
+          {/* Activity Type Icon - Smaller, Sleeker */}
+          <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0", typeConfig.bg)}>
+            <TypeIcon className={cn("h-4 w-4", typeConfig.color)} />
+          </div>
+
+          {/* Activity Content - Ultra-Compact Smart Layout */}
+          <div className="flex-1 min-w-0">
+            {/* Single Line: Subject + Time */}
+            <div className="flex items-start justify-between mb-1.5">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <h4 className="font-semibold text-sm text-gray-900 truncate">
+                  {activity.subject || `${activity.type.charAt(0).toUpperCase() + activity.type.slice(1)} Activity`}
+                </h4>
+                {activity.direction && (
+                  <span className={cn("text-xs", activity.direction === 'inbound' ? 'text-blue-600' : 'text-gray-500')}>
+                    {activity.direction === 'inbound' ? '↓' : '↑'}
+                  </span>
+                )}
+                {activity.duration_seconds && (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                    {formatDuration(activity.duration_seconds)}
+                  </Badge>
+                )}
+              </div>
+              <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                {formatDistanceToNow(new Date(activity.occurred_at), { addSuffix: true })}
+              </span>
             </div>
 
-            {/* Activity Content */}
-            <div className="flex-1 min-w-0">
-              {/* Header Row */}
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className={cn("text-xs font-medium", typeConfig.color)}>
-                    {activity.type.toUpperCase()}
-                  </Badge>
-                  
-                  {activity.direction && (
-                    <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                      {activity.direction === 'inbound' ? (
-                        <><ArrowDown className="h-3 w-3" /> Inbound</>
-                      ) : (
-                        <><ArrowUp className="h-3 w-3" /> Outbound</>
-                      )}
-                    </Badge>
-                  )}
-
-                  {activity.duration_seconds && (
-                    <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {formatDuration(activity.duration_seconds)}
-                    </Badge>
-                  )}
-
-                  {outcomeConfig && (
-                    <Badge variant="outline" className={cn("text-xs flex items-center gap-1", outcomeConfig.color)}>
-                      <OutcomeIcon className="h-3 w-3" />
-                      {outcomeConfig.label}
-                    </Badge>
-                  )}
-
-                  {activity.is_edited && (
-                    <span className="text-xs text-gray-400 italic">(edited)</span>
-                  )}
+            {/* AI SMART BADGES - ALWAYS SHOW with "Not Available" placeholders */}
+            <div className="space-y-1.5 mb-2">
+              {/* PURPOSE & OUTCOME Row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* PURPOSE Badge - Show value or "Not Available" */}
+                <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-md border", 
+                  activity.metadata?.ai_purpose 
+                    ? "bg-blue-50 border-blue-200" 
+                    : "bg-gray-50 border-gray-200 border-dashed"
+                )}>
+                  <Target className={cn("h-3.5 w-3.5 flex-shrink-0", activity.metadata?.ai_purpose ? "text-blue-600" : "text-gray-400")} />
+                  <span className={cn("text-xs font-semibold", activity.metadata?.ai_purpose ? "text-blue-700" : "text-gray-400 italic")}>
+                    {activity.metadata?.ai_purpose || "Purpose: Not available"}
+                  </span>
                 </div>
-
-                <div className="text-xs text-gray-500 flex-shrink-0">
-                  {formatDistanceToNow(new Date(activity.occurred_at), { addSuffix: true })}
-                </div>
-              </div>
-
-              {/* Subject */}
-              {isEditing ? (
-                <Input
-                  value={editSubject}
-                  onChange={(e) => setEditSubject(e.target.value)}
-                  className="mb-2 h-8 text-sm"
-                  placeholder="Subject"
-                />
-              ) : activity.subject && (
-                <h4 className="font-medium text-sm text-gray-900 mb-1">
-                  {activity.subject}
-                </h4>
-              )}
-
-              {/* Notes/Snippet */}
-              {isEditing ? (
-                <Textarea
-                  value={editSnippet}
-                  onChange={(e) => setEditSnippet(e.target.value)}
-                  className="text-sm"
-                  rows={3}
-                  placeholder="Activity notes..."
-                />
-              ) : activity.snippet && (
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  {activity.snippet}
-                </p>
-              )}
-
-              {/* AI Insights */}
-              {activity.metadata?.ai_sentiment && (
-                <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-4 w-4 text-purple-600" />
-                    <span className="text-xs font-semibold text-purple-900">AI Insights</span>
-                  </div>
-                  <div className="space-y-1 text-xs text-gray-700">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500">Sentiment:</span>
-                      {activity.metadata.ai_sentiment === 'positive' && (
-                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                          <ThumbsUp className="h-3 w-3 mr-1" />
-                          Positive
-                        </Badge>
-                      )}
-                      {activity.metadata.ai_sentiment === 'neutral' && (
-                        <Badge variant="outline" className="text-xs bg-gray-50 text-gray-700 border-gray-200">
-                          <Minus className="h-3 w-3 mr-1" />
-                          Neutral
-                        </Badge>
-                      )}
-                      {activity.metadata.ai_sentiment === 'negative' && (
-                        <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
-                          <ThumbsDown className="h-3 w-3 mr-1" />
-                          Negative
-                        </Badge>
-                      )}
+                
+                {/* OUTCOME Badge - Show result, "Add" button, or "Not Available" */}
+                {activity.type === 'call' ? (
+                  activity.metadata?.ai_outcome ? (
+                    <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-semibold", 
+                      activity.metadata.ai_outcome.toLowerCase().includes('booked') || activity.metadata.ai_outcome.toLowerCase().includes('approved') || activity.metadata.ai_outcome.toLowerCase().includes('scheduled') ? 'bg-green-50 border-green-200 text-green-700' : 
+                      activity.metadata.ai_outcome.toLowerCase().includes('follow') || activity.metadata.ai_outcome.toLowerCase().includes('think') || activity.metadata.ai_outcome.toLowerCase().includes('callback') ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                      activity.metadata.ai_outcome.toLowerCase().includes('declined') || activity.metadata.ai_outcome.toLowerCase().includes('not interested') ? 'bg-red-50 border-red-200 text-red-700' :
+                      'bg-blue-50 border-blue-200 text-blue-700'
+                    )}>
+                      <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="text-xs">
+                        {activity.metadata.ai_outcome}
+                      </span>
                     </div>
-                    {activity.metadata.ai_key_points && (
-                      <div className="mt-2">
-                        <span className="text-gray-500">Key Points:</span>
-                        <ul className="ml-4 mt-1 list-disc text-gray-700">
-                          {activity.metadata.ai_key_points.slice(0, 2).map((point: string, idx: number) => (
-                            <li key={idx}>{point}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                  ) : activity.metadata?.needs_outcome_update && activity.outcome === 'connected' ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-xs bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedActivityId(activity.id)
+                      }}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Call Outcome
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-50 border border-gray-200 border-dashed">
+                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+                      <span className="text-xs text-gray-400 italic">
+                        Outcome: Not available
+                      </span>
+                    </div>
+                  )
+                ) : (activity.type === 'email' || activity.type === 'sms' || activity.type === 'whatsapp') && activity.metadata?.ai_outcome ? (
+                  <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-semibold",
+                    activity.message_status === 'delivered' || activity.message_status === 'read' ? 'bg-green-50 border-green-200 text-green-700' :
+                    activity.message_status === 'sent' ? 'bg-blue-50 border-blue-200 text-blue-700' :
+                    'bg-gray-50 border-gray-200 text-gray-700'
+                  )}>
+                    {activity.message_status === 'delivered' || activity.message_status === 'read' ? <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" /> : <Mail className="h-3.5 w-3.5 flex-shrink-0" />}
+                    <span className="text-xs">
+                      {activity.metadata.ai_outcome}
+                    </span>
                   </div>
+                ) : null}
+              </div>
+
+              {/* AI SUMMARY - Show or "Not Available" */}
+              {activity.metadata?.ai_summary ? (
+                <div className="flex items-start gap-2 px-2.5 py-1.5 rounded-md bg-purple-50/50 border border-purple-100">
+                  <Sparkles className="h-3.5 w-3.5 text-purple-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-purple-700 leading-relaxed">
+                    {activity.metadata.ai_summary}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 px-2.5 py-1.5 rounded-md bg-gray-50 border border-gray-200 border-dashed">
+                  <Sparkles className="h-3.5 w-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-gray-400 italic">
+                    Summary: Not available
+                  </p>
                 </div>
               )}
+            </div>
 
-              {/* Action Buttons */}
-              <div className="mt-3 flex items-center gap-2">
-                {isEditing ? (
-                  <>
-                    <Button size="sm" variant="default" onClick={saveEdit} className="h-7 text-xs">
-                      <Check className="h-3 w-3 mr-1" />
-                      Save
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={cancelEdit} className="h-7 text-xs">
-                      <X className="h-3 w-3 mr-1" />
-                      Cancel
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => startEdit(activity)}
-                    className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Edit className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                )}
+            {/* Snippet - One Line Only */}
+            {activity.snippet && (
+              <p className="text-xs text-gray-600 line-clamp-1 mb-2">
+                {activity.snippet}
+              </p>
+            )}
 
-                {/* File attachment indicator */}
-                {activity.metadata?.has_attachments && (
-                  <Badge variant="secondary" className="text-xs">
-                    <Paperclip className="h-3 w-3 mr-1" />
-                    {activity.metadata.attachment_count} file(s)
-                  </Badge>
-                )}
-              </div>
+            {/* Smart Metadata Row - One Line */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Deal Badge (most important context) */}
+              {activity.deal_title && (
+                <a 
+                  href={`/pipeline?deal=${activity.deal_id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md hover:bg-purple-100 transition-colors font-medium"
+                >
+                  {activity.deal_title}
+                  {activity.deal_value && ` • $${(activity.deal_value / 100).toLocaleString()}`}
+                </a>
+              )}
+
+              {/* Integration Provider (subtle) */}
+              {activity.integration_provider && (
+                <span className="text-xs text-gray-400">
+                  via {activity.integration_provider.split('_')[0]}
+                </span>
+              )}
+            </div>
+
+            {/* Hover Actions - Bottom of Card, No Overlap */}
+            <div className="mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+              {activity.type === 'email' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setComposerContext({
+                      to: activity.contact_email,
+                      contactId: activity.contact_id,
+                      dealId: activity.deal_id,
+                      contactName: activity.contact_name,
+                      replyToActivityId: activity.id
+                    })
+                    setEmailComposerOpen(true)
+                  }}
+                  className="h-7 px-3 text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                >
+                  <Mail className="h-3 w-3 mr-1.5" />
+                  Reply
+                </Button>
+              )}
+
+              {(activity.type === 'call' || activity.type === 'sms') && activity.contact_phone && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setComposerContext({
+                      phoneNumber: activity.contact_phone,
+                      contactId: activity.contact_id,
+                      dealId: activity.deal_id,
+                      contactName: activity.contact_name
+                    })
+                    setCallDialerOpen(true)
+                  }}
+                  className="h-7 px-3 text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                >
+                  <Phone className="h-3 w-3 mr-1.5" />
+                  Call
+                </Button>
+              )}
+
+              {activity.type === 'whatsapp' && activity.contact_phone && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setComposerContext({
+                      to: activity.contact_phone,
+                      contactId: activity.contact_id,
+                      dealId: activity.deal_id,
+                      contactName: activity.contact_name
+                    })
+                    setWhatsappComposerOpen(true)
+                  }}
+                  className="h-7 px-3 text-xs bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                >
+                  <MessageSquare className="h-3 w-3 mr-1.5" />
+                  Reply
+                </Button>
+              )}
+
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
@@ -475,7 +596,7 @@ export function ActivityFeedEnterprise({
 
   return (
     <div className="space-y-4">
-      {/* Header with Stats */}
+      {/* Header with Stats & Quick Actions */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Activity Timeline</h3>
@@ -500,6 +621,87 @@ export function ActivityFeedEnterprise({
             Log Activity
           </Button>
         </div>
+      </div>
+
+      {/* Quick Communication Actions */}
+      <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+        <span className="text-sm font-medium text-gray-700">Quick Actions:</span>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300"
+          onClick={(e) => {
+            e.stopPropagation()
+            setComposerContext({
+              to: contactEmail,
+              contactId,
+              dealId,
+              contactName
+            })
+            setEmailComposerOpen(true)
+          }}
+          disabled={!contactEmail}
+        >
+          <Mail className="h-4 w-4 mr-1.5 text-blue-600" />
+          Send Email
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="h-8 bg-white hover:bg-green-50 hover:border-green-300"
+          onClick={(e) => {
+            e.stopPropagation()
+            setComposerContext({
+              phoneNumber: contactPhone,
+              contactId,
+              dealId,
+              contactName
+            })
+            setCallDialerOpen(true)
+          }}
+          disabled={!contactPhone}
+        >
+          <Phone className="h-4 w-4 mr-1.5 text-green-600" />
+          Make Call
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300"
+          onClick={(e) => {
+            e.stopPropagation()
+            setComposerContext({
+              to: contactPhone,
+              contactId,
+              dealId,
+              contactName
+            })
+            setSmsComposerOpen(true)
+          }}
+          disabled={!contactPhone}
+        >
+          <MessageSquare className="h-4 w-4 mr-1.5 text-purple-600" />
+          Send SMS
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="h-8 bg-white hover:bg-emerald-50 hover:border-emerald-300"
+          onClick={(e) => {
+            e.stopPropagation()
+            setComposerContext({
+              to: contactPhone,
+              contactId,
+              dealId,
+              contactName
+            })
+            setWhatsappComposerOpen(true)
+          }}
+          disabled={!contactPhone}
+        >
+          <MessageSquare className="h-4 w-4 mr-1.5 text-emerald-600" />
+          WhatsApp
+        </Button>
       </div>
 
       {/* Filters & Search */}
@@ -622,6 +824,79 @@ export function ActivityFeedEnterprise({
           onActivityCreated?.()
         }}
         tenantId={tenantId}
+      />
+
+      {/* Activity Detail Slide-In */}
+      <ActivityDetailSlideIn
+        isOpen={!!selectedActivityId}
+        onClose={() => setSelectedActivityId(null)}
+        activityId={selectedActivityId || ''}
+        tenantId={tenantId}
+        userId={userId}
+      />
+
+      {/* Email Composer */}
+      <EmailComposerPanel
+        isOpen={emailComposerOpen}
+        onClose={() => {
+          setEmailComposerOpen(false)
+          // Only refresh if actually sent (no page reload on cancel)
+          if (onActivityCreated) {
+            setTimeout(() => {
+              fetchActivities()
+              onActivityCreated()
+            }, 100)
+          }
+        }}
+        to={composerContext.to}
+        contactId={composerContext.contactId}
+        dealId={composerContext.dealId}
+        replyToActivityId={composerContext.replyToActivityId}
+        tenantId={tenantId}
+        userId={userId}
+      />
+
+      {/* SMS Composer */}
+      <SMSComposerPanel
+        isOpen={smsComposerOpen}
+        onClose={() => {
+          setSmsComposerOpen(false)
+          // No automatic refresh to avoid page reload
+        }}
+        to={composerContext.to}
+        contactId={composerContext.contactId}
+        dealId={composerContext.dealId}
+        tenantId={tenantId}
+        userId={userId}
+      />
+
+      {/* WhatsApp Composer */}
+      <WhatsAppComposerPanel
+        isOpen={whatsappComposerOpen}
+        onClose={() => {
+          setWhatsappComposerOpen(false)
+          // No automatic refresh
+        }}
+        to={composerContext.to}
+        contactId={composerContext.contactId}
+        dealId={composerContext.dealId}
+        tenantId={tenantId}
+        userId={userId}
+      />
+
+      {/* Click-to-Call Dialer */}
+      <ClickToCallDialer
+        isOpen={callDialerOpen}
+        onClose={() => {
+          setCallDialerOpen(false)
+          // No automatic refresh
+        }}
+        phoneNumber={composerContext.phoneNumber || ''}
+        contactName={composerContext.contactName}
+        contactId={composerContext.contactId}
+        dealId={composerContext.dealId}
+        tenantId={tenantId}
+        userId={userId}
       />
     </div>
   )

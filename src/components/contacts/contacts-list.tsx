@@ -68,42 +68,29 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
   const fetchContacts = async () => {
     try {
       setLoading(true)
+      console.log('[CONTACTS] Starting fetch...')
 
-      // Fetch contacts with deal and activity counts
+      // Simplified: Just fetch contacts first
       const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
         .select('*')
         .eq('tenant_id', tenantId)
-
-      if (contactsError) throw contactsError
-
-      // Fetch deal counts and values for each contact
-      const { data: dealStats, error: dealsError } = await supabase
-        .from('deals')
-        .select('contact_id, value_estimate_cents, status')
-        .eq('tenant_id', tenantId)
-
-      // Fetch last activity for each contact
-      const { data: lastActivities, error: activitiesError } = await supabase
-        .from('activities')
-        .select('contact_id, created_at')
-        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
-      // Aggregate data
-      const enrichedContacts = (contactsData || []).map(contact => {
-        const contactDeals = (dealStats || []).filter(d => d.contact_id === contact.id && d.status !== 'lost' && d.status !== 'won')
-        const dealCount = contactDeals.length
-        const dealValue = contactDeals.reduce((sum, d) => sum + (d.value_estimate_cents || 0), 0)
-        
-        const contactActivities = (lastActivities || []).filter(a => a.contact_id === contact.id)
-        const lastActivity = contactActivities[0]?.created_at
+      if (contactsError) {
+        console.error('[CONTACTS] Error fetching contacts:', contactsError)
+        throw contactsError
+      }
+      
+      console.log('[CONTACTS] Fetched contacts:', contactsData?.length)
 
+      // Enrich contacts with placeholder data for now
+      const enrichedContacts = (contactsData || []).map(contact => {
         return {
           ...contact,
-          deal_count: dealCount,
-          deal_value: dealValue,
-          last_activity_at: lastActivity
+          deal_count: 0, // Will be populated by separate query if needed
+          deal_value: 0,
+          last_activity_at: null
         }
       })
 
@@ -141,11 +128,15 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
         }
       })
 
+      console.log('[CONTACTS] Setting contacts:', filtered.length)
       setContacts(filtered)
+      console.log('[CONTACTS] Fetch complete!')
     } catch (error) {
-      console.error('Error fetching contacts:', error)
+      console.error('[CONTACTS] Error fetching contacts:', error)
       toast.error('Failed to load contacts')
+      setContacts([]) // Set empty array on error
     } finally {
+      console.log('[CONTACTS] Setting loading to false')
       setLoading(false)
     }
   }
@@ -267,23 +258,6 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
       .slice(0, 2)
   }
 
-  const getSourceBadge = (source?: string) => {
-    if (!source) return null
-    
-    const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-      website: 'default',
-      referral: 'secondary',
-      google_ads: 'outline',
-      walk_in: 'destructive',
-    }
-    
-    return (
-      <Badge variant={variants[source] || 'outline'}>
-        {source.replace('_', ' ')}
-      </Badge>
-    )
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -385,36 +359,38 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
         </div>
       </div>
 
-      {/* Contacts Table - Enterprise Design */}
-      <Card>
+      {/* Contacts Table - Premium Enterprise Design */}
+      <Card className="border-gray-200 shadow-sm overflow-hidden">
         {/* Table Header */}
-        <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-          <div className="grid grid-cols-12 gap-4 items-center text-xs font-medium text-gray-700 uppercase tracking-wide">
+        <div className="px-8 py-4 bg-gradient-to-r from-gray-50 via-blue-50/20 to-gray-50 border-b-2 border-gray-200">
+          <div className="grid grid-cols-11 gap-6 items-center text-xs font-bold text-gray-600 uppercase tracking-wider">
             <div className="col-span-1 flex items-center gap-2">
               <Checkbox
                 checked={selectedContacts.size === contacts.length && contacts.length > 0}
                 onCheckedChange={toggleSelectAll}
               />
             </div>
-            <div className="col-span-2">Name</div>
-            <div className="col-span-2">Email</div>
-            <div className="col-span-2">Phone</div>
+            <div className="col-span-3">Contact</div>
+            <div className="col-span-3">Email Address</div>
+            <div className="col-span-2">Phone Number</div>
+            <div className="col-span-1 text-center">Source</div>
             <div className="col-span-1">Status</div>
-            <div className="col-span-1">Deals</div>
-            <div className="col-span-2">Last Activity</div>
-            <div className="col-span-1 text-right">Actions</div>
           </div>
         </div>
 
         {/* Table Body */}
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100/50">
           {contacts.map(contact => {
             const status = getContactStatus(contact)
             const isEditing = editingField?.contactId === contact.id
             
             return (
-              <div key={contact.id} className="px-6 py-3 hover:bg-gray-50 transition-colors group">
-                <div className="grid grid-cols-12 gap-4 items-center">
+              <Link 
+                key={contact.id} 
+                href={`/contacts/${contact.id}`}
+                className="px-8 py-5 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/30 transition-all duration-200 group block cursor-pointer border-l-4 border-transparent hover:border-blue-500"
+              >
+                <div className="grid grid-cols-11 gap-6 items-center">
                   {/* Checkbox - 1 col */}
                   <div className="col-span-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -423,25 +399,22 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
                     />
                   </div>
 
-                  {/* Avatar & Name - 2 cols */}
-                  <Link href={`/contacts/${contact.id}`} className="col-span-2 flex items-center gap-2 min-w-0">
-                    <Avatar className="h-9 w-9 flex-shrink-0">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-xs font-medium">
+                  {/* Avatar & Name - 3 cols (wider for full names) */}
+                  <div className="col-span-3 flex items-center gap-3 min-w-0">
+                    <Avatar className="h-11 w-11 flex-shrink-0 ring-2 ring-gray-100 group-hover:ring-blue-200 transition-all">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white text-sm font-bold">
                         {getContactInitials(contact.full_name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="min-w-0">
-                      <div className="font-medium text-sm text-gray-900 truncate group-hover:text-blue-600">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-base text-gray-900 group-hover:text-blue-600 transition-colors">
                         {contact.full_name}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">
-                        {getSourceBadge(contact.source)}
-                      </div>
                     </div>
-                  </Link>
+                  </div>
 
-                  {/* Email - 2 cols */}
-                  <div className="col-span-2 min-w-0">
+                  {/* Email - 3 cols (more space) */}
+                  <div className="col-span-3 min-w-0">
                     {isEditing && editingField?.field === 'email' ? (
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <Input
@@ -459,27 +432,23 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
                             }
                           }}
                         />
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleUpdateField(contact.id, 'primary_email', editValue)}>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); handleUpdateField(contact.id, 'primary_email', editValue) }}>
                           <Check className="h-3.5 w-3.5 text-green-600" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingField(null); setEditValue('') }}>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); setEditingField(null); setEditValue('') }}>
                           <X className="h-3.5 w-3.5 text-red-600" />
                         </Button>
                       </div>
                     ) : contact.primary_email ? (
-                      <div className="flex items-center gap-2 min-w-0 group/email">
-                        <Mail className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-                        <a
-                          href={`mailto:${contact.primary_email}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-sm text-gray-600 hover:text-blue-600 truncate flex-1"
-                        >
+                      <div className="flex items-center gap-2.5 min-w-0 group/email">
+                        <Mail className="h-4 w-4 flex-shrink-0 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                        <span className="text-sm text-gray-700 group-hover:text-gray-900 truncate flex-1 font-medium">
                           {contact.primary_email}
-                        </a>
+                        </span>
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 w-6 p-0 opacity-0 group-hover/email:opacity-100"
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
@@ -487,7 +456,7 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
                             setEditValue(contact.primary_email)
                           }}
                         >
-                          <Edit className="h-3 w-3 text-gray-400" />
+                          <Edit className="h-3 w-3 text-gray-400 hover:text-blue-600" />
                         </Button>
                       </div>
                     ) : (
@@ -503,7 +472,7 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
                         }}
                       >
                         <Plus className="h-3 w-3 mr-1" />
-                        Add Email
+                        Add
                       </Button>
                     )}
                   </div>
@@ -527,27 +496,23 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
                             }
                           }}
                         />
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => handleUpdateField(contact.id, 'primary_phone', editValue)}>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); handleUpdateField(contact.id, 'primary_phone', editValue) }}>
                           <Check className="h-3.5 w-3.5 text-green-600" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingField(null); setEditValue('') }}>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); setEditingField(null); setEditValue('') }}>
                           <X className="h-3.5 w-3.5 text-red-600" />
                         </Button>
                       </div>
                     ) : contact.primary_phone ? (
-                      <div className="flex items-center gap-2 min-w-0 group/phone">
-                        <Phone className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-                        <a
-                          href={`tel:${contact.primary_phone}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-sm text-gray-600 hover:text-green-600 truncate flex-1"
-                        >
+                      <div className="flex items-center gap-2.5 min-w-0 group/phone">
+                        <Phone className="h-4 w-4 flex-shrink-0 text-gray-400 group-hover:text-green-500 transition-colors" />
+                        <span className="text-sm text-gray-700 group-hover:text-gray-900 truncate flex-1 font-medium">
                           {contact.primary_phone}
-                        </a>
+                        </span>
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 w-6 p-0 opacity-0 group-hover/phone:opacity-100"
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
@@ -555,7 +520,7 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
                             setEditValue(contact.primary_phone)
                           }}
                         >
-                          <Edit className="h-3 w-3 text-gray-400" />
+                          <Edit className="h-3 w-3 text-gray-400 hover:text-green-600" />
                         </Button>
                       </div>
                     ) : (
@@ -571,57 +536,47 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
                         }}
                       >
                         <Plus className="h-3 w-3 mr-1" />
-                        Add Phone
+                        Add
                       </Button>
+                    )}
+                  </div>
+
+                  {/* Source - 1 col (just emoji icon) */}
+                  <div className="col-span-1 flex items-center justify-center">
+                    {contact.source ? (
+                      <span 
+                        className="text-xl group-hover:scale-110 transition-transform cursor-help" 
+                        title={contact.source}
+                      >
+                        {contact.source === 'Forms' && '📋'}
+                        {contact.source === 'Instagram' && '📸'}
+                        {contact.source === 'Website' && '🌐'}
+                        {contact.source === 'Referral' && '🤝'}
+                        {contact.source === 'Walk-in' && '🚶'}
+                        {contact.source === 'Phone' && '📞'}
+                        {!['Forms', 'Instagram', 'Website', 'Referral', 'Walk-in', 'Phone'].includes(contact.source) && (
+                          <span className="text-xs text-gray-500 font-medium">{contact.source.slice(0, 3).toUpperCase()}</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-300">—</span>
                     )}
                   </div>
 
                   {/* Status - 1 col */}
                   <div className="col-span-1">
-                    <Badge variant="outline" className={cn("text-xs", status.color)}>
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "text-xs font-semibold px-2.5 py-1 border-2 group-hover:scale-105 transition-transform",
+                        status.color
+                      )}
+                    >
                       {status.label}
                     </Badge>
                   </div>
-
-                  {/* Open Deals - 1 col */}
-                  <div className="col-span-1">
-                    {contact.deal_count > 0 ? (
-                      <div className="text-sm">
-                        <div className="font-medium text-gray-900">{contact.deal_count}</div>
-                        <div className="text-xs text-gray-500">
-                          £{((contact.deal_value || 0) / 100).toLocaleString()}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </div>
-
-                  {/* Last Activity - 2 cols */}
-                  <div className="col-span-2">
-                    {contact.last_activity_at ? (
-                      <div className="text-xs text-gray-600">
-                        {formatDistanceToNow(new Date(contact.last_activity_at), { addSuffix: true })}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400">No activity</span>
-                    )}
-                  </div>
-
-                  {/* Actions - 1 col */}
-                  <div className="col-span-1 flex items-center justify-end gap-1">
-                    <Link href={`/contacts/${contact.id}`}>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        View
-                      </Button>
-                    </Link>
-                  </div>
                 </div>
-              </div>
+              </Link>
             )
           })}
           

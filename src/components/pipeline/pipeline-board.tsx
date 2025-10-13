@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
 import { createClient } from '@/lib/supabase-client'
 import { Card, CardContent } from '@/components/ui/card'
@@ -29,10 +30,15 @@ import {
   Edit,
   Pencil,
   Check,
-  X
+  X,
+  Search,
+  Filter,
+  User,
+  ArrowUpDown
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import { PipelineColumn } from './pipeline-column'
 import { DealCard } from './deal-card-fixed'
 import { DealDetailView } from '../deals/deal-detail-view-modal'
@@ -110,10 +116,7 @@ function DealListRow({
     }).format(cents / 100)
   }
 
-  const handleContactClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    window.location.href = `/contacts/${deal.contact_id}`
-  }
+  // Removed - using Link component instead for proper navigation
 
   const handleDealClick = () => {
     if (!editingTitle) {
@@ -212,20 +215,7 @@ function DealListRow({
               </Button>
             </div>
           )}
-          {!editingTitle && deal.treatment_tags.length > 0 && (
-            <div className="flex gap-1 mt-1">
-              {deal.treatment_tags.slice(0, 2).map(tag => (
-                <Badge key={tag} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-              {deal.treatment_tags.length > 2 && (
-                <Badge variant="outline" className="text-xs">
-                  +{deal.treatment_tags.length - 2}
-                </Badge>
-              )}
-            </div>
-          )}
+          {/* Treatment tags removed - cleaner UI, use filters instead */}
         </div>
 
         {/* Pipeline - Only shown in All Deals view - CLICKABLE */}
@@ -248,12 +238,19 @@ function DealListRow({
         )}
 
         {/* Contact - Clickable */}
-        <div 
-          className="col-span-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-          onClick={handleContactClick}
-        >
-          {deal.contact?.full_name || 'No contact'}
-        </div>
+        {deal.contact_id ? (
+          <Link 
+            href={`/contacts/${deal.contact_id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="col-span-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+          >
+            {deal.contact?.full_name || 'Unknown Contact'}
+          </Link>
+        ) : (
+          <div className="col-span-2 text-sm text-gray-400">
+            No contact
+          </div>
+        )}
 
         {/* Stage */}
         <div className="col-span-2">
@@ -305,6 +302,7 @@ function DealListRow({
 export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: PipelineBoardProps) {
   // Pipeline state - Initialize from URL to persist on reload!
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>(() => {
     // Read from URL on initial render
@@ -322,6 +320,13 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
   const [viewMode, setViewMode] = useState<ViewMode>('list') // Default to list for All Deals
   const [draggedDeal, setDraggedDeal] = useState<DealWithRelations | null>(null)
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'my' | 'unassigned' | 'team'>('all')
+  
+  // NEW: Advanced Filters & Search
+  const [localSearchQuery, setLocalSearchQuery] = useState('')
+  const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [treatmentFilter, setTreatmentFilter] = useState<string>('all')
+  const [sortBy, setSortBy] = useState<'date' | 'value' | 'name' | 'stage'>('date')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   
   // Dialog state
   const [createDealDialogOpen, setCreateDealDialogOpen] = useState(false)
@@ -603,27 +608,76 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
     return deals.filter(deal => deal.stage_id === stageId)
   }
 
-  // Filter deals based on owner filter
+  // Comprehensive filtering, searching, and sorting
   const filteredDeals = React.useMemo(() => {
-    if (ownerFilter === 'all') return deals
+    let filtered = [...deals]
     
     // TODO: Replace with actual current user ID from auth
-    const currentUserId = '550e8400-e29b-41d4-a716-446655440000' // Placeholder
+    const currentUserId = '550e8400-e29b-41d4-a716-446655440000'
     
+    // 1. Owner filter
     if (ownerFilter === 'my') {
-      return deals.filter(deal => deal.owner_user_id === currentUserId)
+      filtered = filtered.filter(deal => deal.owner_user_id === currentUserId)
+    } else if (ownerFilter === 'unassigned') {
+      filtered = filtered.filter(deal => !deal.owner_user_id)
+    } else if (ownerFilter === 'team') {
+      filtered = filtered.filter(deal => deal.owner_user_id && deal.owner_user_id !== currentUserId)
     }
     
-    if (ownerFilter === 'unassigned') {
-      return deals.filter(deal => !deal.owner_user_id)
+    // 2. Local search query (search within deals)
+    if (localSearchQuery) {
+      const query = localSearchQuery.toLowerCase()
+      filtered = filtered.filter(deal => 
+        deal.title?.toLowerCase().includes(query) ||
+        deal.contact?.full_name?.toLowerCase().includes(query) ||
+        deal.treatment_tags?.some(tag => tag.toLowerCase().includes(query)) ||
+        deal.source?.toLowerCase().includes(query)
+      )
     }
     
-    if (ownerFilter === 'team') {
-      return deals.filter(deal => deal.owner_user_id && deal.owner_user_id !== currentUserId)
+    // 3. Source filter (Forms, Instagram, Website, etc.)
+    if (sourceFilter !== 'all') {
+      filtered = filtered.filter(deal => deal.source === sourceFilter)
     }
     
-    return deals
-  }, [deals, ownerFilter])
+    // 4. Treatment tags filter
+    if (treatmentFilter !== 'all') {
+      filtered = filtered.filter(deal => 
+        deal.treatment_tags?.includes(treatmentFilter)
+      )
+    }
+    
+    // 5. Sort
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any
+      
+      switch (sortBy) {
+        case 'date':
+          aValue = new Date(a.created_at).getTime()
+          bValue = new Date(b.created_at).getTime()
+          break
+        case 'value':
+          aValue = a.value_estimate_cents || 0
+          bValue = b.value_estimate_cents || 0
+          break
+        case 'name':
+          aValue = a.title?.toLowerCase() || ''
+          bValue = b.title?.toLowerCase() || ''
+          break
+        case 'stage':
+          aValue = a.stage?.position || 0
+          bValue = b.stage?.position || 0
+          break
+        default:
+          aValue = new Date(a.created_at).getTime()
+          bValue = new Date(b.created_at).getTime()
+      }
+      
+      return sortOrder === 'asc' ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1)
+    })
+    
+    return filtered
+  }, [deals, ownerFilter, localSearchQuery, sourceFilter, treatmentFilter, sortBy, sortOrder])
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -694,11 +748,13 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      {/* HubSpot-style Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
-        <div className="flex justify-between items-center">
-          {/* Left side - Pipeline Selector */}
-          <div className="flex items-center gap-4">
+      {/* Clean 2-Row Header */}
+      <div className="bg-white border-b border-gray-200 flex-shrink-0">
+        {/* Row 1: Pipeline Selector + Key Stats + Primary Actions */}
+        <div className="px-6 py-3 border-b border-gray-100">
+          <div className="flex justify-between items-center">
+            {/* Left: Pipeline Selector + Stats */}
+            <div className="flex items-center gap-4">
             {editingPipelineName && selectedPipelineId !== '_all_deals' ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -824,95 +880,219 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
           </>
             )}
 
-            {/* Stats */}
-            <div className="flex gap-3">
-              <Badge variant="outline" className="font-medium px-3 py-1.5">
-                {filteredDeals.length} deals
-                {ownerFilter !== 'all' && ` (${deals.length} total)`}
-              </Badge>
-              <Badge variant="secondary" className="font-medium px-3 py-1.5 bg-green-100 text-green-800">
-                {formatCurrency(filteredDeals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))}
-              </Badge>
+              {/* Stats */}
+              <div className="flex gap-2">
+                <Badge variant="outline" className="font-semibold px-3 py-1.5 bg-blue-50 text-blue-700 border-blue-200">
+                  {filteredDeals.length} {filteredDeals.length === 1 ? 'Deal' : 'Deals'}
+                </Badge>
+                <Badge variant="outline" className="font-semibold px-3 py-1.5 bg-green-50 text-green-700 border-green-200">
+                  {formatCurrency(filteredDeals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Right: View Toggle + Primary Actions */}
+            <div className="flex items-center gap-2">
+              {/* View Toggle - Prominent */}
+              <div className="flex border-2 border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                <Button 
+                  variant={viewMode === 'board' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('board')}
+                  className={cn(
+                    "rounded-none h-9 px-4",
+                    viewMode === 'board' && "bg-blue-600 hover:bg-blue-700"
+                  )}
+                  title="Board view"
+                >
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  Board
+                </Button>
+                <Button 
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className={cn(
+                    "rounded-none h-9 px-4",
+                    viewMode === 'list' && "bg-blue-600 hover:bg-blue-700"
+                  )}
+                  title="List view"
+                >
+                  <List className="h-4 w-4 mr-2" />
+                  List
+                </Button>
+              </div>
+
+              {/* Pipeline Settings - Only for specific pipelines */}
+              {selectedPipelineId !== '_all_deals' && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setSettingsDialogOpen(true)}
+                  className="h-9"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </Button>
+              )}
+
+              {/* New Deal - Primary Action */}
+              <Button 
+                onClick={() => setCreateDealDialogOpen(true)} 
+                className="bg-blue-600 hover:bg-blue-700 h-9"
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Deal
+              </Button>
             </div>
           </div>
+        </div>
 
-          {/* Right side - Actions */}
-          <div className="flex gap-2">
-            {/* Owner Filter - Only for All Deals view */}
-            {selectedPipelineId === '_all_deals' && (
-              <Select
-                value={ownerFilter}
-                onValueChange={setOwnerFilter}
-              >
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Filter by owner" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Deals</SelectItem>
-                  <SelectItem value="my">My Deals</SelectItem>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  <SelectItem value="team">Team Deals</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-
-            {/* View Toggle */}
-            <div className="flex border rounded-lg overflow-hidden">
-              <Button 
-                variant={viewMode === 'board' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('board')}
-                className="rounded-none"
-                title="Board view"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="rounded-none"
-              >
-                <List className="h-4 w-4" />
-              </Button>
+        {/* Row 2: Search + Filters + Sort */}
+        <div className="px-6 py-3 bg-gray-50/50">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left: Search */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="search"
+                placeholder="Search deals by name, contact, or tag..."
+                value={localSearchQuery}
+                onChange={(e) => setLocalSearchQuery(e.target.value)}
+                className="pl-10 pr-10 h-9 w-full border-gray-200 bg-white"
+              />
+              {localSearchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocalSearchQuery('')}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
             </div>
 
-            {/* Auto-Categorize Button - Only for All Deals view */}
-            {selectedPipelineId === '_all_deals' && filteredDeals.length > 0 && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleAutoCategorize}
-                className="hover:bg-purple-50 border-purple-300 text-purple-700"
-                disabled={loading}
-              >
-                <Wand2 className="h-4 w-4 mr-2" />
-                Auto-Categorize Deals
-              </Button>
-            )}
+            {/* Right: Filters */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Filters:</span>
+              
+              {/* Source Filter */}
+              <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                <SelectTrigger className={cn(
+                  "w-[110px] h-8 text-xs",
+                  sourceFilter !== 'all' && "border-blue-500 bg-blue-50"
+                )}>
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  <SelectItem value="Forms">📋 Forms</SelectItem>
+                  <SelectItem value="Instagram">📸 Instagram</SelectItem>
+                  <SelectItem value="Website">🌐 Website</SelectItem>
+                  <SelectItem value="Referral">🤝 Referral</SelectItem>
+                  <SelectItem value="Walk-in">🚶 Walk-in</SelectItem>
+                  <SelectItem value="Phone">📞 Phone</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {/* Pipeline Settings - Hidden for All Deals */}
-            {selectedPipelineId !== '_all_deals' && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setSettingsDialogOpen(true)}
-                className="hover:bg-gray-50"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Edit Pipeline
-              </Button>
-            )}
+              {/* Treatment Filter */}
+              <Select value={treatmentFilter} onValueChange={setTreatmentFilter}>
+                <SelectTrigger className={cn(
+                  "w-[120px] h-8 text-xs",
+                  treatmentFilter !== 'all' && "border-purple-500 bg-purple-50"
+                )}>
+                  <SelectValue placeholder="Treatment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Treatments</SelectItem>
+                  <SelectItem value="Dental Implants">🦷 Implants</SelectItem>
+                  <SelectItem value="Orthodontics">😁 Orthodontics</SelectItem>
+                  <SelectItem value="Cosmetic">✨ Cosmetic</SelectItem>
+                  <SelectItem value="Root Canal">🩺 Root Canal</SelectItem>
+                  <SelectItem value="Veneers">💎 Veneers</SelectItem>
+                  <SelectItem value="Whitening">⚪ Whitening</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {/* New Deal */}
-            <Button 
-              onClick={() => setCreateDealDialogOpen(true)} 
-              className="bg-blue-600 hover:bg-blue-700"
-              size="sm"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Deal
-            </Button>
+              {/* Owner Filter - Only for All Deals */}
+              {selectedPipelineId === '_all_deals' && (
+                <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                  <SelectTrigger className={cn(
+                    "w-[110px] h-8 text-xs",
+                    ownerFilter !== 'all' && "border-green-500 bg-green-50"
+                  )}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Owners</SelectItem>
+                    <SelectItem value="my">My Deals</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    <SelectItem value="team">Team</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+
+              {/* Sort - Only in List View */}
+              {viewMode === 'list' && (
+                <Select 
+                  value={`${sortBy}-${sortOrder}`} 
+                  onValueChange={(val) => {
+                    const [sort, order] = val.split('-') as [typeof sortBy, typeof sortOrder]
+                    setSortBy(sort)
+                    setSortOrder(order)
+                  }}
+                >
+                  <SelectTrigger className="w-[130px] h-8 text-xs">
+                    <ArrowUpDown className="h-3 w-3 mr-1.5" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date-desc">Newest First</SelectItem>
+                    <SelectItem value="date-asc">Oldest First</SelectItem>
+                    <SelectItem value="value-desc">Highest Value</SelectItem>
+                    <SelectItem value="value-asc">Lowest Value</SelectItem>
+                    <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                    <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                    <SelectItem value="stage-asc">Stage (Early)</SelectItem>
+                    <SelectItem value="stage-desc">Stage (Late)</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+
+              {/* Auto-Categorize - Only for All Deals */}
+              {selectedPipelineId === '_all_deals' && filteredDeals.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleAutoCategorize}
+                  className="h-8 text-xs border-purple-300 text-purple-700 hover:bg-purple-50"
+                  disabled={loading}
+                >
+                  <Wand2 className="h-3.5 w-3.5 mr-1.5" />
+                  Auto-Categorize
+                </Button>
+              )}
+
+              {/* Clear Filters - Only show if any filter is active */}
+              {(sourceFilter !== 'all' || treatmentFilter !== 'all' || ownerFilter !== 'all' || localSearchQuery) && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setSourceFilter('all')
+                    setTreatmentFilter('all')
+                    setOwnerFilter('all')
+                    setLocalSearchQuery('')
+                  }}
+                  className="h-8 text-xs text-gray-600"
+                >
+                  <X className="h-3 w-3 mr-1.5" />
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1004,16 +1184,101 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
           <div className="h-full overflow-y-auto p-6">
             <Card>
               <CardContent className="p-0">
-                {/* Table Header */}
-                <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b font-semibold text-sm text-gray-700">
-                  <div className={selectedPipelineId === '_all_deals' ? "col-span-2" : "col-span-2"}>Deal Name</div>
-                  {selectedPipelineId === '_all_deals' && <div className="col-span-2">Pipeline</div>}
-                  <div className="col-span-2">Contact</div>
-                  <div className="col-span-2">Stage</div>
-                  <div className="col-span-1">Owner</div>
-                  <div className="col-span-1">Value</div>
-                  <div className="col-span-1">Last Activity</div>
-                  <div className="col-span-1">Actions</div>
+                {/* Table Header - Sortable Columns */}
+                <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gradient-to-r from-gray-50 to-blue-50/30 border-b border-gray-200">
+                  {/* Deal Name - Sortable */}
+                  <button
+                    onClick={() => {
+                      if (sortBy === 'name') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                      } else {
+                        setSortBy('name')
+                        setSortOrder('asc')
+                      }
+                    }}
+                    className={cn(
+                      "col-span-2 flex items-center gap-2 text-left font-semibold text-sm transition-colors hover:text-blue-600",
+                      sortBy === 'name' ? "text-blue-600" : "text-gray-700"
+                    )}
+                  >
+                    Deal Name
+                    {sortBy === 'name' && (
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  
+                  {selectedPipelineId === '_all_deals' && (
+                    <div className="col-span-2 font-semibold text-sm text-gray-700">Pipeline</div>
+                  )}
+                  
+                  <div className="col-span-2 font-semibold text-sm text-gray-700">Contact</div>
+                  
+                  {/* Stage - Sortable */}
+                  <button
+                    onClick={() => {
+                      if (sortBy === 'stage') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                      } else {
+                        setSortBy('stage')
+                        setSortOrder('asc')
+                      }
+                    }}
+                    className={cn(
+                      "col-span-2 flex items-center gap-2 text-left font-semibold text-sm transition-colors hover:text-blue-600",
+                      sortBy === 'stage' ? "text-blue-600" : "text-gray-700"
+                    )}
+                  >
+                    Stage
+                    {sortBy === 'stage' && (
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  
+                  <div className="col-span-1 font-semibold text-sm text-gray-700">Owner</div>
+                  
+                  {/* Value - Sortable */}
+                  <button
+                    onClick={() => {
+                      if (sortBy === 'value') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                      } else {
+                        setSortBy('value')
+                        setSortOrder('desc')
+                      }
+                    }}
+                    className={cn(
+                      "col-span-1 flex items-center gap-2 text-left font-semibold text-sm transition-colors hover:text-blue-600",
+                      sortBy === 'value' ? "text-blue-600" : "text-gray-700"
+                    )}
+                  >
+                    Value
+                    {sortBy === 'value' && (
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  
+                  {/* Date - Sortable */}
+                  <button
+                    onClick={() => {
+                      if (sortBy === 'date') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                      } else {
+                        setSortBy('date')
+                        setSortOrder('desc')
+                      }
+                    }}
+                    className={cn(
+                      "col-span-1 flex items-center gap-2 text-left font-semibold text-sm transition-colors hover:text-blue-600",
+                      sortBy === 'date' ? "text-blue-600" : "text-gray-700"
+                    )}
+                  >
+                    Created
+                    {sortBy === 'date' && (
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  
+                  <div className="col-span-1 font-semibold text-sm text-gray-700">Actions</div>
                 </div>
 
                 {/* Table Body */}
@@ -1078,7 +1343,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
           dealId={selectedDealId}
           onClose={closeDealModal}
           onContactClick={(contactId) => {
-            window.location.href = `/contacts/${contactId}`
+            router.push(`/contacts/${contactId}`)
           }}
         />
       )}

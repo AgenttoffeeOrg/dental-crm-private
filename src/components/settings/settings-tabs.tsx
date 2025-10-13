@@ -10,6 +10,8 @@ import { CustomRolesTab } from './custom-roles-tab'
 import { ComprehensiveDealSettings } from './comprehensive-deal-settings'
 import { AIAssistantSettingsTab } from './ai-assistant-settings-tab'
 import { AIAnalyticsTab } from './ai-analytics-tab'
+import { CommunicationsIntegrationsTab } from './communications-integrations-tab'
+import { AuditTrailViewer } from './audit-trail-viewer'
 
 export function SettingsTabs() {
   const tenantId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
@@ -87,6 +89,18 @@ export function SettingsTabs() {
           >
             📊 AI Analytics
           </TabsTrigger>
+          <TabsTrigger 
+            value="integrations" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            📡 Integrations
+          </TabsTrigger>
+          <TabsTrigger 
+            value="audit" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            📜 Audit Trail
+          </TabsTrigger>
         </TabsList>
       </div>
 
@@ -145,6 +159,14 @@ export function SettingsTabs() {
 
       <TabsContent value="ai-analytics" className="space-y-6">
         <AIAnalyticsTab tenantId={tenantId} />
+      </TabsContent>
+
+      <TabsContent value="integrations" className="space-y-6">
+        <CommunicationsIntegrationsTab />
+      </TabsContent>
+
+      <TabsContent value="audit" className="space-y-6">
+        <AuditTrailViewer tenantId={tenantId} isAdmin={true} />
       </TabsContent>
     </Tabs>
   )

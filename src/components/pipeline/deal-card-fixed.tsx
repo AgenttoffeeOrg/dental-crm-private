@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Card, CardContent } from '@/components/ui/card'
@@ -153,188 +154,90 @@ export function DealCard({ deal, isDragging = false, onDealUpdate, onDealClick }
       <Card
         ref={setNodeRef}
         style={style}
-        className="mb-3 hover:shadow-md transition-shadow group bg-white border border-gray-200"
+        className="mb-2.5 hover:shadow-md transition-shadow group bg-white border border-gray-200 cursor-pointer"
+        onClick={handleCardClick}
       >
-        <CardContent className="p-4">
-          <div className="flex gap-3">
-            {/* Drag Handle */}
-            <div
-              {...attributes}
-              {...listeners}
-              className="cursor-grab active:cursor-grabbing p-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 self-start"
-              title="Drag to move"
-            >
-              <GripVertical className="h-4 w-4 text-gray-400" />
+        <CardContent className="p-3.5">
+          {/* Drag Handle */}
+          <div
+            {...attributes}
+            {...listeners}
+            className="float-right cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity ml-2"
+            onClick={(e) => e.stopPropagation()}
+            title="Drag to move"
+          >
+            <GripVertical className="h-3.5 w-3.5 text-gray-400" />
+          </div>
+
+          {/* Deal Title */}
+          {editingTitle ? (
+            <div className="flex items-center gap-1 mb-2" onClick={(e) => e.stopPropagation()}>
+              <Input
+                value={tempTitle}
+                onChange={(e) => setTempTitle(e.target.value)}
+                className="h-7 text-sm"
+                autoFocus
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') handleSaveTitle()
+                  else if (e.key === 'Escape') handleCancelEdit(e as any)
+                }}
+              />
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleSaveTitle}>
+                <Check className="h-3 w-3 text-green-600" />
+              </Button>
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleCancelEdit}>
+                <X className="h-3 w-3 text-red-600" />
+              </Button>
             </div>
+          ) : (
+            <h4 className="font-semibold text-sm text-gray-900 mb-2 pr-8 leading-tight hover:text-blue-600 transition-colors">
+              {deal.title}
+            </h4>
+          )}
 
-            {/* Main Content - Clickable */}
-            <div 
-              className="flex-1 cursor-pointer min-w-0" 
-              onClick={handleCardClick}
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0">
-                  {editingTitle ? (
-                    <div className="flex items-center gap-1 mb-2">
-                      <Input
-                        value={tempTitle}
-                        onChange={(e) => setTempTitle(e.target.value)}
-                        className="h-8 text-sm"
-                        autoFocus
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSaveTitle()
-                          } else if (e.key === 'Escape') {
-                            handleCancelEdit(e as any)
-                          }
-                        }}
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0 hover:bg-green-100"
-                        onClick={handleSaveTitle}
-                        title="Save"
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0 hover:bg-red-100"
-                        onClick={handleCancelEdit}
-                        title="Cancel"
-                      >
-                        <X className="h-3 w-3 text-red-600" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 group/title">
-                      <h4 className="font-medium text-sm text-gray-900 truncate hover:text-blue-600 transition-colors">
-                        {deal.title}
-                      </h4>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-4 w-4 p-0 opacity-0 group-hover/title:opacity-100 transition-opacity"
-                        onClick={handleEditTitle}
-                        title="Edit title"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                  <div 
-                    className="flex items-center gap-2 mt-2 cursor-pointer group/contact"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      window.location.href = `/contacts/${deal.contact_id}`
-                    }}
-                    title="View contact profile"
-                  >
-                    <Avatar className="h-5 w-5">
-                      <AvatarFallback className="text-xs">
-                        {getContactInitials(deal.contact.full_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs text-gray-600 group-hover/contact:text-blue-600 group-hover/contact:underline transition-colors truncate">
-                      {deal.contact.full_name}
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Action buttons */}
-                {!editingTitle && (
-                  <div className="flex gap-1 ml-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0 hover:bg-gray-100"
-                      onClick={handleEditClick}
-                      title="Edit Deal"
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0 hover:bg-gray-100"
-                      onClick={handleCardClick}
-                      title="View Deal Details"
-                    >
-                      <Eye className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
+          {/* Contact */}
+          <Link 
+            href={`/contacts/${deal.contact_id}`}
+            className="flex items-center gap-2 mb-3 group/contact"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Avatar className="h-6 w-6">
+              <AvatarFallback className="text-[10px] font-medium bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                {getContactInitials(deal.contact.full_name)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-xs text-gray-600 group-hover/contact:text-blue-600 truncate">
+              {deal.contact.full_name}
+            </span>
+          </Link>
 
-              {/* Deal type badge */}
-              {deal.deal_type && (
-                <div className="mb-3">
-                  <Badge className={`text-xs ${getDealTypeColor(deal.deal_type)}`}>
-                    {getDealTypeLabel(deal.deal_type)}
-                  </Badge>
-                </div>
-              )}
+          {/* AI Intelligence - Compact */}
+          <div className="mb-2.5">
+            <DealIntelligenceCard
+              dealId={deal.id}
+              contactId={deal.contact_id}
+              compact={true}
+            />
+          </div>
 
-              {/* Treatment tags */}
-              {deal.treatment_tags && Array.isArray(deal.treatment_tags) && deal.treatment_tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {deal.treatment_tags.slice(0, 2).map(tag => (
-                    <Badge
-                      key={tag}
-                      variant="outline"
-                      className="text-xs px-2 py-0"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                  {deal.treatment_tags.length > 2 && (
-                    <Badge variant="outline" className="text-xs px-2 py-0">
-                      +{deal.treatment_tags.length - 2}
-                    </Badge>
-                  )}
-                </div>
-              )}
-
-              {/* AI-Powered Deal Intelligence Mini-Dashboard */}
-              <div className="mb-3">
-                <DealIntelligenceCard
-                  dealId={deal.id}
-                  contactId={deal.contact_id}
-                  compact={true}
-                />
-              </div>
-
-              {/* Value and last activity */}
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                <span className="font-medium text-gray-900">
-                  {deal.value_estimate_cents > 0 
-                    ? formatCurrency(deal.value_estimate_cents)
-                    : 'No value'
-                  }
-                </span>
-                <span>
-                  {getActivityAge(deal.last_activity_at)}
-                </span>
-              </div>
-
-              {/* Owner */}
-              {deal.owner && (
-                <div className="flex items-center gap-2 mt-2">
-                  <Avatar className="h-4 w-4">
-                    <AvatarFallback className="text-[8px] bg-purple-100 text-purple-700">
-                      {deal.owner.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs text-gray-500">
-                    {deal.owner.full_name}
-                  </span>
-                </div>
-              )}
+          {/* Deal Info - Compact Grid */}
+          <div className="space-y-1.5 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500">Value</span>
+              <span className="font-semibold text-gray-900">
+                {deal.value_estimate_cents > 0 ? formatCurrency(deal.value_estimate_cents) : '—'}
+              </span>
             </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500">Activity</span>
+              <span className="text-gray-700">{getActivityAge(deal.last_activity_at)}</span>
+            </div>
+            {deal.owner && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Owner</span>
+                <span className="text-gray-700">{deal.owner.full_name.split(' ')[0]}</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

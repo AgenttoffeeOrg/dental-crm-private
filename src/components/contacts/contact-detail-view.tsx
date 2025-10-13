@@ -11,6 +11,9 @@ import { CreateActivityDialog } from '@/components/deals/create-activity-dialog'
 import { DealDetailView } from '@/components/deals/deal-detail-view-modal'
 import { AIAssistantChat } from '@/components/ai/ai-assistant-chat'
 import { DealTasks } from '@/components/deals/deal-tasks'
+import { EmailComposerPanel } from '@/components/communications/email-composer-panel'
+import { SMSComposerPanel } from '@/components/communications/sms-composer-panel'
+import { ClickToCallDialer } from '@/components/communications/click-to-call-dialer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -34,7 +37,8 @@ import {
   Sparkles,
   Target,
   TrendingUp,
-  Bot
+  Bot,
+  X
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { Contact, Deal, DealWithRelations, PipelineStage } from '@/types/database'
@@ -61,6 +65,12 @@ export function ContactDetailView({
   const [activeTab, setActiveTab] = useState<string>('overview')
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
+  
+  // Communication panels state
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false)
+  const [smsComposerOpen, setSmsComposerOpen] = useState(false)
+  const [callDialerOpen, setCallDialerOpen] = useState(false)
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false)
 
   const fetchContactData = async () => {
     try {
@@ -203,12 +213,17 @@ export function ContactDetailView({
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
                       {contact.primary_phone ? (
-                        <span className="text-sm text-gray-900 truncate">{contact.primary_phone}</span>
+                        <button
+                          onClick={() => setCallDialerOpen(true)}
+                          className="text-sm text-blue-600 hover:text-blue-700 hover:underline cursor-pointer truncate text-left"
+                        >
+                          {contact.primary_phone}
+                        </button>
                       ) : (
                         <span className="text-sm text-gray-400 italic">No phone number</span>
                       )}
                     </div>
-                    {!contact.primary_phone && (
+                    {!contact.primary_phone ? (
                       <Button
                         size="sm"
                         variant="ghost"
@@ -218,6 +233,16 @@ export function ContactDetailView({
                         <Plus className="h-3 w-3 mr-1" />
                         Add
                       </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs text-green-600 hover:bg-green-50 opacity-0 group-hover/field:opacity-100"
+                        onClick={() => setCallDialerOpen(true)}
+                      >
+                        <PhoneCall className="h-3 w-3 mr-1" />
+                        Call
+                      </Button>
                     )}
                   </div>
 
@@ -226,12 +251,17 @@ export function ContactDetailView({
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
                       {contact.primary_email ? (
-                        <span className="text-sm text-gray-900 truncate">{contact.primary_email}</span>
+                        <button
+                          onClick={() => setEmailComposerOpen(true)}
+                          className="text-sm text-blue-600 hover:text-blue-700 hover:underline cursor-pointer truncate text-left"
+                        >
+                          {contact.primary_email}
+                        </button>
                       ) : (
                         <span className="text-sm text-gray-400 italic">No email address</span>
                       )}
                     </div>
-                    {!contact.primary_email && (
+                    {!contact.primary_email ? (
                       <Button
                         size="sm"
                         variant="ghost"
@@ -240,6 +270,16 @@ export function ContactDetailView({
                       >
                         <Plus className="h-3 w-3 mr-1" />
                         Add
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs text-blue-600 hover:bg-blue-50 opacity-0 group-hover/field:opacity-100"
+                        onClick={() => setEmailComposerOpen(true)}
+                      >
+                        <Mail className="h-3 w-3 mr-1" />
+                        Send
                       </Button>
                     )}
                   </div>
@@ -803,6 +843,9 @@ export function ContactDetailView({
                 onActivityCreated={fetchContactData}
                 showAllContactActivities={true}
                 tenantId={tenantId}
+                contactEmail={contact?.primary_email}
+                contactPhone={contact?.primary_phone}
+                contactName={contact?.full_name}
               />
             </div>
           </TabsContent>
@@ -854,13 +897,86 @@ export function ContactDetailView({
         />
       )}
 
-      {/* AI Assistant Sidebar - Always Visible */}
-      <div className="w-96 border-l border-gray-200 bg-white flex-shrink-0 overflow-hidden">
-        <AIAssistantChat
-          context="contact"
-          contextId={contactId}
-        />
-      </div>
+      {/* AI Assistant - Toggleable Slider from Right */}
+      {aiAssistantOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/20 z-[60]" 
+            onClick={() => setAiAssistantOpen(false)}
+          />
+          
+          {/* AI Sidebar Panel */}
+          <div className="fixed inset-y-0 right-0 w-96 bg-white border-l border-gray-200 shadow-2xl z-[70] flex flex-col">
+            {/* Header */}
+            <div className="p-4 border-b bg-gradient-to-r from-purple-50 to-blue-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-purple-600" />
+                <h3 className="font-semibold text-gray-900">AI Assistant</h3>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setAiAssistantOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* AI Chat Content */}
+            <div className="flex-1 overflow-hidden">
+              <AIAssistantChat
+                context="contact"
+                contextId={contactId}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Floating AI Assistant Button - Premium Design */}
+      {!aiAssistantOpen && (
+        <Button
+          onClick={() => setAiAssistantOpen(true)}
+          className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-2xl bg-gradient-to-br from-purple-600 via-purple-500 to-blue-600 hover:from-purple-700 hover:via-purple-600 hover:to-blue-700 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] z-50 group border-2 border-white transition-all duration-300"
+          size="icon"
+        >
+          <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse"></div>
+          <Bot className="h-7 w-7 text-white group-hover:scale-110 transition-transform relative z-10" />
+        </Button>
+      )}
+
+      {/* Communication Composer Panels */}
+      {contact && (
+        <>
+          <EmailComposerPanel
+            isOpen={emailComposerOpen}
+            onClose={() => setEmailComposerOpen(false)}
+            to={contact.primary_email}
+            contactId={contactId}
+            dealId={deals.length > 0 ? deals[0].id : undefined}
+            tenantId={tenantId}
+            userId={tenantId}
+          />
+
+          <SMSComposerPanel
+            isOpen={smsComposerOpen}
+            onClose={() => setSmsComposerOpen(false)}
+            to={contact.primary_phone}
+            contactId={contactId}
+            dealId={deals.length > 0 ? deals[0].id : undefined}
+            tenantId={tenantId}
+            userId={tenantId}
+          />
+
+          <ClickToCallDialer
+            isOpen={callDialerOpen}
+            onClose={() => setCallDialerOpen(false)}
+            phoneNumber={contact.primary_phone || ''}
+            contactName={contact.full_name}
+            contactId={contactId}
+            dealId={deals.length > 0 ? deals[0].id : undefined}
+            tenantId={tenantId}
+            userId={tenantId}
+          />
+        </>
+      )}
     </div>
   )
 }
