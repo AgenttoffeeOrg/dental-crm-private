@@ -100,21 +100,29 @@ export default function OnboardingPage() {
     const supabase = createClient()
 
     try {
+      console.log('Updating tenant:', appUser?.tenant_id, 'with name:', practiceInfo.name)
+      
       // Update tenant with practice info (just name for now)
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tenants')
         .update({
           name: practiceInfo.name
         })
         .eq('id', appUser?.tenant_id)
+        .select()
 
-      if (error) throw error
+      console.log('Update result:', { data, error })
+
+      if (error) {
+        console.error('Supabase error:', error)
+        throw new Error(error.message || 'Failed to update tenant')
+      }
 
       toast.success('Practice info saved!')
       setCurrentStep(2)
     } catch (error: any) {
       console.error('Error updating practice info:', error)
-      toast.error('Failed to save practice info')
+      toast.error(error.message || 'Failed to save practice info')
     } finally {
       setLoading(false)
     }
