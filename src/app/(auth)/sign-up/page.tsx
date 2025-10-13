@@ -7,37 +7,28 @@ import { createClient } from '@/lib/supabase-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Building2, User, ArrowRight, Check, Loader2 } from 'lucide-react'
+import { ArrowRight, Loader2, Building2, User, Mail, Lock, Sparkles, Check, Eye, EyeOff } from 'lucide-react'
 
 export default function SignUpPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [accountType, setAccountType] = useState<'individual' | 'practice'>('practice')
+  const [showPassword, setShowPassword] = useState(false)
+  const [step, setStep] = useState(1) // 1: Account type, 2: Details
+  const [accountType, setAccountType] = useState<'practice' | 'individual'>('practice')
   
-  // Practice Sign-up Form
-  const [practiceData, setPracticeData] = useState({
+  const [formData, setFormData] = useState({
+    // Practice
     practiceName: '',
-    ownerName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    phone: '',
-    address: '',
     specialty: 'general',
-    agreedToTerms: false
-  })
-
-  // Individual Sign-up Form
-  const [individualData, setIndividualData] = useState({
+    // Personal
     fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    specialty: 'general',
+    // Agreement
     agreedToTerms: false
   })
 
@@ -45,70 +36,66 @@ export default function SignUpPage() {
     { value: 'general', label: 'General Dentistry' },
     { value: 'cosmetic', label: 'Cosmetic Dentistry' },
     { value: 'orthodontics', label: 'Orthodontics' },
-    { value: 'periodontics', label: 'Periodontics' },
-    { value: 'endodontics', label: 'Endodontics' },
-    { value: 'oral_surgery', label: 'Oral Surgery' },
     { value: 'pediatric', label: 'Pediatric Dentistry' },
+    { value: 'endodontics', label: 'Endodontics' },
+    { value: 'periodontics', label: 'Periodontics' },
+    { value: 'oral_surgery', label: 'Oral Surgery' },
     { value: 'prosthodontics', label: 'Prosthodontics' }
   ]
 
-  const validateForm = () => {
-    const data = accountType === 'practice' ? practiceData : individualData
-    
-    if (!data.agreedToTerms) {
-      toast.error('Please agree to Terms of Service and Privacy Policy')
+  const validateStep1 = () => {
+    if (accountType === 'practice' && !formData.practiceName) {
+      toast.error('Please enter your practice name')
       return false
     }
-
-    if (data.password !== data.confirmPassword) {
-      toast.error('Passwords do not match')
-      return false
-    }
-
-    if (data.password.length < 8) {
-      toast.error('Password must be at least 8 characters long')
-      return false
-    }
-
-    if (!data.email.includes('@')) {
-      toast.error('Please enter a valid email address')
-      return false
-    }
-
-    if (accountType === 'practice' && !practiceData.practiceName) {
-      toast.error('Practice name is required')
-      return false
-    }
-
-    if (!data.fullName && accountType === 'individual') {
-      toast.error('Full name is required')
-      return false
-    }
-
-    if (accountType === 'practice' && !practiceData.ownerName) {
-      toast.error('Owner name is required')
-      return false
-    }
-
     return true
   }
 
-  const handleSignUp = async () => {
-    if (!validateForm()) return
+  const validateStep2 = () => {
+    if (!formData.fullName) {
+      toast.error('Please enter your full name')
+      return false
+    }
+    if (!formData.email || !formData.email.includes('@')) {
+      toast.error('Please enter a valid email')
+      return false
+    }
+    if (!formData.password || formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters')
+      return false
+    }
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match')
+      return false
+    }
+    if (!formData.agreedToTerms) {
+      toast.error('Please agree to the terms and conditions')
+      return false
+    }
+    return true
+  }
+
+  const handleContinue = () => {
+    if (validateStep1()) {
+      setStep(2)
+    }
+  }
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateStep2()) return
 
     setLoading(true)
     const supabase = createClient()
 
     try {
-      const data = accountType === 'practice' ? practiceData : individualData
-      
-      // Step 1: Create auth user
+      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
+        email: formData.email,
+        password: formData.password,
         options: {
           data: {
-            full_name: accountType === 'practice' ? practiceData.ownerName : individualData.fullName,
+            full_name: formData.fullName,
             account_type: accountType
           }
         }
@@ -117,10 +104,10 @@ export default function SignUpPage() {
       if (authError) throw authError
       if (!authData.user) throw new Error('Failed to create user')
 
-      // Step 2: Create tenant (practice/organization)
+      // Create tenant
       const tenantName = accountType === 'practice' 
-        ? practiceData.practiceName 
-        : `${individualData.fullName}'s Practice`
+        ? formData.practiceName 
+        : `${formData.fullName}'s Practice`
 
       const { data: tenant, error: tenantError } = await supabase
         .from('tenants')
@@ -129,9 +116,7 @@ export default function SignUpPage() {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           metadata: {
             account_type: accountType,
-            specialty: data.specialty,
-            phone: accountType === 'practice' ? practiceData.phone : null,
-            address: accountType === 'practice' ? practiceData.address : null
+            specialty: formData.specialty
           }
         })
         .select()
@@ -139,46 +124,55 @@ export default function SignUpPage() {
 
       if (tenantError) throw tenantError
 
-      // Step 3: Create app_user record
+      // Create app_user
       const { error: appUserError } = await supabase
         .from('app_users')
         .insert({
           id: authData.user.id,
           tenant_id: tenant.id,
-          full_name: accountType === 'practice' ? practiceData.ownerName : individualData.fullName,
-          email: data.email,
+          full_name: formData.fullName,
+          email: formData.email,
           role: 'owner',
           status: 'active'
         })
 
       if (appUserError) throw appUserError
 
-      // Step 4: Create default pipeline
-      const { error: pipelineError } = await supabase
-        .from('pipelines')
-        .insert({
-          tenant_id: tenant.id,
-          name: 'Main Pipeline',
-          is_default: true,
-          display_style: 'board',
-          icon: 'target'
-        })
-
-      if (pipelineError) console.error('Pipeline creation error:', pipelineError)
-
-      toast.success('Account created successfully!', {
-        description: 'Redirecting to onboarding...'
+      // Create default pipeline
+      await supabase.from('pipelines').insert({
+        tenant_id: tenant.id,
+        name: 'Main Pipeline',
+        is_default: true,
+        display_style: 'board',
+        icon: 'target'
       })
 
-      // Redirect to onboarding
+      // Send welcome email
+      try {
+        await fetch('/api/emails/welcome', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            name: formData.fullName,
+            practiceName: tenantName
+          })
+        })
+      } catch (emailError) {
+        console.error('Welcome email failed:', emailError)
+      }
+
+      toast.success('Account created!', {
+        description: 'Welcome to Dental CRM'
+      })
+
       setTimeout(() => {
         router.push('/onboarding')
-      }, 1000)
+      }, 800)
 
     } catch (error: any) {
-      console.error('Sign-up error:', error)
-      toast.error('Failed to create account', {
-        description: error.message || 'Please try again'
+      toast.error('Sign up failed', {
+        description: error.message
       })
     } finally {
       setLoading(false)
@@ -186,318 +180,290 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            <Building2 className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Create Your Account
-          </h1>
-          <p className="text-lg text-gray-600">
-            Join thousands of dental professionals managing their practice with ease
-          </p>
-        </div>
-
-        {/* Main Card */}
-        <Card className="p-8 shadow-2xl border-0">
-          <Tabs value={accountType} onValueChange={(v) => setAccountType(v as any)} className="w-full">
-            {/* Account Type Toggle */}
-            <TabsList className="grid w-full grid-cols-2 mb-8">
-              <TabsTrigger value="practice" className="text-base py-3">
-                <Building2 className="w-5 h-5 mr-2" />
-                Practice / Clinic
-              </TabsTrigger>
-              <TabsTrigger value="individual" className="text-base py-3">
-                <User className="w-5 h-5 mr-2" />
-                Individual Practitioner
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Practice Sign-up Form */}
-            <TabsContent value="practice" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="practice-name">Practice Name *</Label>
-                  <Input
-                    id="practice-name"
-                    placeholder="e.g., SmileBright Dental"
-                    value={practiceData.practiceName}
-                    onChange={(e) => setPracticeData({ ...practiceData, practiceName: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="owner-name">Owner / Director Name *</Label>
-                  <Input
-                    id="owner-name"
-                    placeholder="e.g., Dr. Sarah Mitchell"
-                    value={practiceData.ownerName}
-                    onChange={(e) => setPracticeData({ ...practiceData, ownerName: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="practice-email">Email Address *</Label>
-                  <Input
-                    id="practice-email"
-                    type="email"
-                    placeholder="admin@yourpractice.com"
-                    value={practiceData.email}
-                    onChange={(e) => setPracticeData({ ...practiceData, email: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="practice-phone">Phone Number</Label>
-                  <Input
-                    id="practice-phone"
-                    type="tel"
-                    placeholder="+44 20 1234 5678"
-                    value={practiceData.phone}
-                    onChange={(e) => setPracticeData({ ...practiceData, phone: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="practice-address">Practice Address</Label>
-                  <Input
-                    id="practice-address"
-                    placeholder="123 Main Street, London, UK"
-                    value={practiceData.address}
-                    onChange={(e) => setPracticeData({ ...practiceData, address: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="practice-specialty">Primary Specialty</Label>
-                  <select
-                    id="practice-specialty"
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm"
-                    value={practiceData.specialty}
-                    onChange={(e) => setPracticeData({ ...practiceData, specialty: e.target.value })}
-                    disabled={loading}
-                  >
-                    {specialties.map(s => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="practice-password">Password *</Label>
-                  <Input
-                    id="practice-password"
-                    type="password"
-                    placeholder="Minimum 8 characters"
-                    value={practiceData.password}
-                    onChange={(e) => setPracticeData({ ...practiceData, password: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="practice-confirm-password">Confirm Password *</Label>
-                  <Input
-                    id="practice-confirm-password"
-                    type="password"
-                    placeholder="Re-enter password"
-                    value={practiceData.confirmPassword}
-                    onChange={(e) => setPracticeData({ ...practiceData, confirmPassword: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 pt-4">
-                <Checkbox
-                  id="practice-terms"
-                  checked={practiceData.agreedToTerms}
-                  onCheckedChange={(checked) => 
-                    setPracticeData({ ...practiceData, agreedToTerms: checked as boolean })
-                  }
-                  disabled={loading}
-                />
-                <label htmlFor="practice-terms" className="text-sm text-gray-600 leading-relaxed">
-                  I agree to the{' '}
-                  <Link href="/terms" className="text-blue-600 hover:underline">Terms of Service</Link>
-                  {' '}and{' '}
-                  <Link href="/privacy" className="text-blue-600 hover:underline">Privacy Policy</Link>
-                </label>
-              </div>
-
-              <Button
-                onClick={handleSignUp}
-                disabled={loading}
-                className="w-full h-12 text-base font-semibold"
-                size="lg"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Creating Account...
-                  </>
-                ) : (
-                  <>
-                    Create Practice Account
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </>
-                )}
-              </Button>
-            </TabsContent>
-
-            {/* Individual Sign-up Form */}
-            <TabsContent value="individual" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="individual-name">Full Name *</Label>
-                  <Input
-                    id="individual-name"
-                    placeholder="e.g., Dr. John Smith"
-                    value={individualData.fullName}
-                    onChange={(e) => setIndividualData({ ...individualData, fullName: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="individual-email">Email Address *</Label>
-                  <Input
-                    id="individual-email"
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={individualData.email}
-                    onChange={(e) => setIndividualData({ ...individualData, email: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="individual-specialty">Specialty</Label>
-                  <select
-                    id="individual-specialty"
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm"
-                    value={individualData.specialty}
-                    onChange={(e) => setIndividualData({ ...individualData, specialty: e.target.value })}
-                    disabled={loading}
-                  >
-                    {specialties.map(s => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="individual-password">Password *</Label>
-                  <Input
-                    id="individual-password"
-                    type="password"
-                    placeholder="Minimum 8 characters"
-                    value={individualData.password}
-                    onChange={(e) => setIndividualData({ ...individualData, password: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="individual-confirm-password">Confirm Password *</Label>
-                  <Input
-                    id="individual-confirm-password"
-                    type="password"
-                    placeholder="Re-enter password"
-                    value={individualData.confirmPassword}
-                    onChange={(e) => setIndividualData({ ...individualData, confirmPassword: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 pt-4">
-                <Checkbox
-                  id="individual-terms"
-                  checked={individualData.agreedToTerms}
-                  onCheckedChange={(checked) => 
-                    setIndividualData({ ...individualData, agreedToTerms: checked as boolean })
-                  }
-                  disabled={loading}
-                />
-                <label htmlFor="individual-terms" className="text-sm text-gray-600 leading-relaxed">
-                  I agree to the{' '}
-                  <Link href="/terms" className="text-blue-600 hover:underline">Terms of Service</Link>
-                  {' '}and{' '}
-                  <Link href="/privacy" className="text-blue-600 hover:underline">Privacy Policy</Link>
-                </label>
-              </div>
-
-              <Button
-                onClick={handleSignUp}
-                disabled={loading}
-                className="w-full h-12 text-base font-semibold"
-                size="lg"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Creating Account...
-                  </>
-                ) : (
-                  <>
-                    Create Account
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </>
-                )}
-              </Button>
-            </TabsContent>
-          </Tabs>
-
-          {/* Features List */}
-          <div className="mt-8 pt-8 border-t">
-            <p className="text-sm font-medium text-gray-900 mb-4">What you'll get:</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {[
-                'Unlimited contacts & deals',
-                'Complete pipeline management',
-                'Email & WhatsApp integration',
-                'Marketing automation',
-                'Team collaboration',
-                'Advanced analytics & reports'
-              ].map((feature) => (
-                <div key={feature} className="flex items-center space-x-2">
-                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-sm text-gray-600">{feature}</span>
-                </div>
-              ))}
+    <div className="min-h-screen flex">
+      {/* Left Side - Sign Up Form */}
+      <div className="flex-1 flex items-center justify-center p-8 bg-white">
+        <div className="w-full max-w-md">
+          {/* Logo & Title */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-4">
+              <Sparkles className="h-8 w-8 text-white" />
             </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Start your free trial
+            </h1>
+            <p className="text-gray-600">
+              Join thousands of practices using Dental CRM
+            </p>
           </div>
+
+          {/* Progress Indicator */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <div className={`h-2 w-16 rounded-full ${step >= 1 ? 'bg-indigo-600' : 'bg-gray-200'}`} />
+            <div className={`h-2 w-16 rounded-full ${step >= 2 ? 'bg-indigo-600' : 'bg-gray-200'}`} />
+          </div>
+
+          {/* Step 1: Account Type & Practice Info */}
+          {step === 1 && (
+            <div className="space-y-6 animate-in slide-in-from-bottom duration-300">
+              {/* Account Type Selection */}
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setAccountType('practice')}
+                  className={`p-6 rounded-xl border-2 transition-all ${
+                    accountType === 'practice'
+                      ? 'border-indigo-600 bg-indigo-50 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <Building2 className={`h-8 w-8 mx-auto mb-3 ${accountType === 'practice' ? 'text-indigo-600' : 'text-gray-400'}`} />
+                  <p className="font-semibold text-gray-900">Practice</p>
+                  <p className="text-xs text-gray-500 mt-1">For dental practices with a team</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAccountType('individual')}
+                  className={`p-6 rounded-xl border-2 transition-all ${
+                    accountType === 'individual'
+                      ? 'border-indigo-600 bg-indigo-50 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <User className={`h-8 w-8 mx-auto mb-3 ${accountType === 'individual' ? 'text-indigo-600' : 'text-gray-400'}`} />
+                  <p className="font-semibold text-gray-900">Individual</p>
+                  <p className="text-xs text-gray-500 mt-1">For solo practitioners</p>
+                </button>
+              </div>
+
+              {accountType === 'practice' && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="practiceName" className="text-sm font-medium text-gray-900">
+                      Practice Name *
+                    </Label>
+                    <Input
+                      id="practiceName"
+                      placeholder="e.g., Bright Smile Dental"
+                      value={formData.practiceName}
+                      onChange={(e) => setFormData({ ...formData, practiceName: e.target.value })}
+                      className="mt-1.5 h-12"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="specialty" className="text-sm font-medium text-gray-900">
+                      Specialty
+                    </Label>
+                    <Select value={formData.specialty} onValueChange={(value) => setFormData({ ...formData, specialty: value })}>
+                      <SelectTrigger className="mt-1.5 h-12">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {specialties.map(s => (
+                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                type="button"
+                onClick={handleContinue}
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              >
+                Continue
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </Button>
+            </div>
+          )}
+
+          {/* Step 2: Personal Info & Password */}
+          {step === 2 && (
+            <form onSubmit={handleSignUp} className="space-y-5 animate-in slide-in-from-bottom duration-300">
+              <div>
+                <Label htmlFor="fullName" className="text-sm font-medium text-gray-900">
+                  Your Full Name *
+                </Label>
+                <Input
+                  id="fullName"
+                  placeholder="John Doe"
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  className="mt-1.5 h-12"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="email" className="text-sm font-medium text-gray-900">
+                  Email Address *
+                </Label>
+                <div className="relative mt-1.5">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@practice.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="pl-11 h-12"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="password" className="text-sm font-medium text-gray-900">
+                  Password *
+                </Label>
+                <div className="relative mt-1.5">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Create a strong password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="pl-11 pr-11 h-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">At least 8 characters</p>
+              </div>
+
+              <div>
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-900">
+                  Confirm Password *
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Re-enter your password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  className="mt-1.5 h-12"
+                />
+              </div>
+
+              <div className="flex items-start space-x-3 pt-2">
+                <Checkbox
+                  id="terms"
+                  checked={formData.agreedToTerms}
+                  onCheckedChange={(checked) => setFormData({ ...formData, agreedToTerms: checked as boolean })}
+                  className="mt-0.5"
+                />
+                <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed">
+                  I agree to the{' '}
+                  <a href="#" className="text-indigo-600 hover:text-indigo-700 font-medium">
+                    Terms of Service
+                  </a>{' '}
+                  and{' '}
+                  <a href="#" className="text-indigo-600 hover:text-indigo-700 font-medium">
+                    Privacy Policy
+                  </a>
+                </label>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep(1)}
+                  className="flex-1 h-12"
+                  disabled={loading}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    <>
+                      Create account
+                      <ArrowRight className="h-5 w-5 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
 
           {/* Sign In Link */}
           <div className="mt-8 text-center">
-            <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link href="/login" className="text-blue-600 hover:underline font-medium">
-                Sign in
-              </Link>
+            <span className="text-sm text-gray-600">Already have an account?</span>{' '}
+            <Link href="/login" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Benefits Showcase */}
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 p-12 items-center justify-center relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+            backgroundSize: '40px 40px'
+          }} />
+        </div>
+
+        <div className="relative z-10 max-w-lg">
+          <h2 className="text-4xl font-bold text-white mb-4">
+            Everything you need to grow your practice
+          </h2>
+          <p className="text-xl text-indigo-100 mb-12">
+            Join the modern way of managing dental practices
+          </p>
+          
+          <div className="space-y-4">
+            {[
+              'Complete CRM with pipeline management',
+              'Multi-channel communications (Email, SMS, WhatsApp)',
+              'AI-powered analytics and insights',
+              'Marketing automation and campaigns',
+              'Team collaboration and permissions',
+              'HIPAA-compliant security'
+            ].map((feature, index) => (
+              <div key={index} className="flex items-center gap-3 text-white">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <Check className="h-4 w-4" />
+                </div>
+                <span className="text-indigo-50">{feature}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-12 p-6 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex -space-x-2">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 border-2 border-white" />
+                ))}
+              </div>
+              <p className="text-white text-sm font-semibold">2,500+ dental practices</p>
+            </div>
+            <p className="text-indigo-100 text-sm">
+              Trusted by leading dental practices worldwide
             </p>
           </div>
-        </Card>
-
-        {/* Trust Signals */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">
-            Trusted by 5,000+ dental practices worldwide 🌍
-          </p>
         </div>
       </div>
     </div>
   )
 }
-

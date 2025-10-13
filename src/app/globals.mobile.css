@@ -1,0 +1,44 @@
+/* Mobile-specific styles */
+
+@media (max-width: 768px) {
+  /* Hide desktop sidebar */
+  .desktop-sidebar {
+    display: none;
+  }
+
+  /* Full width content on mobile */
+  .main-content {
+    width: 100%;
+    padding: 1rem;
+  }
+
+  /* Stack cards vertically */
+  .card-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Larger touch targets */
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Responsive tables */
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  /* Mobile-friendly forms */
+  input, select, textarea {
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+}
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+  .hover-effect:hover {
+    /* Remove hover effects on touch devices */
+  }
+}
+

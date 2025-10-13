@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
 
 export async function POST() {
   try {
-    const supabase = await createClient()
+    const supabase = createServiceClient()
 
     // Read the migration SQL file
     const sqlPath = path.join(process.cwd(), 'supabase', 'sql', '14_add_pipeline_fields.sql')

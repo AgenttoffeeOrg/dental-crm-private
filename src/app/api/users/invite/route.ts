@@ -86,9 +86,34 @@ export async function POST(request: Request) {
       )
     }
 
-    // TODO: Send invitation email
-    // For now, we'll just return the invitation link
+    // Send invitation email
     const invitationLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${token}`
+    
+    // Get inviter name and practice name
+    const { data: inviterData } = await supabase
+      .from('app_users')
+      .select('full_name')
+      .eq('id', invited_by)
+      .single()
+    
+    const { data: tenantData } = await supabase
+      .from('tenants')
+      .select('name')
+      .eq('id', tenant_id)
+      .single()
+
+    const inviterName = inviterData?.full_name || 'Your colleague'
+    const practiceName = tenantData?.name || 'the practice'
+
+    // Send email
+    try {
+      const { emailService } = await import('@/lib/email-service')
+      await emailService.sendInvitation(email, inviterName, practiceName, invitationLink, role)
+      console.log(`✅ Invitation email sent to ${email}`)
+    } catch (emailError) {
+      console.error('Failed to send invitation email:', emailError)
+      // Continue anyway - invitation was created
+    }
 
     console.log(`📧 Invitation created for ${email}`)
     console.log(`🔗 Invitation link: ${invitationLink}`)

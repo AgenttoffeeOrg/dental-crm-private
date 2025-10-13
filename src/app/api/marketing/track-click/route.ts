@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { createServiceClient } from '@/lib/supabase-server';
 import { handleHighIntentClick, isHighIntentClick } from '@/lib/marketing/intent-detector';
 import { addTouchpoint, type MarketingTouchpoint } from '@/lib/marketing/attribution';
 import { withMarketingCheck } from '@/lib/marketing/api-middleware';
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const { contactId, dealId, clickedUrl, campaignId, campaignName } = body;
 
     // Get tenant ID
-    const supabase = createClient();
+    const supabase = createServiceClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {

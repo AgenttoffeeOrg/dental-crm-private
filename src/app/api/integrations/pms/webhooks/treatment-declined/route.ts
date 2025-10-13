@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
 
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json()
     const { tenant_id, pms_treatment_id, decline_reason, declined_at } = payload
 
-    const supabase = createClient()
+    const supabase = createServiceClient()
 
     // 1. Find treatment plan
     const { data: treatmentPlan } = await supabase

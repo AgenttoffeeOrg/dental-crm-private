@@ -7,39 +7,32 @@ import { createClient } from '@/lib/supabase-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Building2, Mail, ArrowLeft, Lock, Loader2, Check } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Loader2, Mail, Lock, CheckCircle, Eye, EyeOff, Sparkles } from 'lucide-react'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [step, setStep] = useState<'request' | 'confirm'>('request')
   const [loading, setLoading] = useState(false)
-  const [emailSent, setEmailSent] = useState(false)
-  const [isUpdateMode, setIsUpdateMode] = useState(false)
-  
+  const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
-  const [newPassword, setNewPassword] = useState('')
+  const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
-  // Check if we're in password update mode (user clicked reset link)
-  const accessToken = searchParams?.get('access_token')
-  
-  useState(() => {
-    if (accessToken) {
-      setIsUpdateMode(true)
-    }
-  })
+  // Check if we have a reset token in URL
+  const resetToken = searchParams?.get('token')
 
-  const handleSendResetEmail = async (e: React.FormEvent) => {
+  useState(() => {
+    if (resetToken) {
+      setStep('confirm')
+    }
+  }, [resetToken])
+
+  const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!email) {
-      toast.error('Please enter your email address')
-      return
-    }
-
-    if (!email.includes('@')) {
+    if (!email || !email.includes('@')) {
       toast.error('Please enter a valid email address')
       return
     }
@@ -54,14 +47,15 @@ export default function ResetPasswordPage() {
 
       if (error) throw error
 
-      setEmailSent(true)
-      toast.success('Reset email sent!', {
-        description: 'Check your inbox for password reset instructions'
+      toast.success('Check your email!', {
+        description: 'We sent you a password reset link'
       })
+
+      // Show success message
+      setStep('confirm')
     } catch (error: any) {
-      console.error('Reset password error:', error)
       toast.error('Failed to send reset email', {
-        description: error.message || 'Please try again'
+        description: error.message
       })
     } finally {
       setLoading(false)
@@ -71,18 +65,13 @@ export default function ResetPasswordPage() {
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!newPassword || !confirmPassword) {
-      toast.error('Please fill in all fields')
+    if (!password || password.length < 8) {
+      toast.error('Password must be at least 8 characters')
       return
     }
 
-    if (newPassword !== confirmPassword) {
+    if (password !== confirmPassword) {
       toast.error('Passwords do not match')
-      return
-    }
-
-    if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters long')
       return
     }
 
@@ -91,12 +80,12 @@ export default function ResetPasswordPage() {
 
     try {
       const { error } = await supabase.auth.updateUser({
-        password: newPassword
+        password
       })
 
       if (error) throw error
 
-      toast.success('Password updated successfully!', {
+      toast.success('Password updated!', {
         description: 'You can now sign in with your new password'
       })
 
@@ -104,9 +93,8 @@ export default function ResetPasswordPage() {
         router.push('/login')
       }, 1500)
     } catch (error: any) {
-      console.error('Update password error:', error)
       toast.error('Failed to update password', {
-        description: error.message || 'Please try again'
+        description: error.message
       })
     } finally {
       setLoading(false)
@@ -114,187 +102,174 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30 p-4">
       <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            {isUpdateMode ? (
-              <Lock className="w-8 h-8 text-white" />
-            ) : (
-              <Building2 className="w-8 h-8 text-white" />
-            )}
+        {/* Back to Login */}
+        <Link 
+          href="/login"
+          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-8"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to login
+        </Link>
+
+        {/* Card */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-4">
+              {step === 'request' ? (
+                <Lock className="h-7 w-7 text-white" />
+              ) : resetToken ? (
+                <Lock className="h-7 w-7 text-white" />
+              ) : (
+                <CheckCircle className="h-7 w-7 text-white" />
+              )}
+            </div>
+
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              {step === 'request' ? 'Reset your password' : resetToken ? 'Set new password' : 'Check your email'}
+            </h1>
+            <p className="text-gray-600">
+              {step === 'request' 
+                ? 'Enter your email and we\'ll send you a reset link'
+                : resetToken 
+                ? 'Choose a strong password for your account'
+                : 'We\'ve sent you a password reset link'}
+            </p>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            {isUpdateMode ? 'Set New Password' : 'Reset Password'}
-          </h1>
-          <p className="text-lg text-gray-600">
-            {isUpdateMode 
-              ? 'Choose a strong password for your account'
-              : 'Enter your email to receive reset instructions'
-            }
-          </p>
-        </div>
 
-        {/* Main Card */}
-        <Card className="p-8 shadow-2xl border-0">
-          {!isUpdateMode ? (
-            // Send Reset Email Form
-            emailSent ? (
-              <div className="text-center space-y-6">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4">
-                  <Check className="w-10 h-10 text-green-600" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
-                  <p className="text-gray-600 mb-4">
-                    We've sent password reset instructions to:
-                  </p>
-                  <p className="text-blue-600 font-medium mb-6">{email}</p>
-                  <p className="text-sm text-gray-500 mb-6">
-                    Didn't receive the email? Check your spam folder or try again.
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <Button
-                    onClick={() => setEmailSent(false)}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    Try Different Email
-                  </Button>
-                  <Link href="/login" className="block">
-                    <Button variant="ghost" className="w-full">
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Back to Sign In
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={handleSendResetEmail} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-base">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="your.email@example.com"
-                      className="pl-10 h-12 text-base"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={loading}
-                      autoFocus
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-12 text-base font-semibold"
-                  size="lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="w-5 h-5 mr-2" />
-                      Send Reset Instructions
-                    </>
-                  )}
-                </Button>
-
-                <Link href="/login" className="block">
-                  <Button variant="ghost" type="button" className="w-full">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Sign In
-                  </Button>
-                </Link>
-              </form>
-            )
-          ) : (
-            // Update Password Form
-            <form onSubmit={handleUpdatePassword} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="new-password" className="text-base">New Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          {/* Request Reset Form */}
+          {step === 'request' && (
+            <form onSubmit={handleRequestReset} className="space-y-5">
+              <div>
+                <Label htmlFor="email" className="text-sm font-medium text-gray-900">
+                  Email address
+                </Label>
+                <div className="relative mt-1.5">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
-                    id="new-password"
-                    type="password"
-                    placeholder="Minimum 8 characters"
-                    className="pl-10 h-12 text-base"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    disabled={loading}
+                    id="email"
+                    type="email"
+                    placeholder="name@practice.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-11 h-12 text-base"
                     autoFocus
-                  />
-                </div>
-                {newPassword && (
-                  <p className={`text-sm ${newPassword.length >= 8 ? 'text-green-600' : 'text-gray-500'}`}>
-                    {newPassword.length >= 8 ? '✓' : '○'} At least 8 characters
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password" className="text-base">Confirm New Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    placeholder="Re-enter password"
-                    className="pl-10 h-12 text-base"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={loading}
                   />
                 </div>
-                {confirmPassword && (
-                  <p className={`text-sm ${newPassword === confirmPassword ? 'text-green-600' : 'text-red-500'}`}>
-                    {newPassword === confirmPassword ? '✓ Passwords match' : '○ Passwords must match'}
-                  </p>
-                )}
               </div>
 
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 text-base font-semibold"
-                size="lg"
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Updating...
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Sending reset link...
                   </>
                 ) : (
                   <>
-                    Update Password
+                    Send reset link
+                    <ArrowRight className="h-5 w-5 ml-2" />
                   </>
                 )}
               </Button>
             </form>
           )}
-        </Card>
 
-        {/* Help Text */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">
-            Need help? Contact{' '}
-            <a href="mailto:support@dentalcrm.com" className="text-blue-600 hover:underline">
-              support@dentalcrm.com
-            </a>
-          </p>
+          {/* Update Password Form */}
+          {step === 'confirm' && resetToken && (
+            <form onSubmit={handleUpdatePassword} className="space-y-5">
+              <div>
+                <Label htmlFor="newPassword" className="text-sm font-medium text-gray-900">
+                  New password
+                </Label>
+                <div className="relative mt-1.5">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="newPassword"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Create a strong password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-11 pr-11 h-12 text-base"
+                    autoFocus
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">At least 8 characters</p>
+              </div>
+
+              <div>
+                <Label htmlFor="confirmNewPassword" className="text-sm font-medium text-gray-900">
+                  Confirm new password
+                </Label>
+                <Input
+                  id="confirmNewPassword"
+                  type="password"
+                  placeholder="Re-enter your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="mt-1.5 h-12 text-base"
+                  disabled={loading}
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Updating password...
+                  </>
+                ) : (
+                  <>
+                    Update password
+                    <ArrowRight className="h-5 w-5 ml-2" />
+                  </>
+                )}
+              </Button>
+            </form>
+          )}
+
+          {/* Email Sent Confirmation */}
+          {step === 'confirm' && !resetToken && (
+            <div className="text-center py-6">
+              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <p className="text-gray-600 mb-6">
+                We sent a password reset link to <strong>{email}</strong>
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                Click the link in the email to reset your password
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => setStep('request')}
+                className="w-full h-12"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Try a different email
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
-

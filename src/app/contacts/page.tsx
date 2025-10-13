@@ -2,16 +2,21 @@
 
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { ContactsList } from '@/components/contacts/contacts-list'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { PageHeader } from '@/components/ui/page-header'
+import { Users } from 'lucide-react'
 
 export default function ContactsPage() {
   return (
     <DashboardLayout>
       <div className="h-full overflow-y-auto">
         <div className="p-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
-            <p className="text-gray-600">Manage your patients and leads</p>
-          </div>
+          <Breadcrumbs items={[{ label: 'Contacts' }]} />
+          <PageHeader
+            title="Contacts"
+            description="Manage your patients and leads"
+            icon={Users}
+          />
           <ContactsList />
         </div>
       </div>

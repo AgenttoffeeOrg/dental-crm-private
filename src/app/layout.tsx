@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
-import { Toaster } from "@/components/ui/sonner";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "DentalCRM - Dental Practice Management",
-  description: "Modern CRM for dental practices with AI-powered call analysis",
+  title: "Dental CRM - Practice Management Platform",
+  description: "Enterprise-grade CRM for dental practices",
 };
+
+export const dynamic = 'force-dynamic'
 
 export default function RootLayout({
   children,
@@ -21,11 +17,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className="antialiased">
         <AuthProvider>
           {children}
-          <Toaster />
         </AuthProvider>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );

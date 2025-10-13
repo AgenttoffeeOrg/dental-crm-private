@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Target, Users } from 'lucide-react'
+import { Plus, Target } from 'lucide-react'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { AudiencesList } from '@/components/marketing/audiences-list'
 import { SmartSegmentBuilder } from '@/components/marketing/smart-segment-builder'
 
@@ -16,7 +17,9 @@ export default function AudiencesPage() {
     <DashboardLayout>
       <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-green-50/30">
         <div className="p-8 max-w-[1600px] mx-auto">
-          <div className="flex items-center justify-between mb-6">
+          <Breadcrumbs items={[{ label: "Marketing", href: "/marketing" }, { label: "Audiences" }]} />
+          
+          <div className="flex items-center justify-between mb-6 mt-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                 <Target className="h-8 w-8 text-green-600" />
@@ -53,4 +56,3 @@ export default function AudiencesPage() {
     </DashboardLayout>
   )
 }
-

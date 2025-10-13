@@ -43,16 +43,16 @@ import {
 import { createClient } from '@/lib/supabase-client'
 import { Contact, Deal, DealWithRelations, PipelineStage } from '@/types/database'
 import { toast } from 'sonner'
+import { useTenant } from '@/lib/hooks/use-tenant'
 
 interface ContactDetailViewProps {
   contactId: string
-  tenantId?: string
 }
 
 export function ContactDetailView({ 
-  contactId, 
-  tenantId = '550e8400-e29b-41d4-a716-446655440000' 
+  contactId
 }: ContactDetailViewProps) {
+  const { tenantId } = useTenant()
   const [contact, setContact] = useState<Contact | null>(null)
   const [deals, setDeals] = useState<DealWithRelations[]>([])
   const [loading, setLoading] = useState(true)

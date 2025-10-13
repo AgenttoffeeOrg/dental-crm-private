@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 import { NextRequest } from 'next/server'
 
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const redirect = requestUrl.searchParams.get('redirect') || '/pipeline'
 
   if (code) {
-    const supabase = await createClient()
+    const supabase = createServiceClient()
     await supabase.auth.exchangeCodeForSession(code)
   }
 

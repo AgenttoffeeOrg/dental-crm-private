@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { createServiceClient } from '@/lib/supabase-server';
 import { processFormSubmission, type FormSubmission, type DealCreationRules } from '@/lib/marketing/form-processor';
 import { withMarketingCheck } from '@/lib/marketing/api-middleware';
 
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const { formId, formName, payload, sourceUrl, dealRules } = body;
 
     // Get tenant ID from session
-    const supabase = createClient();
+    const supabase = createServiceClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {

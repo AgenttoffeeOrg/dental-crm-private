@@ -12,10 +12,24 @@ import { AIAssistantSettingsTab } from './ai-assistant-settings-tab'
 import { AIAnalyticsTab } from './ai-analytics-tab'
 import { CommunicationsIntegrationsTab } from './communications-integrations-tab'
 import { AuditTrailViewer } from './audit-trail-viewer'
+import { BrandingSettingsTab } from './branding-settings-tab'
+import { EmailConfigTab } from './email-config-tab'
+import { SMSConfigTab } from './sms-config-tab'
+import { WhatsAppConfigTab } from './whatsapp-config-tab'
+import { NotificationsTab } from './notifications-tab'
+import { DataPrivacyTab } from './data-privacy-tab'
+import { APIDeveloperTab } from './api-developer-tab'
+import { SecuritySettingsTab } from './security-settings-tab'
+import { BillingSubscriptionTab } from './billing-subscription-tab'
+import { CalendarIntegrationTab } from './calendar-integration-tab'
+import { CustomFieldsTab } from './custom-fields-tab'
+import { TagsManagementTab } from './tags-management-tab'
+import { LeadSourcesTab } from './lead-sources-tab'
+import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
 
 export function SettingsTabs() {
-  const tenantId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
-  const currentUserId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
+  const { tenantId } = useTenant()
+  const { userId: currentUserId } = useCurrentUser()
 
   // Get initial tab from URL to persist on reload
   const getInitialTab = () => {
@@ -101,6 +115,45 @@ export function SettingsTabs() {
           >
             📜 Audit Trail
           </TabsTrigger>
+          <TabsTrigger value="branding" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            🎨 Branding
+          </TabsTrigger>
+          <TabsTrigger value="email-config" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            📧 Email
+          </TabsTrigger>
+          <TabsTrigger value="sms-config" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            💬 SMS
+          </TabsTrigger>
+          <TabsTrigger value="whatsapp-config" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            📱 WhatsApp
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            🔔 Notifications
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            💳 Billing
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            📅 Calendar
+          </TabsTrigger>
+          <TabsTrigger value="custom-fields" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            🔧 Custom Fields
+          </TabsTrigger>
+          <TabsTrigger value="tags" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            🏷️ Tags
+          </TabsTrigger>
+          <TabsTrigger value="lead-sources" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            📊 Lead Sources
+          </TabsTrigger>
+          <TabsTrigger value="security" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            🔒 Security
+          </TabsTrigger>
+          <TabsTrigger value="api" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            💻 API
+          </TabsTrigger>
+          <TabsTrigger value="privacy" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            🛡️ Privacy
+          </TabsTrigger>
         </TabsList>
       </div>
 
@@ -167,6 +220,58 @@ export function SettingsTabs() {
 
       <TabsContent value="audit" className="space-y-6">
         <AuditTrailViewer tenantId={tenantId} isAdmin={true} />
+      </TabsContent>
+
+      <TabsContent value="branding" className="space-y-6">
+        <BrandingSettingsTab />
+      </TabsContent>
+
+      <TabsContent value="email-config" className="space-y-6">
+        <EmailConfigTab />
+      </TabsContent>
+
+      <TabsContent value="sms-config" className="space-y-6">
+        <SMSConfigTab />
+      </TabsContent>
+
+      <TabsContent value="whatsapp-config" className="space-y-6">
+        <WhatsAppConfigTab />
+      </TabsContent>
+
+      <TabsContent value="notifications" className="space-y-6">
+        <NotificationsTab />
+      </TabsContent>
+
+      <TabsContent value="billing" className="space-y-6">
+        <BillingSubscriptionTab />
+      </TabsContent>
+
+      <TabsContent value="calendar" className="space-y-6">
+        <CalendarIntegrationTab />
+      </TabsContent>
+
+      <TabsContent value="custom-fields" className="space-y-6">
+        <CustomFieldsTab />
+      </TabsContent>
+
+      <TabsContent value="tags" className="space-y-6">
+        <TagsManagementTab />
+      </TabsContent>
+
+      <TabsContent value="lead-sources" className="space-y-6">
+        <LeadSourcesTab />
+      </TabsContent>
+
+      <TabsContent value="security" className="space-y-6">
+        <SecuritySettingsTab />
+      </TabsContent>
+
+      <TabsContent value="api" className="space-y-6">
+        <APIDeveloperTab />
+      </TabsContent>
+
+      <TabsContent value="privacy" className="space-y-6">
+        <DataPrivacyTab />
       </TabsContent>
     </Tabs>
   )
