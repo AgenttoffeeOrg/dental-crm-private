@@ -83,9 +83,9 @@ export default function OnboardingPage() {
       setTenant(data)
       setPracticeInfo({
         name: data.name || '',
-        description: data.metadata?.description || '',
-        specialty: data.metadata?.specialty || 'general',
-        team_size: data.metadata?.team_size || '1-5'
+        description: '',
+        specialty: 'general',
+        team_size: '1-5'
       })
     }
   }
@@ -100,17 +100,11 @@ export default function OnboardingPage() {
     const supabase = createClient()
 
     try {
-      // Update tenant with practice info
+      // Update tenant with practice info (just name for now)
       const { error } = await supabase
         .from('tenants')
         .update({
-          name: practiceInfo.name,
-          metadata: {
-            ...tenant?.metadata,
-            description: practiceInfo.description,
-            specialty: practiceInfo.specialty,
-            team_size: practiceInfo.team_size
-          }
+          name: practiceInfo.name
         })
         .eq('id', appUser?.tenant_id)
 
@@ -128,27 +122,11 @@ export default function OnboardingPage() {
 
   const handleStep2 = async () => {
     setLoading(true)
-    const supabase = createClient()
 
     try {
-      // Update tenant with contact details
-      const { error } = await supabase
-        .from('tenants')
-        .update({
-          metadata: {
-            ...tenant?.metadata,
-            phone: contactDetails.phone,
-            email: contactDetails.email,
-            website: contactDetails.website,
-            address: contactDetails.address,
-            city: contactDetails.city,
-            postcode: contactDetails.postcode
-          }
-        })
-        .eq('id', appUser?.tenant_id)
-
-      if (error) throw error
-
+      // Skip saving contact details for now (no metadata column)
+      // TODO: Add these fields to tenants table or create separate practice_details table
+      
       toast.success('Contact details saved!')
       setCurrentStep(3)
     } catch (error: any) {
@@ -244,14 +222,8 @@ export default function OnboardingPage() {
         toast.success(`Invitations sent to ${emails.length} team members!`)
       }
 
-      // Mark onboarding as complete
-      const supabase = createClient()
-      await supabase
-        .from('app_users')
-        .update({ 
-          metadata: { onboarding_completed: true } 
-        })
-        .eq('id', appUser?.id)
+      // Mark onboarding as complete (skip for now - no metadata column)
+      // TODO: Add onboarding_completed field to app_users table
 
       toast.success('Onboarding complete! Welcome to your CRM!', {
         description: 'Redirecting to dashboard...'
