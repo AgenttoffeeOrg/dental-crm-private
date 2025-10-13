@@ -101,7 +101,15 @@ export default function SignUpPage() {
         }
       })
 
-      if (authError) throw authError
+      if (authError) {
+        // Handle duplicate email case
+        if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
+          toast.error('This email is already registered. Please try signing in instead.')
+          router.push('/sign-in')
+          return
+        }
+        throw authError
+      }
       if (!authData.user) throw new Error('Failed to create user')
 
       // Create tenant
@@ -120,19 +128,24 @@ export default function SignUpPage() {
 
       if (tenantError) throw tenantError
 
-      // Create app_user
+      // Create app_user with duplicate handling
       const { error: appUserError } = await supabase
         .from('app_users')
-        .insert({
+        .upsert({
           id: authData.user.id,
           tenant_id: tenant.id,
           full_name: formData.fullName,
-          email: formData.email,
-          role: 'owner',
-          status: 'active'
+          role: 'owner'
+        }, {
+          onConflict: 'id'
         })
 
-      if (appUserError) throw appUserError
+      if (appUserError) {
+        console.error('App user creation error:', appUserError)
+        // If app user creation fails, try to clean up
+        await supabase.from('tenants').delete().eq('id', tenant.id)
+        throw appUserError
+      }
 
       // Create default pipeline
       await supabase.from('pipelines').insert({
