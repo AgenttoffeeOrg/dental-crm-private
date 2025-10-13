@@ -27,6 +27,8 @@ import { formatCurrency } from '@/lib/utils/formatters'
 import { SkeletonCard } from '@/components/ui/skeleton-loader'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
+import { RevenueChart } from '@/components/dashboard/revenue-chart'
+import { DealsFunnelChart } from '@/components/dashboard/deals-funnel-chart'
 
 export default function DashboardPage() {
   const { appUser, loading: authLoading } = useAuth()
@@ -40,6 +42,8 @@ export default function DashboardPage() {
   })
   const [upcomingTasks, setUpcomingTasks] = useState<any[]>([])
   const [recentDeals, setRecentDeals] = useState<any[]>([])
+  const [revenueData, setRevenueData] = useState<any[]>([])
+  const [dealsByStage, setDealsByStage] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -98,6 +102,31 @@ export default function DashboardPage() {
         .limit(5)
 
       setRecentDeals(recentDealsData || [])
+
+      // Generate sample revenue data for the last 6 months
+      const revenueChartData = []
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+      for (let i = 0; i < 6; i++) {
+        const monthRevenue = Math.floor(Math.random() * 50000) + 20000
+        const monthDeals = Math.floor(Math.random() * 20) + 5
+        revenueChartData.push({
+          month: months[i],
+          revenue: monthRevenue,
+          deals: monthDeals
+        })
+      }
+      setRevenueData(revenueChartData)
+
+      // Generate deals by stage data
+      const stageData = [
+        { stage: 'Lead', value: Math.floor(Math.random() * 20) + 10, color: '#3b82f6' },
+        { stage: 'Qualified', value: Math.floor(Math.random() * 15) + 8, color: '#8b5cf6' },
+        { stage: 'Proposal', value: Math.floor(Math.random() * 12) + 5, color: '#06b6d4' },
+        { stage: 'Negotiation', value: Math.floor(Math.random() * 8) + 3, color: '#10b981' },
+        { stage: 'Closed Won', value: Math.floor(Math.random() * 10) + 5, color: '#f59e0b' },
+        { stage: 'Closed Lost', value: Math.floor(Math.random() * 5) + 2, color: '#ef4444' }
+      ]
+      setDealsByStage(stageData)
 
     } catch (error) {
       console.error('Error loading dashboard data:', error)
@@ -225,6 +254,12 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </Link>
+          </div>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <RevenueChart data={revenueData} />
+            <DealsFunnelChart data={dealsByStage} />
           </div>
 
           {/* Main Content Grid */}
