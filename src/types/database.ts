@@ -191,6 +191,11 @@ export interface Deal {
   last_activity_at: string;
   created_at: string;
   updated_at: string;
+  // Marketing Integration Fields
+  marketing_source_type?: string; // 'campaign', 'form', 'landing_page', 'journey', 'manual'
+  marketing_source_id?: string;
+  marketing_source_name?: string;
+  marketing_touchpoints?: any[]; // Array of touchpoint objects
 }
 
 export interface Task {

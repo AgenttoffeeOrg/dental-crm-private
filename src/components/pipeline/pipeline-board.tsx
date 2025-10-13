@@ -325,6 +325,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
   const [localSearchQuery, setLocalSearchQuery] = useState('')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [treatmentFilter, setTreatmentFilter] = useState<string>('all')
+  const [marketingSourceFilter, setMarketingSourceFilter] = useState<string>('all') // NEW: Marketing filter
   const [sortBy, setSortBy] = useState<'date' | 'value' | 'name' | 'stage'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   
@@ -647,6 +648,13 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
       )
     }
     
+    // 5. Marketing Source filter (NEW)
+    if (marketingSourceFilter !== 'all') {
+      filtered = filtered.filter(deal => 
+        (deal as any).marketing_source_type === marketingSourceFilter
+      )
+    }
+    
     // 5. Sort
     filtered.sort((a, b) => {
       let aValue: any, bValue: any
@@ -677,7 +685,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
     })
     
     return filtered
-  }, [deals, ownerFilter, localSearchQuery, sourceFilter, treatmentFilter, sortBy, sortOrder])
+  }, [deals, ownerFilter, localSearchQuery, sourceFilter, treatmentFilter, marketingSourceFilter, sortBy, sortOrder])
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -1033,6 +1041,24 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
                   </SelectContent>
                 </Select>
               )}
+              
+              {/* Marketing Source Filter (NEW - conditional) */}
+              <Select value={marketingSourceFilter} onValueChange={setMarketingSourceFilter}>
+                <SelectTrigger className={cn(
+                  "w-[130px] h-8 text-xs",
+                  marketingSourceFilter !== 'all' && "border-purple-500 bg-purple-50"
+                )}>
+                  <SelectValue placeholder="Marketing" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  <SelectSeparator />
+                  <SelectItem value="campaign">📧 Email Campaign</SelectItem>
+                  <SelectItem value="form">📝 Marketing Form</SelectItem>
+                  <SelectItem value="landing_page">🌐 Landing Page</SelectItem>
+                  <SelectItem value="journey">🔄 Journey</SelectItem>
+                </SelectContent>
+              </Select>
 
               {/* Sort - Only in List View */}
               {viewMode === 'list' && (
@@ -1076,7 +1102,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
               )}
 
               {/* Clear Filters - Only show if any filter is active */}
-              {(sourceFilter !== 'all' || treatmentFilter !== 'all' || ownerFilter !== 'all' || localSearchQuery) && (
+              {(sourceFilter !== 'all' || treatmentFilter !== 'all' || ownerFilter !== 'all' || marketingSourceFilter !== 'all' || localSearchQuery) && (
                 <Button 
                   variant="ghost" 
                   size="sm"
@@ -1084,6 +1110,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
                     setSourceFilter('all')
                     setTreatmentFilter('all')
                     setOwnerFilter('all')
+                    setMarketingSourceFilter('all')
                     setLocalSearchQuery('')
                   }}
                   className="h-8 text-xs text-gray-600"
