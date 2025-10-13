@@ -65,11 +65,14 @@ export default function JourneysPage() {
         <div className="p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Automation Journeys</h1>
-              <p className="text-gray-600">Build smart, automated customer journeys</p>
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <GitBranch className="h-8 w-8 text-orange-600" />
+                Automation Journeys
+              </h1>
+              <p className="text-gray-600 mt-1">Build smart, automated customer journeys</p>
             </div>
             <Link href="/marketing/journeys/create">
-              <Button>
+              <Button className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
                 <Plus className="h-4 w-4 mr-2" />
                 New Journey
               </Button>

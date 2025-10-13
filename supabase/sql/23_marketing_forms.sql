@@ -195,3 +195,4 @@ COMMENT ON TABLE marketing_journey_runs IS 'Contact progress and state within ac
 COMMENT ON TABLE marketing_forms IS 'Lead capture forms with field mapping to contacts';
 COMMENT ON TABLE marketing_landing_pages IS 'Themeable landing pages with embedded forms';
 
+

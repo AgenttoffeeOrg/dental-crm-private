@@ -153,3 +153,4 @@ CREATE INDEX IF NOT EXISTS audit_trail_created_at_idx ON audit_trail(created_at 
 -- ✅ PART 2 COMPLETE!
 -- Next: Run MIGRATION_PART_3_PERMISSIONS.sql
 
+

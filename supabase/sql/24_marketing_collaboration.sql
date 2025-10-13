@@ -145,7 +145,7 @@ CREATE TABLE marketing_saved_reports (
     
     -- Report configuration
     filters_json JSONB,
-    metrics JSON B,
+    metrics JSONB,
     date_range_type TEXT CHECK (date_range_type IN ('last_7_days', 'last_30_days', 'last_90_days', 'custom')),
     date_range_start DATE,
     date_range_end DATE,
@@ -193,4 +193,5 @@ COMMENT ON TABLE marketing_landing_pages IS 'Hosted landing pages with themes an
 COMMENT ON TABLE marketing_comments IS 'Team comments on campaigns, journeys, templates';
 COMMENT ON TABLE marketing_approvals IS 'Approval workflow for campaign/journey launches';
 COMMENT ON TABLE marketing_ai_suggestions IS 'AI-generated content suggestions and optimizations';
+
 

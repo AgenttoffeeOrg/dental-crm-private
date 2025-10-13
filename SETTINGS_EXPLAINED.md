@@ -242,3 +242,4 @@ How deals WORK for EVERYONE (practice-wide rules)
 
 **Everything is now CLEAR, SIMPLE, and WORKING!** ✨
 
+

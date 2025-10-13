@@ -168,3 +168,4 @@ COMMENT ON TABLE marketing_tags IS 'Tag definitions that map to contacts.tags ar
 COMMENT ON TABLE marketing_templates IS 'Email and SMS content templates with drag-drop structure';
 COMMENT ON TABLE marketing_settings IS 'Module-level configuration and feature flags';
 
+

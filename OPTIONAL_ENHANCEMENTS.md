@@ -195,3 +195,4 @@ import { IfMarketing } from '@/components/marketing/if-marketing';
 **Want to deploy?** Run `25_marketing_crm_integration.sql`  
 **Need rollback?** Run `./RESTORE_BEFORE_MARKETING.sh`
 
+

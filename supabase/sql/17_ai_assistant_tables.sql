@@ -103,3 +103,4 @@ COMMENT ON TABLE ai_assistant_preferences IS 'User-specific AI assistant configu
 COMMENT ON TABLE ai_usage_analytics IS 'Tracks AI usage for analytics and cost monitoring';
 COMMENT ON TABLE ai_suggestions IS 'Proactive AI suggestions for deals and contacts';
 
+

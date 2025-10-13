@@ -61,3 +61,4 @@ CREATE INDEX IF NOT EXISTS user_activity_log_created_at_idx ON user_activity_log
 -- ✅ PART 1 COMPLETE!
 -- Next: Run MIGRATION_PART_2_ENTERPRISE.sql
 
+

@@ -344,3 +344,4 @@ function BlockPreview({ block, onUpdate }: { block: EmailBlock; onUpdate: (updat
       return <div className="text-sm text-gray-500">Unknown block type</div>
   }
 }
+

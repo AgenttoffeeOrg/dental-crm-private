@@ -437,3 +437,4 @@ COMMENT ON TABLE deal_settings IS 'Global deal management rules and validation';
 COMMENT ON TABLE contact_settings IS 'Global contact management rules and validation';
 COMMENT ON TABLE task_settings IS 'Global task management rules and automation';
 
+

@@ -190,3 +190,4 @@ cd /Users/deepak/auth-app/dental-crm
 
 **Want to rollback?** Run `./RESTORE_BEFORE_MARKETING.sh`
 
+

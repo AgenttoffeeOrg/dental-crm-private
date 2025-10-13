@@ -1,18 +1,115 @@
 'use client'
 
+import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { AnalyticsDashboard } from '@/components/analytics/analytics-dashboard'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { 
+  BarChart3, 
+  TrendingUp, 
+  DollarSign, 
+  Download,
+  Brain,
+  Users as UsersIcon,
+  Target
+} from 'lucide-react'
+import { ExecutiveDashboardV2 } from '@/components/analytics/executive-dashboard-v2'
+import { CRMAnalyticsV2 } from '@/components/analytics/crm-analytics-v2'
+import { MarketingAnalyticsV2 } from '@/components/analytics/marketing-analytics-v2'
+import { CohortAnalysis } from '@/components/analytics/cohort-analysis'
+import { PredictiveAnalytics } from '@/components/analytics/predictive-analytics'
+import { useAuth } from '@/lib/auth'
 
 export default function AnalyticsPage() {
+  const { appUser, loading } = useAuth()
+  const [activeTab, setActiveTab] = useState('executive')
+
+  // Show loading state while auth is loading
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
+            <p className="text-gray-600">Loading analytics...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  // Use the tenant_id from the logged in user
+  const tenantId = appUser?.tenant_id || '11111111-1111-1111-1111-111111111111'
+
   return (
     <DashboardLayout>
-      <div className="h-full overflow-y-auto">
-        <div className="p-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-            <p className="text-gray-600">Track your practice performance and deal pipeline</p>
+      <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-indigo-50/30">
+        <div className="p-8 max-w-[1800px] mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <BarChart3 className="h-8 w-8 text-indigo-600" />
+                Analytics & Business Intelligence
+              </h1>
+              <p className="text-gray-600 mt-1">Enterprise-grade insights to drive growth and profitability</p>
+            </div>
+            <Button variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Export All Reports
+            </Button>
           </div>
-          <AnalyticsDashboard />
+
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full max-w-4xl grid-cols-5 h-12">
+              <TabsTrigger value="executive" className="text-sm">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Executive
+              </TabsTrigger>
+              <TabsTrigger value="crm" className="text-sm">
+                <Target className="h-4 w-4 mr-2" />
+                CRM Analytics
+              </TabsTrigger>
+              <TabsTrigger value="marketing" className="text-sm">
+                <DollarSign className="h-4 w-4 mr-2" />
+                Marketing
+              </TabsTrigger>
+              <TabsTrigger value="cohort" className="text-sm">
+                <UsersIcon className="h-4 w-4 mr-2" />
+                Cohort
+              </TabsTrigger>
+              <TabsTrigger value="predictive" className="text-sm">
+                <Brain className="h-4 w-4 mr-2" />
+                Predictive
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Executive Dashboard */}
+            <TabsContent value="executive" className="space-y-6">
+              <ExecutiveDashboardV2 tenantId={tenantId} />
+            </TabsContent>
+
+            {/* CRM Analytics */}
+            <TabsContent value="crm" className="space-y-6">
+              <CRMAnalyticsV2 tenantId={tenantId} />
+            </TabsContent>
+
+            {/* Marketing Analytics */}
+            <TabsContent value="marketing" className="space-y-6">
+              <MarketingAnalyticsV2 tenantId={tenantId} />
+            </TabsContent>
+
+            {/* Cohort Analysis */}
+            <TabsContent value="cohort" className="space-y-6">
+              <CohortAnalysis tenantId={tenantId} />
+            </TabsContent>
+
+            {/* Predictive Analytics */}
+            <TabsContent value="predictive" className="space-y-6">
+              <PredictiveAnalytics tenantId={tenantId} />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </DashboardLayout>

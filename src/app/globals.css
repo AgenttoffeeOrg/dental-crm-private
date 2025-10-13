@@ -220,3 +220,155 @@
     background: #94a3b8;
   }
 }
+
+/* ==================== GRAPESJS EMAIL BUILDER STYLES ==================== */
+/* Styles for the visual email builder */
+.gjs-block {
+  width: 100% !important;
+  min-height: 50px;
+  padding: 10px;
+  margin: 5px 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.gjs-block:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+  transform: translateY(-2px);
+}
+
+.gjs-block-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
+  margin-top: 8px;
+}
+
+#gjs-editor {
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.gjs-cv-canvas {
+  background: #f9fafb;
+}
+
+.gjs-frame {
+  border: none;
+}
+
+.gjs-pn-panel {
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+}
+
+.gjs-pn-btn {
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.gjs-pn-btn:hover {
+  background: #f3f4f6;
+}
+
+.gjs-pn-btn.gjs-pn-active {
+  background: #667eea;
+  color: white;
+}
+
+.gjs-layer {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin: 2px 0;
+}
+
+.gjs-layer:hover {
+  background: #f3f4f6;
+}
+
+.gjs-layer.gjs-selected {
+  background: #dbeafe;
+  border-left: 3px solid #667eea;
+}
+
+.gjs-sm-sector {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 12px;
+}
+
+.gjs-sm-sector-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gjs-sm-property {
+  margin: 8px 0;
+}
+
+.gjs-field {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.gjs-field:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.gjs-toolbar {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.gjs-toolbar-item {
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.gjs-toolbar-item:hover {
+  background: #667eea;
+  color: white;
+}
+
+.gjs-device-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gjs-one-bg {
+  background-color: #ffffff;
+}
+
+.gjs-two-color {
+  color: #667eea;
+}
+
+.gjs-three-bg {
+  background-color: #667eea;
+  color: white;
+}
+
+.gjs-four-color,
+.gjs-four-color-h:hover {
+  color: #667eea;
+}

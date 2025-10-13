@@ -99,3 +99,4 @@ export function scheduleBackgroundSync(tenantId: string, intervalMinutes = 60) {
   return intervalId; // Return so caller can clear if needed
 }
 
+

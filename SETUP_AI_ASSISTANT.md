@@ -231,3 +231,4 @@ AI learns YOUR practice style!
 
 **GET YOUR OPENAI API KEY AND LET'S GO!** 🚀🤖✨
 
+

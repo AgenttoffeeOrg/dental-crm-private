@@ -221,3 +221,4 @@ COMMENT ON TABLE marketing_events IS 'Granular event tracking: opens, clicks, bo
 COMMENT ON TABLE marketing_unsubscribes IS 'Unsubscribe preferences per contact';
 COMMENT ON TABLE marketing_suppression_list IS 'Suppressed contacts due to bounces or complaints';
 
+

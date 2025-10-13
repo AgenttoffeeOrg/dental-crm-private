@@ -256,3 +256,4 @@ LEFT JOIN app_users u ON a.agent_user_id = u.id;
 -- ✅ Views created for easy querying
 -- ============================================================================
 
+

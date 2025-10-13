@@ -173,3 +173,4 @@ Suggest 3-5 specific tasks with:
   return completion.choices[0].message.content || 'Failed to generate tasks'
 }
 
+

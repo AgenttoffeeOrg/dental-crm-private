@@ -80,3 +80,4 @@ CREATE TABLE custom_contact_fields (
 -- Create index for custom field definitions
 CREATE INDEX idx_custom_contact_fields_tenant ON custom_contact_fields(tenant_id, active);
 
+

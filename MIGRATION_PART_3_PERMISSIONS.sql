@@ -136,3 +136,4 @@ ON CONFLICT (role_id, permission_key) DO NOTHING;
 -- ✅ All 60+ permissions are now available!
 -- Refresh your app and go to Settings → Roles → Permissions!
 
+
