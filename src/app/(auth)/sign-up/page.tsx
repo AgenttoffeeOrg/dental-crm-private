@@ -113,11 +113,7 @@ export default function SignUpPage() {
         .from('tenants')
         .insert({
           name: tenantName,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          metadata: {
-            account_type: accountType,
-            specialty: formData.specialty
-          }
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         })
         .select()
         .single()
