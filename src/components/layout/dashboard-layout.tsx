@@ -21,12 +21,14 @@ import {
   Zap,
   FileText,
   TrendingUp,
+  Mail,
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Pipeline', href: '/pipeline', icon: TrendingUp },
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
+  { name: 'Marketing', href: '/marketing', icon: Mail },
   { name: 'Forms', href: '/forms', icon: FileText },
   { name: 'Integrations', href: '/integrations', icon: Zap },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
