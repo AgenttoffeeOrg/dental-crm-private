@@ -22,9 +22,11 @@ import {
   FileText,
   TrendingUp,
   Mail,
+  LayoutDashboard,
 } from 'lucide-react'
 
 const navigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Pipeline', href: '/pipeline', icon: TrendingUp },
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
