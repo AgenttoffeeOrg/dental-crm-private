@@ -165,15 +165,17 @@ export default function OnboardingPage() {
         .from('pipelines')
         .insert({
           tenant_id: appUser?.tenant_id,
-          name: pipelineSetup.pipelineName,
-          is_default: true,
-          display_style: 'board',
-          icon: 'target'
+          name: pipelineSetup.pipelineName
         })
         .select()
         .single()
 
-      if (pipelineError) throw pipelineError
+      console.log('Pipeline creation result:', { pipeline, pipelineError })
+      
+      if (pipelineError) {
+        console.error('Pipeline creation error:', pipelineError)
+        throw pipelineError
+      }
 
       // Create stages
       const stagesData = pipelineSetup.stages.map((stageName, index) => ({
