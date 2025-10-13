@@ -150,10 +150,7 @@ export default function SignUpPage() {
       // Create default pipeline
       await supabase.from('pipelines').insert({
         tenant_id: tenant.id,
-        name: 'Main Pipeline',
-        is_default: true,
-        display_style: 'board',
-        icon: 'target'
+        name: 'Main Pipeline'
       })
 
       // Send welcome email
