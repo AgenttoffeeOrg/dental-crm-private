@@ -51,6 +51,7 @@
     "grapesjs": "^0.22.13",
     "grapesjs-blocks-basic": "^1.0.2",
     "grapesjs-preset-newsletter": "^1.0.2",
+    "isomorphic-dompurify": "^2.29.0",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "lodash": "^4.17.21",
