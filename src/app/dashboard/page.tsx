@@ -175,33 +175,33 @@ export default function DashboardPage() {
       />
 
       <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-indigo-50/30">
-        <div className="p-8 max-w-[1800px] mx-auto animate-in fade-in slide-in-from-bottom duration-500">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-[1800px] mx-auto animate-in fade-in slide-in-from-bottom duration-500">
           {/* Welcome Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               Welcome back, {appUser?.full_name}! 👋
             </h1>
-            <p className="text-gray-600 mt-1">Here's what's happening with your practice today</p>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Here's what's happening with your practice today</p>
           </div>
 
           {/* Quick Actions */}
-          <div className="mb-8">
-            <div className="flex flex-wrap gap-3">
-              <Link href="/contacts/new">
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Contact
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
+              <Link href="/contacts/new" className="flex-1 sm:flex-none">
+                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 w-full sm:w-auto">
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Add Contact</span>
                 </Button>
               </Link>
-              <Link href="/pipeline">
-                <Button variant="outline">
-                  <Target className="h-4 w-4 mr-2" />
-                  New Deal
+              <Link href="/pipeline" className="flex-1 sm:flex-none">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <Target className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">New Deal</span>
                 </Button>
               </Link>
-              <Link href="/tasks/new">
-                <Button variant="outline">
-                  <CheckCircle className="h-4 w-4 mr-2" />
+              <Link href="/tasks/new" className="flex-1 sm:flex-none">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <CheckCircle className="h-4 w-4 sm:mr-2" />
                   Create Task
                 </Button>
               </Link>

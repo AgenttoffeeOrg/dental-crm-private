@@ -24,6 +24,8 @@ import {
   Mail,
   LayoutDashboard,
   LogOut,
+  Menu,
+  X,
 } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
@@ -44,6 +46,7 @@ const navigation = [
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, appUser, loading } = useAuth()
   const pathname = usePathname()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Debug logging - minimal
   if (process.env.NODE_ENV === 'development') {
@@ -117,14 +120,46 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-gray-50">
+          {/* MOBILE HEADER - Shows on small screens */}
+          <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              DentalCRM
+            </h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2"
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
+          </div>
+
           {/* LEFT SIDEBAR - ENTERPRISE NAVIGATION */}
-          <div className="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+          {/* Desktop: Always visible | Mobile: Slide-in overlay */}
+          <div className={`
+            w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0
+            lg:relative lg:translate-x-0
+            fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out
+            ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          `}>
         {/* Logo */}
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight">
-            DentalCRM
-          </h1>
-          <p className="text-xs text-gray-500 mt-1">Enterprise Edition</p>
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight">
+              DentalCRM
+            </h1>
+            <p className="text-xs text-gray-500 mt-1">Enterprise Edition</p>
+          </div>
+          {/* Close button - mobile only */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden p-2"
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
 
         {/* Navigation Menu - Vertical */}
@@ -135,6 +170,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.name}
                 href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
                 className={`
                   flex items-center px-4 py-3 text-sm font-semibold rounded-lg transition-all group
                   ${isActive
@@ -166,17 +202,25 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
+      {/* MOBILE OVERLAY - Darkens background when menu is open */}
+      {mobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* TOP BAR - Search & Actions */}
-        <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-          <div className="px-6">
+        <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm lg:block hidden">
+          <div className="px-4 lg:px-6">
             <div className="flex h-14 items-center justify-between">
               {/* Breadcrumb/Page Title (optional) */}
               <div></div>
 
               {/* Universal Search Bar - RIGHT SIDE */}
-              <div className="flex-1 max-w-xl ml-auto">
+              <div className="flex-1 max-w-xl ml-auto hidden sm:block">
                 <UniversalSearchBar />
               </div>
 

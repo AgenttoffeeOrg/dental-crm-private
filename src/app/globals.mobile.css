@@ -1,9 +1,48 @@
-/* Mobile-specific styles */
+/* Mobile-specific styles - Enhanced for all devices */
+
+/* Prevent zoom on inputs (iOS) */
+input, select, textarea {
+  font-size: 16px;
+}
+
+/* Smooth scrolling for mobile */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Better touch targets */
+button, a, [role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Responsive tables - horizontal scroll */
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  min-width: 600px;
+}
+
+@media (max-width: 1024px) {
+  /* Tablet optimizations */
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  /* Adjust padding */
+  .container-padding {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
 
 @media (max-width: 768px) {
-  /* Hide desktop sidebar */
-  .desktop-sidebar {
-    display: none;
+  /* Mobile optimizations */
+  .card-grid {
+    grid-template-columns: 1fr !important;
   }
 
   /* Full width content on mobile */
@@ -12,33 +51,43 @@
     padding: 1rem;
   }
 
-  /* Stack cards vertically */
-  .card-grid {
-    grid-template-columns: 1fr !important;
+  /* Smaller text on mobile */
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  h2 {
+    font-size: 1.25rem;
   }
 
-  /* Larger touch targets */
-  button, a {
-    min-height: 44px;
-    min-width: 44px;
+  /* Stack navigation items */
+  .nav-stack {
+    flex-direction: column;
   }
-
-  /* Responsive tables */
-  table {
-    display: block;
-    overflow-x: auto;
-  }
-
-  /* Mobile-friendly forms */
-  input, select, textarea {
-    font-size: 16px; /* Prevents iOS zoom */
+  
+  /* Hide non-essential info on mobile */
+  .hide-on-mobile {
+    display: none;
   }
 }
 
 /* Touch-friendly interactions */
 @media (hover: none) and (pointer: coarse) {
+  /* Remove hover effects on touch devices */
   .hover-effect:hover {
-    /* Remove hover effects on touch devices */
+    background-color: inherit;
+  }
+  
+  /* Larger tap targets */
+  button, a {
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* Landscape phone optimization */
+@media (max-width: 896px) and (orientation: landscape) {
+  .mobile-header {
+    height: 3rem;
   }
 }
 
