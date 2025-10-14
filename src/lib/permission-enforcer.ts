@@ -150,10 +150,10 @@ export function withPermission<P extends object>(
   return function ProtectedComponent(props: P & { userContext: UserPermissionContext }) {
     const { hasAccess, loading } = usePermission(requiredPermission, props.userContext)
 
-    if (loading) return <div>Loading...</div>
-    if (!hasAccess) return fallback || <div>Access Denied</div>
+    if (loading) return null // Can be replaced with loading component
+    if (!hasAccess) return fallback || null
 
-    return <Component {...props} />
+    return Component(props)
   }
 }
 

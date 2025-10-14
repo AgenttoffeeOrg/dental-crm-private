@@ -296,7 +296,7 @@ export function ComprehensivePipelineSettings({ pipelineId, tenantId }: Comprehe
                       <strong>Auto-assignment rules</strong> let you define complex logic like:
                     </p>
                     <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
-                      <li>Deals > £10k → Senior dentist</li>
+                      <li>Deals {'>'} £10k → Senior dentist</li>
                       <li>Emergency deals → On-call staff</li>
                       <li>Referrals → Specific coordinator</li>
                       <li>Round-robin for new leads</li>
