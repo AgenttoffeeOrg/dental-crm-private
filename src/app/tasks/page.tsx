@@ -19,7 +19,7 @@ import {
   Repeat,
   HelpCircle
 } from 'lucide-react'
-import { CreateTaskPanel } from '@/components/tasks/create-task-panel'
+import { CreateTaskSlideOver } from '@/components/tasks/create-task-slide-over'
 import { TaskQueuePanel } from '@/components/tasks/task-queue-panel'
 import { BulkActionsMenu } from '@/components/tasks/bulk-actions-menu'
 import { TaskCalendarView } from '@/components/tasks/task-calendar-view'
@@ -526,8 +526,8 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* Create Task Panel */}
-      <CreateTaskPanel
+      {/* Create Task Slide-Over */}
+      <CreateTaskSlideOver
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
         onTaskCreated={loadTasks}

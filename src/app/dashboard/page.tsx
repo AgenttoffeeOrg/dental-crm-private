@@ -34,12 +34,14 @@ import { ProfileSetupPanel } from '@/components/onboarding/profile-setup-panel'
 import { EmailVerificationBanner } from '@/components/onboarding/email-verification-banner'
 import { CreateContactSlideOver } from '@/components/contacts/create-contact-slide-over'
 import { CreateTaskSlideOver } from '@/components/tasks/create-task-slide-over'
+import { CreateDealSlideOver } from '@/components/deals/create-deal-slide-over'
 
 export default function DashboardPage() {
   const { appUser, loading: authLoading } = useAuth()
   const [showSetupPanel, setShowSetupPanel] = useState(false)
   const [showCreateContact, setShowCreateContact] = useState(false)
   const [showCreateTask, setShowCreateTask] = useState(false)
+  const [showCreateDeal, setShowCreateDeal] = useState(false)
   const [stats, setStats] = useState({
     totalDeals: 0,
     totalRevenue: 0,
@@ -199,12 +201,14 @@ export default function DashboardPage() {
                 <span className="hidden sm:inline">Add Contact</span>
               </Button>
               
-              <Link href="/pipeline" className="flex-1 sm:flex-none">
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <Target className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">New Deal</span>
-                </Button>
-              </Link>
+              <Button 
+                onClick={() => setShowCreateDeal(true)}
+                variant="outline" 
+                className="flex-1 sm:flex-none"
+              >
+                <Target className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">New Deal</span>
+              </Button>
               
               <Button 
                 onClick={() => setShowCreateTask(true)}
@@ -427,6 +431,15 @@ export default function DashboardPage() {
         open={showCreateTask}
         onClose={() => setShowCreateTask(false)}
         onTaskCreated={() => {
+          loadDashboardData()
+        }}
+      />
+
+      {/* Create Deal Slide-Over */}
+      <CreateDealSlideOver
+        open={showCreateDeal}
+        onClose={() => setShowCreateDeal(false)}
+        onDealCreated={() => {
           loadDashboardData()
         }}
       />

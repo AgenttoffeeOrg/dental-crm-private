@@ -42,7 +42,7 @@ import { cn } from '@/lib/utils'
 import { PipelineColumn } from './pipeline-column'
 import { DealCard } from './deal-card-fixed'
 import { DealDetailView } from '../deals/deal-detail-view-modal'
-import { CreateDealDialog } from './create-deal-dialog'
+import { CreateDealSlideOver } from '../deals/create-deal-slide-over'
 import { PipelineSettingsDialog } from './pipeline-settings-dialog'
 import { CreatePipelineDialog } from './create-pipeline-dialog'
 import type { Deal, Pipeline, PipelineStage, Contact, DealWithRelations } from '@/types/database'
@@ -1338,11 +1338,10 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
       </div>
 
       {/* Dialogs */}
-      <CreateDealDialog
+      <CreateDealSlideOver
         open={createDealDialogOpen}
-        onOpenChange={setCreateDealDialogOpen}
+        onClose={() => setCreateDealDialogOpen(false)}
         onDealCreated={fetchPipelineData}
-        tenantId={tenantId}
       />
 
       <CreatePipelineDialog
