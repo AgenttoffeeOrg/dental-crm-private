@@ -96,32 +96,55 @@ export default function OnboardingPage() {
       return
     }
 
+    if (!appUser?.tenant_id) {
+      toast.error('No tenant ID found. Please try signing up again.')
+      return
+    }
+
     setLoading(true)
     const supabase = createClient()
 
     try {
-      console.log('Updating tenant:', appUser?.tenant_id, 'with name:', practiceInfo.name)
+      console.log('=== ONBOARDING DEBUG ===')
+      console.log('App User:', appUser)
+      console.log('Tenant ID:', appUser?.tenant_id)
+      console.log('Practice Name:', practiceInfo.name)
       
-      // Update tenant with practice info (just name for now)
+      // First, let's check if the tenant exists
+      const { data: tenantCheck, error: checkError } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('id', appUser.tenant_id)
+        .single()
+
+      console.log('Tenant check result:', { tenantCheck, checkError })
+
+      if (checkError) {
+        console.error('Tenant check failed:', checkError)
+        throw new Error(`Tenant not found: ${checkError.message}`)
+      }
+
+      // Update tenant with practice info
       const { data, error } = await supabase
         .from('tenants')
         .update({
           name: practiceInfo.name
         })
-        .eq('id', appUser?.tenant_id)
+        .eq('id', appUser.tenant_id)
         .select()
 
       console.log('Update result:', { data, error })
 
       if (error) {
-        console.error('Supabase error:', error)
+        console.error('Supabase update error:', error)
         throw new Error(error.message || 'Failed to update tenant')
       }
 
+      console.log('✅ Practice info saved successfully!')
       toast.success('Practice info saved!')
       setCurrentStep(2)
     } catch (error: any) {
-      console.error('Error updating practice info:', error)
+      console.error('❌ Error updating practice info:', error)
       toast.error(error.message || 'Failed to save practice info')
     } finally {
       setLoading(false)
