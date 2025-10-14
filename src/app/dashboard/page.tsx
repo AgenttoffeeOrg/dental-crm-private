@@ -197,13 +197,18 @@ export default function DashboardPage() {
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  console.log('🎯 Dashboard New Contact clicked - opening slide-over')
-                  console.log('🎯 Current showCreateContact state:', showCreateContact)
+                  console.log('🎯 Dashboard New Contact clicked - FORCING slide-over')
+                  console.log('🎯 Blocking any redirects to /contacts/new')
+                  // Force open slide-over immediately
                   setShowCreateContact(true)
-                  console.log('🎯 Set showCreateContact to true')
+                  console.log('🎯 Slide-over should be opening now')
+                  // Prevent any navigation
+                  return false
                 }}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex-1 sm:flex-none"
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseUp={(e) => e.preventDefault()}
               >
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">New Contact</span>
@@ -211,18 +216,39 @@ export default function DashboardPage() {
               </Button>
               
               <Button 
-                onClick={() => setShowCreateDeal(true)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  console.log('🎯 Dashboard New Deal clicked - FORCING slide-over')
+                  setShowCreateDeal(true)
+                  console.log('🎯 Deal slide-over should be opening now')
+                  return false
+                }}
                 variant="outline" 
                 className="flex-1 sm:flex-none"
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseUp={(e) => e.preventDefault()}
               >
                 <Target className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">New Deal</span>
               </Button>
               
               <Button 
-                onClick={() => setShowCreateTask(true)}
-                variant="outline" 
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  console.log('🎯 Dashboard Create Task clicked - FORCING slide-over')
+                  console.log('🎯 Blocking any redirects to /tasks/new')
+                  setShowCreateTask(true)
+                  console.log('🎯 Task slide-over should be opening now')
+                  return false
+                }}
+                variant="outline"
                 className="flex-1 sm:flex-none"
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseUp={(e) => e.preventDefault()}
               >
                 <CheckCircle className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Create Task</span>
