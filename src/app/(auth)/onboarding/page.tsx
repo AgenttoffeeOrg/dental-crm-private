@@ -96,25 +96,46 @@ export default function OnboardingPage() {
       return
     }
 
-    if (!appUser?.tenant_id) {
-      toast.error('No tenant ID found. Please try signing up again.')
-      return
-    }
-
     setLoading(true)
     const supabase = createClient()
 
     try {
       console.log('=== ONBOARDING DEBUG ===')
       console.log('App User:', appUser)
-      console.log('Tenant ID:', appUser?.tenant_id)
+      console.log('User:', user)
       console.log('Practice Name:', practiceInfo.name)
+      
+      // Get tenant_id - try multiple methods
+      let tenantId = appUser?.tenant_id
+      
+      if (!tenantId && user?.id) {
+        console.log('AppUser tenant_id not found, fetching from database...')
+        // Fetch app_user directly to get tenant_id
+        const { data: appUserData, error: appUserError } = await supabase
+          .from('app_users')
+          .select('tenant_id')
+          .eq('id', user.id)
+          .single()
+        
+        console.log('AppUser fetch result:', { appUserData, appUserError })
+        
+        if (appUserData?.tenant_id) {
+          tenantId = appUserData.tenant_id
+          console.log('Found tenant_id:', tenantId)
+        }
+      }
+
+      if (!tenantId) {
+        throw new Error('No tenant ID found. Please try signing up again.')
+      }
+
+      console.log('Using tenant_id:', tenantId)
       
       // First, let's check if the tenant exists
       const { data: tenantCheck, error: checkError } = await supabase
         .from('tenants')
         .select('*')
-        .eq('id', appUser.tenant_id)
+        .eq('id', tenantId)
         .single()
 
       console.log('Tenant check result:', { tenantCheck, checkError })
@@ -130,7 +151,7 @@ export default function OnboardingPage() {
         .update({
           name: practiceInfo.name
         })
-        .eq('id', appUser.tenant_id)
+        .eq('id', tenantId)
         .select()
 
       console.log('Update result:', { data, error })
