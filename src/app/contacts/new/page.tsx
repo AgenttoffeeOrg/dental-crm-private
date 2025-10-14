@@ -1,15 +1,15 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 
-export default function ContactsNewRedirect() {
-  const router = useRouter()
-
+export default function ContactsNewBlocked() {
   useEffect(() => {
-    console.log('🚨 BLOCKED: /contacts/new route accessed - redirecting to contacts')
-    router.replace('/contacts')
-  }, [router])
+    console.log('🚨 BLOCKED: /contacts/new route accessed - this should not happen!')
+    // Force close any modals or redirects
+    window.history.replaceState(null, '', '/contacts')
+    // Force reload to get back to contacts page
+    window.location.href = '/contacts'
+  }, [])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

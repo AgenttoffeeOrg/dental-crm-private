@@ -41,6 +41,7 @@ const CONTACT_SOURCES = [
 ]
 
 export function CreateContactSlideOver({ open, onClose, onContactCreated }: CreateContactSlideOverProps) {
+  console.log('🎯 CreateContactSlideOver rendered with open:', open)
   const { appUser } = useAuth()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
