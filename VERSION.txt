@@ -1,0 +1,5 @@
+Version: 1.0.1
+Build: Dashboard-First Onboarding
+Timestamp: 2024-10-14T02:00:00Z
+Critical Fix: Removed old onboarding page, enforcing dashboard redirect
+
