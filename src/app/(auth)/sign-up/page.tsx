@@ -181,9 +181,9 @@ function SignUpForm() {
         description: 'Welcome to Dental CRM'
       })
 
-      // Redirect to onboarding
+      // Redirect directly to dashboard
       setTimeout(() => {
-        router.push('/onboarding')
+        router.push('/dashboard')
       }, 1000)
 
     } catch (error: any) {

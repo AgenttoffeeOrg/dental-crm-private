@@ -29,9 +29,12 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { RevenueChart } from '@/components/dashboard/revenue-chart'
 import { DealsFunnelChart } from '@/components/dashboard/deals-funnel-chart'
+import { SetupBanner } from '@/components/onboarding/setup-banner'
+import { ProfileSetupPanel } from '@/components/onboarding/profile-setup-panel'
 
 export default function DashboardPage() {
   const { appUser, loading: authLoading } = useAuth()
+  const [showSetupPanel, setShowSetupPanel] = useState(false)
   const [stats, setStats] = useState({
     totalDeals: 0,
     totalRevenue: 0,
@@ -151,6 +154,21 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
+      {/* Setup Banner */}
+      <SetupBanner onSetupClick={() => setShowSetupPanel(true)} />
+
+      {/* Profile Setup Panel */}
+      <ProfileSetupPanel
+        isOpen={showSetupPanel}
+        onClose={() => setShowSetupPanel(false)}
+        onComplete={() => {
+          // Reload stats after profile completion
+          if (appUser?.tenant_id) {
+            loadStats()
+          }
+        }}
+      />
+
       <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-indigo-50/30">
         <div className="p-8 max-w-[1800px] mx-auto">
           {/* Welcome Header */}
