@@ -70,7 +70,7 @@ export default function SignInPage() {
 
         // Redirect to dashboard
         setTimeout(() => {
-          router.push('/dashboard')
+          window.location.href = '/dashboard'
         }, 1000)
       }
 

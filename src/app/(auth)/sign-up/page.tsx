@@ -181,9 +181,9 @@ function SignUpForm() {
         description: 'Welcome to Dental CRM'
       })
 
-      // Redirect directly to dashboard
+      // Redirect directly to dashboard using window.location for hard redirect
       setTimeout(() => {
-        router.push('/dashboard')
+        window.location.href = '/dashboard'
       }, 1000)
 
     } catch (error: any) {
