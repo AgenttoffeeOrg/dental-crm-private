@@ -282,10 +282,10 @@ export function ProfileSetupPanel({ isOpen, onClose, onComplete }: ProfileSetupP
       />
 
       {/* Slide-over Panel */}
-      <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl z-50 animate-in slide-in-from-right duration-300">
+      <div className="fixed inset-y-0 right-0 w-full sm:max-w-2xl bg-white shadow-2xl z-50 animate-in slide-in-from-right duration-300 flex flex-col">
         <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+          <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
@@ -349,7 +349,7 @@ export function ProfileSetupPanel({ isOpen, onClose, onComplete }: ProfileSetupP
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto px-8 py-8">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8">
             {/* Step 1: Practice Details */}
             {currentStep === 1 && (
               // Email Verification Step
