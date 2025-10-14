@@ -10,25 +10,9 @@ export async function middleware(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession()
 
-  // Protected routes - require authentication
-  const protectedPaths = ['/pipeline', '/deals', '/contacts', '/tasks', '/settings', '/analytics']
-  const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
-
-  // If accessing protected route without session, redirect to login
-  if (isProtectedPath && !session) {
-    const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('redirect', request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  // If accessing login with session, redirect to pipeline (dashboard)
-  if (request.nextUrl.pathname === '/login' && session) {
-    return NextResponse.redirect(new URL('/pipeline', request.url))
-  }
-
-  // Redirect root to pipeline if authenticated, otherwise to login
+  // Only handle root redirect - let client-side auth handle the rest
   if (request.nextUrl.pathname === '/') {
-    const redirectUrl = session ? new URL('/pipeline', request.url) : new URL('/login', request.url)
+    const redirectUrl = session ? new URL('/dashboard', request.url) : new URL('/sign-in', request.url)
     return NextResponse.redirect(redirectUrl)
   }
 

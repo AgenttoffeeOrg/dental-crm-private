@@ -13,3 +13,4 @@ export const dealSchema = z.object({
 
 export type DealFormData = z.infer<typeof dealSchema>
 
+

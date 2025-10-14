@@ -38,3 +38,4 @@ export function ViewSwitcher({ view, onViewChange }: ViewSwitcherProps) {
   )
 }
 
+

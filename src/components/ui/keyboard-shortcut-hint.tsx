@@ -24,3 +24,4 @@ export function ShortcutHint({ label, keys }: { label: string; keys: string[] })
   )
 }
 
+

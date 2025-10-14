@@ -192,3 +192,5 @@ COMMENT ON TABLE marketing_journey_runs IS 'Tracks each contact progress through
 COMMENT ON TABLE marketing_journey_logs IS 'Detailed execution log for debugging and analytics';
 
 
+
+

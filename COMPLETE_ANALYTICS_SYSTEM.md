@@ -500,3 +500,5 @@ http://localhost:3000/analytics
 
 **File to run:** `supabase/sql/42_analytics_system.sql`
 
+
+

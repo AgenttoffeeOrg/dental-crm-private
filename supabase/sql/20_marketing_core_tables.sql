@@ -169,3 +169,5 @@ COMMENT ON TABLE marketing_templates IS 'Email and SMS content templates with dr
 COMMENT ON TABLE marketing_settings IS 'Module-level configuration and feature flags';
 
 
+
+

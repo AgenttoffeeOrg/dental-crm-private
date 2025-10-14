@@ -40,3 +40,4 @@ export function DensityToggle({ density, onDensityChange }: DensityToggleProps) 
   )
 }
 
+

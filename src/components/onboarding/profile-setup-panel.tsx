@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { 
   X, ArrowRight, ArrowLeft, Check, Sparkles, Building2, MapPin, 
-  Phone, Globe, Users, Target, Rocket, CheckCircle2, Loader2
+  Phone, Globe, Users, Target, Rocket, CheckCircle2, Loader2, Mail, AlertCircle
 } from 'lucide-react'
 
 interface ProfileSetupPanelProps {
@@ -21,10 +21,11 @@ interface ProfileSetupPanelProps {
 }
 
 const steps = [
-  { id: 1, title: 'Practice Details', icon: Building2, description: 'Tell us about your practice' },
-  { id: 2, title: 'Contact Information', icon: MapPin, description: 'How can patients reach you?' },
-  { id: 3, title: 'Team & Goals', icon: Users, description: 'Set up your team and targets' },
-  { id: 4, title: 'First Pipeline', icon: Target, description: 'Create your sales workflow' }
+  { id: 1, title: 'Email Verification', icon: Mail, description: 'Verify your email address' },
+  { id: 2, title: 'Practice Details', icon: Building2, description: 'Tell us about your practice' },
+  { id: 3, title: 'Contact Information', icon: MapPin, description: 'How can patients reach you?' },
+  { id: 4, title: 'Team & Goals', icon: Users, description: 'Set up your team and targets' },
+  { id: 5, title: 'First Pipeline', icon: Target, description: 'Create your sales workflow' }
 ]
 
 export function ProfileSetupPanel({ isOpen, onClose, onComplete }: ProfileSetupPanelProps) {
@@ -351,13 +352,75 @@ export function ProfileSetupPanel({ isOpen, onClose, onComplete }: ProfileSetupP
           <div className="flex-1 overflow-y-auto px-8 py-8">
             {/* Step 1: Practice Details */}
             {currentStep === 1 && (
+              // Email Verification Step
+              <div className="space-y-6 animate-in slide-in-from-bottom duration-300">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Mail className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Verify Your Email</h3>
+                  <p className="text-gray-600">
+                    We sent a verification link to <strong>{user?.email}</strong>
+                  </p>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-amber-800 mb-1">Check your inbox</h4>
+                      <p className="text-sm text-amber-700">
+                        Click the verification link in the email we sent to activate your account. 
+                        If you don't see it, check your spam folder.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-center">
+                  <Button
+                    onClick={() => {
+                      // Refresh the auth state to check if email is verified
+                      window.location.reload()
+                    }}
+                    variant="outline"
+                    className="mr-3"
+                  >
+                    I've verified my email
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      if (!user?.email) return
+                      setLoading(true)
+                      try {
+                        const supabase = createClient()
+                        await supabase.auth.resend({
+                          type: 'signup',
+                          email: user.email
+                        })
+                        toast.success('Verification email sent!')
+                      } catch (error) {
+                        toast.error('Failed to resend email')
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    {loading ? 'Sending...' : 'Resend email'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 2 && (
               <div className="space-y-6 animate-in slide-in-from-right duration-300">
                 <div className="text-center mb-8">
                   <Building2 className="h-16 w-16 text-indigo-600 mx-auto mb-4" />
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    {steps[0].title}
+                    {steps[1].title}
                   </h3>
-                  <p className="text-gray-600">{steps[0].description}</p>
+                  <p className="text-gray-600">{steps[1].description}</p>
                 </div>
 
                 <div className="space-y-4 max-w-md mx-auto">
@@ -433,9 +496,9 @@ export function ProfileSetupPanel({ isOpen, onClose, onComplete }: ProfileSetupP
                 <div className="text-center mb-8">
                   <MapPin className="h-16 w-16 text-indigo-600 mx-auto mb-4" />
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    {steps[1].title}
+                    {steps[2].title}
                   </h3>
-                  <p className="text-gray-600">{steps[1].description}</p>
+                  <p className="text-gray-600">{steps[2].description}</p>
                 </div>
 
                 <div className="space-y-4 max-w-md mx-auto">

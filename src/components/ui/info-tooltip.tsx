@@ -24,3 +24,4 @@ export function InfoTooltip({ content }: InfoTooltipProps) {
   )
 }
 
+

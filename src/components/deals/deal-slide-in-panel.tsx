@@ -147,3 +147,4 @@ export function DealSlideInPanel({ dealId, open, onClose, onDealUpdated }: DealS
   )
 }
 
+

@@ -33,3 +33,4 @@ echo "   2. Run: npm run dev"
 echo "   3. Analytics is ready to use!"
 echo ""
 
+

@@ -39,3 +39,4 @@ export function trapFocus(element: HTMLElement) {
   return () => element.removeEventListener('keydown', handleKeyDown)
 }
 
+

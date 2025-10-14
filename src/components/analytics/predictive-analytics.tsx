@@ -471,3 +471,4 @@ export function PredictiveAnalytics({ tenantId }: { tenantId?: string }) {
   )
 }
 
+

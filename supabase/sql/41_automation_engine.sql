@@ -282,3 +282,5 @@ COMMIT;
 -- SELECT get_journey_completion_rate('journey-id-here');
 -- SELECT resume_waiting_journeys();
 
+
+

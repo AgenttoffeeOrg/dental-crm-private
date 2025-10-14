@@ -319,3 +319,5 @@ You now have a **world-class dental CRM** with:
 *Built with Next.js, Supabase, TypeScript, and Tailwind CSS*
 *Enterprise-grade • Production-ready • Fully documented*
 
+
+

@@ -17,3 +17,4 @@ export function useRealtimeDeals(onUpdate: () => void) {
   }, [tenantId, onUpdate])
 }
 
+

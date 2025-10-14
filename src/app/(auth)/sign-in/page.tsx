@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-client'
+import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +13,8 @@ import { Mail, Lock, Eye, EyeOff, AlertCircle, Sparkles, ArrowRight, Loader2 } f
 
 export default function SignInPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user, appUser, loading: authLoading, signIn: authSignIn } = useAuth()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -19,6 +22,42 @@ export default function SignInPage() {
     password: ''
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Check for pre-filled email and messages from URL params
+  useEffect(() => {
+    const email = searchParams.get('email')
+    const message = searchParams.get('message')
+    
+    // Pre-fill email if provided
+    if (email) {
+      setFormData(prev => ({ ...prev, email: decodeURIComponent(email) }))
+    }
+    
+    // Show appropriate message based on redirect reason
+    if (message === 'confirm-email' || message === 'confirm-email-first') {
+      toast.info('Email confirmation required', {
+        description: 'Please check your email and click the confirmation link to activate your account, then sign in.',
+        duration: 6000
+      })
+    } else if (message === 'account-exists') {
+      toast.info('Welcome back!', {
+        description: 'This email is already registered. Please enter your password to sign in.',
+        duration: 4000
+      })
+      // Focus password field if email is pre-filled
+      setTimeout(() => {
+        document.getElementById('password')?.focus()
+      }, 500)
+    }
+  }, [searchParams])
+
+  // Redirect if already authenticated AND has appUser
+  useEffect(() => {
+    if (!authLoading && user && appUser) {
+      console.log('[SIGNIN] User already authenticated with appUser, redirecting to dashboard')
+      router.push('/dashboard')
+    }
+  }, [user, appUser, authLoading, router])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -48,36 +87,91 @@ export default function SignInPage() {
     setErrors({})
 
     try {
-      const supabase = createClient()
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email.trim(),
-        password: formData.password
-      })
+      // Use the auth hook's signIn method instead of direct Supabase call
+      const { error } = await authSignIn(formData.email.trim(), formData.password)
 
       if (error) {
+        // Check if user doesn't exist (no account with this email)
         if (error.message.includes('Invalid login credentials')) {
-          setErrors({ password: 'Invalid email or password' })
+          setErrors({ 
+            email: 'Invalid email or password',
+            password: 'Invalid email or password'
+          })
+          
+          toast.error('Sign in failed', {
+            description: 'Invalid email or password. Need an account?',
+            duration: 5000,
+            action: {
+              label: 'Sign Up',
+              onClick: () => {
+                const email = encodeURIComponent(formData.email.trim())
+                window.location.href = `/sign-up?email=${email}&message=no-account`
+              }
+            }
+          })
+          return
+        } else if (error.message.includes('Email not confirmed')) {
+          setErrors({ 
+            email: 'Email not confirmed. Please check your inbox and click the confirmation link.',
+            password: '' 
+          })
+          
+          toast.error('Email not confirmed', {
+            description: 'Please check your email and click the confirmation link to activate your account before signing in.',
+            duration: 6000,
+            action: {
+              label: 'Resend',
+              onClick: () => handleResendConfirmation()
+            }
+          })
+          return
+        } else if (error.message.includes('Too many requests')) {
+          setErrors({ email: 'Too many login attempts. Please try again later.' })
           return
         }
         throw new Error(error.message)
       }
 
-      if (data.user) {
-        toast.success('Welcome back!', {
-          description: 'You have been signed in successfully'
-        })
+      // If no error, sign in was successful
+      toast.success('Welcome back!', {
+        description: 'You have been signed in successfully. Redirecting to your dashboard...'
+      })
 
-        // Redirect to dashboard
-        setTimeout(() => {
-          window.location.href = '/dashboard'
-        }, 1000)
-      }
+      // The auth hook will handle the state update, we just need to redirect
+      console.log('[SIGNIN] Sign in successful, redirecting to dashboard')
+      router.push('/dashboard')
 
     } catch (error: any) {
       console.error('Sign in error:', error)
-      toast.error('Sign in failed', {
-        description: error.message || 'An unexpected error occurred'
+      
+      // Handle specific error types
+      let errorTitle = 'Sign in failed'
+      let errorDescription = error.message || 'An unexpected error occurred'
+      
+      if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorTitle = 'Connection error'
+        errorDescription = 'Please check your internet connection and try again'
+      } else if (error.message.includes('timeout')) {
+        errorTitle = 'Request timeout'
+        errorDescription = 'The request took too long. Please try again'
+      } else if (error.message.includes('credentials')) {
+        errorTitle = 'Invalid credentials'
+        errorDescription = 'The email or password you entered is incorrect'
+      } else if (error.message.includes('locked') || error.message.includes('suspended')) {
+        errorTitle = 'Account locked'
+        errorDescription = 'Your account has been locked. Please contact support'
+      }
+      
+      toast.error(errorTitle, {
+        description: errorDescription,
+        duration: 5000
+      })
+      
+      // Log error for debugging
+      console.error('[SIGNIN ERROR]', {
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
       })
     } finally {
       setLoading(false)
@@ -106,10 +200,75 @@ export default function SignInPage() {
       })
     } catch (error: any) {
       console.error('Password reset error:', error)
+      
+      let errorDescription = error.message || 'Please try again'
+      
+      if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorDescription = 'Please check your internet connection and try again'
+      } else if (error.message.includes('not found') || error.message.includes('User not found')) {
+        errorDescription = 'No account found with this email address'
+      } else if (error.message.includes('rate limit')) {
+        errorDescription = 'Too many requests. Please wait a few minutes and try again'
+      }
+      
       toast.error('Failed to send reset email', {
-        description: error.message || 'Please try again'
+        description: errorDescription,
+        duration: 5000
       })
     }
+  }
+
+  const handleResendConfirmation = async () => {
+    if (!formData.email.trim()) {
+      toast.error('Please enter your email address first')
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: formData.email.trim()
+      })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      toast.success('Confirmation email sent!', {
+        description: 'Check your email and click the confirmation link to verify your account'
+      })
+    } catch (error: any) {
+      console.error('Confirmation email error:', error)
+      
+      let errorDescription = error.message || 'Please try again'
+      
+      if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorDescription = 'Please check your internet connection and try again'
+      } else if (error.message.includes('rate limit')) {
+        errorDescription = 'Too many requests. Please wait a few minutes and try again'
+      } else if (error.message.includes('already confirmed')) {
+        errorDescription = 'Your email is already confirmed. You can sign in now'
+      }
+      
+      toast.error('Failed to send confirmation email', {
+        description: errorDescription,
+        duration: 5000
+      })
+    }
+  }
+
+  // Show loading state while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-indigo-600" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -210,7 +369,7 @@ export default function SignInPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] disabled:hover:scale-100"
             >
               {loading ? (
                 <>
@@ -224,6 +383,17 @@ export default function SignInPage() {
                 </>
               )}
             </Button>
+
+            {/* Resend Confirmation Button */}
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                className="text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors"
+              >
+                Didn't receive confirmation email? Resend it
+              </button>
+            </div>
           </form>
 
           {/* Sign Up Link */}

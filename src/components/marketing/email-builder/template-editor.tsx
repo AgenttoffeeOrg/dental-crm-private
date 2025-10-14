@@ -345,3 +345,5 @@ function BlockPreview({ block, onUpdate }: { block: EmailBlock; onUpdate: (updat
   }
 }
 
+
+

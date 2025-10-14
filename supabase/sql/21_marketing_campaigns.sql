@@ -222,3 +222,5 @@ COMMENT ON TABLE marketing_unsubscribes IS 'Unsubscribe preferences per contact'
 COMMENT ON TABLE marketing_suppression_list IS 'Suppressed contacts due to bounces or complaints';
 
 
+
+

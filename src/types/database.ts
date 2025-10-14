@@ -20,6 +20,9 @@ export interface AppUser {
   last_seen_at?: string;
   created_at: string;
   updated_at?: string;
+  // Email verification status (added by auth hook)
+  email_verified?: boolean;
+  email_confirmed_at?: string | null;
 }
 
 export interface CustomRole {

@@ -23,7 +23,11 @@ import {
   TrendingUp,
   Mail,
   LayoutDashboard,
+  LogOut,
 } from 'lucide-react'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { useAuth } from '@/lib/auth'
+import { createClient } from '@/lib/supabase-client'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -38,12 +42,78 @@ const navigation = [
 ]
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
-  const appUser = { full_name: 'Demo User', role: 'owner' }
+  const { user, appUser, loading } = useAuth()
   const pathname = usePathname()
 
-  const handleSignOut = async () => {
-    window.location.href = '/login'
+  // Debug logging - minimal
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[DASHBOARD_LAYOUT] Auth state:', { loading, hasUser: !!user, hasAppUser: !!appUser })
   }
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = '/sign-in'
+  }
+
+  // Show loading state while auth is checking
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 text-sm">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If not authenticated, redirect to sign-in
+  if (!user && !loading) {
+    console.log('[DASHBOARD_LAYOUT] No user found, redirecting to sign-in')
+    
+    if (typeof window !== 'undefined') {
+      window.location.href = '/sign-in'
+    }
+    return null
+  }
+
+  // If user exists but no appUser, show error state instead of redirecting
+  if (user && !appUser && !loading) {
+    console.log('[DASHBOARD] Auth user exists but app_user record is missing!')
+    console.log('[DASHBOARD] Auth user ID:', user.id)
+    console.log('[DASHBOARD] Auth user email:', user.email)
+    console.log('[DASHBOARD] This means the signup process did not complete properly.')
+    
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">Account Setup Incomplete</h1>
+          <p className="text-gray-600 mb-4">
+            Your account was created but the setup process didn't complete properly. 
+            Please contact support or try signing out and signing back in.
+          </p>
+          <Button 
+            onClick={() => {
+              const supabase = createClient()
+              supabase.auth.signOut()
+              window.location.href = '/sign-in'
+            }}
+            className="w-full"
+          >
+            Sign Out & Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Auth state is valid, render dashboard
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -133,6 +203,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
                     Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>

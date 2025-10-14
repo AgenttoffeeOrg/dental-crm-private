@@ -31,6 +31,7 @@ import { RevenueChart } from '@/components/dashboard/revenue-chart'
 import { DealsFunnelChart } from '@/components/dashboard/deals-funnel-chart'
 import { SetupBanner } from '@/components/onboarding/setup-banner'
 import { ProfileSetupPanel } from '@/components/onboarding/profile-setup-panel'
+import { EmailVerificationBanner } from '@/components/onboarding/email-verification-banner'
 
 export default function DashboardPage() {
   const { appUser, loading: authLoading } = useAuth()
@@ -143,8 +144,9 @@ export default function DashboardPage() {
       <DashboardLayout>
         <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-indigo-50/30">
           <div className="p-8 max-w-[1800px] mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading dashboard...</p>
             </div>
           </div>
         </div>
@@ -154,6 +156,9 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
+      {/* Email Verification Banner */}
+      <EmailVerificationBanner />
+
       {/* Setup Banner */}
       <SetupBanner onSetupClick={() => setShowSetupPanel(true)} />
 
@@ -164,13 +169,13 @@ export default function DashboardPage() {
         onComplete={() => {
           // Reload stats after profile completion
           if (appUser?.tenant_id) {
-            loadStats()
+            loadDashboardData()
           }
         }}
       />
 
       <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-indigo-50/30">
-        <div className="p-8 max-w-[1800px] mx-auto">
+        <div className="p-8 max-w-[1800px] mx-auto animate-in fade-in slide-in-from-bottom duration-500">
           {/* Welcome Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
