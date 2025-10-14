@@ -1,0 +1,291 @@
+{
+  "project": {
+    "name": "Dental CRM - Enterprise Practice Management System",
+    "version": "8.1",
+    "status": "Production Ready",
+    "lastUpdated": "2025-01-15",
+    "description": "Enterprise-grade dental practice management CRM with multi-tenancy, real-time analytics, and AI-powered insights"
+  },
+  "techStack": {
+    "frontend": {
+      "framework": "Next.js 15.5.4",
+      "runtime": "React 19.1.0",
+      "bundler": "Turbopack",
+      "styling": "TailwindCSS 4.0",
+      "uiLibrary": "Custom components + Radix UI primitives",
+      "stateManagement": "React hooks + Context API",
+      "routing": "Next.js App Router",
+      "forms": "React Hook Form + Zod validation",
+      "charts": "Recharts (planned for Phase 1)",
+      "animations": "Framer Motion (planned)",
+      "icons": "Lucide React"
+    },
+    "backend": {
+      "database": "PostgreSQL (Supabase)",
+      "auth": "Supabase Auth",
+      "api": "Next.js API Routes",
+      "realtime": "Supabase Realtime (planned)",
+      "caching": "Redis (planned for Phase 1)",
+      "fileStorage": "Supabase Storage",
+      "email": "Resend API",
+      "ai": "OpenAI API (planned)"
+    },
+    "infrastructure": {
+      "hosting": "Railway.app",
+      "domain": "dental-crm-private-production.up.railway.app",
+      "cdn": "Railway CDN",
+      "monitoring": "Sentry (planned)",
+      "logging": "Pino (implemented)",
+      "deployment": "GitHub → Railway auto-deploy"
+    },
+    "development": {
+      "language": "TypeScript",
+      "packageManager": "npm",
+      "linting": "ESLint",
+      "formatting": "Prettier",
+      "testing": "Jest + Playwright (planned)",
+      "git": "GitHub",
+      "branching": "main branch strategy"
+    }
+  },
+  "architecture": {
+    "pattern": "Modular Monolith with Micro-Frontend Architecture",
+    "layers": {
+      "presentation": {
+        "components": "Atomic design pattern (atoms, molecules, organisms)",
+        "pages": "Next.js App Router with layout composition",
+        "routing": "File-based routing with middleware",
+        "state": "Component-level state + Context for global state"
+      },
+      "business": {
+        "hooks": "Custom React hooks for business logic",
+        "services": "API service layer with error handling",
+        "validation": "Zod schemas for type-safe validation",
+        "auth": "Supabase Auth with custom useAuth hook"
+      },
+      "data": {
+        "database": "PostgreSQL with Row Level Security (RLS)",
+        "orm": "Supabase client with TypeScript types",
+        "migrations": "SQL migration files",
+        "caching": "Client-side caching with React Query (planned)"
+      }
+    },
+    "principles": {
+      "separationOfConcerns": "Clear separation between UI, business logic, and data",
+      "singleResponsibility": "Each component/service has one clear purpose",
+      "dry": "Don't Repeat Yourself - reusable components and utilities",
+      "yagni": "You Aren't Gonna Need It - only build what's needed",
+      "composition": "Prefer composition over inheritance"
+    }
+  },
+  "database": {
+    "provider": "Supabase (PostgreSQL)",
+    "url": "https://xcsgleuoxzrllimywlct.supabase.co",
+    "features": {
+      "multiTenancy": "Tenant isolation via tenant_id column",
+      "rls": "Row Level Security policies for data access control",
+      "realtime": "WebSocket subscriptions for live updates",
+      "auth": "Built-in authentication and user management",
+      "storage": "File upload and management"
+    },
+    "tables": {
+      "core": [
+        "tenants - Practice/organization data",
+        "app_users - User profiles and roles",
+        "contacts - Patient/lead information",
+        "deals - Treatment opportunities",
+        "tasks - Follow-ups and reminders",
+        "pipelines - Sales process stages",
+        "pipeline_stages - Individual stage definitions"
+      ],
+      "supporting": [
+        "email_logs - Email communication tracking",
+        "user_pipeline_preferences - Custom pipeline ordering",
+        "auth.users - Supabase authentication (managed)"
+      ]
+    },
+    "security": {
+      "rlsPolicies": "Authenticated users can only access their tenant's data",
+      "tenantIsolation": "All queries filtered by tenant_id",
+      "roleBasedAccess": "Owner/Manager/Staff role-based permissions",
+      "dataEncryption": "At-rest and in-transit encryption via Supabase"
+    }
+  },
+  "features": {
+    "current": {
+      "authentication": {
+        "signUp": "Email/password with tenant creation",
+        "signIn": "Email/password authentication",
+        "passwordReset": "Email-based password reset",
+        "emailVerification": "Optional email confirmation",
+        "sessionManagement": "Persistent sessions with auto-refresh"
+      },
+      "crm": {
+        "contacts": "Patient/lead management with full CRUD",
+        "deals": "Treatment opportunity tracking",
+        "tasks": "Follow-up and reminder system",
+        "pipeline": "Customizable sales process management"
+      },
+      "ui": {
+        "responsive": "Mobile-first responsive design",
+        "slideOver": "Enterprise-grade right-side slide-over modals",
+        "themes": "Light theme (dark mode planned)",
+        "accessibility": "WCAG 2.1 AA compliance (in progress)"
+      }
+    },
+    "planned": {
+      "phase0": [
+        "Dashboard customization",
+        "Real-time updates",
+        "Advanced analytics",
+        "Performance optimization"
+      ],
+      "phase1": [
+        "AI-powered insights",
+        "Advanced reporting",
+        "Multi-location support",
+        "Integration APIs"
+      ],
+      "phase2": [
+        "Voice commands",
+        "Mobile app",
+        "Advanced automation",
+        "Third-party integrations"
+      ]
+    }
+  },
+  "codebase": {
+    "structure": {
+      "src/": {
+        "app/": "Next.js App Router pages and layouts",
+        "components/": "Reusable UI components",
+        "lib/": "Utility functions and configurations",
+        "types/": "TypeScript type definitions",
+        "hooks/": "Custom React hooks",
+        "schemas/": "Zod validation schemas"
+      },
+      "supabase/": "Database migrations and functions",
+      "public/": "Static assets and images"
+    },
+    "patterns": {
+      "components": "Functional components with TypeScript",
+      "state": "useState/useEffect for local, Context for global",
+      "dataFetching": "useEffect with async/await pattern",
+      "errorHandling": "Try/catch with toast notifications",
+      "validation": "Zod schemas with React Hook Form"
+    },
+    "conventions": {
+      "naming": "camelCase for variables, PascalCase for components",
+      "files": "kebab-case for files, PascalCase for components",
+      "imports": "Absolute imports with @/ alias",
+      "exports": "Named exports preferred over default",
+      "types": "Interface for objects, type for unions/primitives"
+    }
+  },
+  "deployment": {
+    "environment": "Railway.app",
+    "url": "https://dental-crm-private-production.up.railway.app",
+    "process": "GitHub push → Railway auto-deploy",
+    "domains": {
+      "production": "dental-crm-private-production.up.railway.app",
+      "development": "localhost:3000"
+    },
+    "environmentVariables": {
+      "required": [
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY"
+      ],
+      "optional": [
+        "RESEND_API_KEY",
+        "OPENAI_API_KEY",
+        "NEXT_PUBLIC_APP_URL"
+      ]
+    }
+  },
+  "performance": {
+    "current": {
+      "bundleSize": "~2MB (estimated)",
+      "loadTime": "~3-5 seconds initial load",
+      "runtime": "React 19 with concurrent features",
+      "caching": "Next.js built-in caching"
+    },
+    "optimizations": {
+      "implemented": [
+        "Code splitting with dynamic imports",
+        "Image optimization with Next.js Image",
+        "Font optimization",
+        "CSS optimization with TailwindCSS"
+      ],
+      "planned": [
+        "Redis caching layer",
+        "CDN implementation",
+        "Service worker for offline support",
+        "Bundle analysis and optimization"
+      ]
+    }
+  },
+  "security": {
+    "authentication": "Supabase Auth with JWT tokens",
+    "authorization": "Row Level Security (RLS) policies",
+    "dataProtection": "Multi-tenant data isolation",
+    "inputValidation": "Zod schemas for all user inputs",
+    "csrf": "Next.js built-in CSRF protection",
+    "xss": "React's built-in XSS protection",
+    "https": "Forced HTTPS in production"
+  },
+  "testing": {
+    "current": "Manual testing and development",
+    "planned": {
+      "unit": "Jest for component and utility testing",
+      "integration": "Playwright for end-to-end testing",
+      "performance": "Lighthouse CI for performance monitoring",
+      "accessibility": "axe-core for accessibility testing"
+    }
+  },
+  "monitoring": {
+    "current": "Console logging and error boundaries",
+    "planned": {
+      "errors": "Sentry for error tracking",
+      "performance": "Web Vitals monitoring",
+      "analytics": "Custom analytics dashboard",
+      "logging": "Structured logging with Pino"
+    }
+  },
+  "scalability": {
+    "current": "Single-tenant architecture with multi-tenancy",
+    "limitations": "Database queries not optimized for large datasets",
+    "planned": {
+      "database": "Query optimization and indexing",
+      "caching": "Redis for frequently accessed data",
+      "cdn": "Global CDN for static assets",
+      "microservices": "Service decomposition for large scale"
+    }
+  },
+  "maintenance": {
+    "dependencies": "Regular updates via npm audit",
+    "security": "Monthly security reviews",
+    "performance": "Quarterly performance audits",
+    "backups": "Supabase automated backups",
+    "monitoring": "24/7 uptime monitoring (planned)"
+  },
+  "development": {
+    "workflow": "Feature branch → Pull request → Review → Merge",
+    "codeReview": "Required for all changes",
+    "testing": "All features must be tested before deployment",
+    "documentation": "Code comments and README updates required"
+  },
+  "future": {
+    "roadmap": {
+      "q1_2025": "Dashboard enterprise transformation",
+      "q2_2025": "AI integration and advanced analytics",
+      "q3_2025": "Mobile app and offline support",
+      "q4_2025": "Enterprise integrations and scaling"
+    },
+    "goals": {
+      "shortTerm": "Enterprise-grade dashboard",
+      "mediumTerm": "AI-powered insights and automation",
+      "longTerm": "Industry-leading dental practice management platform"
+    }
+  }
+}
