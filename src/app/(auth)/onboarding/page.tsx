@@ -225,12 +225,17 @@ function OnboardingForm() {
       }
 
       // Create pipeline
+      const pipelineData: any = {
+        tenant_id: appUserData.tenant_id,
+        name: pipelineSetup.pipelineName.trim()
+      }
+      
+      // Add description if column exists (optional for backward compatibility)
+      pipelineData.description = `Your ${pipelineSetup.pipelineName.trim()} sales pipeline`
+      
       const { data: pipeline, error: pipelineError } = await supabase
         .from('pipelines')
-        .insert({
-          tenant_id: appUserData.tenant_id,
-          name: pipelineSetup.pipelineName.trim()
-        })
+        .insert(pipelineData)
         .select()
         .single()
 

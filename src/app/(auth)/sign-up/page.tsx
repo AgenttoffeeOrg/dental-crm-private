@@ -162,13 +162,18 @@ function SignUpForm() {
 
       // Step 4: Create default pipeline (non-blocking)
       try {
-        await supabase.from('pipelines').insert({
+        const pipelineData: any = {
           tenant_id: tenant.id,
           name: 'Main Pipeline'
-        })
+        }
+        
+        // Add description if column exists (optional for backward compatibility)
+        pipelineData.description = 'Your main sales pipeline'
+        
+        await supabase.from('pipelines').insert(pipelineData)
       } catch (pipelineError) {
         console.warn('Failed to create default pipeline:', pipelineError)
-        // Don't fail signup for this
+        // Don't fail signup for this - it's optional
       }
 
       // Success!
