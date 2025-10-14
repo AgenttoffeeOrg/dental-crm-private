@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { 
   Building2, ArrowRight, ArrowLeft, Check, Loader2,
-  MapPin, Phone, Globe, Users, Target, Sparkles
+  MapPin, Phone, Globe, Users, Target, Sparkles, AlertCircle
 } from 'lucide-react'
 
 const steps = [
@@ -28,6 +28,7 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [tenant, setTenant] = useState<any>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const [practiceInfo, setPracticeInfo] = useState({
     name: '',
@@ -62,111 +63,122 @@ export default function OnboardingPage() {
     teamEmails: ''
   })
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/sign-in')
+    }
+  }, [user, authLoading, router])
+
   // Fetch tenant info on load
   useEffect(() => {
-    if (!authLoading && appUser) {
+    if (!authLoading && user) {
       fetchTenant()
     }
-  }, [authLoading, appUser])
+  }, [authLoading, user])
 
   const fetchTenant = async () => {
-    if (!appUser?.tenant_id) return
+    if (!user?.id) return
 
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('tenants')
-      .select('*')
-      .eq('id', appUser.tenant_id)
-      .single()
+    try {
+      const supabase = createClient()
+      
+      // Get app user with tenant_id
+      const { data: appUserData } = await supabase
+        .from('app_users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single()
 
-    if (data) {
-      setTenant(data)
-      setPracticeInfo({
-        name: data.name || '',
-        description: '',
-        specialty: 'general',
-        team_size: '1-5'
-      })
+      if (appUserData?.tenant_id) {
+        // Get tenant data
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('id', appUserData.tenant_id)
+          .single()
+
+        if (tenantData) {
+          setTenant(tenantData)
+          setPracticeInfo(prev => ({
+            ...prev,
+            name: tenantData.name || ''
+          }))
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching tenant:', error)
     }
   }
 
-  const handleStep1 = async () => {
-    if (!practiceInfo.name) {
-      toast.error('Please enter your practice name')
-      return
+  const validateStep1 = () => {
+    const newErrors: Record<string, string> = {}
+    
+    if (!practiceInfo.name.trim()) {
+      newErrors.name = 'Practice name is required'
     }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const validateStep3 = () => {
+    const newErrors: Record<string, string> = {}
+    
+    if (!pipelineSetup.pipelineName.trim()) {
+      newErrors.pipelineName = 'Pipeline name is required'
+    }
+    
+    if (pipelineSetup.stages.length < 2) {
+      newErrors.stages = 'Please add at least 2 stages'
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleStep1 = async () => {
+    if (!validateStep1()) return
 
     setLoading(true)
-    const supabase = createClient()
+    setErrors({})
 
     try {
-      console.log('=== ONBOARDING DEBUG ===')
-      console.log('App User:', appUser)
-      console.log('User:', user)
-      console.log('Practice Name:', practiceInfo.name)
+      const supabase = createClient()
       
-      // Get tenant_id - try multiple methods
-      let tenantId = appUser?.tenant_id
-      
-      if (!tenantId && user?.id) {
-        console.log('AppUser tenant_id not found, fetching from database...')
-        // Fetch app_user directly to get tenant_id
-        const { data: appUserData, error: appUserError } = await supabase
-          .from('app_users')
-          .select('tenant_id')
-          .eq('id', user.id)
-          .single()
-        
-        console.log('AppUser fetch result:', { appUserData, appUserError })
-        
-        if (appUserData?.tenant_id) {
-          tenantId = appUserData.tenant_id
-          console.log('Found tenant_id:', tenantId)
-        }
+      if (!user?.id) {
+        throw new Error('User not found')
       }
 
-      if (!tenantId) {
-        throw new Error('No tenant ID found. Please try signing up again.')
-      }
-
-      console.log('Using tenant_id:', tenantId)
-      
-      // First, let's check if the tenant exists
-      const { data: tenantCheck, error: checkError } = await supabase
-        .from('tenants')
-        .select('*')
-        .eq('id', tenantId)
+      // Get tenant_id from app_users
+      const { data: appUserData } = await supabase
+        .from('app_users')
+        .select('tenant_id')
+        .eq('id', user.id)
         .single()
 
-      console.log('Tenant check result:', { tenantCheck, checkError })
-
-      if (checkError) {
-        console.error('Tenant check failed:', checkError)
-        throw new Error(`Tenant not found: ${checkError.message}`)
+      if (!appUserData?.tenant_id) {
+        throw new Error('Tenant not found')
       }
 
-      // Update tenant with practice info
-      const { data, error } = await supabase
+      // Update tenant
+      const { error } = await supabase
         .from('tenants')
         .update({
-          name: practiceInfo.name
+          name: practiceInfo.name.trim()
         })
-        .eq('id', tenantId)
-        .select()
-
-      console.log('Update result:', { data, error })
+        .eq('id', appUserData.tenant_id)
 
       if (error) {
-        console.error('Supabase update error:', error)
-        throw new Error(error.message || 'Failed to update tenant')
+        throw new Error(error.message)
       }
 
-      console.log('✅ Practice info saved successfully!')
       toast.success('Practice info saved!')
       setCurrentStep(2)
     } catch (error: any) {
-      console.error('❌ Error updating practice info:', error)
-      toast.error(error.message || 'Failed to save practice info')
+      console.error('Error updating practice info:', error)
+      toast.error('Failed to save practice info')
+      setErrors({ name: error.message })
     } finally {
       setLoading(false)
     }
@@ -174,11 +186,10 @@ export default function OnboardingPage() {
 
   const handleStep2 = async () => {
     setLoading(true)
+    setErrors({})
 
     try {
-      // Skip saving contact details for now (no metadata column)
-      // TODO: Add these fields to tenants table or create separate practice_details table
-      
+      // Skip saving contact details for now (can be added later)
       toast.success('Contact details saved!')
       setCurrentStep(3)
     } catch (error: any) {
@@ -190,40 +201,46 @@ export default function OnboardingPage() {
   }
 
   const handleStep3 = async () => {
-    if (!pipelineSetup.pipelineName) {
-      toast.error('Please enter a pipeline name')
-      return
-    }
-
-    if (pipelineSetup.stages.length < 2) {
-      toast.error('Please add at least 2 stages')
-      return
-    }
+    if (!validateStep3()) return
 
     setLoading(true)
-    const supabase = createClient()
+    setErrors({})
 
     try {
+      const supabase = createClient()
+      
+      if (!user?.id) {
+        throw new Error('User not found')
+      }
+
+      // Get tenant_id
+      const { data: appUserData } = await supabase
+        .from('app_users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single()
+
+      if (!appUserData?.tenant_id) {
+        throw new Error('Tenant not found')
+      }
+
       // Create pipeline
       const { data: pipeline, error: pipelineError } = await supabase
         .from('pipelines')
         .insert({
-          tenant_id: appUser?.tenant_id,
-          name: pipelineSetup.pipelineName
+          tenant_id: appUserData.tenant_id,
+          name: pipelineSetup.pipelineName.trim()
         })
         .select()
         .single()
 
-      console.log('Pipeline creation result:', { pipeline, pipelineError })
-      
       if (pipelineError) {
-        console.error('Pipeline creation error:', pipelineError)
-        throw pipelineError
+        throw new Error(pipelineError.message)
       }
 
       // Create stages
       const stagesData = pipelineSetup.stages.map((stageName, index) => ({
-        tenant_id: appUser?.tenant_id,
+        tenant_id: appUserData.tenant_id,
         pipeline_id: pipeline.id,
         name: stageName,
         position: index + 1
@@ -233,59 +250,33 @@ export default function OnboardingPage() {
         .from('pipeline_stages')
         .insert(stagesData)
 
-      if (stagesError) throw stagesError
+      if (stagesError) {
+        throw new Error(stagesError.message)
+      }
 
       toast.success('Pipeline created successfully!')
       setCurrentStep(4)
     } catch (error: any) {
       console.error('Error creating pipeline:', error)
       toast.error('Failed to create pipeline')
+      setErrors({ pipelineName: error.message })
     } finally {
       setLoading(false)
     }
   }
 
   const handleStep4 = async () => {
-    if (teamSetup.inviteNow && !teamSetup.teamEmails) {
-      toast.error('Please enter team member emails')
-      return
-    }
-
     setLoading(true)
+    setErrors({})
 
     try {
-      if (teamSetup.inviteNow && teamSetup.teamEmails) {
-        // Send invitations
-        const emails = teamSetup.teamEmails
-          .split('\n')
-          .map(e => e.trim())
-          .filter(e => e && e.includes('@'))
-
-        for (const email of emails) {
-          await fetch('/api/users/invite', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email,
-              role: 'staff',
-              tenant_id: appUser?.tenant_id
-            })
-          })
-        }
-
-        toast.success(`Invitations sent to ${emails.length} team members!`)
-      }
-
-      // Mark onboarding as complete (skip for now - no metadata column)
-      // TODO: Add onboarding_completed field to app_users table
-
-      toast.success('Onboarding complete! Welcome to your CRM!', {
-        description: 'Redirecting to dashboard...'
-      })
-
+      // Complete onboarding
+      toast.success('Onboarding completed!')
+      
+      // Redirect to dashboard
       setTimeout(() => {
-        router.push('/pipeline')
-      }, 1500)
+        router.push('/dashboard')
+      }, 1000)
     } catch (error: any) {
       console.error('Error completing onboarding:', error)
       toast.error('Failed to complete onboarding')
@@ -294,386 +285,336 @@ export default function OnboardingPage() {
     }
   }
 
-  const handleNext = () => {
-    switch (currentStep) {
-      case 1:
-        handleStep1()
-        break
-      case 2:
-        handleStep2()
-        break
-      case 3:
-        handleStep3()
-        break
-      case 4:
-        handleStep4()
-        break
-    }
-  }
-
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1)
-    }
-  }
-
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     )
   }
 
+  if (!user) {
+    return null // Will redirect
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
-      <div className="max-w-4xl mx-auto py-12">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50/30">
+      <div className="max-w-4xl mx-auto p-8">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            <Sparkles className="w-8 h-8 text-white" />
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-4">
+            <Sparkles className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Let's Set Up Your CRM
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome to Dental CRM! 🎉
           </h1>
-          <p className="text-lg text-gray-600">
-            Just a few quick steps to get you started
+          <p className="text-gray-600">
+            Let's set up your practice in just a few quick steps
           </p>
         </div>
 
         {/* Progress Steps */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between max-w-2xl mx-auto">
-            {steps.map((step, index) => {
-              const Icon = step.icon
-              const isActive = currentStep === step.id
-              const isCompleted = currentStep > step.id
-
-              return (
-                <div key={step.id} className="flex items-center flex-1">
-                  <div className="flex flex-col items-center flex-1">
-                    <div className={`
-                      w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all
-                      ${isCompleted ? 'bg-green-500 text-white' : 
-                        isActive ? 'bg-blue-600 text-white' : 
-                        'bg-gray-200 text-gray-500'}
-                    `}>
-                      {isCompleted ? (
-                        <Check className="w-6 h-6" />
-                      ) : (
-                        <Icon className="w-6 h-6" />
-                      )}
-                    </div>
-                    <span className={`text-sm font-medium ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>
-                      {step.name}
-                    </span>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className={`h-1 flex-1 mx-4 mt-[-20px] ${
-                      currentStep > step.id ? 'bg-green-500' : 'bg-gray-200'
-                    }`} />
-                  )}
-                </div>
-              )
-            })}
-          </div>
+        <div className="flex items-center justify-center mb-8">
+          {steps.map((step, index) => (
+            <div key={step.id} className="flex items-center">
+              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                currentStep >= step.id 
+                  ? 'bg-indigo-600 border-indigo-600 text-white' 
+                  : 'border-gray-300 text-gray-400'
+              }`}>
+                {currentStep > step.id ? (
+                  <Check className="h-5 w-5" />
+                ) : (
+                  <step.icon className="h-5 w-5" />
+                )}
+              </div>
+              <span className={`ml-2 text-sm font-medium ${
+                currentStep >= step.id ? 'text-indigo-600' : 'text-gray-400'
+              }`}>
+                {step.name}
+              </span>
+              {index < steps.length - 1 && (
+                <div className={`w-8 h-0.5 mx-4 ${
+                  currentStep > step.id ? 'bg-indigo-600' : 'bg-gray-300'
+                }`} />
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Step Content */}
-        <Card className="p-8 shadow-2xl border-0 max-w-2xl mx-auto">
+        <Card className="p-8">
+          {/* Step 1: Practice Info */}
           {currentStep === 1 && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">Practice Information</h2>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Practice Information</h2>
                 <p className="text-gray-600">Tell us about your dental practice</p>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="practice-name">Practice Name *</Label>
+              <div className="max-w-md mx-auto space-y-4">
+                <div>
+                  <Label htmlFor="practiceName" className="text-sm font-medium text-gray-900">
+                    Practice Name *
+                  </Label>
                   <Input
-                    id="practice-name"
-                    placeholder="e.g., SmileBright Dental"
+                    id="practiceName"
+                    placeholder="e.g., Bright Smile Dental"
                     value={practiceInfo.name}
                     onChange={(e) => setPracticeInfo({ ...practiceInfo, name: e.target.value })}
-                    disabled={loading}
+                    className={`mt-1.5 h-12 ${errors.name ? 'border-red-500' : ''}`}
                   />
+                  {errors.name && (
+                    <p className="text-sm text-red-600 mt-1 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.name}
+                    </p>
+                  )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                <div>
+                  <Label htmlFor="description" className="text-sm font-medium text-gray-900">
+                    Description (Optional)
+                  </Label>
                   <Textarea
                     id="description"
                     placeholder="Brief description of your practice..."
                     value={practiceInfo.description}
                     onChange={(e) => setPracticeInfo({ ...practiceInfo, description: e.target.value })}
-                    disabled={loading}
+                    className="mt-1.5"
                     rows={3}
                   />
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="specialty">Primary Specialty</Label>
-                    <select
-                      id="specialty"
-                      className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm"
-                      value={practiceInfo.specialty}
-                      onChange={(e) => setPracticeInfo({ ...practiceInfo, specialty: e.target.value })}
-                      disabled={loading}
-                    >
-                      <option value="general">General Dentistry</option>
-                      <option value="cosmetic">Cosmetic Dentistry</option>
-                      <option value="orthodontics">Orthodontics</option>
-                      <option value="periodontics">Periodontics</option>
-                      <option value="endodontics">Endodontics</option>
-                      <option value="oral_surgery">Oral Surgery</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="team-size">Team Size</Label>
-                    <select
-                      id="team-size"
-                      className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm"
-                      value={practiceInfo.team_size}
-                      onChange={(e) => setPracticeInfo({ ...practiceInfo, team_size: e.target.value })}
-                      disabled={loading}
-                    >
-                      <option value="1">Just me</option>
-                      <option value="2-5">2-5 people</option>
-                      <option value="6-10">6-10 people</option>
-                      <option value="11-20">11-20 people</option>
-                      <option value="21+">21+ people</option>
-                    </select>
-                  </div>
-                </div>
+              <div className="flex justify-center gap-4">
+                <Button
+                  onClick={handleStep1}
+                  disabled={loading}
+                  className="px-8 h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="h-5 w-5 ml-2" />
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           )}
 
+          {/* Step 2: Contact Details */}
           {currentStep === 2 && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">Contact Details</h2>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Contact Details</h2>
                 <p className="text-gray-600">How can patients reach you?</p>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input
-                        id="phone"
-                        type="tel"
-                        placeholder="+44 20 1234 5678"
-                        className="pl-10"
-                        value={contactDetails.phone}
-                        onChange={(e) => setContactDetails({ ...contactDetails, phone: e.target.value })}
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website</Label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input
-                        id="website"
-                        type="url"
-                        placeholder="www.yourpractice.com"
-                        className="pl-10"
-                        value={contactDetails.website}
-                        onChange={(e) => setContactDetails({ ...contactDetails, website: e.target.value })}
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Street Address</Label>
+              <div className="max-w-md mx-auto space-y-4">
+                <div>
+                  <Label htmlFor="phone" className="text-sm font-medium text-gray-900">
+                    Phone Number
+                  </Label>
                   <Input
-                    id="address"
-                    placeholder="123 Main Street"
-                    value={contactDetails.address}
-                    onChange={(e) => setContactDetails({ ...contactDetails, address: e.target.value })}
-                    disabled={loading}
+                    id="phone"
+                    placeholder="+1 (555) 123-4567"
+                    value={contactDetails.phone}
+                    onChange={(e) => setContactDetails({ ...contactDetails, phone: e.target.value })}
+                    className="mt-1.5 h-12"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      placeholder="London"
-                      value={contactDetails.city}
-                      onChange={(e) => setContactDetails({ ...contactDetails, city: e.target.value })}
-                      disabled={loading}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="postcode">Postcode</Label>
-                    <Input
-                      id="postcode"
-                      placeholder="SW1A 1AA"
-                      value={contactDetails.postcode}
-                      onChange={(e) => setContactDetails({ ...contactDetails, postcode: e.target.value })}
-                      disabled={loading}
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-900">
+                    Email Address
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="info@yourpractice.com"
+                    value={contactDetails.email}
+                    onChange={(e) => setContactDetails({ ...contactDetails, email: e.target.value })}
+                    className="mt-1.5 h-12"
+                  />
                 </div>
+
+                <div>
+                  <Label htmlFor="website" className="text-sm font-medium text-gray-900">
+                    Website
+                  </Label>
+                  <Input
+                    id="website"
+                    placeholder="https://yourpractice.com"
+                    value={contactDetails.website}
+                    onChange={(e) => setContactDetails({ ...contactDetails, website: e.target.value })}
+                    className="mt-1.5 h-12"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep(1)}
+                  className="px-8 h-12"
+                >
+                  <ArrowLeft className="h-5 w-5 mr-2" />
+                  Back
+                </Button>
+                <Button
+                  onClick={handleStep2}
+                  disabled={loading}
+                  className="px-8 h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="h-5 w-5 ml-2" />
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           )}
 
+          {/* Step 3: Pipeline Setup */}
           {currentStep === 3 && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">Create Your First Pipeline</h2>
-                <p className="text-gray-600">Organize how you track patient journeys</p>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Your First Pipeline</h2>
+                <p className="text-gray-600">Set up how you'll track patient treatments</p>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pipeline-name">Pipeline Name</Label>
+              <div className="max-w-md mx-auto space-y-4">
+                <div>
+                  <Label htmlFor="pipelineName" className="text-sm font-medium text-gray-900">
+                    Pipeline Name *
+                  </Label>
                   <Input
-                    id="pipeline-name"
-                    placeholder="e.g., New Patient Acquisition"
+                    id="pipelineName"
+                    placeholder="Main Pipeline"
                     value={pipelineSetup.pipelineName}
                     onChange={(e) => setPipelineSetup({ ...pipelineSetup, pipelineName: e.target.value })}
-                    disabled={loading}
+                    className={`mt-1.5 h-12 ${errors.pipelineName ? 'border-red-500' : ''}`}
                   />
+                  {errors.pipelineName && (
+                    <p className="text-sm text-red-600 mt-1 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.pipelineName}
+                    </p>
+                  )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Pipeline Stages</Label>
-                  <div className="space-y-2">
+                <div>
+                  <Label className="text-sm font-medium text-gray-900">
+                    Pipeline Stages
+                  </Label>
+                  <div className="mt-1.5 space-y-2">
                     {pipelineSetup.stages.map((stage, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-medium">
-                          {index + 1}
-                        </div>
-                        <Input
-                          value={stage}
-                          onChange={(e) => {
-                            const newStages = [...pipelineSetup.stages]
-                            newStages[index] = e.target.value
-                            setPipelineSetup({ ...pipelineSetup, stages: newStages })
-                          }}
-                          disabled={loading}
-                        />
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                        <span className="text-sm text-gray-500 w-6">{index + 1}.</span>
+                        <span className="text-sm text-gray-900">{stage}</span>
                       </div>
                     ))}
                   </div>
-                  <p className="text-sm text-gray-500">
-                    These stages represent the journey from first contact to won/lost
+                </div>
+              </div>
+
+              <div className="flex justify-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep(2)}
+                  className="px-8 h-12"
+                >
+                  <ArrowLeft className="h-5 w-5 mr-2" />
+                  Back
+                </Button>
+                <Button
+                  onClick={handleStep3}
+                  disabled={loading}
+                  className="px-8 h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      Create Pipeline
+                      <ArrowRight className="h-5 w-5 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Team Setup */}
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Team Setup</h2>
+                <p className="text-gray-600">Invite your team members (optional)</p>
+              </div>
+
+              <div className="max-w-md mx-auto space-y-4">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+                    <Check className="h-8 w-8 text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Setup Complete!
+                  </h3>
+                  <p className="text-gray-600">
+                    Your practice is ready to go. You can invite team members later from your dashboard.
                   </p>
                 </div>
               </div>
-            </div>
-          )}
 
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">Invite Your Team</h2>
-                <p className="text-gray-600">Add team members to collaborate (optional)</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    id="invite-now"
-                    checked={teamSetup.inviteNow}
-                    onChange={(e) => setTeamSetup({ ...teamSetup, inviteNow: e.target.checked })}
-                    className="mt-1"
-                  />
-                  <div>
-                    <label htmlFor="invite-now" className="font-medium">
-                      Invite team members now
-                    </label>
-                    <p className="text-sm text-gray-500">
-                      You can always invite people later from Settings
-                    </p>
-                  </div>
-                </div>
-
-                {teamSetup.inviteNow && (
-                  <div className="space-y-2">
-                    <Label htmlFor="team-emails">Team Member Emails (one per line)</Label>
-                    <Textarea
-                      id="team-emails"
-                      placeholder="colleague@example.com&#10;assistant@example.com"
-                      value={teamSetup.teamEmails}
-                      onChange={(e) => setTeamSetup({ ...teamSetup, teamEmails: e.target.value })}
-                      disabled={loading}
-                      rows={5}
-                    />
-                    <p className="text-sm text-gray-500">
-                      They'll receive an email invitation to join your practice
-                    </p>
-                  </div>
-                )}
+              <div className="flex justify-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep(3)}
+                  className="px-8 h-12"
+                >
+                  <ArrowLeft className="h-5 w-5 mr-2" />
+                  Back
+                </Button>
+                <Button
+                  onClick={handleStep4}
+                  disabled={loading}
+                  className="px-8 h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Completing...
+                    </>
+                  ) : (
+                    <>
+                      Go to Dashboard
+                      <ArrowRight className="h-5 w-5 ml-2" />
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           )}
-
-          {/* Navigation */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t">
-            <Button
-              variant="ghost"
-              onClick={handleBack}
-              disabled={currentStep === 1 || loading}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-
-            <Button
-              onClick={handleNext}
-              disabled={loading}
-              size="lg"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : currentStep === 4 ? (
-                <>
-                  Complete Setup
-                  <Check className="w-5 h-5 ml-2" />
-                </>
-              ) : (
-                <>
-                  Continue
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </>
-              )}
-            </Button>
-          </div>
         </Card>
-
-        {/* Skip Option */}
-        {currentStep < 4 && (
-          <div className="text-center mt-6">
-            <button
-              onClick={() => router.push('/pipeline')}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Skip for now →
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )
 }
-

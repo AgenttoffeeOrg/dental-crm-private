@@ -10,25 +10,23 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { ArrowRight, Loader2, Building2, User, Mail, Lock, Sparkles, Check, Eye, EyeOff } from 'lucide-react'
+import { ArrowRight, Loader2, Building2, User, Mail, Lock, Sparkles, Check, Eye, EyeOff, AlertCircle } from 'lucide-react'
 
 export default function SignUpPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [step, setStep] = useState(1) // 1: Account type, 2: Details
+  const [step, setStep] = useState(1)
   const [accountType, setAccountType] = useState<'practice' | 'individual'>('practice')
+  const [errors, setErrors] = useState<Record<string, string>>({})
   
   const [formData, setFormData] = useState({
-    // Practice
     practiceName: '',
     specialty: 'general',
-    // Personal
     fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    // Agreement
     agreedToTerms: false
   })
 
@@ -44,35 +42,45 @@ export default function SignUpPage() {
   ]
 
   const validateStep1 = () => {
-    if (accountType === 'practice' && !formData.practiceName) {
-      toast.error('Please enter your practice name')
-      return false
+    const newErrors: Record<string, string> = {}
+    
+    if (accountType === 'practice' && !formData.practiceName.trim()) {
+      newErrors.practiceName = 'Practice name is required'
     }
-    return true
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
   const validateStep2 = () => {
-    if (!formData.fullName) {
-      toast.error('Please enter your full name')
-      return false
+    const newErrors: Record<string, string> = {}
+    
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Full name is required'
     }
-    if (!formData.email || !formData.email.includes('@')) {
-      toast.error('Please enter a valid email')
-      return false
+    
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address'
     }
-    if (!formData.password || formData.password.length < 8) {
-      toast.error('Password must be at least 8 characters')
-      return false
+    
+    if (!formData.password) {
+      newErrors.password = 'Password is required'
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters'
     }
+    
     if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match')
-      return false
+      newErrors.confirmPassword = 'Passwords do not match'
     }
+    
     if (!formData.agreedToTerms) {
-      toast.error('Please agree to the terms and conditions')
-      return false
+      newErrors.agreedToTerms = 'You must agree to the terms and conditions'
     }
-    return true
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
   const handleContinue = () => {
@@ -83,54 +91,45 @@ export default function SignUpPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validateStep2()) return
+    
+    if (!validateStep2()) {
+      return
+    }
 
     setLoading(true)
-    const supabase = createClient()
+    setErrors({})
 
     try {
-      console.log('=== SIGNUP DEBUG ===')
-      console.log('Email:', formData.email)
-      console.log('Full Name:', formData.fullName)
-      console.log('Account Type:', accountType)
-      
-      // Create auth user
+      const supabase = createClient()
+
+      // Step 1: Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         options: {
           data: {
-            full_name: formData.fullName,
+            full_name: formData.fullName.trim(),
             account_type: accountType
           }
         }
       })
 
-      console.log('Auth signup result:', { authData, authError })
-
       if (authError) {
-        console.error('Auth signup error:', authError)
-        // Handle duplicate email case
         if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
-          toast.error('This email is already registered. Please try signing in instead.')
-          router.push('/sign-in')
+          setErrors({ email: 'This email is already registered. Please sign in instead.' })
           return
         }
-        throw new Error(`Sign up failed: ${authError.message}`)
+        throw new Error(authError.message)
       }
-      
+
       if (!authData.user) {
-        throw new Error('Failed to create user - no user data returned')
+        throw new Error('Failed to create user account')
       }
 
-      console.log('✅ Auth user created:', authData.user.id)
-
-      // Create tenant
+      // Step 2: Create tenant
       const tenantName = accountType === 'practice' 
-        ? formData.practiceName 
-        : `${formData.fullName}'s Practice`
-
-      console.log('Creating tenant:', tenantName)
+        ? formData.practiceName.trim()
+        : `${formData.fullName.trim()}'s Practice`
 
       const { data: tenant, error: tenantError } = await supabase
         .from('tenants')
@@ -141,89 +140,51 @@ export default function SignUpPage() {
         .select()
         .single()
 
-      console.log('Tenant creation result:', { tenant, tenantError })
-
       if (tenantError) {
-        console.error('Tenant creation error:', tenantError)
-        throw new Error(`Failed to create tenant: ${tenantError.message}`)
+        throw new Error(`Failed to create practice: ${tenantError.message}`)
       }
 
-      console.log('✅ Tenant created:', tenant.id)
-
-      // Create app_user
-      console.log('Creating app user with tenant_id:', tenant.id)
-      
+      // Step 3: Create app user
       const { error: appUserError } = await supabase
         .from('app_users')
-        .upsert({
+        .insert({
           id: authData.user.id,
           tenant_id: tenant.id,
-          full_name: formData.fullName,
+          full_name: formData.fullName.trim(),
           role: 'owner'
-        }, {
-          onConflict: 'id'
         })
 
-      console.log('App user creation result:', { appUserError })
-
       if (appUserError) {
-        console.error('App user creation error:', appUserError)
-        // If app user creation fails, try to clean up
+        // Cleanup: delete tenant if app user creation fails
         await supabase.from('tenants').delete().eq('id', tenant.id)
-        throw new Error(`Failed to create app user: ${appUserError.message}`)
+        throw new Error(`Failed to create user profile: ${appUserError.message}`)
       }
 
-      console.log('✅ App user created successfully')
-
-      // Create default pipeline
+      // Step 4: Create default pipeline (non-blocking)
       try {
-        const { error: pipelineError } = await supabase.from('pipelines').insert({
+        await supabase.from('pipelines').insert({
           tenant_id: tenant.id,
           name: 'Main Pipeline'
         })
-        
-        if (pipelineError) {
-          console.error('Pipeline creation error:', pipelineError)
-          // Don't fail the whole signup for pipeline creation
-        } else {
-          console.log('✅ Default pipeline created')
-        }
-      } catch (pipelineErr) {
-        console.error('Pipeline creation failed:', pipelineErr)
-        // Don't fail the whole signup for pipeline creation
+      } catch (pipelineError) {
+        console.warn('Failed to create default pipeline:', pipelineError)
+        // Don't fail signup for this
       }
 
-      // Send welcome email (optional)
-      try {
-        await fetch('/api/emails/welcome', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: formData.email,
-            name: formData.fullName,
-            practiceName: tenantName
-          })
-        })
-        console.log('✅ Welcome email sent')
-      } catch (emailError) {
-        console.error('Welcome email failed:', emailError)
-        // Don't fail the whole signup for email
-      }
-
-      console.log('✅ Sign up completed successfully!')
-      
-      toast.success('Account created!', {
+      // Success!
+      toast.success('Account created successfully!', {
         description: 'Welcome to Dental CRM'
       })
 
+      // Redirect to onboarding
       setTimeout(() => {
         router.push('/onboarding')
-      }, 800)
+      }, 1000)
 
     } catch (error: any) {
-      console.error('❌ Sign up failed:', error)
+      console.error('Sign up error:', error)
       toast.error('Sign up failed', {
-        description: error.message
+        description: error.message || 'An unexpected error occurred'
       })
     } finally {
       setLoading(false)
@@ -299,13 +260,19 @@ export default function SignUpPage() {
                       placeholder="e.g., Bright Smile Dental"
                       value={formData.practiceName}
                       onChange={(e) => setFormData({ ...formData, practiceName: e.target.value })}
-                      className="mt-1.5 h-12"
+                      className={`mt-1.5 h-12 ${errors.practiceName ? 'border-red-500' : ''}`}
                     />
+                    {errors.practiceName && (
+                      <p className="text-sm text-red-600 mt-1 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.practiceName}
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <Label htmlFor="specialty" className="text-sm font-medium text-gray-900">
-                      Specialty
+                      Primary Specialty
                     </Label>
                     <Select value={formData.specialty} onValueChange={(value) => setFormData({ ...formData, specialty: value })}>
                       <SelectTrigger className="mt-1.5 h-12">
@@ -344,8 +311,14 @@ export default function SignUpPage() {
                   placeholder="John Doe"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className="mt-1.5 h-12"
+                  className={`mt-1.5 h-12 ${errors.fullName ? 'border-red-500' : ''}`}
                 />
+                {errors.fullName && (
+                  <p className="text-sm text-red-600 mt-1 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.fullName}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -360,9 +333,15 @@ export default function SignUpPage() {
                     placeholder="name@practice.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="pl-11 h-12"
+                    className={`pl-11 h-12 ${errors.email ? 'border-red-500' : ''}`}
                   />
                 </div>
+                {errors.email && (
+                  <p className="text-sm text-red-600 mt-1 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.email}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -377,7 +356,7 @@ export default function SignUpPage() {
                     placeholder="Create a strong password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="pl-11 pr-11 h-12"
+                    className={`pl-11 pr-11 h-12 ${errors.password ? 'border-red-500' : ''}`}
                   />
                   <button
                     type="button"
@@ -388,6 +367,12 @@ export default function SignUpPage() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1.5">At least 8 characters</p>
+                {errors.password && (
+                  <p className="text-sm text-red-600 mt-1 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.password}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -400,8 +385,14 @@ export default function SignUpPage() {
                   placeholder="Re-enter your password"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className="mt-1.5 h-12"
+                  className={`mt-1.5 h-12 ${errors.confirmPassword ? 'border-red-500' : ''}`}
                 />
+                {errors.confirmPassword && (
+                  <p className="text-sm text-red-600 mt-1 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.confirmPassword}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-start space-x-3 pt-2">
@@ -422,6 +413,12 @@ export default function SignUpPage() {
                   </a>
                 </label>
               </div>
+              {errors.agreedToTerms && (
+                <p className="text-sm text-red-600 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.agreedToTerms}
+                </p>
+              )}
 
               <div className="flex gap-3">
                 <Button
@@ -457,7 +454,7 @@ export default function SignUpPage() {
           {/* Sign In Link */}
           <div className="mt-8 text-center">
             <span className="text-sm text-gray-600">Already have an account?</span>{' '}
-            <Link href="/login" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
+            <Link href="/sign-in" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
               Sign in
             </Link>
           </div>
