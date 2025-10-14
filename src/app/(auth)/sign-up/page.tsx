@@ -89,6 +89,11 @@ export default function SignUpPage() {
     const supabase = createClient()
 
     try {
+      console.log('=== SIGNUP DEBUG ===')
+      console.log('Email:', formData.email)
+      console.log('Full Name:', formData.fullName)
+      console.log('Account Type:', accountType)
+      
       // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
@@ -101,21 +106,31 @@ export default function SignUpPage() {
         }
       })
 
+      console.log('Auth signup result:', { authData, authError })
+
       if (authError) {
+        console.error('Auth signup error:', authError)
         // Handle duplicate email case
         if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
           toast.error('This email is already registered. Please try signing in instead.')
           router.push('/sign-in')
           return
         }
-        throw authError
+        throw new Error(`Sign up failed: ${authError.message}`)
       }
-      if (!authData.user) throw new Error('Failed to create user')
+      
+      if (!authData.user) {
+        throw new Error('Failed to create user - no user data returned')
+      }
+
+      console.log('✅ Auth user created:', authData.user.id)
 
       // Create tenant
       const tenantName = accountType === 'practice' 
         ? formData.practiceName 
         : `${formData.fullName}'s Practice`
+
+      console.log('Creating tenant:', tenantName)
 
       const { data: tenant, error: tenantError } = await supabase
         .from('tenants')
@@ -126,9 +141,18 @@ export default function SignUpPage() {
         .select()
         .single()
 
-      if (tenantError) throw tenantError
+      console.log('Tenant creation result:', { tenant, tenantError })
 
-      // Create app_user with duplicate handling
+      if (tenantError) {
+        console.error('Tenant creation error:', tenantError)
+        throw new Error(`Failed to create tenant: ${tenantError.message}`)
+      }
+
+      console.log('✅ Tenant created:', tenant.id)
+
+      // Create app_user
+      console.log('Creating app user with tenant_id:', tenant.id)
+      
       const { error: appUserError } = await supabase
         .from('app_users')
         .upsert({
@@ -140,20 +164,36 @@ export default function SignUpPage() {
           onConflict: 'id'
         })
 
+      console.log('App user creation result:', { appUserError })
+
       if (appUserError) {
         console.error('App user creation error:', appUserError)
         // If app user creation fails, try to clean up
         await supabase.from('tenants').delete().eq('id', tenant.id)
-        throw appUserError
+        throw new Error(`Failed to create app user: ${appUserError.message}`)
       }
 
-      // Create default pipeline
-      await supabase.from('pipelines').insert({
-        tenant_id: tenant.id,
-        name: 'Main Pipeline'
-      })
+      console.log('✅ App user created successfully')
 
-      // Send welcome email
+      // Create default pipeline
+      try {
+        const { error: pipelineError } = await supabase.from('pipelines').insert({
+          tenant_id: tenant.id,
+          name: 'Main Pipeline'
+        })
+        
+        if (pipelineError) {
+          console.error('Pipeline creation error:', pipelineError)
+          // Don't fail the whole signup for pipeline creation
+        } else {
+          console.log('✅ Default pipeline created')
+        }
+      } catch (pipelineErr) {
+        console.error('Pipeline creation failed:', pipelineErr)
+        // Don't fail the whole signup for pipeline creation
+      }
+
+      // Send welcome email (optional)
       try {
         await fetch('/api/emails/welcome', {
           method: 'POST',
@@ -164,10 +204,14 @@ export default function SignUpPage() {
             practiceName: tenantName
           })
         })
+        console.log('✅ Welcome email sent')
       } catch (emailError) {
         console.error('Welcome email failed:', emailError)
+        // Don't fail the whole signup for email
       }
 
+      console.log('✅ Sign up completed successfully!')
+      
       toast.success('Account created!', {
         description: 'Welcome to Dental CRM'
       })
@@ -177,6 +221,7 @@ export default function SignUpPage() {
       }, 800)
 
     } catch (error: any) {
+      console.error('❌ Sign up failed:', error)
       toast.error('Sign up failed', {
         description: error.message
       })
