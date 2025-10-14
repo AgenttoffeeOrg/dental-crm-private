@@ -32,10 +32,14 @@ import { DealsFunnelChart } from '@/components/dashboard/deals-funnel-chart'
 import { SetupBanner } from '@/components/onboarding/setup-banner'
 import { ProfileSetupPanel } from '@/components/onboarding/profile-setup-panel'
 import { EmailVerificationBanner } from '@/components/onboarding/email-verification-banner'
+import { ContactProfileDialog } from '@/components/contacts/contact-profile-dialog'
+import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
 
 export default function DashboardPage() {
   const { appUser, loading: authLoading } = useAuth()
   const [showSetupPanel, setShowSetupPanel] = useState(false)
+  const [showCreateContact, setShowCreateContact] = useState(false)
+  const [showCreateTask, setShowCreateTask] = useState(false)
   const [stats, setStats] = useState({
     totalDeals: 0,
     totalRevenue: 0,
@@ -187,24 +191,30 @@ export default function DashboardPage() {
           {/* Quick Actions */}
           <div className="mb-6 sm:mb-8">
             <div className="flex flex-wrap gap-2 sm:gap-3">
-              <Link href="/contacts/new" className="flex-1 sm:flex-none">
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 w-full sm:w-auto">
-                  <Plus className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Add Contact</span>
-                </Button>
-              </Link>
+              <Button 
+                onClick={() => setShowCreateContact(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex-1 sm:flex-none"
+              >
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Add Contact</span>
+              </Button>
+              
               <Link href="/pipeline" className="flex-1 sm:flex-none">
                 <Button variant="outline" className="w-full sm:w-auto">
                   <Target className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">New Deal</span>
                 </Button>
               </Link>
-              <Link href="/tasks/new" className="flex-1 sm:flex-none">
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <CheckCircle className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Create Task</span>
-                </Button>
-              </Link>
+              
+              <Button 
+                onClick={() => setShowCreateTask(true)}
+                variant="outline" 
+                className="flex-1 sm:flex-none"
+              >
+                <CheckCircle className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Create Task</span>
+              </Button>
+              
               <Link href="/marketing/campaigns/create">
                 <Button variant="outline">
                   <Mail className="h-4 w-4 mr-2" />
@@ -402,6 +412,30 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Create Contact Dialog */}
+      <ContactProfileDialog
+        open={showCreateContact}
+        onOpenChange={setShowCreateContact}
+        contact={null}
+        onContactUpdated={() => {
+          setShowCreateContact(false)
+          loadDashboardData()
+        }}
+        tenantId={appUser?.tenant_id}
+        mode="create"
+      />
+
+      {/* Create Task Dialog */}
+      <CreateTaskDialog
+        open={showCreateTask}
+        onOpenChange={setShowCreateTask}
+        onTaskCreated={() => {
+          setShowCreateTask(false)
+          loadDashboardData()
+        }}
+        tenantId={appUser?.tenant_id}
+      />
     </DashboardLayout>
   )
 }
