@@ -81,36 +81,123 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     return null
   }
 
-  // If user exists but no appUser, show error state instead of redirecting
+  // If user exists but no appUser, auto-repair the account
   if (user && !appUser && !loading) {
     console.log('[DASHBOARD] Auth user exists but app_user record is missing!')
     console.log('[DASHBOARD] Auth user ID:', user.id)
     console.log('[DASHBOARD] Auth user email:', user.email)
-    console.log('[DASHBOARD] This means the signup process did not complete properly.')
+    console.log('[DASHBOARD] Auto-repairing account...')
     
+    // Auto-repair: Create missing app_user and tenant records
+    const autoRepairAccount = async () => {
+      try {
+        const supabase = createClient()
+        
+        // First, check if app_user exists (race condition protection)
+        const { data: existingAppUser } = await supabase
+          .from('app_users')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        
+        if (existingAppUser) {
+          console.log('[DASHBOARD] App user found on retry, refreshing...')
+          window.location.reload()
+          return
+        }
+        
+        // Check if tenant exists for this user
+        let tenantId: string | null = null
+        const { data: tenants } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('owner_id', user.id)
+          .limit(1)
+        
+        if (tenants && tenants.length > 0) {
+          tenantId = tenants[0].id
+          console.log('[DASHBOARD] Found existing tenant:', tenantId)
+        } else {
+          // Create new tenant
+          const { data: newTenant, error: tenantError } = await supabase
+            .from('tenants')
+            .insert({
+              name: user.email?.split('@')[0] || 'My Practice',
+              owner_id: user.id
+            })
+            .select()
+            .single()
+          
+          if (tenantError) throw tenantError
+          tenantId = newTenant.id
+          console.log('[DASHBOARD] Created new tenant:', tenantId)
+        }
+        
+        // Create app_user record
+        const { error: appUserError } = await supabase
+          .from('app_users')
+          .insert({
+            id: user.id,
+            tenant_id: tenantId,
+            full_name: user.email?.split('@')[0] || 'User',
+            role: 'owner'
+          })
+        
+        if (appUserError) throw appUserError
+        
+        console.log('[DASHBOARD] ✅ Account repaired successfully!')
+        
+        // Refresh the page to load with new app_user
+        window.location.reload()
+        
+      } catch (error) {
+        console.error('[DASHBOARD] Auto-repair failed:', error)
+        // If auto-repair fails, show the error state
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="text-center max-w-md mx-auto p-8">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900 mb-2">Account Setup Error</h1>
+              <p className="text-gray-600 mb-4">
+                We couldn't complete your account setup. Please sign out and try signing in again.
+              </p>
+              <Button 
+                onClick={() => {
+                  const supabase = createClient()
+                  supabase.auth.signOut()
+                  window.location.href = '/sign-in'
+                }}
+                className="w-full"
+              >
+                Sign Out & Try Again
+              </Button>
+            </div>
+          </div>
+        )
+      }
+    }
+    
+    // Trigger auto-repair
+    autoRepairAccount()
+    
+    // Show loading state while repairing
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md mx-auto p-8">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <svg className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Account Setup Incomplete</h1>
-          <p className="text-gray-600 mb-4">
-            Your account was created but the setup process didn't complete properly. 
-            Please contact support or try signing out and signing back in.
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">Setting up your account...</h1>
+          <p className="text-gray-600">
+            Please wait while we complete your account setup.
           </p>
-          <Button 
-            onClick={() => {
-              const supabase = createClient()
-              supabase.auth.signOut()
-              window.location.href = '/sign-in'
-            }}
-            className="w-full"
-          >
-            Sign Out & Try Again
-          </Button>
         </div>
       </div>
     )
