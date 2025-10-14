@@ -38,7 +38,7 @@ import {
   Edit
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { ContactProfileDialog } from './contact-profile-dialog'
+import { CreateContactSlideOver } from './create-contact-slide-over'
 import { CreateContactDialog } from './create-contact-dialog'
 import { formatDate } from '@/lib/dates'
 import { formatDistanceToNow } from 'date-fns'
@@ -596,12 +596,10 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
         </div>
       </Card>
 
-          <ContactProfileDialog
-            contact={null}
+          <CreateContactSlideOver
             open={createDialogOpen}
-            onOpenChange={setCreateDialogOpen}
-            onContactUpdated={fetchContacts}
-            mode="create"
+            onClose={() => setCreateDialogOpen(false)}
+            onContactCreated={fetchContacts}
           />
 
           {/* Contact Settings Dialog Placeholder */}

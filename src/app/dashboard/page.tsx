@@ -32,8 +32,8 @@ import { DealsFunnelChart } from '@/components/dashboard/deals-funnel-chart'
 import { SetupBanner } from '@/components/onboarding/setup-banner'
 import { ProfileSetupPanel } from '@/components/onboarding/profile-setup-panel'
 import { EmailVerificationBanner } from '@/components/onboarding/email-verification-banner'
-import { ContactProfileDialog } from '@/components/contacts/contact-profile-dialog'
-import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
+import { CreateContactSlideOver } from '@/components/contacts/create-contact-slide-over'
+import { CreateTaskSlideOver } from '@/components/tasks/create-task-slide-over'
 
 export default function DashboardPage() {
   const { appUser, loading: authLoading } = useAuth()
@@ -413,28 +413,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Create Contact Dialog */}
-      <ContactProfileDialog
+      {/* Create Contact Slide-Over */}
+      <CreateContactSlideOver
         open={showCreateContact}
-        onOpenChange={setShowCreateContact}
-        contact={null}
-        onContactUpdated={() => {
-          setShowCreateContact(false)
+        onClose={() => setShowCreateContact(false)}
+        onContactCreated={() => {
           loadDashboardData()
         }}
-        tenantId={appUser?.tenant_id}
-        mode="create"
       />
 
-      {/* Create Task Dialog */}
-      <CreateTaskDialog
+      {/* Create Task Slide-Over */}
+      <CreateTaskSlideOver
         open={showCreateTask}
-        onOpenChange={setShowCreateTask}
+        onClose={() => setShowCreateTask(false)}
         onTaskCreated={() => {
-          setShowCreateTask(false)
           loadDashboardData()
         }}
-        tenantId={appUser?.tenant_id}
       />
     </DashboardLayout>
   )
