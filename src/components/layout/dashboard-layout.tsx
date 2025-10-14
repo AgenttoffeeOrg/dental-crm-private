@@ -37,7 +37,7 @@ const navigation = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const appUser = { full_name: 'Demo User', role: 'owner' }
   const pathname = usePathname()
 
@@ -148,6 +148,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </div>
+  )
+}
+
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundary>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </ErrorBoundary>
   )
 }
 

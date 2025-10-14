@@ -22,7 +22,7 @@ const steps = [
   { id: 4, name: 'Team Setup', icon: Users }
 ]
 
-export default function OnboardingPage() {
+function OnboardingForm() {
   const router = useRouter()
   const { user, appUser, loading: authLoading } = useAuth()
   const [currentStep, setCurrentStep] = useState(1)
@@ -616,5 +616,13 @@ export default function OnboardingPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <ErrorBoundary>
+      <OnboardingForm />
+    </ErrorBoundary>
   )
 }

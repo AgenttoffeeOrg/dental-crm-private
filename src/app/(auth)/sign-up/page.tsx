@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { ArrowRight, Loader2, Building2, User, Mail, Lock, Sparkles, Check, Eye, EyeOff, AlertCircle } from 'lucide-react'
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -513,5 +513,13 @@ export default function SignUpPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <ErrorBoundary>
+      <SignUpForm />
+    </ErrorBoundary>
   )
 }

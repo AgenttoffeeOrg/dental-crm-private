@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "sonner";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { LoadingFallback } from "@/components/ui/loading-fallback";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Dental CRM - Practice Management Platform",
@@ -18,9 +21,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <Suspense fallback={<LoadingFallback message="Loading Dental CRM..." fullScreen />}>
+              {children}
+            </Suspense>
+          </AuthProvider>
+        </ErrorBoundary>
         <Toaster position="top-right" richColors />
       </body>
     </html>
