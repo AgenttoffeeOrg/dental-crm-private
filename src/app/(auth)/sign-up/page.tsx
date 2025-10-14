@@ -177,12 +177,15 @@ function SignUpForm() {
       }
 
       // Success!
+      console.log('[SIGNUP] Account created successfully, redirecting to dashboard...')
       toast.success('Account created successfully!', {
         description: 'Welcome to Dental CRM'
       })
 
       // Redirect directly to dashboard using window.location for hard redirect
+      console.log('[SIGNUP] Redirecting to /dashboard in 1 second...')
       setTimeout(() => {
+        console.log('[SIGNUP] NOW redirecting to /dashboard')
         window.location.href = '/dashboard'
       }, 1000)
 
