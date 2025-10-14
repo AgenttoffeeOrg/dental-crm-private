@@ -198,7 +198,7 @@ export default function DashboardPage() {
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex-1 sm:flex-none"
               >
                 <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Add Contact</span>
+                <span className="hidden sm:inline">New Contact</span>
               </Button>
               
               <Button 

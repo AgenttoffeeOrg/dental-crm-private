@@ -39,7 +39,6 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CreateContactSlideOver } from './create-contact-slide-over'
-import { CreateContactDialog } from './create-contact-dialog'
 import { formatDate } from '@/lib/dates'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
