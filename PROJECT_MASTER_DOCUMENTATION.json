@@ -80,7 +80,7 @@
   },
   "database": {
     "provider": "Supabase (PostgreSQL)",
-    "url": "https://xcsgleuoxzrllimywlct.supabase.co",
+    "url": "https://your-project.supabase.co",
     "features": {
       "multiTenancy": "Tenant isolation via tenant_id column",
       "rls": "Row Level Security policies for data access control",

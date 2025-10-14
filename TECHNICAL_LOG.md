@@ -210,15 +210,15 @@ CREATE INDEX idx_tasks_due_date ON tasks(due_date);
 
 ### **Environment Variables**
 ```bash
-# Required
-NEXT_PUBLIC_SUPABASE_URL=https://xcsgleuoxzrllimywlct.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# Required (Replace with your actual values)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 
 # Optional
-RESEND_API_KEY=re_bkKi3dVt_JirMpKcUSWhcif29GWZNqhzz
-OPENAI_API_KEY=sk-proj-v_H3TYm2Fq4mtSeTB8mIkrbKmmsmK7QExYQwJpUsAAU...
-NEXT_PUBLIC_APP_URL=https://dental-crm-private-production.up.railway.app
+RESEND_API_KEY=your_resend_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
+NEXT_PUBLIC_APP_URL=https://your-domain.railway.app
 ```
 
 ### **Build Process**
