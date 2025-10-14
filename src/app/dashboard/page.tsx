@@ -194,11 +194,15 @@ export default function DashboardPage() {
           <div className="mb-6 sm:mb-8">
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <Button 
-                onClick={() => setShowCreateContact(true)}
+                onClick={() => {
+                  console.log('🎯 Dashboard New Contact clicked - opening slide-over')
+                  setShowCreateContact(true)
+                }}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex-1 sm:flex-none"
               >
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">New Contact</span>
+                <span className="sm:hidden">New</span>
               </Button>
               
               <Button 
