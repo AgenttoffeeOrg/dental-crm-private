@@ -147,37 +147,66 @@ function OnboardingForm() {
       const supabase = createClient()
       
       if (!user?.id) {
-        throw new Error('User not found')
+        throw new Error('User not found. Please sign in again.')
       }
 
-      // Get tenant_id from app_users
-      const { data: appUserData } = await supabase
-        .from('app_users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single()
+      console.log('[ONBOARDING] Step 1: Fetching tenant_id for user:', user.id)
+
+      // Get tenant_id from app_users with retry logic
+      let appUserData = null
+      let retries = 3
+      
+      while (retries > 0 && !appUserData) {
+        const { data, error } = await supabase
+          .from('app_users')
+          .select('tenant_id')
+          .eq('id', user.id)
+          .single()
+
+        if (error) {
+          console.error('[ONBOARDING] Error fetching app_users:', error)
+          retries--
+          if (retries > 0) {
+            console.log('[ONBOARDING] Retrying... attempts left:', retries)
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            continue
+          }
+          throw new Error('Could not load your account data. Please refresh the page.')
+        }
+
+        appUserData = data
+      }
+
+      console.log('[ONBOARDING] App user data:', appUserData)
 
       if (!appUserData?.tenant_id) {
-        throw new Error('Tenant not found')
+        console.error('[ONBOARDING] No tenant_id found for user')
+        throw new Error('Account setup incomplete. Please contact support.')
       }
 
+      console.log('[ONBOARDING] Updating tenant:', appUserData.tenant_id)
+
       // Update tenant
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('tenants')
         .update({
           name: practiceInfo.name.trim()
         })
         .eq('id', appUserData.tenant_id)
 
-      if (error) {
-        throw new Error(error.message)
+      if (updateError) {
+        console.error('[ONBOARDING] Error updating tenant:', updateError)
+        throw new Error(`Failed to save practice info: ${updateError.message}`)
       }
 
+      console.log('[ONBOARDING] Practice info saved successfully!')
       toast.success('Practice info saved!')
       setCurrentStep(2)
     } catch (error: any) {
-      console.error('Error updating practice info:', error)
-      toast.error('Failed to save practice info')
+      console.error('[ONBOARDING] Error in handleStep1:', error)
+      toast.error('Failed to save practice info', {
+        description: error.message
+      })
       setErrors({ name: error.message })
     } finally {
       setLoading(false)
@@ -210,19 +239,44 @@ function OnboardingForm() {
       const supabase = createClient()
       
       if (!user?.id) {
-        throw new Error('User not found')
+        throw new Error('User not found. Please sign in again.')
       }
 
-      // Get tenant_id
-      const { data: appUserData } = await supabase
-        .from('app_users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single()
+      console.log('[ONBOARDING] Step 3: Fetching tenant_id for user:', user.id)
+
+      // Get tenant_id with retry logic
+      let appUserData = null
+      let retries = 3
+      
+      while (retries > 0 && !appUserData) {
+        const { data, error } = await supabase
+          .from('app_users')
+          .select('tenant_id')
+          .eq('id', user.id)
+          .single()
+
+        if (error) {
+          console.error('[ONBOARDING] Error fetching app_users:', error)
+          retries--
+          if (retries > 0) {
+            console.log('[ONBOARDING] Retrying... attempts left:', retries)
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            continue
+          }
+          throw new Error('Could not load your account data. Please refresh the page.')
+        }
+
+        appUserData = data
+      }
+
+      console.log('[ONBOARDING] App user data:', appUserData)
 
       if (!appUserData?.tenant_id) {
-        throw new Error('Tenant not found')
+        console.error('[ONBOARDING] No tenant_id found for user')
+        throw new Error('Account setup incomplete. Please contact support.')
       }
+
+      console.log('[ONBOARDING] Creating pipeline for tenant:', appUserData.tenant_id)
 
       // Create pipeline
       const pipelineData: any = {
@@ -240,8 +294,11 @@ function OnboardingForm() {
         .single()
 
       if (pipelineError) {
-        throw new Error(pipelineError.message)
+        console.error('[ONBOARDING] Error creating pipeline:', pipelineError)
+        throw new Error(`Failed to create pipeline: ${pipelineError.message}`)
       }
+
+      console.log('[ONBOARDING] Pipeline created:', pipeline.id)
 
       // Create stages
       const stagesData = pipelineSetup.stages.map((stageName, index) => ({
@@ -256,14 +313,18 @@ function OnboardingForm() {
         .insert(stagesData)
 
       if (stagesError) {
-        throw new Error(stagesError.message)
+        console.error('[ONBOARDING] Error creating stages:', stagesError)
+        throw new Error(`Failed to create pipeline stages: ${stagesError.message}`)
       }
 
+      console.log('[ONBOARDING] Pipeline and stages created successfully!')
       toast.success('Pipeline created successfully!')
       setCurrentStep(4)
     } catch (error: any) {
-      console.error('Error creating pipeline:', error)
-      toast.error('Failed to create pipeline')
+      console.error('[ONBOARDING] Error in handleStep3:', error)
+      toast.error('Failed to create pipeline', {
+        description: error.message
+      })
       setErrors({ pipelineName: error.message })
     } finally {
       setLoading(false)
