@@ -202,7 +202,7 @@ export default function DashboardPage() {
               <Link href="/tasks/new" className="flex-1 sm:flex-none">
                 <Button variant="outline" className="w-full sm:w-auto">
                   <CheckCircle className="h-4 w-4 sm:mr-2" />
-                  Create Task
+                  <span className="hidden sm:inline">Create Task</span>
                 </Button>
               </Link>
               <Link href="/marketing/campaigns/create">
