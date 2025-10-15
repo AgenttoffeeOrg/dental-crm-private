@@ -162,37 +162,70 @@ export function AuditDashboard() {
     return <LoadingState />;
   }
   
-  if (!latestAudit) {
-    return (
-      <EmptyState
-        onRunAudit={handleRunAudit}
-        loading={runningAudit}
-      />
-    );
-  }
-  
+  // Always show the dashboard, even if no audit exists yet
+  // This gives users a preview of what will be tracked
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
+      {/* Quick Actions - Always show Run Audit button */}
       <QuickActionsBar
         onRunAudit={handleRunAudit}
-        lastRunAt={latestAudit.completed_at || latestAudit.created_at}
+        lastRunAt={latestAudit?.completed_at || latestAudit?.created_at}
         loading={runningAudit}
       />
       
+      {/* Composite Score - Show N/A if no audit */}
       <CompositeScoreCard
         audit={latestAudit}
       />
       
+      {/* Sub-Scores Grid - Show all categories with N/A if no audit */}
       <SubScoresGrid
         audit={latestAudit}
         onViewDetails={handleViewDetails}
       />
       
-      <RecommendationsPanel
-        recommendations={latestAudit.recommendations || []}
-        onCreateTask={handleCreateTask}
-        onDismiss={handleDismissRecommendation}
-      />
+      {/* Recommendations - Only show if we have data */}
+      {latestAudit && latestAudit.recommendations && latestAudit.recommendations.length > 0 && (
+        <RecommendationsPanel
+          recommendations={latestAudit.recommendations}
+          onCreateTask={handleCreateTask}
+          onDismiss={handleDismissRecommendation}
+        />
+      )}
+      
+      {/* Show helpful message if no audit exists yet */}
+      {!latestAudit && !runningAudit && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">
+            Ready to Analyze Your Marketing Performance?
+          </h3>
+          <p className="text-blue-700 mb-4">
+            Click "Run Marketing Audit" above to get your first comprehensive marketing health report.
+            <br />
+            We'll analyze SEO, local presence, content quality, analytics setup, and conversion optimization.
+          </p>
+          <p className="text-sm text-blue-600">
+            ⏱️ First audit typically takes 2-3 minutes
+          </p>
+        </div>
+      )}
+      
+      {/* Show progress message if audit is running */}
+      {runningAudit && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 text-center">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+            <h3 className="text-lg font-semibold text-purple-900">
+              Audit in Progress...
+            </h3>
+          </div>
+          <p className="text-purple-700">
+            We're analyzing your website, local presence, and marketing performance.
+            <br />
+            This usually takes 2-3 minutes. You can leave this page and come back.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

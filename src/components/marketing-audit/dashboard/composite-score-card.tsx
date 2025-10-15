@@ -17,12 +17,13 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { AuditRun } from '@/lib/marketing-audit/types';
 
 interface CompositeScoreCardProps {
-  audit: AuditRun;
+  audit: AuditRun | null;
   previousScore?: number;
 }
 
 export function CompositeScoreCard({ audit, previousScore }: CompositeScoreCardProps) {
-  const score = audit.composite_score || 0;
+  const score = audit?.composite_score || 0;
+  const hasData = audit !== null;
   const delta = previousScore ? score - previousScore : 0;
   
   const getScoreLabel = (score: number): { label: string; color: string; bgColor: string } => {
@@ -41,8 +42,8 @@ export function CompositeScoreCard({ audit, previousScore }: CompositeScoreCardP
     return 'red';
   };
   
-  const scoreLabel = getScoreLabel(score);
-  const scoreColor = getScoreColor(score);
+  const scoreLabel = hasData ? getScoreLabel(score) : { label: 'Not Audited Yet', color: 'text-gray-700', bgColor: 'bg-gray-100 border-gray-300' };
+  const scoreColor = hasData ? getScoreColor(score) : 'gray' as any;
   
   const getTrendIcon = () => {
     if (delta > 0) return <TrendingUp className="w-5 h-5" />;
@@ -65,7 +66,7 @@ export function CompositeScoreCard({ audit, previousScore }: CompositeScoreCardP
             Marketing Health Score
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Overall marketing presence assessment
+            {hasData ? 'Overall marketing presence assessment' : 'Run your first audit to see your score'}
           </p>
         </div>
         <Badge className={`${scoreLabel.bgColor} ${scoreLabel.color} border`}>
@@ -78,18 +79,33 @@ export function CompositeScoreCard({ audit, previousScore }: CompositeScoreCardP
         {/* Circular Score */}
         <div className="flex-shrink-0">
           <CircularProgress
-            value={score}
+            value={hasData ? score : 0}
             size={160}
             strokeWidth={12}
             color={scoreColor}
           >
             <div className="text-center">
-              <div className={`text-4xl font-bold ${scoreColor === 'green' ? 'text-green-600' : scoreColor === 'yellow' ? 'text-yellow-600' : scoreColor === 'orange' ? 'text-orange-600' : 'text-red-600'}`}>
-                {score.toFixed(1)}
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                out of 100
-              </div>
+              {hasData ? (
+                <>
+                  <div className={`text-4xl font-bold ${scoreColor === 'green' ? 'text-green-600' : scoreColor === 'yellow' ? 'text-yellow-600' : scoreColor === 'orange' ? 'text-orange-600' : 'text-red-600'}`}>
+                    {score.toFixed(1)}
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    out of 100
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-3xl font-bold text-gray-400">
+                    —
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Pending
+                    <br />
+                    First Audit
+                  </div>
+                </>
+              )}
             </div>
           </CircularProgress>
         </div>
@@ -97,7 +113,7 @@ export function CompositeScoreCard({ audit, previousScore }: CompositeScoreCardP
         {/* Details */}
         <div className="flex-1 space-y-4">
           {/* Trend */}
-          {previousScore !== undefined && (
+          {hasData && previousScore !== undefined && (
             <div className="flex items-center gap-2">
               <div className={getTrendColor()}>
                 {getTrendIcon()}
@@ -118,16 +134,16 @@ export function CompositeScoreCard({ audit, previousScore }: CompositeScoreCardP
                 Percentile Rank
               </span>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                {audit.percentile_rank?.toFixed(1) || '—'}th
+                {hasData ? (audit.percentile_rank?.toFixed(1) || '—') : '—'}th
               </span>
             </div>
             
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                Rank vs {audit.peer_count || 0} peers
+                Rank vs {hasData ? (audit.peer_count || 0) : '—'} peers
               </span>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                #{audit.your_rank || '—'}
+                #{hasData ? (audit.your_rank || '—') : '—'}
               </span>
             </div>
             
@@ -135,8 +151,8 @@ export function CompositeScoreCard({ audit, previousScore }: CompositeScoreCardP
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 Gap to top 3 avg
               </span>
-              <span className={`text-sm font-semibold ${(audit.gap_to_top_3_avg || 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {(audit.gap_to_top_3_avg || 0) > 0 ? '+' : ''}{audit.gap_to_top_3_avg?.toFixed(1) || '—'} pts
+              <span className={`text-sm font-semibold ${hasData && (audit.gap_to_top_3_avg || 0) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                {hasData ? ((audit.gap_to_top_3_avg || 0) > 0 ? '+' : '') + (audit.gap_to_top_3_avg?.toFixed(1) || '—') : '—'} pts
               </span>
             </div>
             
@@ -144,27 +160,38 @@ export function CompositeScoreCard({ audit, previousScore }: CompositeScoreCardP
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 Gap to median
               </span>
-              <span className={`text-sm font-semibold ${(audit.gap_to_median || 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {(audit.gap_to_median || 0) > 0 ? '+' : ''}{audit.gap_to_median?.toFixed(1) || '—'} pts
+              <span className={`text-sm font-semibold ${hasData && (audit.gap_to_median || 0) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                {hasData ? ((audit.gap_to_median || 0) > 0 ? '+' : '') + (audit.gap_to_median?.toFixed(1) || '—') : '—'} pts
               </span>
             </div>
           </div>
           
           {/* Last Audit Time */}
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Last audited: {new Date(audit.completed_at || audit.created_at).toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Duration: {audit.duration_seconds ? `${Math.round(audit.duration_seconds / 60)}m ${audit.duration_seconds % 60}s` : '—'}
-            </p>
-          </div>
+          {hasData && (
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Last audited: {new Date(audit.completed_at || audit.created_at).toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Duration: {audit.duration_seconds ? `${Math.round(audit.duration_seconds / 60)}m ${audit.duration_seconds % 60}s` : '—'}
+              </p>
+            </div>
+          )}
+          
+          {/* Placeholder message when no data */}
+          {!hasData && (
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                Competitive benchmarking data will appear here after your first audit
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

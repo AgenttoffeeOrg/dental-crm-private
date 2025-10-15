@@ -23,16 +23,18 @@ import { Button } from '@/components/ui/button';
 import type { AuditRun } from '@/lib/marketing-audit/types';
 
 interface SubScoresGridProps {
-  audit: AuditRun;
+  audit: AuditRun | null;
   onViewDetails?: (category: string) => void;
 }
 
 export function SubScoresGrid({ audit, onViewDetails }: SubScoresGridProps) {
+  const hasData = audit !== null;
+  
   const scores = [
     {
       category: 'technical',
       label: 'Technical SEO',
-      score: audit.technical_score || 0,
+      score: audit?.technical_score || 0,
       weight: '25%',
       icon: Gauge,
       description: 'Site speed, Core Web Vitals, indexation',
@@ -41,7 +43,7 @@ export function SubScoresGrid({ audit, onViewDetails }: SubScoresGridProps) {
     {
       category: 'local',
       label: 'Local Presence',
-      score: audit.local_score || 0,
+      score: audit?.local_score || 0,
       weight: '30%',
       icon: MapPin,
       description: 'Google Business Profile, reviews, citations',
@@ -50,7 +52,7 @@ export function SubScoresGrid({ audit, onViewDetails }: SubScoresGridProps) {
     {
       category: 'content',
       label: 'Content & Authority',
-      score: audit.content_score || 0,
+      score: audit?.content_score || 0,
       weight: '20%',
       icon: FileText,
       description: 'Backlinks, domain authority, content quality',
@@ -59,7 +61,7 @@ export function SubScoresGrid({ audit, onViewDetails }: SubScoresGridProps) {
     {
       category: 'analytics',
       label: 'Analytics Hygiene',
-      score: audit.analytics_score || 0,
+      score: audit?.analytics_score || 0,
       weight: '15%',
       icon: BarChart3,
       description: 'GA4, Search Console, tracking setup',
@@ -68,7 +70,7 @@ export function SubScoresGrid({ audit, onViewDetails }: SubScoresGridProps) {
     {
       category: 'conversion',
       label: 'Conversion UX',
-      score: audit.conversion_score || 0,
+      score: audit?.conversion_score || 0,
       weight: '10%',
       icon: MousePointerClick,
       description: 'Booking widgets, CTAs, mobile experience',
@@ -119,20 +121,37 @@ export function SubScoresGrid({ audit, onViewDetails }: SubScoresGridProps) {
             {/* Score */}
             <div className="mb-3">
               <div className="flex items-baseline gap-2 mb-1">
-                <span className={`text-3xl font-bold ${scoreColor.text}`}>
-                  {item.score.toFixed(1)}
-                </span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  / 100
-                </span>
+                {hasData ? (
+                  <>
+                    <span className={`text-3xl font-bold ${scoreColor.text}`}>
+                      {item.score.toFixed(1)}
+                    </span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      / 100
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-3xl font-bold text-gray-400">
+                      —
+                    </span>
+                    <span className="text-sm text-gray-400">
+                      N/A
+                    </span>
+                  </>
+                )}
               </div>
               
               {/* Progress Bar */}
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                <div
-                  className={`h-full ${scoreColor.bg} transition-all duration-500`}
-                  style={{ width: `${item.score}%` }}
-                />
+                {hasData ? (
+                  <div
+                    className={`h-full ${scoreColor.bg} transition-all duration-500`}
+                    style={{ width: `${item.score}%` }}
+                  />
+                ) : (
+                  <div className="h-full bg-gray-300 w-0" />
+                )}
               </div>
             </div>
             
@@ -152,8 +171,9 @@ export function SubScoresGrid({ audit, onViewDetails }: SubScoresGridProps) {
                 size="sm"
                 className="w-full text-xs h-8"
                 onClick={() => onViewDetails(item.category)}
+                disabled={!hasData}
               >
-                View Details
+                {hasData ? 'View Details' : 'Pending Audit'}
                 <ArrowRight className="w-3 h-3 ml-1" />
               </Button>
             )}
