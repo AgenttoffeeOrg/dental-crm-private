@@ -28,18 +28,27 @@ import {
   X,
   DollarSign,
   Workflow,
+  LineChart,
 } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
 import { createClient } from '@/lib/supabase-client'
+import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
 
-const navigation = [
+const getNavigation = (featureFlags: any) => [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Deals', href: '/deals', icon: DollarSign },
   { name: 'Pipeline', href: '/pipeline', icon: Workflow },
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Marketing', href: '/marketing', icon: Mail },
+  ...(featureFlags.marketingAudit.enabled ? [{
+    name: 'Marketing Audit',
+    href: '/marketing-audit',
+    icon: LineChart,
+    badge: 'New',
+    badgeColor: 'bg-purple-500 text-white',
+  }] : []),
   { name: 'Forms', href: '/forms', icon: FileText },
   { name: 'Integrations', href: '/integrations', icon: Zap },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
@@ -50,6 +59,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, appUser, loading } = useAuth()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const featureFlags = useFeatureFlags()
+  const navigation = getNavigation(featureFlags)
 
   // Debug logging - minimal
   if (process.env.NODE_ENV === 'development') {
@@ -262,15 +273,22 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className={`
-                  flex items-center px-4 py-3 text-sm font-semibold rounded-lg transition-all group
+                  flex items-center justify-between px-4 py-3 text-sm font-semibold rounded-lg transition-all group
                   ${isActive
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
                     : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                   }
                 `}
               >
-                <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`} />
-                {item.name}
+                <div className="flex items-center">
+                  <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`} />
+                  {item.name}
+                </div>
+                {(item as any).badge && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${(item as any).badgeColor || 'bg-purple-500 text-white'}`}>
+                    {(item as any).badge}
+                  </span>
+                )}
               </Link>
             )
           })}

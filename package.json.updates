@@ -1,0 +1,26 @@
+{
+  "name": "dental-crm-marketing-audit",
+  "description": "Complete marketing intelligence system with auditing, benchmarking, and attribution",
+  "scripts": {
+    "test:marketing-audit": "jest src/lib/marketing-audit --coverage",
+    "test:connectors": "jest src/lib/marketing-audit/connectors",
+    "test:scorers": "jest src/lib/marketing-audit/scoring",
+    "test:attribution": "jest src/lib/marketing-audit/attribution",
+    "lint:marketing-audit": "eslint src/lib/marketing-audit src/components/marketing-audit",
+    "type-check:marketing-audit": "tsc --noEmit --project tsconfig.json"
+  },
+  "dependencies_to_add": {
+    "comment": "These should be added to main package.json if not already present",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
+    "chart.js": "^4.4.1",
+    "react-chartjs-2": "^5.2.0"
+  },
+  "devDependencies_to_add": {
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^14.5.1",
+    "@types/jest": "^29.5.11"
+  }
+}
+

@@ -1,0 +1,78 @@
+# Artillery Load Test Configuration
+# Run with: artillery run artillery.yml
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Warm-up
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+    
+    # Ramp up to peak
+    - duration: 120
+      arrivalRate: 5
+      rampTo: 50
+      name: "Ramp up load"
+    
+    # Sustained peak load
+    - duration: 300
+      arrivalRate: 50
+      name: "Sustained peak (50 users/sec)"
+    
+    # Spike test
+    - duration: 60
+      arrivalRate: 100
+      name: "Spike test"
+  
+  # Request timeout
+  timeout: 30
+  
+  # HTTP defaults
+  http:
+    timeout: 10
+  
+  # Metrics
+  ensure:
+    maxErrorRate: 1 # Max 1% errors
+    p95: 2000 # 95% of requests under 2s
+    p99: 5000 # 99% of requests under 5s
+
+scenarios:
+  # Scenario 1: View latest audit (70% of traffic)
+  - name: "View latest audit"
+    weight: 70
+    flow:
+      - get:
+          url: "/api/marketing-audit/latest"
+          headers:
+            Authorization: "Bearer test-token"
+      - think: 3
+
+  # Scenario 2: Run new audit (20% of traffic)
+  - name: "Run new audit"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/marketing-audit/run"
+          headers:
+            Authorization: "Bearer test-token"
+      - think: 5
+      
+  # Scenario 3: View recommendations (10% of traffic)
+  - name: "View recommendations"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/marketing-audit/latest"
+          headers:
+            Authorization: "Bearer test-token"
+          capture:
+            - json: "$.audit.id"
+              as: "auditId"
+      - get:
+          url: "/api/marketing-audit/{{ auditId }}/recommendations"
+          headers:
+            Authorization: "Bearer test-token"
+      - think: 4
+

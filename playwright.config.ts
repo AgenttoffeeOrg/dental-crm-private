@@ -1,82 +1,94 @@
-import { defineConfig, devices } from '@playwright/test'
-
 /**
- * Playwright E2E Test Configuration
- * @see https://playwright.dev/docs/test-configuration
+ * Playwright Configuration for E2E and Visual Tests
  */
+
+import { defineConfig, devices } from '@playwright/test';
+
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: './tests',
   
-  /* Run tests in files in parallel */
+  // Maximum time one test can run
+  timeout: 60 * 1000,
+  
+  // Test configuration
+  expect: {
+    timeout: 10000,
+  },
+  
+  // Run tests in files in parallel
   fullyParallel: true,
   
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
+  // Fail the build on CI if you accidentally left test.only in the source code
   forbidOnly: !!process.env.CI,
   
-  /* Retry on CI only */
+  // Retry on CI only
   retries: process.env.CI ? 2 : 0,
   
-  /* Opt out of parallel tests on CI. */
+  // Opt out of parallel tests on CI
   workers: process.env.CI ? 1 : undefined,
   
-  /* Reporter to use */
+  // Reporter to use
   reporter: [
     ['html'],
-    ['json', { outputFile: 'test-results/results.json' }],
-    ['list']
+    ['junit', { outputFile: 'test-results/junit.xml' }],
+    ['list'],
   ],
   
-  /* Shared settings for all the projects below */
+  // Shared settings for all the projects below
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3000',
+    // Base URL to use in actions like `await page.goto('/')`
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
     
-    /* Collect trace when retrying the failed test */
+    // Collect trace when retrying the failed test
     trace: 'on-first-retry',
     
-    /* Screenshot on failure */
+    // Screenshot on failure
     screenshot: 'only-on-failure',
     
-    /* Video on failure */
+    // Video on failure
     video: 'retain-on-failure',
   },
 
-  /* Configure projects for major browsers */
+  // Configure projects for major browsers
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
     
-    /* Uncomment to test on other browsers
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
-
+    
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-    */
-
-    /* Test against mobile viewports. */
+    
+    // Mobile viewports
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
     },
+    
     {
       name: 'Mobile Safari',
-      use: { ...devices['iPhone 13'] },
+      use: { ...devices['iPhone 12'] },
+    },
+    
+    // Tablet viewports
+    {
+      name: 'iPad',
+      use: { ...devices['iPad Pro'] },
     },
   ],
 
-  /* Run your local dev server before starting the tests */
+  // Run your local dev server before starting the tests
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000, // 2 minutes
+    timeout: 120 * 1000,
   },
-})
-
+});
