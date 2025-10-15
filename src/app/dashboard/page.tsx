@@ -32,8 +32,26 @@ import {
   getDealsFunnelData, 
   getDashboardMetrics 
 } from '@/lib/dashboard-analytics'
-import { RevenueChart } from '@/components/dashboard/revenue-chart'
-import { DealsFunnelChart } from '@/components/dashboard/deals-funnel-chart'
+import dynamic from 'next/dynamic'
+
+// Lazy load charts for better initial page load performance
+const RevenueChart = dynamic(() => import('@/components/dashboard/revenue-chart').then(mod => ({ default: mod.RevenueChart })), {
+  loading: () => (
+    <div className="h-80 flex items-center justify-center">
+      <div className="animate-pulse text-gray-400">Loading chart...</div>
+    </div>
+  ),
+  ssr: false
+})
+
+const DealsFunnelChart = dynamic(() => import('@/components/dashboard/deals-funnel-chart').then(mod => ({ default: mod.DealsFunnelChart })), {
+  loading: () => (
+    <div className="h-80 flex items-center justify-center">
+      <div className="animate-pulse text-gray-400">Loading chart...</div>
+    </div>
+  ),
+  ssr: false
+})
 import { SetupBanner } from '@/components/onboarding/setup-banner'
 import { ProfileSetupPanel } from '@/components/onboarding/profile-setup-panel'
 import { EmailVerificationBanner } from '@/components/onboarding/email-verification-banner'
@@ -116,11 +134,18 @@ export default function DashboardPage() {
     const tenantId = appUser?.tenant_id
 
     try {
-      // Load stats
-      const [dealsRes, contactsRes, tasksRes] = await Promise.all([
-        supabase.from('deals').select('value_estimate_cents, created_at').eq('tenant_id', tenantId),
-        supabase.from('contacts').select('id').eq('tenant_id', tenantId),
-        supabase.from('tasks').select('id').eq('tenant_id', tenantId).neq('status', 'completed')
+      // OPTIMIZED: Combine queries and fetch related data in parallel
+      const [dealsRes, contactsRes, tasksRes, upcomingTasksRes, recentDealsRes] = await Promise.all([
+        // Deals with all needed fields
+        supabase.from('deals').select('value_estimate_cents, created_at, stage_id, title').eq('tenant_id', tenantId),
+        // Contacts count only
+        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        // Active tasks count only
+        supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).neq('status', 'completed'),
+        // Upcoming tasks (needed for display)
+        supabase.from('tasks').select('*').eq('tenant_id', tenantId).neq('status', 'completed').order('due_at', { ascending: true }).limit(5),
+        // Recent deals (needed for display)
+        supabase.from('deals').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(5)
       ])
 
       const deals = dealsRes.data || []
@@ -135,32 +160,15 @@ export default function DashboardPage() {
       setStats({
         totalDeals: deals.length,
         totalRevenue,
-        totalContacts: contactsRes.data?.length || 0,
-        activeTasks: tasksRes.data?.length || 0,
+        totalContacts: contactsRes.count || 0,
+        activeTasks: tasksRes.count || 0,
         dealsThisMonth: dealsThisMonth.length,
         revenueThisMonth
       })
 
-      // Load upcoming tasks
-      const { data: tasks } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .neq('status', 'completed')
-        .order('due_at', { ascending: true })
-        .limit(5)
-
-      setUpcomingTasks(tasks || [])
-
-      // Load recent deals
-      const { data: recentDealsData } = await supabase
-        .from('deals')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-      setRecentDeals(recentDealsData || [])
+      // Use already fetched data (no additional queries needed)
+      setUpcomingTasks(upcomingTasksRes.data || [])
+      setRecentDeals(recentDealsRes.data || [])
 
       // Load real chart data asynchronously (non-blocking)
       loadChartData()
