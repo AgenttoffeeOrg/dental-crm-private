@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { useMarketingForms, type MarketingForm } from '@/hooks/use-marketing-forms'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -440,65 +441,15 @@ interface FormBuilderProps {
 }
 
 export function FormBuilder({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: FormBuilderProps) {
-  const [forms, setForms] = useState<LeadForm[]>([])
-  const [selectedForm, setSelectedForm] = useState<LeadForm | null>(null)
+  // Use real database hook instead of mock data
+  const { forms, loading, error, loadForms, createForm, updateForm, deleteForm, duplicateForm } = useMarketingForms()
+  
+  const [selectedForm, setSelectedForm] = useState<MarketingForm | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [previewMode, setPreviewMode] = useState(false)
-  const [loading, setLoading] = useState(false)
   
   const supabase = createClient()
-
-  useEffect(() => {
-    loadForms()
-  }, [])
-
-  const loadForms = async () => {
-    // For now, use mock data
-    const mockForms: LeadForm[] = [
-      {
-        id: '1',
-        name: 'Facebook Ads Lead Form',
-        description: 'Optimized form for Facebook advertising campaigns',
-        integration_type: 'facebook_ads',
-        fields: [...DEFAULT_FIELDS, ...RECOMMENDED_FIELDS.slice(0, 4)],
-        scoring_config: {
-          hot_threshold: 80,
-          warm_threshold: 50,
-          max_score: 100
-        },
-        auto_actions: {
-          create_contact: true,
-          create_deal: true,
-          default_pipeline_stage: 'new_inquiry'
-        },
-        active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: '2',
-        name: 'Website Contact Form',
-        description: 'Comprehensive form for website visitors',
-        integration_type: 'website',
-        fields: [...DEFAULT_FIELDS, ...RECOMMENDED_FIELDS],
-        scoring_config: {
-          hot_threshold: 85,
-          warm_threshold: 55,
-          max_score: 100
-        },
-        auto_actions: {
-          create_contact: true,
-          create_deal: true,
-          default_pipeline_stage: 'new_inquiry'
-        },
-        active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ]
-    setForms(mockForms)
-  }
 
   const calculateLeadScore = (formData: Record<string, string>, form: LeadForm): number => {
     let totalScore = 0
@@ -535,50 +486,50 @@ export function FormBuilder({ tenantId = '550e8400-e29b-41d4-a716-446655440000' 
     }
   }
 
-  const createNewForm = () => {
-    const newForm: LeadForm = {
-      id: Date.now().toString(),
+  const createNewForm = async () => {
+    // Create a new form in the database
+    const newForm = await createForm({
       name: 'New Lead Form',
       description: 'Custom lead capture form',
-      integration_type: 'website',
-      fields: [...DEFAULT_FIELDS],
-      scoring_config: {
-        hot_threshold: 80,
-        warm_threshold: 50,
-        max_score: 100
-      },
-      auto_actions: {
-        create_contact: true,
-        create_deal: true
-      },
-      active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      status: 'draft',
+      fields_json: DEFAULT_FIELDS as any,
+      button_text: 'Submit',
+      success_message: 'Thank you! We\'ll be in touch soon.',
+      auto_add_tags: ['lead', 'website'],
+      enable_recaptcha: false,
+      enable_honeypot: true,
+      is_published: false,
+    })
+
+    if (newForm) {
+      setSelectedForm(newForm)
+      setIsCreating(true)
+      setIsEditing(true)
     }
-    setSelectedForm(newForm)
-    setIsCreating(true)
-    setIsEditing(true)
   }
 
   const saveForm = async () => {
     if (!selectedForm) return
     
-    setLoading(true)
     try {
       if (isCreating) {
-        setForms(prev => [...prev, selectedForm])
-        toast.success('Form created successfully!')
+        // Form already created in createNewForm, just update it
+        const updated = await updateForm(selectedForm.id, selectedForm)
+        if (updated) {
+          setSelectedForm(updated)
+        }
       } else {
-        setForms(prev => prev.map(f => f.id === selectedForm.id ? selectedForm : f))
-        toast.success('Form updated successfully!')
+        // Update existing form
+        const updated = await updateForm(selectedForm.id, selectedForm)
+        if (updated) {
+          setSelectedForm(updated)
+        }
       }
       setIsCreating(false)
       setIsEditing(false)
       setSelectedForm(null)
     } catch (error) {
       toast.error('Failed to save form')
-    } finally {
-      setLoading(false)
     }
   }
 
