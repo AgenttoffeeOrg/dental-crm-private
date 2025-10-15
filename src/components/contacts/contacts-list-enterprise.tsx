@@ -60,6 +60,8 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow, format } from 'date-fns'
 import type { Contact, AppUser } from '@/types/database'
 import { CreateContactSlideOver } from './create-contact-slide-over'
+import { useSavedContactViews, type ContactFilters } from '@/hooks/use-saved-contact-views'
+import { BookmarkIcon, ChevronDown } from 'lucide-react'
 
 // Enhanced Contact type with computed fields
 interface EnhancedContact extends Contact {
@@ -72,6 +74,7 @@ export function ContactsListEnterprise() {
   const router = useRouter()
   const { appUser } = useAuth()
   const supabase = createClient()
+  const { views, currentView, applyView } = useSavedContactViews()
 
   // State
   const [contacts, setContacts] = useState<EnhancedContact[]>([])
@@ -422,6 +425,47 @@ export function ContactsListEnterprise() {
           </Button>
         </div>
       </div>
+
+      {/* Saved Views Row */}
+      {views.length > 0 && (
+        <div className="flex items-center gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="min-w-[200px] justify-between">
+                <div className="flex items-center gap-2">
+                  <BookmarkIcon className="h-4 w-4" />
+                  <span className="truncate">{currentView?.name || 'Select View'}</span>
+                </div>
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[280px]">
+              {views.map((view) => (
+                <DropdownMenuItem
+                  key={view.id}
+                  onClick={() => {
+                    applyView(view)
+                    const filters = view.filters as ContactFilters
+                    setSearchQuery(filters.searchQuery || '')
+                    setTypeFilter(filters.typeFilter || 'all')
+                    setSourceFilter(filters.sourceFilter || 'all')
+                    setTagFilter(filters.tagFilter || 'all')
+                    if (view.sort_field) setSortField(view.sort_field as any)
+                    if (view.sort_order) setSortOrder(view.sort_order)
+                    toast.success(`Applied view: ${view.name}`)
+                  }}
+                  className={cn(
+                    'cursor-pointer',
+                    currentView?.id === view.id && 'bg-blue-50'
+                  )}
+                >
+                  {view.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
 
       {/* Filters Row */}
       <div className="flex flex-wrap items-center gap-3">

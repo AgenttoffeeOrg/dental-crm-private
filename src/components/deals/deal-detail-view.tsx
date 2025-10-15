@@ -390,16 +390,28 @@ export function DealDetailView({
                       <h4 className="font-medium text-gray-900">{deal.contact.full_name}</h4>
                       <div className="space-y-1 mt-1">
                         {deal.contact.primary_email && (
-                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              window.location.href = `mailto:${deal.contact.primary_email}`
+                            }}
+                            className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                          >
                             <Mail className="h-3 w-3" />
                             {deal.contact.primary_email}
-                          </div>
+                          </button>
                         )}
                         {deal.contact.primary_phone && (
-                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              window.location.href = `tel:${deal.contact.primary_phone}`
+                            }}
+                            className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                          >
                             <Phone className="h-3 w-3" />
                             {deal.contact.primary_phone}
-                          </div>
+                          </button>
                         )}
                       </div>
                     </div>

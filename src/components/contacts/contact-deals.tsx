@@ -13,11 +13,16 @@ import {
   DollarSign,
   Calendar,
   Tag,
-  ExternalLink
+  ExternalLink,
+  Workflow,
+  Eye
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CreateDealDialog } from '@/components/pipeline/create-deal-dialog'
 import { formatDate, getActivityAge } from '@/lib/dates'
+import { differenceInDays } from 'date-fns'
+import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 import type { DealWithRelations } from '@/types/database'
 
 interface ContactDealsProps {
@@ -31,6 +36,7 @@ export function ContactDeals({
   onDealsChanged,
   tenantId = process.env.DEFAULT_TENANT_ID 
 }: ContactDealsProps) {
+  const router = useRouter()
   const [deals, setDeals] = useState<DealWithRelations[]>([])
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -49,6 +55,7 @@ export function ContactDeals({
         .select(`
           *,
           stage:pipeline_stages(*),
+          pipeline:pipelines(*),
           owner:app_users(*)
         `)
         .eq('contact_id', contactId)
@@ -90,6 +97,21 @@ export function ContactDeals({
       'Lost': 'bg-red-100 text-red-800',
     }
     return colors[stageName] || 'bg-gray-100 text-gray-800'
+  }
+
+  const getAgingBadge = (deal: DealWithRelations) => {
+    const daysInStage = differenceInDays(new Date(), new Date(deal.updated_at))
+    
+    let colorClass = 'bg-green-100 text-green-800' // Fresh (0-7 days)
+    if (daysInStage > 30) colorClass = 'bg-red-100 text-red-800' // Urgent (30+ days)
+    else if (daysInStage > 14) colorClass = 'bg-orange-100 text-orange-800' // Stuck (14-30 days)
+    else if (daysInStage > 7) colorClass = 'bg-yellow-100 text-yellow-800' // Aging (7-14 days)
+
+    return (
+      <Badge className={cn('text-xs font-medium', colorClass)}>
+        {daysInStage}d
+      </Badge>
+    )
   }
 
   if (loading) {
@@ -146,16 +168,27 @@ export function ContactDeals({
                         {deal.title}
                         <ExternalLink className="h-4 w-4" />
                       </Link>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        {/* Pipeline Badge - NEW! */}
+                        {deal.pipeline && (
+                          <Badge variant="outline" className="text-xs flex items-center gap-1">
+                            <Workflow className="h-3 w-3" />
+                            {deal.pipeline.name}
+                          </Badge>
+                        )}
+                        {/* Stage Badge */}
                         <Badge className={`text-xs ${getStageColor(deal.stage.name)}`}>
                           {deal.stage.name}
                         </Badge>
+                        {/* Value Badge */}
                         {deal.value_estimate_cents > 0 && (
                           <Badge variant="outline" className="text-xs">
                             <DollarSign className="h-3 w-3 mr-1" />
                             {formatCurrency(deal.value_estimate_cents)}
                           </Badge>
                         )}
+                        {/* Aging Badge - NEW! */}
+                        {getAgingBadge(deal)}
                       </div>
                     </div>
                   </div>
@@ -200,6 +233,28 @@ export function ContactDeals({
                         Created {formatDate(deal.created_at, 'MMM d, yyyy')}
                       </div>
                     </div>
+                  </div>
+
+                  {/* Quick Actions - NEW! */}
+                  <div className="flex items-center gap-2 pt-2 border-t">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push(`/pipeline?pipeline=${deal.pipeline_id}&deal=${deal.id}&highlight=true`)}
+                      className="flex-1"
+                    >
+                      <Workflow className="h-4 w-4 mr-2" />
+                      View in Pipeline
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push(`/deals?deal=${deal.id}&highlight=true`)}
+                      className="flex-1"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View in Deals Table
+                    </Button>
                   </div>
                 </div>
               </CardContent>
