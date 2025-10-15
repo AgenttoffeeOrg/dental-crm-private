@@ -37,25 +37,11 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Get practice
-    const { data: practice } = await supabase
-      .from('practices')
-      .select('id')
-      .eq('tenant_id', appUser.tenant_id)
-      .single();
-    
-    if (!practice) {
-      return NextResponse.json(
-        { error: 'Practice not found' },
-        { status: 404 }
-      );
-    }
-    
-    // Get latest completed audit
+    // Get latest completed audit (using tenant_id directly)
     const { data: audit, error } = await supabase
       .from('marketing_audit_runs')
       .select('*')
-      .eq('practice_id', practice.id)
+      .eq('tenant_id', appUser.tenant_id)
       .eq('status', 'completed')
       .order('completed_at', { ascending: false })
       .limit(1)

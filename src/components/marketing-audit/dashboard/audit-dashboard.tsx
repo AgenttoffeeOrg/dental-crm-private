@@ -62,18 +62,33 @@ export function AuditDashboard() {
     try {
       const response = await fetch('/api/marketing-audit/latest');
       
+      // Handle non-200 responses
       if (!response.ok) {
-        throw new Error('Failed to fetch audit');
+        const errorData = await response.json();
+        console.error('[AuditDashboard] API error:', errorData);
+        
+        // If it's just "no data", don't show error toast
+        if (response.status === 404 || errorData.message?.includes('No completed audits')) {
+          setLatestAudit(null);
+          return;
+        }
+        
+        throw new Error(errorData.error || 'Failed to fetch audit');
       }
       
       const data = await response.json();
       
       if (data.audit) {
         setLatestAudit(data.audit);
+      } else {
+        setLatestAudit(null);
       }
     } catch (error) {
       console.error('[AuditDashboard] Failed to fetch audit:', error);
-      toast.error('Failed to load audit data');
+      // Only show error toast for actual errors, not "no data"
+      if (error instanceof Error && !error.message.includes('No completed audits')) {
+        toast.error('Failed to load audit data');
+      }
     } finally {
       setLoading(false);
     }
