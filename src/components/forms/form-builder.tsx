@@ -159,6 +159,11 @@ export function FormBuilder() {
             <FileText className="h-4 w-4 mr-2" />
             Templates
           </Button>
+          <Button variant="outline" asChild>
+            <a href="/forms/templates">
+              View All Templates →
+            </a>
+          </Button>
           <Button onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Create Form

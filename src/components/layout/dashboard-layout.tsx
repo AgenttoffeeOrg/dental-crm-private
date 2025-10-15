@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UniversalSearchBar } from '@/components/search/universal-search-bar'
 import { NotificationsBellButton } from '@/components/notifications/notifications-bell-button'
 import { NotificationsDrawer } from '@/components/notifications/notifications-drawer'
+import { WhatsNewPanel } from '@/components/ui/whats-new-panel'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -338,6 +339,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
               {/* User Actions - FAR RIGHT */}
               <div className="flex items-center gap-3 ml-4">
+              {/* What's New */}
+              <WhatsNewPanel />
+              
               {/* Notifications Bell */}
               <NotificationsBellButton onOpen={() => setNotifDrawerOpen(true)} />
               
@@ -360,6 +364,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                       </p>
                     </div>
                   </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => { window.location.href = '/notifications' }}>
+                    <Bell className="mr-2 h-4 w-4" />
+                    Notifications
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { window.location.href = '/settings?tab=profile' }}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
