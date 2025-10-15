@@ -27,6 +27,11 @@ import { formatCurrency } from '@/lib/utils/formatters'
 import { SkeletonCard } from '@/components/ui/skeleton-loader'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
+import { 
+  getRevenueChartData, 
+  getDealsFunnelData, 
+  getDashboardMetrics 
+} from '@/lib/dashboard-analytics'
 import { RevenueChart } from '@/components/dashboard/revenue-chart'
 import { DealsFunnelChart } from '@/components/dashboard/deals-funnel-chart'
 import { SetupBanner } from '@/components/onboarding/setup-banner'
@@ -54,13 +59,57 @@ export default function DashboardPage() {
   const [recentDeals, setRecentDeals] = useState<any[]>([])
   const [revenueData, setRevenueData] = useState<any[]>([])
   const [dealsByStage, setDealsByStage] = useState<any[]>([])
+  const [metrics, setMetrics] = useState({
+    conversionRate: 0,
+    monthlyGrowth: 0,
+    averageDealValue: 0
+  })
   const [loading, setLoading] = useState(true)
+  const [chartsLoading, setChartsLoading] = useState(true)
+  const [metricsLoading, setMetricsLoading] = useState(true)
 
   useEffect(() => {
     if (appUser?.tenant_id) {
       loadDashboardData()
     }
   }, [appUser])
+
+  const loadChartData = async () => {
+    if (!appUser?.tenant_id) return
+    
+    setChartsLoading(true)
+    try {
+      const [revenueChartData, dealsFunnelData] = await Promise.all([
+        getRevenueChartData(appUser.tenant_id, 6),
+        getDealsFunnelData(appUser.tenant_id)
+      ])
+      
+      setRevenueData(revenueChartData)
+      setDealsByStage(dealsFunnelData)
+    } catch (error) {
+      console.error('[Dashboard] Error loading chart data:', error)
+      // Set empty data on error so UI doesn't break
+      setRevenueData([])
+      setDealsByStage([])
+    } finally {
+      setChartsLoading(false)
+    }
+  }
+
+  const loadMetrics = async () => {
+    if (!appUser?.tenant_id) return
+    
+    setMetricsLoading(true)
+    try {
+      const dashboardMetrics = await getDashboardMetrics(appUser.tenant_id)
+      setMetrics(dashboardMetrics)
+    } catch (error) {
+      console.error('[Dashboard] Error loading metrics:', error)
+      // Keep default values on error
+    } finally {
+      setMetricsLoading(false)
+    }
+  }
 
   const loadDashboardData = async () => {
     const supabase = createClient()
@@ -113,30 +162,10 @@ export default function DashboardPage() {
 
       setRecentDeals(recentDealsData || [])
 
-      // Generate sample revenue data for the last 6 months
-      const revenueChartData = []
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
-      for (let i = 0; i < 6; i++) {
-        const monthRevenue = Math.floor(Math.random() * 50000) + 20000
-        const monthDeals = Math.floor(Math.random() * 20) + 5
-        revenueChartData.push({
-          month: months[i],
-          revenue: monthRevenue,
-          deals: monthDeals
-        })
-      }
-      setRevenueData(revenueChartData)
-
-      // Generate deals by stage data
-      const stageData = [
-        { stage: 'Lead', value: Math.floor(Math.random() * 20) + 10, color: '#3b82f6' },
-        { stage: 'Qualified', value: Math.floor(Math.random() * 15) + 8, color: '#8b5cf6' },
-        { stage: 'Proposal', value: Math.floor(Math.random() * 12) + 5, color: '#06b6d4' },
-        { stage: 'Negotiation', value: Math.floor(Math.random() * 8) + 3, color: '#10b981' },
-        { stage: 'Closed Won', value: Math.floor(Math.random() * 10) + 5, color: '#f59e0b' },
-        { stage: 'Closed Lost', value: Math.floor(Math.random() * 5) + 2, color: '#ef4444' }
-      ]
-      setDealsByStage(stageData)
+      // Load real chart data asynchronously (non-blocking)
+      loadChartData()
+      // Load real metrics asynchronously (non-blocking)
+      loadMetrics()
 
     } catch (error) {
       console.error('Error loading dashboard data:', error)
@@ -197,18 +226,10 @@ export default function DashboardPage() {
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  console.log('🎯 Dashboard New Contact clicked - FORCING slide-over')
-                  console.log('🎯 Blocking any redirects to /contacts/new')
-                  // Force open slide-over immediately
                   setShowCreateContact(true)
-                  console.log('🎯 Slide-over should be opening now')
-                  // Prevent any navigation
-                  return false
                 }}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex-1 sm:flex-none"
                 type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onMouseUp={(e) => e.preventDefault()}
               >
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">New Contact</span>
@@ -219,16 +240,11 @@ export default function DashboardPage() {
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  console.log('🎯 Dashboard New Deal clicked - FORCING slide-over')
                   setShowCreateDeal(true)
-                  console.log('🎯 Deal slide-over should be opening now')
-                  return false
                 }}
                 variant="outline" 
                 className="flex-1 sm:flex-none"
                 type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onMouseUp={(e) => e.preventDefault()}
               >
                 <Target className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">New Deal</span>
@@ -238,17 +254,11 @@ export default function DashboardPage() {
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  console.log('🎯 Dashboard Create Task clicked - FORCING slide-over')
-                  console.log('🎯 Blocking any redirects to /tasks/new')
                   setShowCreateTask(true)
-                  console.log('🎯 Task slide-over should be opening now')
-                  return false
                 }}
                 variant="outline"
                 className="flex-1 sm:flex-none"
                 type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onMouseUp={(e) => e.preventDefault()}
               >
                 <CheckCircle className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Create Task</span>
@@ -431,20 +441,40 @@ export default function DashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Conversion Rate</span>
-                      <span className="font-semibold text-green-600">24.5%</span>
+                  {metricsLoading ? (
+                    <div className="space-y-4">
+                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Avg. Deal Value</span>
-                      <span className="font-semibold text-blue-600">{formatCurrency(stats.totalRevenue / Math.max(stats.totalDeals, 1))}</span>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Conversion Rate</span>
+                        <span className={`font-semibold ${metrics.conversionRate > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                          {metrics.conversionRate > 0 ? `${metrics.conversionRate}%` : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Avg. Deal Value</span>
+                        <span className={`font-semibold ${metrics.averageDealValue > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+                          {metrics.averageDealValue > 0 ? formatCurrency(metrics.averageDealValue) : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Monthly Growth</span>
+                        <span className={`font-semibold ${
+                          metrics.monthlyGrowth > 0 ? 'text-green-600' : 
+                          metrics.monthlyGrowth < 0 ? 'text-red-600' : 
+                          'text-gray-400'
+                        }`}>
+                          {metrics.monthlyGrowth !== 0 
+                            ? `${metrics.monthlyGrowth > 0 ? '+' : ''}${metrics.monthlyGrowth}%` 
+                            : 'N/A'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Monthly Growth</span>
-                      <span className="font-semibold text-purple-600">+12.3%</span>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
