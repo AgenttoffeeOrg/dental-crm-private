@@ -25,10 +25,14 @@ import { CalendarIntegrationTab } from './calendar-integration-tab'
 import { CustomFieldsTab } from './custom-fields-tab'
 import { TagsManagementTab } from './tags-management-tab'
 import { LeadSourcesTab } from './lead-sources-tab'
+import { FormsSettingsTab } from './forms-settings-tab'
+import { AnalyticsSettingsTab } from './analytics-settings-tab'
+import { MarketingAuditSettingsTab } from './marketing-audit-settings-tab'
 import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Rocket } from 'lucide-react'
+import { SettingsSearch } from './settings-search'
 
 export function SettingsTabs() {
   const { tenantId } = useTenant()
@@ -54,10 +58,14 @@ export function SettingsTabs() {
   }
 
   return (
-    <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
-      {/* Scrollable Tabs with emojis for visual clarity */}
-      <div className="border-b border-gray-200 overflow-x-auto -mx-6 px-6">
-        <TabsList className="inline-flex h-auto bg-transparent border-none p-0 space-x-1">
+    <div className="space-y-6">
+      {/* Settings Search Bar */}
+      <SettingsSearch onNavigate={handleTabChange} currentTab={currentTab} />
+      
+      <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
+        {/* Scrollable Tabs with emojis for visual clarity */}
+        <div className="border-b border-gray-200 overflow-x-auto -mx-6 px-6">
+          <TabsList className="inline-flex h-auto bg-transparent border-none p-0 space-x-1">
           <TabsTrigger 
             value="profile" 
             className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
@@ -159,6 +167,15 @@ export function SettingsTabs() {
           </TabsTrigger>
           <TabsTrigger value="marketing" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
             🚀 Marketing
+          </TabsTrigger>
+          <TabsTrigger value="forms-settings" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            📝 Forms
+          </TabsTrigger>
+          <TabsTrigger value="analytics-settings" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            📊 Analytics
+          </TabsTrigger>
+          <TabsTrigger value="marketing-audit-settings" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            🔍 Marketing Audit
           </TabsTrigger>
         </TabsList>
       </div>
@@ -352,7 +369,20 @@ export function SettingsTabs() {
           </div>
         </div>
       </TabsContent>
+
+      <TabsContent value="forms-settings" className="space-y-6">
+        <FormsSettingsTab />
+      </TabsContent>
+
+      <TabsContent value="analytics-settings" className="space-y-6">
+        <AnalyticsSettingsTab />
+      </TabsContent>
+
+      <TabsContent value="marketing-audit-settings" className="space-y-6">
+        <MarketingAuditSettingsTab />
+      </TabsContent>
     </Tabs>
+    </div>
   )
 }
 

@@ -21,6 +21,7 @@ import { FormTemplatesModal } from '@/components/forms/form-templates-modal'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { SettingsGearButton } from '@/components/ui/settings-gear-button'
 import { 
   Plus, 
   Edit, 
@@ -145,7 +146,10 @@ export function FormBuilder() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Forms</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-gray-900">Forms</h2>
+            <SettingsGearButton tab="forms" label="Forms Settings" />
+          </div>
           <p className="text-sm text-gray-600 mt-1">
             Create and manage lead capture forms with powerful integrations
           </p>

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase-client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { SettingsGearButton } from '@/components/ui/settings-gear-button'
 import { 
   Select,
   SelectContent,
@@ -943,6 +944,9 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
                   Settings
                 </Button>
               )}
+
+              {/* Pipeline Preferences - Global Settings */}
+              <SettingsGearButton tab="preferences" />
 
               {/* New Deal - Primary Action */}
               <Button 
