@@ -54,10 +54,17 @@ export default function AnalyticsPage() {
               </h1>
               <p className="text-gray-600 mt-1">Enterprise-grade insights to drive growth and profitability</p>
             </div>
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export All Reports
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" asChild>
+                <a href="/analytics/metrics">
+                  📖 Metrics Dictionary
+                </a>
+              </Button>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Export All Reports
+              </Button>
+            </div>
           </div>
 
           {/* Tabs */}

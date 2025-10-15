@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UniversalSearchBar } from '@/components/search/universal-search-bar'
+import { NotificationsBellButton } from '@/components/notifications/notifications-bell-button'
+import { NotificationsDrawer } from '@/components/notifications/notifications-drawer'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,6 +61,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, appUser, loading } = useAuth()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [notifDrawerOpen, setNotifDrawerOpen] = useState(false)
   const featureFlags = useFeatureFlags()
   const navigation = getNavigation(featureFlags)
 
@@ -335,6 +338,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
               {/* User Actions - FAR RIGHT */}
               <div className="flex items-center gap-3 ml-4">
+              {/* Notifications Bell */}
+              <NotificationsBellButton onOpen={() => setNotifDrawerOpen(true)} />
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full">
@@ -371,6 +377,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      
+      {/* Notifications Drawer */}
+      <NotificationsDrawer 
+        isOpen={notifDrawerOpen}
+        onClose={() => setNotifDrawerOpen(false)}
+      />
     </div>
   )
 }

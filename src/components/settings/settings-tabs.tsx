@@ -28,6 +28,9 @@ import { LeadSourcesTab } from './lead-sources-tab'
 import { FormsSettingsTab } from './forms-settings-tab'
 import { AnalyticsSettingsTab } from './analytics-settings-tab'
 import { MarketingAuditSettingsTab } from './marketing-audit-settings-tab'
+import { NotificationsPreferencesTab } from './notifications-preferences-tab'
+import { NotificationsPoliciesTab } from './notifications-policies-tab'
+import { LocationsSettingsTab } from './locations-settings-tab'
 import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -176,6 +179,15 @@ export function SettingsTabs() {
           </TabsTrigger>
           <TabsTrigger value="marketing-audit-settings" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
             🔍 Marketing Audit
+          </TabsTrigger>
+          <TabsTrigger value="notifications-preferences" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            🔔 Notifications
+          </TabsTrigger>
+          <TabsTrigger value="notifications-policies" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            👥 Notification Policies
+          </TabsTrigger>
+          <TabsTrigger value="locations" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
+            📍 Locations
           </TabsTrigger>
         </TabsList>
       </div>
@@ -380,6 +392,18 @@ export function SettingsTabs() {
 
       <TabsContent value="marketing-audit-settings" className="space-y-6">
         <MarketingAuditSettingsTab />
+      </TabsContent>
+
+      <TabsContent value="notifications-preferences" className="space-y-6">
+        <NotificationsPreferencesTab />
+      </TabsContent>
+
+      <TabsContent value="notifications-policies" className="space-y-6">
+        <NotificationsPoliciesTab />
+      </TabsContent>
+
+      <TabsContent value="locations" className="space-y-6">
+        <LocationsSettingsTab tenantId={tenantId} />
       </TabsContent>
     </Tabs>
     </div>
