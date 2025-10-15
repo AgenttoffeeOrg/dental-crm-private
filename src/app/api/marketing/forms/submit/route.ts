@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { formId, formName, payload, sourceUrl, dealRules } = body;
+    const { formId, formName, payload, sourceUrl, dealRules, honeypot, formLoadTime, utmParams } = body;
 
     // Get tenant ID from session
     const supabase = createServiceClient();
@@ -36,6 +36,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Extract metadata from request
+    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+    const referrerUrl = req.headers.get('referer') || req.headers.get('referrer') || null;
+
+    // Spam detection
+    let isSpam = false;
+    let spamScore = 1.0;
+    let honeypotTriggered = false;
+
+    // Check honeypot (if filled, it's spam)
+    if (honeypot && honeypot.trim().length > 0) {
+      isSpam = true;
+      spamScore = 0.0;
+      honeypotTriggered = true;
+    }
+
+    // Check submission time (< 2 seconds = likely spam)
+    if (formLoadTime) {
+      const submissionTime = Date.now() - parseInt(formLoadTime);
+      if (submissionTime < 2000) {
+        isSpam = true;
+        spamScore = Math.min(spamScore, 0.3);
+      }
+    }
+
     const submission: FormSubmission = {
       formId,
       formName,
@@ -44,16 +70,53 @@ export async function POST(req: NextRequest) {
       tenantId: appUser.tenant_id,
     };
 
-    // Process submission
+    // Process submission (creates Contact/Deal)
     const result = await processFormSubmission(submission, dealRules as DealCreationRules);
+
+    // Save submission to marketing_form_submissions table
+    const { error: submissionError } = await supabase
+      .from('marketing_form_submissions')
+      .insert({
+        tenant_id: appUser.tenant_id,
+        form_id: formId,
+        contact_id: result.contactId,
+        payload,
+        source_url: sourceUrl,
+        referrer_url: referrerUrl,
+        contact_created: result.contactCreated || false,
+        contact_updated: !result.contactCreated,
+        duplicate_submission: result.isDuplicate || false,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        is_spam: isSpam,
+        spam_score: spamScore,
+        honeypot_triggered: honeypotTriggered,
+        processed: true,
+        processed_at: new Date().toISOString(),
+        submitted_at: new Date().toISOString(),
+      });
+
+    if (submissionError) {
+      console.error('[Marketing API] Error saving submission:', submissionError);
+      // Don't fail the request if submission save fails, just log it
+    }
+
+    // Update form stats (increment total_submissions)
+    if (formId && !isSpam) {
+      await supabase.rpc('increment_form_submissions', { form_id: formId });
+    }
 
     return NextResponse.json({
       success: true,
       contactId: result.contactId,
       dealId: result.dealId,
-      message: result.dealId 
-        ? 'Contact and deal created successfully' 
-        : 'Contact created successfully',
+      submissionId: result.submissionId,
+      isSpam,
+      message: isSpam 
+        ? 'Submission marked as spam' 
+        : result.dealId 
+          ? 'Contact and deal created successfully' 
+          : 'Contact created successfully',
     });
   } catch (error) {
     console.error('[Marketing API] Form submission error:', error);
