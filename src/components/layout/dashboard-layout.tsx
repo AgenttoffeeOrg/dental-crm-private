@@ -32,6 +32,7 @@ import {
   DollarSign,
   Workflow,
   LineChart,
+  Bell,
 } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
