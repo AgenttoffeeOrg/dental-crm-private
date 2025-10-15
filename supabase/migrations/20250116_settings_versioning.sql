@@ -9,7 +9,57 @@
 BEGIN;
 
 -- =====================================================
--- 1. SETTINGS_VERSIONS TABLE
+-- 1. LOCATIONS TABLE (Must be created FIRST)
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  
+  -- Location information
+  name TEXT NOT NULL,
+  display_name TEXT,
+  location_type TEXT CHECK (location_type IN ('headquarters', 'branch', 'clinic', 'mobile')),
+  
+  -- Address
+  address_line1 TEXT,
+  address_line2 TEXT,
+  city TEXT,
+  state TEXT,
+  postal_code TEXT,
+  country TEXT DEFAULT 'US',
+  
+  -- Contact
+  phone_number TEXT,
+  email TEXT,
+  website_url TEXT,
+  
+  -- Operating hours (JSON: {monday: {open: '09:00', close: '17:00'}, ...})
+  operating_hours JSONB DEFAULT '{}'::JSONB,
+  
+  -- Settings overrides
+  settings_overrides JSONB DEFAULT '{}'::JSONB, -- Location-specific settings that override org defaults
+  
+  -- Status
+  is_active BOOLEAN DEFAULT TRUE,
+  is_primary BOOLEAN DEFAULT FALSE, -- Main location
+  
+  -- Metadata
+  created_by UUID REFERENCES app_users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  UNIQUE(tenant_id, name)
+);
+
+CREATE INDEX idx_locations_tenant ON locations(tenant_id);
+CREATE INDEX idx_locations_active ON locations(tenant_id, is_active);
+CREATE INDEX idx_locations_primary ON locations(tenant_id, is_primary);
+
+COMMENT ON TABLE locations IS 'Physical locations for multi-location practices';
+
+-- =====================================================
+-- 2. SETTINGS_VERSIONS TABLE
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS settings_versions (
@@ -101,57 +151,7 @@ CREATE INDEX idx_settings_approvals_reviewer ON settings_approvals(reviewed_by);
 COMMENT ON TABLE settings_approvals IS 'Approval workflow for critical settings changes';
 
 -- =====================================================
--- 3. SETTINGS_LOCATIONS TABLE (Multi-Location Support)
--- =====================================================
-
-CREATE TABLE IF NOT EXISTS locations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  
-  -- Location information
-  name TEXT NOT NULL,
-  display_name TEXT,
-  location_type TEXT CHECK (location_type IN ('headquarters', 'branch', 'clinic', 'mobile')),
-  
-  -- Address
-  address_line1 TEXT,
-  address_line2 TEXT,
-  city TEXT,
-  state TEXT,
-  postal_code TEXT,
-  country TEXT DEFAULT 'US',
-  
-  -- Contact
-  phone_number TEXT,
-  email TEXT,
-  website_url TEXT,
-  
-  -- Operating hours (JSON: {monday: {open: '09:00', close: '17:00'}, ...})
-  operating_hours JSONB DEFAULT '{}'::JSONB,
-  
-  -- Settings overrides
-  settings_overrides JSONB DEFAULT '{}'::JSONB, -- Location-specific settings that override org defaults
-  
-  -- Status
-  is_active BOOLEAN DEFAULT TRUE,
-  is_primary BOOLEAN DEFAULT FALSE, -- Main location
-  
-  -- Metadata
-  created_by UUID REFERENCES app_users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  UNIQUE(tenant_id, name)
-);
-
-CREATE INDEX idx_locations_tenant ON locations(tenant_id);
-CREATE INDEX idx_locations_active ON locations(tenant_id, is_active);
-CREATE INDEX idx_locations_primary ON locations(tenant_id, is_primary);
-
-COMMENT ON TABLE locations IS 'Physical locations for multi-location practices';
-
--- =====================================================
--- 4. HELPER FUNCTIONS
+-- 3. HELPER FUNCTIONS
 -- =====================================================
 
 -- Function to get current setting value with scope hierarchy
