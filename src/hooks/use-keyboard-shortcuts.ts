@@ -5,7 +5,7 @@
  * Prevents conflicts with input fields and follows best practices.
  */
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 
 export interface KeyboardShortcut {
   key: string
