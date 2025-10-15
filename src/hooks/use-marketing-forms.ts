@@ -101,6 +101,15 @@ export function useMarketingForms() {
 
       if (formsError) {
         console.error('[useMarketingForms] Error loading forms:', formsError)
+        
+        // If table doesn't exist, just show empty state
+        if (formsError.code === '42P01' || formsError.message?.includes('does not exist')) {
+          console.warn('[useMarketingForms] Forms table does not exist yet - showing empty state')
+          setForms([])
+          setError(null) // Don't show error to user
+          return
+        }
+        
         setError(formsError.message)
         setForms([])
         return
