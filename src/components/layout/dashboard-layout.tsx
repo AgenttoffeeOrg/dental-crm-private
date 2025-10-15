@@ -266,7 +266,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Navigation Menu - Vertical */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navigation.map((item) => {
-            const isActive = pathname.startsWith(item.href)
+            // Exact match for active state to avoid /marketing matching /marketing-audit
+            const isActive = pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/')
             return (
               <Link
                 key={item.name}
