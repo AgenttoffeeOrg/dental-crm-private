@@ -1,0 +1,117 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase-client'
+import { FormRenderer } from '@/components/forms/form-renderer'
+import { MultiStepFormRenderer } from '@/components/forms/multi-step-form-renderer'
+import type { MarketingForm } from '@/hooks/use-marketing-forms'
+
+export default function PublicFormPage() {
+  const params = useParams()
+  const [form, setForm] = useState<MarketingForm | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    loadForm()
+    trackFormView()
+  }, [params.slug])
+
+  const loadForm = async () => {
+    try {
+      setLoading(true)
+
+      // Fetch form by slug (public access, no auth required)
+      const { data, error } = await supabase
+        .from('marketing_forms')
+        .select('*')
+        .eq('public_url_slug', params.slug)
+        .eq('status', 'active')
+        .eq('is_published', true)
+        .single()
+
+      if (error) {
+        console.error('[PublicForm] Error loading form:', error)
+        setError('Form not found')
+        return
+      }
+
+      setForm(data)
+    } catch (err) {
+      console.error('[PublicForm] Unexpected error:', err)
+      setError('Failed to load form')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const trackFormView = async () => {
+    // Track form view in analytics
+    try {
+      await supabase.rpc('increment_form_views', {
+        form_slug: params.slug as string,
+      })
+    } catch (err) {
+      console.error('[PublicForm] Failed to track view:', err)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading form...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !form) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">🔍</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Form Not Found</h1>
+          <p className="text-gray-600">
+            {error || 'The form you\'re looking for doesn\'t exist or has been removed.'}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Check if multi-step form
+  const hasPageBreaks = form.fields_json.some((field: any) => field.type === 'page_break')
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
+      <div className="max-w-2xl mx-auto">
+        {/* Form Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{form.name}</h1>
+          {form.description && (
+            <p className="text-gray-600">{form.description}</p>
+          )}
+        </div>
+
+        {/* Form Container */}
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          {hasPageBreaks ? (
+            <MultiStepFormRenderer form={form} standalone={true} />
+          ) : (
+            <FormRenderer form={form} standalone={true} />
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-6 text-sm text-gray-500">
+          <p>🔒 Your information is secure and will never be shared</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+

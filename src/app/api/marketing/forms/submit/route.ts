@@ -8,6 +8,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { processFormSubmission, type FormSubmission, type DealCreationRules } from '@/lib/marketing/form-processor';
 import { withMarketingCheck } from '@/lib/marketing/api-middleware';
 import { checkRateLimit, getTimeUntilReset } from '@/lib/rate-limiter';
+import { verifyRecaptchaToken, evaluateRecaptchaScore } from '@/lib/forms/recaptcha';
 
 export async function POST(req: NextRequest) {
   // Check Marketing enabled
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { formId, formName, payload, sourceUrl, dealRules, honeypot, formLoadTime, utmParams } = body;
+    const { formId, formName, payload, sourceUrl, dealRules, honeypot, formLoadTime, utmParams, recaptchaToken } = body;
 
     // Get IP address for rate limiting
     const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
@@ -76,6 +77,20 @@ export async function POST(req: NextRequest) {
     let isSpam = false;
     let spamScore = 1.0;
     let honeypotTriggered = false;
+    let recaptchaScore = 1.0;
+
+    // Check reCAPTCHA (if token provided)
+    if (recaptchaToken) {
+      const recaptchaResult = await verifyRecaptchaToken(recaptchaToken);
+      recaptchaScore = recaptchaResult.score;
+      
+      const evaluation = evaluateRecaptchaScore(recaptchaScore, 0.5);
+      
+      if (!evaluation.allowed) {
+        isSpam = true;
+        spamScore = Math.min(spamScore, recaptchaScore);
+      }
+    }
 
     // Check honeypot (if filled, it's spam)
     if (honeypot && honeypot.trim().length > 0) {
