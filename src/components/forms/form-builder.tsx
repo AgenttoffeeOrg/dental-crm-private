@@ -16,6 +16,8 @@
 import { useState } from 'react'
 import { useMarketingForms, type MarketingForm } from '@/hooks/use-marketing-forms'
 import { CreateFormSlideOver } from '@/components/forms/create-form-slide-over'
+import { FormSubmissionsModal } from '@/components/forms/form-submissions-modal'
+import { FormTemplatesModal } from '@/components/forms/form-templates-modal'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -45,8 +47,10 @@ import {
 import { toast } from 'sonner'
 
 export function FormBuilder() {
-  const { forms, loading, deleteForm, duplicateForm, loadForms } = useMarketingForms()
+  const { forms, loading, deleteForm, duplicateForm, loadForms, createForm } = useMarketingForms()
   const [slideOverOpen, setSlideOverOpen] = useState(false)
+  const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false)
+  const [templatesModalOpen, setTemplatesModalOpen] = useState(false)
   const [selectedForm, setSelectedForm] = useState<MarketingForm | null>(null)
   const [mode, setMode] = useState<'create' | 'edit'>('create')
 
@@ -54,6 +58,30 @@ export function FormBuilder() {
     setSelectedForm(null)
     setMode('create')
     setSlideOverOpen(true)
+  }
+
+  const handleSelectTemplate = async (template: any) => {
+    // Create form from template
+    const newForm = await createForm({
+      name: template.name,
+      description: template.description,
+      status: 'draft',
+      fields_json: template.fields,
+      theme: 'light',
+      button_text: 'Submit',
+      success_message: 'Thank you! We\'ll be in touch soon.',
+      redirect_url: '',
+      auto_add_tags: [],
+      enable_recaptcha: true,
+      enable_honeypot: true,
+      is_published: false,
+      public_url_slug: '',
+    })
+
+    if (newForm) {
+      toast.success('Form created from template!')
+      loadForms()
+    }
   }
 
   const handleEdit = (form: MarketingForm) => {
@@ -76,6 +104,11 @@ export function FormBuilder() {
         toast.success('Form deleted successfully!')
       }
     }
+  }
+
+  const handleViewSubmissions = (form: MarketingForm) => {
+    setSelectedForm(form)
+    setSubmissionsModalOpen(true)
   }
 
   const getStatusBadge = (status: string, isPublished: boolean) => {
@@ -118,7 +151,7 @@ export function FormBuilder() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => toast.info('Templates coming soon!')}>
+          <Button variant="outline" onClick={() => setTemplatesModalOpen(true)}>
             <FileText className="h-4 w-4 mr-2" />
             Templates
           </Button>
@@ -206,7 +239,7 @@ export function FormBuilder() {
                 <Plus className="h-4 w-4 mr-2" />
                 Create Your First Form
               </Button>
-              <Button variant="outline" onClick={() => toast.info('Templates coming soon!')}>
+              <Button variant="outline" onClick={() => setTemplatesModalOpen(true)}>
                 <FileText className="h-4 w-4 mr-2" />
                 Browse Templates
               </Button>
@@ -321,7 +354,7 @@ export function FormBuilder() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => toast.info('Submissions view coming soon!')}
+                    onClick={() => handleViewSubmissions(form)}
                   >
                     <Users className="h-3 w-3" />
                   </Button>
@@ -356,6 +389,22 @@ export function FormBuilder() {
         }}
         form={selectedForm}
         mode={mode}
+      />
+
+      {/* Submissions Modal */}
+      {selectedForm && (
+        <FormSubmissionsModal
+          open={submissionsModalOpen}
+          onClose={() => setSubmissionsModalOpen(false)}
+          form={selectedForm}
+        />
+      )}
+
+      {/* Templates Modal */}
+      <FormTemplatesModal
+        open={templatesModalOpen}
+        onClose={() => setTemplatesModalOpen(false)}
+        onSelectTemplate={handleSelectTemplate}
       />
     </div>
   )

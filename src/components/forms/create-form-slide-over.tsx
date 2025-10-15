@@ -240,6 +240,148 @@ export function CreateFormSlideOver({
         onClick={onClose}
       />
 
+      {/* Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-8">
+          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+              <h3 className="font-semibold">Form Preview</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowPreview(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-8">
+              <h2 className="text-2xl font-bold mb-2">{formData.name || 'Untitled Form'}</h2>
+              {formData.description && (
+                <p className="text-gray-600 mb-6">{formData.description}</p>
+              )}
+              {formData.fields_json.length === 0 ? (
+                <p className="text-center text-gray-500 py-12">
+                  No fields added yet. Add fields to see them here.
+                </p>
+              ) : (
+                <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                  {formData.fields_json.map((field) => (
+                    <div key={field.id}>
+                      <Label>
+                        {field.label}
+                        {field.required && <span className="text-red-500 ml-1">*</span>}
+                      </Label>
+                      {field.type === 'text' || field.type === 'email' || field.type === 'phone' ? (
+                        <Input
+                          type={field.type}
+                          placeholder={field.placeholder}
+                          required={field.required}
+                          className="mt-1"
+                          disabled
+                        />
+                      ) : field.type === 'textarea' ? (
+                        <Textarea
+                          placeholder={field.placeholder}
+                          required={field.required}
+                          rows={4}
+                          className="mt-1"
+                          disabled
+                        />
+                      ) : field.type === 'select' ? (
+                        <Select disabled>
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder={field.placeholder || 'Select an option'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {field.options?.map((option, idx) => (
+                              <SelectItem key={idx} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : field.type === 'radio' ? (
+                        <div className="space-y-2 mt-2">
+                          {field.options?.map((option, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name={field.id}
+                                id={`${field.id}-${idx}`}
+                                className="w-4 h-4"
+                                disabled
+                              />
+                              <label htmlFor={`${field.id}-${idx}`} className="text-sm">
+                                {option}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      ) : field.type === 'checkbox' ? (
+                        <div className="space-y-2 mt-2">
+                          {field.options?.map((option, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id={`${field.id}-${idx}`}
+                                className="w-4 h-4"
+                                disabled
+                              />
+                              <label htmlFor={`${field.id}-${idx}`} className="text-sm">
+                                {option}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      ) : field.type === 'date' ? (
+                        <Input
+                          type="date"
+                          required={field.required}
+                          className="mt-1"
+                          disabled
+                        />
+                      ) : field.type === 'file' ? (
+                        <Input
+                          type="file"
+                          required={field.required}
+                          className="mt-1"
+                          disabled
+                        />
+                      ) : field.type === 'rating' ? (
+                        <div className="flex gap-1 mt-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              className="text-2xl text-gray-300"
+                              disabled
+                            >
+                              ⭐
+                            </button>
+                          ))}
+                        </div>
+                      ) : field.type === 'scale' ? (
+                        <div className="flex gap-2 mt-2">
+                          {[...Array(10)].map((_, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              className="w-10 h-10 border rounded hover:bg-blue-50 disabled:opacity-50"
+                              disabled
+                            >
+                              {idx + 1}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                  <Button type="submit" className="w-full" disabled>
+                    {formData.button_text}
+                  </Button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Slide-over Panel */}
       <div className="fixed inset-y-0 right-0 w-full max-w-4xl bg-white shadow-2xl z-50 flex flex-col">
         {/* Header */}
