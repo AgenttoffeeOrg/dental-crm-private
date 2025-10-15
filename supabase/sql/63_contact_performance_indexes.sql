@@ -1,6 +1,32 @@
 -- 63_contact_performance_indexes.sql
 -- Performance optimization indexes for contacts queries
 
+-- STEP 1: Add contact_type column if it doesn't exist (MUST BE FIRST)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'contacts' AND column_name = 'contact_type'
+    ) THEN
+        ALTER TABLE contacts ADD COLUMN contact_type VARCHAR(50) DEFAULT 'patient';
+    END IF;
+END $$;
+
+-- STEP 2: Add check constraint for contact_type
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.constraint_column_usage 
+        WHERE table_name = 'contacts' AND constraint_name = 'check_contact_type'
+    ) THEN
+        ALTER TABLE contacts 
+        ADD CONSTRAINT check_contact_type 
+        CHECK (contact_type IN ('patient', 'lead', 'referrer', 'corporate', 'insurer'));
+    END IF;
+END $$;
+
+-- STEP 3: Now create indexes (after column exists)
+
 -- Core indexes for contacts table filtering and sorting
 CREATE INDEX IF NOT EXISTS idx_contacts_tenant_id ON contacts(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_contacts_full_name ON contacts(full_name);
@@ -14,7 +40,7 @@ CREATE INDEX IF NOT EXISTS idx_contacts_full_name_search ON contacts USING gin(t
 CREATE INDEX IF NOT EXISTS idx_contacts_created_at ON contacts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_contacts_updated_at ON contacts(updated_at DESC);
 
--- Type and source indexes (for filtering)
+-- Type and source indexes (for filtering) - NOW contact_type column exists
 CREATE INDEX IF NOT EXISTS idx_contacts_contact_type ON contacts(contact_type) WHERE contact_type IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_contacts_source ON contacts(source) WHERE source IS NOT NULL;
 
@@ -26,32 +52,8 @@ CREATE INDEX IF NOT EXISTS idx_contacts_tenant_type ON contacts(tenant_id, conta
 CREATE INDEX IF NOT EXISTS idx_contacts_tenant_updated ON contacts(tenant_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_contacts_tenant_name ON contacts(tenant_id, full_name);
 
--- Analyze table for query planner optimization
+-- STEP 4: Analyze table for query planner optimization
 ANALYZE contacts;
-
--- Add contact_type column if it doesn't exist (safe migration)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'contacts' AND column_name = 'contact_type'
-    ) THEN
-        ALTER TABLE contacts ADD COLUMN contact_type VARCHAR(50) DEFAULT 'patient';
-    END IF;
-END $$;
-
--- Add check constraint for contact_type
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.constraint_column_usage 
-        WHERE table_name = 'contacts' AND constraint_name = 'check_contact_type'
-    ) THEN
-        ALTER TABLE contacts 
-        ADD CONSTRAINT check_contact_type 
-        CHECK (contact_type IN ('patient', 'lead', 'referrer', 'corporate', 'insurer'));
-    END IF;
-END $$;
 
 COMMENT ON INDEX idx_contacts_tenant_id IS 'Optimizes tenant-specific contact queries';
 COMMENT ON INDEX idx_contacts_full_name_search IS 'Enables fast full-text search on contact names';
