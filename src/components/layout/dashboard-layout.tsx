@@ -26,6 +26,8 @@ import {
   LogOut,
   Menu,
   X,
+  DollarSign,
+  Workflow,
 } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
@@ -33,7 +35,8 @@ import { createClient } from '@/lib/supabase-client'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Pipeline', href: '/pipeline', icon: TrendingUp },
+  { name: 'Deals', href: '/deals', icon: DollarSign },
+  { name: 'Pipeline', href: '/pipeline', icon: Workflow },
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Marketing', href: '/marketing', icon: Mail },
