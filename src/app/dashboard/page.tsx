@@ -273,8 +273,8 @@ export default function DashboardPage() {
         }}
       />
 
-      <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-indigo-50/30">
-        <div className="p-4 sm:p-6 lg:p-8 max-w-[1800px] mx-auto pb-16 animate-in fade-in slide-in-from-bottom duration-500">
+      <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-indigo-50/20">
+        <div className="min-h-full p-6 sm:p-8 lg:p-10 max-w-[1600px] mx-auto pb-24">
           {/* Welcome Header - ENHANCED */}
           <div className="mb-6 sm:mb-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -425,7 +425,7 @@ export default function DashboardPage() {
           </WidgetErrorBoundary>
 
           {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
             <WidgetErrorBoundary widgetName="Revenue Chart">
               <RevenueChart data={revenueData} />
             </WidgetErrorBoundary>
@@ -434,10 +434,10 @@ export default function DashboardPage() {
             </WidgetErrorBoundary>
           </div>
 
-          {/* Main Content Grid - IMPROVED SYMMETRY */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Bottom Section - Clean 3-Column Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Recent Activity */}
-            <div>
+            <div className="lg:col-span-2">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -480,8 +480,9 @@ export default function DashboardPage() {
               </Card>
             </div>
 
-            {/* Upcoming Tasks */}
-            <div>
+            {/* Upcoming Tasks & Quick Insights - CLEAN COLUMN */}
+            <div className="space-y-6">
+              {/* Upcoming Tasks */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -493,26 +494,24 @@ export default function DashboardPage() {
                   <div className="space-y-3">
                     {upcomingTasks.length > 0 ? (
                       upcomingTasks.map((task, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                          <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-orange-600 mr-2" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{task.title}</p>
-                              {task.due_at && (
-                                <p className="text-xs text-gray-500">
-                                  Due {formatDistanceToNow(new Date(task.due_at), { addSuffix: true })}
-                                </p>
-                              )}
-                            </div>
+                        <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                          <CheckCircle className="h-4 w-4 text-orange-600 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{task.title}</p>
+                            {task.due_at && (
+                              <p className="text-xs text-gray-500">
+                                Due {formatDistanceToNow(new Date(task.due_at), { addSuffix: true })}
+                              </p>
+                            )}
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-4 text-gray-500">
-                        <CheckCircle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <div className="text-center py-6 text-gray-500">
+                        <CheckCircle className="h-10 w-10 mx-auto mb-3 text-gray-300" />
                         <p className="text-sm">No pending tasks</p>
                         <Link href="/tasks">
-                          <Button variant="outline" size="sm" className="mt-2">
+                          <Button variant="outline" size="sm" className="mt-3">
                             Create task
                           </Button>
                         </Link>
@@ -521,56 +520,57 @@ export default function DashboardPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Quick Insights */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
+                    Quick Insights
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {metricsLoading ? (
+                    <div className="space-y-4">
+                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm font-medium text-gray-700">Conversion Rate</span>
+                        <span className={`text-lg font-bold ${metrics.conversionRate > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                          {metrics.conversionRate > 0 ? `${metrics.conversionRate}%` : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm font-medium text-gray-700">Avg. Deal Value</span>
+                        <span className={`text-lg font-bold ${metrics.averageDealValue > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+                          {metrics.averageDealValue > 0 ? formatCurrency(metrics.averageDealValue) : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-sm font-medium text-gray-700">Monthly Growth</span>
+                        <span className={`text-lg font-bold ${
+                          metrics.monthlyGrowth > 0 ? 'text-green-600' : 
+                          metrics.monthlyGrowth < 0 ? 'text-red-600' : 
+                          'text-gray-400'
+                        }`}>
+                          {metrics.monthlyGrowth !== 0 
+                            ? `${metrics.monthlyGrowth > 0 ? '+' : ''}${metrics.monthlyGrowth}%` 
+                            : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
-
-          {/* Quick Insights - MOVED TO SYMMETRIC LAYOUT */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
-                  Quick Insights
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {metricsLoading ? (
-                  <div className="space-y-4">
-                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Conversion Rate</span>
-                      <span className={`font-semibold ${metrics.conversionRate > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                        {metrics.conversionRate > 0 ? `${metrics.conversionRate}%` : 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Avg. Deal Value</span>
-                      <span className={`font-semibold ${metrics.averageDealValue > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
-                        {metrics.averageDealValue > 0 ? formatCurrency(metrics.averageDealValue) : 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Monthly Growth</span>
-                      <span className={`font-semibold ${
-                        metrics.monthlyGrowth > 0 ? 'text-green-600' : 
-                        metrics.monthlyGrowth < 0 ? 'text-red-600' : 
-                        'text-gray-400'
-                      }`}>
-                        {metrics.monthlyGrowth !== 0 
-                          ? `${metrics.monthlyGrowth > 0 ? '+' : ''}${metrics.monthlyGrowth}%` 
-                          : 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          
+          {/* Bottom Spacer for Clean Finish */}
+          <div className="h-8"></div>
         </div>
       </div>
 
