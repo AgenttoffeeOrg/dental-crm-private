@@ -7,7 +7,7 @@
 
 import { OAuthError } from './errors';
 import type { OAuthTokens, APICredential } from '../types';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 export class OAuthHandler {
   private clientId: string;
@@ -142,7 +142,7 @@ export class OAuthHandler {
     provider: 'google',
     tokens: OAuthTokens
   ): Promise<void> {
-    const supabase = createServerClient();
+    const supabase = await createServerSupabaseClient();
     
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + tokens.expires_in);
@@ -165,7 +165,7 @@ export class OAuthHandler {
    * Get valid access token (auto-refresh if expired)
    */
   async getValidToken(practiceId: string, provider: 'google'): Promise<string> {
-    const supabase = createServerClient();
+    const supabase = await createServerSupabaseClient();
     
     const { data: credential, error } = await supabase
       .from('api_credentials')
