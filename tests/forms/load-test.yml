@@ -1,0 +1,98 @@
+# Artillery Load Test Configuration
+# Tests form system under heavy load
+# Run: npx artillery run tests/forms/load-test.yml
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm-up"
+    
+    # Ramp-up phase
+    - duration: 120
+      arrivalRate: 10
+      rampTo: 50
+      name: "Ramp-up to 50 req/sec"
+    
+    # Peak load
+    - duration: 300
+      arrivalRate: 100
+      name: "Sustained peak load"
+    
+    # Spike test
+    - duration: 60
+      arrivalRate: 200
+      name: "Spike test"
+    
+    # Cool-down
+    - duration: 60
+      arrivalRate: 10
+      name: "Cool-down"
+
+  processor: "./load-test-processor.js"
+  
+  variables:
+    formId:
+      - "test-form-1"
+      - "test-form-2"
+      - "test-form-3"
+
+scenarios:
+  # Test 1: Form View
+  - name: "View Form"
+    weight: 30
+    flow:
+      - get:
+          url: "/forms/embed/{{ formId }}"
+          expect:
+            - statusCode: 200
+            - contentType: text/html
+
+  # Test 2: Form Submission
+  - name: "Submit Form"
+    weight: 50
+    flow:
+      - post:
+          url: "/api/marketing/forms/submit"
+          json:
+            formId: "{{ formId }}"
+            payload:
+              full_name: "Load Test User {{ $randomString() }}"
+              email: "test-{{ $randomNumber() }}@example.com"
+              phone: "+4477009{{ $randomNumber(10000, 99999) }}"
+          expect:
+            - statusCode: [200, 202, 429] # Allow rate limiting
+            - hasProperty: success
+
+  # Test 3: Analytics Query
+  - name: "Query Analytics"
+    weight: 20
+    flow:
+      - get:
+          url: "/forms/{{ formId }}/analytics"
+          expect:
+            - statusCode: 200
+
+# Performance Assertions
+expect:
+  maxErrorRate: 1 # < 1% error rate
+  p95: 500 # 95th percentile response time < 500ms
+  p99: 1000 # 99th percentile response time < 1s
+
+# Metrics to Track
+metrics:
+  - name: "Form Views"
+    type: "counter"
+  - name: "Form Submissions"
+    type: "counter"
+  - name: "Spam Blocked"
+    type: "counter"
+  - name: "Rate Limited"
+    type: "counter"
+
+# Target: 10,000 submissions/day = ~7 submissions/minute = 0.12 submissions/second
+# Our peak load: 100 req/sec = 850x daily average
+# If system handles this, it can handle any realistic load
+
