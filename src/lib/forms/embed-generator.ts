@@ -236,14 +236,11 @@ export function generateStaticHTML(options: EmbedOptions & { formHTML?: string }
  * Generate hosted form URL
  */
 export function generateHostedURL(options: { formSlug: string; tenantSlug?: string }): string {
-  const { formSlug, tenantSlug } = options
+  const { formSlug } = options
   const baseURL = process.env.NEXT_PUBLIC_APP_URL || 'https://dentalcrm.com'
   
-  if (tenantSlug) {
-    return `${baseURL}/forms/${tenantSlug}/${formSlug}`
-  }
-  
-  return `${baseURL}/forms/f/${formSlug}`
+  // Public forms are at /f/[slug] to avoid routing conflicts
+  return `${baseURL}/f/${formSlug}`
 }
 
 /**
