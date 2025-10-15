@@ -7,14 +7,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string; recId: string } }
 ) {
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerSupabaseClient();
     const { recId } = params;
     const body = await request.json();
     const { reason } = body;

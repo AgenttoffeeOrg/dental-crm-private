@@ -48,6 +48,7 @@ import {
   UserPlus,
   Tag as TagIcon,
   Trash2,
+  Edit,
   Eye,
   Phone,
   Mail,

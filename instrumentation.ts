@@ -7,8 +7,10 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     // Server-side instrumentation
-    const { logger } = await import('./src/lib/logger')
-    logger.info('Server instrumentation initialized')
+    // Temporarily disabled logger to fix startup issue
+    // const { logger } = await import('./src/lib/logger')
+    // logger.info('Server instrumentation initialized')
+    console.log('Server instrumentation initialized')
     
     // TODO: Initialize Sentry server SDK when DSN is provided
     // if (process.env.SENTRY_DSN) {

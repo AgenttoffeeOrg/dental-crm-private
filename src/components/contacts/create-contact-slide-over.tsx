@@ -111,22 +111,22 @@ export function CreateContactSlideOver({
   // Load contact data for edit mode
   useEffect(() => {
     if (open && contact && mode === 'edit') {
-      const profileData = (contact as any).profile_data || {}
+      const contactData = contact as any
       
       setFormData({
         full_name: contact.full_name || '',
         primary_phone: contact.primary_phone || '',
-        secondary_phone: profileData.personal?.secondary_phone || '',
+        secondary_phone: contactData.secondary_phone || '',
         primary_email: contact.primary_email || '',
-        secondary_email: profileData.personal?.secondary_email || '',
+        secondary_email: contactData.secondary_email || '',
         source: contact.source || '',
-        contact_type: (contact as any).contact_type || 'patient',
-        address: profileData.address?.address || '',
-        city: profileData.address?.city || '',
-        postal_code: profileData.address?.postal_code || '',
-        country: profileData.address?.country || 'United Kingdom',
-        date_of_birth: profileData.personal?.date_of_birth || '',
-        occupation: profileData.personal?.occupation || '',
+        contact_type: contactData.contact_type || 'patient',
+        address: contactData.address || '',
+        city: contactData.city || '',
+        postal_code: contactData.postal_code || '',
+        country: contactData.country || 'United Kingdom',
+        date_of_birth: contactData.date_of_birth || '',
+        occupation: contactData.occupation || '',
         notes: '',
       })
       
@@ -281,55 +281,61 @@ export function CreateContactSlideOver({
     try {
       const supabase = createClient()
 
-      // Prepare profile_data JSON
-      const profileData = {
-        personal: {
-          secondary_phone: formData.secondary_phone || null,
-          secondary_email: formData.secondary_email || null,
-          date_of_birth: formData.date_of_birth || null,
-          occupation: formData.occupation || null,
-        },
-        address: {
-          address: formData.address || null,
-          city: formData.city || null,
-          postal_code: formData.postal_code || null,
-          country: formData.country || null,
-        },
-      }
-
+      // Prepare contact data using ONLY basic columns that exist in all databases
       const contactData = {
         tenant_id: appUser.tenant_id,
         full_name: formData.full_name.trim(),
         primary_phone: formData.primary_phone.trim() || null,
         primary_email: formData.primary_email.trim().toLowerCase() || null,
         source: formData.source || null,
-        contact_type: formData.contact_type,
         tags: selectedTags,
-        profile_data: profileData,
         updated_at: new Date().toISOString(),
       }
 
       if (mode === 'edit' && contact) {
         // Update existing contact
+        console.log('Updating contact with data:', contactData)
         const { error } = await supabase
           .from('contacts')
           .update(contactData)
           .eq('id', contact.id)
 
-        if (error) throw error
+        if (error) {
+          console.error('Update error:', error)
+          throw error
+        }
 
         toast.success('Contact updated successfully')
       } else {
         // Create new contact
-        const { error } = await supabase
+        const insertData = {
+          ...contactData,
+          created_at: new Date().toISOString(),
+        }
+        console.log('🔵 Creating contact with data:', insertData)
+        console.log('🔵 Tenant ID:', appUser.tenant_id)
+        console.log('🔵 Full insertData:', JSON.stringify(insertData, null, 2))
+        
+        const response = await supabase
           .from('contacts')
-          .insert({
-            ...contactData,
-            created_at: new Date().toISOString(),
-          })
+          .insert(insertData)
+          .select()
+        
+        console.log('🔵 Full Supabase response:', response)
+        console.log('🔵 Response data:', response.data)
+        console.log('🔵 Response error:', response.error)
+        console.log('🔵 Response status:', response.status)
+        console.log('🔵 Response statusText:', response.statusText)
 
-        if (error) throw error
+        if (response.error) {
+          console.error('❌ Insert error object:', response.error)
+          console.error('❌ Insert error type:', typeof response.error)
+          console.error('❌ Insert error keys:', Object.keys(response.error))
+          console.error('❌ Insert error JSON:', JSON.stringify(response.error, null, 2))
+          throw response.error
+        }
 
+        console.log('✅ Contact created successfully:', response.data)
         toast.success('Contact created successfully')
       }
 
@@ -337,7 +343,14 @@ export function CreateContactSlideOver({
       onClose()
     } catch (error: any) {
       console.error('Error saving contact:', error)
-      toast.error(error.message || 'Failed to save contact')
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        stack: error?.stack
+      })
+      toast.error(error?.message || error?.code || 'Failed to save contact')
     } finally {
       setLoading(false)
     }

@@ -9,13 +9,13 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 /**
  * Verify user authentication and return user + practice data
  */
 export async function verifyAuth(request: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerSupabaseClient();
   
   // Get current user
   const { data: { user }, error: authError } = await supabase.auth.getUser();

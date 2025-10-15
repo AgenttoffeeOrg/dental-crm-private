@@ -8,14 +8,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string; recId: string } }
 ) {
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerSupabaseClient();
     const { id: auditId, recId } = params;
     
     // Get current user

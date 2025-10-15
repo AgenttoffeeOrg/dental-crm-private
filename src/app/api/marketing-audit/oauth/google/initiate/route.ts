@@ -8,12 +8,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { OAuthHandler, GOOGLE_AUDIT_SCOPES } from '@/lib/marketing-audit/utils/oauth-handler';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerSupabaseClient();
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
