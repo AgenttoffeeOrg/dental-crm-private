@@ -274,7 +274,7 @@ export default function DashboardPage() {
       />
 
       <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-indigo-50/30">
-        <div className="p-4 sm:p-6 lg:p-8 max-w-[1800px] mx-auto animate-in fade-in slide-in-from-bottom duration-500">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-[1800px] mx-auto pb-16 animate-in fade-in slide-in-from-bottom duration-500">
           {/* Welcome Header - ENHANCED */}
           <div className="mb-6 sm:mb-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
