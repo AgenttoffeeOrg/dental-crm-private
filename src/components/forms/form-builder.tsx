@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
 import { useMarketingForms, type MarketingForm } from '@/hooks/use-marketing-forms'
+import { EmbedCodeModal } from '@/components/forms/embed-code-modal'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,6 +32,7 @@ import {
   Edit, 
   Eye, 
   Copy, 
+  Share2,
   Settings,
   Zap,
   Target,
@@ -448,6 +450,8 @@ export function FormBuilder({ tenantId = '550e8400-e29b-41d4-a716-446655440000' 
   const [isCreating, setIsCreating] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [previewMode, setPreviewMode] = useState(false)
+  const [showEmbedModal, setShowEmbedModal] = useState(false)
+  const [embedForm, setEmbedForm] = useState<MarketingForm | null>(null)
   
   const supabase = createClient()
 
@@ -682,71 +686,127 @@ button[type="submit"]:hover {
       </div>
 
       {/* Forms Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {forms.map(form => {
-          const sampleScore = 75
-          const category = getLeadCategory(sampleScore, form)
-          
-          return (
-            <Card key={form.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{form.name}</CardTitle>
-                    <p className="text-sm text-gray-600 mt-1">{form.description}</p>
-                  </div>
-                  <Badge variant={form.active ? "default" : "secondary"}>
-                    {form.active ? 'Active' : 'Inactive'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Integration:</span>
-                  <Badge variant="outline" className="capitalize">
-                    {form.integration_type.replace('_', ' ')}
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Fields:</span>
-                  <span className="font-medium">{form.fields.length} questions</span>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Lead Scoring:</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className={category.color}>
-                      {category.category}
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading forms...</p>
+        </div>
+      ) : forms.length === 0 ? (
+        <Card className="text-center py-12">
+          <CardContent>
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No forms yet</h3>
+            <p className="text-gray-600 mb-4">Create your first form to start capturing leads</p>
+            <Button onClick={createNewForm}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Your First Form
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {forms.map(form => {
+            return (
+              <Card key={form.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">{form.name}</CardTitle>
+                      {form.description && (
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{form.description}</p>
+                      )}
+                    </div>
+                    <Badge variant={form.status === 'active' ? "default" : form.status === 'draft' ? "secondary" : "outline"}>
+                      {form.status}
                     </Badge>
-                    <span className="text-xs text-gray-500">
-                      {category.probability}% conversion
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Fields:</span>
+                    <span className="font-medium">{form.fields_json.length} questions</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Submissions:</span>
+                    <span className="font-medium">{form.total_submissions}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Conversion:</span>
+                    <span className="font-medium">
+                      {form.conversion_rate ? `${form.conversion_rate.toFixed(1)}%` : 'N/A'}
                     </span>
                   </div>
-                </div>
 
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedForm(form)
-                      setPreviewMode(true)
-                    }}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    Preview
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedForm(form)
-                      setIsEditing(true)
-                    }}
-                  >
+                  <div className="flex flex-wrap gap-2 pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedForm(form)
+                        setIsEditing(true)
+                      }}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEmbedForm(form)
+                        setShowEmbedModal(true)
+                      }}
+                    >
+                      <Share2 className="h-4 w-4 mr-1" />
+                      Share
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        const duplicate = await duplicateForm(form.id)
+                        if (duplicate) {
+                          toast.success('Form duplicated!')
+                        }
+                      }}
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                      Clone
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={async () => {
+                        if (confirm(`Delete "${form.name}"?`)) {
+                          await deleteForm(form.id)
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Embed Modal */}
+      {embedForm && (
+        <EmbedCodeModal
+          form={embedForm}
+          open={showEmbedModal}
+          onClose={() => {
+            setShowEmbedModal(false)
+            setEmbedForm(null)
+          }}
+        />
+      )}
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
                   </Button>
