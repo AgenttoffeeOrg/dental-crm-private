@@ -434,10 +434,10 @@ export default function DashboardPage() {
             </WidgetErrorBoundary>
           </div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content Grid - IMPROVED SYMMETRY */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Recent Activity */}
-            <div className="lg:col-span-2">
+            <div>
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -521,53 +521,55 @@ export default function DashboardPage() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Quick Stats */}
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
-                    Quick Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {metricsLoading ? (
-                    <div className="space-y-4">
-                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Conversion Rate</span>
-                        <span className={`font-semibold ${metrics.conversionRate > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                          {metrics.conversionRate > 0 ? `${metrics.conversionRate}%` : 'N/A'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Avg. Deal Value</span>
-                        <span className={`font-semibold ${metrics.averageDealValue > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
-                          {metrics.averageDealValue > 0 ? formatCurrency(metrics.averageDealValue) : 'N/A'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Monthly Growth</span>
-                        <span className={`font-semibold ${
-                          metrics.monthlyGrowth > 0 ? 'text-green-600' : 
-                          metrics.monthlyGrowth < 0 ? 'text-red-600' : 
-                          'text-gray-400'
-                        }`}>
-                          {metrics.monthlyGrowth !== 0 
-                            ? `${metrics.monthlyGrowth > 0 ? '+' : ''}${metrics.monthlyGrowth}%` 
-                            : 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </div>
+          </div>
+
+          {/* Quick Insights - MOVED TO SYMMETRIC LAYOUT */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
+                  Quick Insights
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {metricsLoading ? (
+                  <div className="space-y-4">
+                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Conversion Rate</span>
+                      <span className={`font-semibold ${metrics.conversionRate > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                        {metrics.conversionRate > 0 ? `${metrics.conversionRate}%` : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Avg. Deal Value</span>
+                      <span className={`font-semibold ${metrics.averageDealValue > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+                        {metrics.averageDealValue > 0 ? formatCurrency(metrics.averageDealValue) : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Monthly Growth</span>
+                      <span className={`font-semibold ${
+                        metrics.monthlyGrowth > 0 ? 'text-green-600' : 
+                        metrics.monthlyGrowth < 0 ? 'text-red-600' : 
+                        'text-gray-400'
+                      }`}>
+                        {metrics.monthlyGrowth !== 0 
+                          ? `${metrics.monthlyGrowth > 0 ? '+' : ''}${metrics.monthlyGrowth}%` 
+                          : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
