@@ -173,6 +173,12 @@ export default function MarketingDashboard() {
             </div>
             <div className="flex items-center gap-3">
               <Button variant="outline" asChild>
+                <Link href="/settings/marketing">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Marketing Settings
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link href="/marketing/reports">
                   <BarChart3 className="h-4 w-4 mr-2" />
                   View Reports
