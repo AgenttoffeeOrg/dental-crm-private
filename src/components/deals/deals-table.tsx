@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/lib/auth'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -597,7 +597,7 @@ export function DealsTable() {
             <SelectContent>
               <SelectItem value="all">All Deals</SelectItem>
               <SelectItem value="fresh">Fresh (≤7d)</SelectItem>
-              <SelectItem value="stuck">Stuck (>14d)</SelectItem>
+              <SelectItem value="stuck">Stuck (&gt;14d)</SelectItem>
             </SelectContent>
           </Select>
 
@@ -608,9 +608,9 @@ export function DealsTable() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Values</SelectItem>
-              <SelectItem value="high">High (>£2k)</SelectItem>
+              <SelectItem value="high">High (&gt;£2k)</SelectItem>
               <SelectItem value="medium">Medium (£500-£2k)</SelectItem>
-              <SelectItem value="low">Low (<£500)</SelectItem>
+              <SelectItem value="low">Low (&lt;£500)</SelectItem>
             </SelectContent>
           </Select>
 

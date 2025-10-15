@@ -262,7 +262,18 @@ export function SavedViewsDropdown({
 
           {views.length === 0 && (
             <div className="px-2 py-6 text-center text-sm text-gray-500">
-              No saved views yet
+              <div className="space-y-2">
+                <p className="font-medium">No saved views yet</p>
+                <p className="text-xs text-gray-400">
+                  Create a view by applying filters and clicking "New"
+                </p>
+                <p className="text-xs text-yellow-600 mt-2">
+                  💡 Run migration first: <br />
+                  <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">
+                    60_deal_saved_views.sql
+                  </code>
+                </p>
+              </div>
             </div>
           )}
         </DropdownMenuContent>

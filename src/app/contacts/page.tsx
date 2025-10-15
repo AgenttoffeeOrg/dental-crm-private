@@ -1,7 +1,7 @@
 'use client'
 
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { ContactsList } from '@/components/contacts/contacts-list'
+import { ContactsListEnterprise as ContactsList } from '@/components/contacts/contacts-list-enterprise'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { PageHeader } from '@/components/ui/page-header'
 import { Users } from 'lucide-react'

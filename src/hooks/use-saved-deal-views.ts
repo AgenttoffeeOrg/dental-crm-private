@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase-client'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/lib/auth'
 import { toast } from 'sonner'
 
 export interface SavedDealView {
@@ -49,7 +49,23 @@ export function useSavedDealViews() {
         .order('is_favorite', { ascending: false })
         .order('name')
 
-      if (error) throw error
+      if (error) {
+        // If table doesn't exist, gracefully handle it
+        const errorCode = (error as any)?.code
+        const errorMessage = (error as any)?.message || ''
+        
+        if (errorCode === '42P01' || 
+            errorCode === 'PGRST116' || 
+            errorMessage.includes('does not exist') ||
+            errorMessage.includes('relation') ||
+            errorMessage.includes('not found')) {
+          console.warn('💡 Saved views feature: Run migration first (supabase/sql/60_deal_saved_views.sql)')
+          setViews([])
+          setLoading(false)
+          return
+        }
+        throw error
+      }
 
       setViews(data || [])
 
@@ -59,8 +75,22 @@ export function useSavedDealViews() {
         setCurrentView(defaultView)
       }
     } catch (error) {
-      console.error('Error loading saved views:', error)
-      toast.error('Failed to load saved views')
+      // Don't show error for missing table - it's expected before migration
+      const err = error as any
+      const errorCode = err?.code
+      const errorMessage = err?.message || ''
+      
+      if (errorCode === '42P01' || 
+          errorCode === 'PGRST116' || 
+          errorMessage.includes('does not exist') ||
+          errorMessage.includes('relation') ||
+          errorMessage.includes('not found')) {
+        console.warn('💡 Saved views feature: Run migration first (supabase/sql/60_deal_saved_views.sql)')
+        setViews([])
+      } else {
+        console.error('Error loading saved views:', error)
+        toast.error('Failed to load saved views')
+      }
     } finally {
       setLoading(false)
     }
