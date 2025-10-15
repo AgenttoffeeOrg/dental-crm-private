@@ -1113,7 +1113,7 @@ button[type="submit"]:hover {
               <div className="p-6 border rounded-lg bg-gray-50">
                 <h3 className="text-lg font-semibold mb-4">{selectedForm.name}</h3>
                 <div className="space-y-4">
-                  {selectedForm.fields.map(field => (
+                  {selectedForm.fields_json.map(field => (
                     <div key={field.id} className="space-y-1">
                       <Label>
                         {field.label}
