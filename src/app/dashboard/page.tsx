@@ -59,19 +59,37 @@ import { CreateContactSlideOver } from '@/components/contacts/create-contact-sli
 import { CreateTaskSlideOver } from '@/components/tasks/create-task-slide-over'
 import { CreateDealSlideOver } from '@/components/deals/create-deal-slide-over'
 
+// ENTERPRISE FEATURES
+import { TodaysPriorities } from '@/components/dashboard/todays-priorities'
+import { AIInsightsWidget } from '@/components/dashboard/ai-insights-widget'
+import { EnhancedKPICard } from '@/components/dashboard/enhanced-kpi-card'
+import { useDataFreshness } from '@/hooks/use-data-freshness'
+import { useDashboardRealtime } from '@/lib/realtime-service'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { KeyboardShortcutsModal } from '@/components/dashboard/keyboard-shortcuts-modal'
+import { ExportMenu, type ExportData } from '@/components/dashboard/export-menu'
+import { QuickFilters, type FilterType } from '@/components/dashboard/quick-filters'
+import { useRouter } from 'next/navigation'
+
 export default function DashboardPage() {
+  const router = useRouter()
   const { appUser, loading: authLoading } = useAuth()
   const [showSetupPanel, setShowSetupPanel] = useState(false)
   const [showCreateContact, setShowCreateContact] = useState(false)
   const [showCreateTask, setShowCreateTask] = useState(false)
   const [showCreateDeal, setShowCreateDeal] = useState(false)
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
+  const [filter, setFilter] = useState<FilterType>('all')
+  const [timePeriod, setTimePeriod] = useState('month')
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [stats, setStats] = useState({
     totalDeals: 0,
     totalRevenue: 0,
     totalContacts: 0,
     activeTasks: 0,
     dealsThisMonth: 0,
-    revenueThisMonth: 0
+    revenueThisMonth: 0,
+    revenueLastMonth: 0
   })
   const [upcomingTasks, setUpcomingTasks] = useState<any[]>([])
   const [recentDeals, setRecentDeals] = useState<any[]>([])
@@ -85,6 +103,30 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [chartsLoading, setChartsLoading] = useState(true)
   const [metricsLoading, setMetricsLoading] = useState(true)
+
+  // Data freshness tracking
+  const timeAgo = useDataFreshness(lastUpdated)
+
+  // Real-time updates
+  useDashboardRealtime(
+    appUser?.tenant_id,
+    () => {
+      console.log('[Dashboard] Real-time update received, refreshing data')
+      loadDashboardData()
+    },
+    true
+  )
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onCreateContact: () => setShowCreateContact(true),
+    onCreateDeal: () => setShowCreateDeal(true),
+    onCreateTask: () => setShowCreateTask(true),
+    onRefresh: () => loadDashboardData(),
+    onShowHelp: () => setShowShortcutsHelp(true),
+    onNavigate: (path) => router.push(path),
+    enabled: true
+  })
 
   useEffect(() => {
     if (appUser?.tenant_id) {
@@ -153,9 +195,18 @@ export default function DashboardPage() {
       thisMonth.setDate(1)
       thisMonth.setHours(0, 0, 0, 0)
 
+      const lastMonth = new Date(thisMonth)
+      lastMonth.setMonth(lastMonth.getMonth() - 1)
+
       const dealsThisMonth = deals.filter(d => new Date(d.created_at) >= thisMonth)
+      const dealsLastMonth = deals.filter(d => {
+        const date = new Date(d.created_at)
+        return date >= lastMonth && date < thisMonth
+      })
+
       const totalRevenue = deals.reduce((sum, d) => sum + (d.value_estimate_cents || 0), 0)
       const revenueThisMonth = dealsThisMonth.reduce((sum, d) => sum + (d.value_estimate_cents || 0), 0)
+      const revenueLastMonth = dealsLastMonth.reduce((sum, d) => sum + (d.value_estimate_cents || 0), 0)
 
       setStats({
         totalDeals: deals.length,
@@ -163,7 +214,8 @@ export default function DashboardPage() {
         totalContacts: contactsRes.count || 0,
         activeTasks: tasksRes.count || 0,
         dealsThisMonth: dealsThisMonth.length,
-        revenueThisMonth
+        revenueThisMonth,
+        revenueLastMonth
       })
 
       // Use already fetched data (no additional queries needed)
@@ -174,6 +226,9 @@ export default function DashboardPage() {
       loadChartData()
       // Load real metrics asynchronously (non-blocking)
       loadMetrics()
+      
+      // Update last refreshed timestamp
+      setLastUpdated(new Date())
 
     } catch (error) {
       console.error('Error loading dashboard data:', error)
@@ -219,25 +274,55 @@ export default function DashboardPage() {
 
       <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-indigo-50/30">
         <div className="p-4 sm:p-6 lg:p-8 max-w-[1800px] mx-auto animate-in fade-in slide-in-from-bottom duration-500">
-          {/* Welcome Header */}
+          {/* Welcome Header - ENHANCED */}
           <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Welcome back, {appUser?.full_name}! 👋
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-1">Here's what's happening with your practice today</p>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  Welcome back, {appUser?.full_name}! 👋
+                </h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">
+                  Here's your practice overview • {lastUpdated && `Updated ${timeAgo}`}
+                </p>
+              </div>
+              
+              {/* NEW: Export & Controls */}
+              <div className="flex items-center gap-2">
+                <ExportMenu
+                  data={{
+                    stats: {
+                      ...stats,
+                      conversionRate: metrics.conversionRate,
+                      monthlyGrowth: metrics.monthlyGrowth
+                    },
+                    revenueData: revenueData,
+                    dealsByStage: dealsByStage,
+                    priorities: [],
+                    metadata: {
+                      generatedAt: new Date(),
+                      generatedBy: appUser?.full_name || 'User',
+                      period: timePeriod
+                    }
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowShortcutsHelp(true)}
+                  title="Keyboard shortcuts"
+                >
+                  ?
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* Quick Actions */}
           <div className="mb-6 sm:mb-8">
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <Button 
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setShowCreateContact(true)
-                }}
+                onClick={() => setShowCreateContact(true)}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 flex-1 sm:flex-none"
-                type="button"
               >
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">New Contact</span>
@@ -245,111 +330,107 @@ export default function DashboardPage() {
               </Button>
               
               <Button 
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setShowCreateDeal(true)
-                }}
+                onClick={() => setShowCreateDeal(true)}
                 variant="outline" 
                 className="flex-1 sm:flex-none"
-                type="button"
               >
                 <Target className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">New Deal</span>
               </Button>
               
               <Button 
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setShowCreateTask(true)
-                }}
+                onClick={() => setShowCreateTask(true)}
                 variant="outline"
                 className="flex-1 sm:flex-none"
-                type="button"
               >
                 <CheckCircle className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Create Task</span>
               </Button>
-              
-              <Link href="/marketing/campaigns/create">
-                <Button variant="outline">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Start Campaign
-                </Button>
-              </Link>
             </div>
           </div>
 
-          {/* KPI Cards - Enhanced with Clickable Links */}
+          {/* TODAY'S PRIORITIES - NEW! */}
+          <WidgetErrorBoundary widgetName="Today's Priorities">
+            <div className="mb-6">
+              <TodaysPriorities 
+                tenantId={appUser?.tenant_id || ''} 
+                onRefresh={loadDashboardData}
+              />
+            </div>
+          </WidgetErrorBoundary>
+
+          {/* ENHANCED KPI CARDS - NEW! */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Link href="/pipeline">
-              <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 border-l-green-500 hover:border-l-green-600 group">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
-                  <DollarSign className="h-5 w-5 text-green-600 group-hover:scale-110 transition-transform" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-700">{formatCurrency(stats.totalRevenue)}</div>
-                  <p className="text-sm text-gray-600 mt-1 flex items-center">
-                    <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
-                    {formatCurrency(stats.revenueThisMonth)} this month
-                  </p>
-                  <p className="text-xs text-green-600 mt-2 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Click to view pipeline →</p>
-                </CardContent>
-              </Card>
-            </Link>
+            <EnhancedKPICard
+              title="Total Revenue"
+              value={formatCurrency(stats.totalRevenue)}
+              icon={<DollarSign className="h-5 w-5" />}
+              trend={{
+                value: stats.revenueLastMonth > 0 
+                  ? ((stats.revenueThisMonth - stats.revenueLastMonth) / stats.revenueLastMonth) * 100 
+                  : 0,
+                period: 'vs. last month'
+              }}
+              subtitle={`${formatCurrency(stats.revenueThisMonth)} this month`}
+              href="/pipeline"
+              color="green"
+              onRefresh={loadDashboardData}
+              lastUpdated={timeAgo}
+              tooltip="Total revenue from all deals in your pipeline"
+            />
 
-            <Link href="/pipeline">
-              <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 border-l-blue-500 hover:border-l-blue-600 group">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total Deals</CardTitle>
-                  <Target className="h-5 w-5 text-blue-600 group-hover:scale-110 transition-transform" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-blue-700">{stats.totalDeals}</div>
-                  <p className="text-sm text-gray-600 mt-1 flex items-center">
-                    <TrendingUp className="h-3 w-3 mr-1 text-blue-600" />
-                    +{stats.dealsThisMonth} this month
-                  </p>
-                  <p className="text-xs text-blue-600 mt-2 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Click to manage deals →</p>
-                </CardContent>
-              </Card>
-            </Link>
+            <EnhancedKPICard
+              title="Total Deals"
+              value={stats.totalDeals}
+              icon={<Target className="h-5 w-5" />}
+              subtitle="In pipeline"
+              href="/pipeline"
+              color="blue"
+              onRefresh={loadDashboardData}
+              lastUpdated={timeAgo}
+              tooltip="All deals across all pipeline stages"
+            />
 
-            <Link href="/contacts">
-              <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 border-l-purple-500 hover:border-l-purple-600 group">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total Contacts</CardTitle>
-                  <Users className="h-5 w-5 text-purple-600 group-hover:scale-110 transition-transform" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-purple-700">{stats.totalContacts}</div>
-                  <p className="text-sm text-gray-600 mt-1">Active patients & leads</p>
-                  <p className="text-xs text-purple-600 mt-2 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Click to view contacts →</p>
-                </CardContent>
-              </Card>
-            </Link>
+            <EnhancedKPICard
+              title="Total Contacts"
+              value={stats.totalContacts}
+              icon={<Users className="h-5 w-5" />}
+              subtitle="Patients & leads"
+              href="/contacts"
+              color="purple"
+              onRefresh={loadDashboardData}
+              lastUpdated={timeAgo}
+              tooltip="All contacts including active patients and leads"
+            />
 
-            <Link href="/tasks">
-              <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 border-l-orange-500 hover:border-l-orange-600 group">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Active Tasks</CardTitle>
-                  <CheckCircle className="h-5 w-5 text-orange-600 group-hover:scale-110 transition-transform" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-orange-700">{stats.activeTasks}</div>
-                  <p className="text-sm text-gray-600 mt-1">Need attention</p>
-                  <p className="text-xs text-orange-600 mt-2 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Click to manage tasks →</p>
-                </CardContent>
-              </Card>
-            </Link>
+            <EnhancedKPICard
+              title="Active Tasks"
+              value={stats.activeTasks}
+              icon={<CheckCircle className="h-5 w-5" />}
+              subtitle="Need attention"
+              href="/tasks"
+              color="orange"
+              onRefresh={loadDashboardData}
+              lastUpdated={timeAgo}
+              tooltip="Tasks that haven't been completed yet"
+            />
           </div>
+
+          {/* AI INSIGHTS - NEW! */}
+          <WidgetErrorBoundary widgetName="AI Insights">
+            <div className="mb-6">
+              <AIInsightsWidget tenantId={appUser?.tenant_id || ''} />
+            </div>
+          </WidgetErrorBoundary>
 
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <RevenueChart data={revenueData} />
-            <DealsFunnelChart data={dealsByStage} />
+            <WidgetErrorBoundary widgetName="Revenue Chart">
+              <RevenueChart data={revenueData} />
+            </WidgetErrorBoundary>
+            <WidgetErrorBoundary widgetName="Deals Funnel">
+              <DealsFunnelChart data={dealsByStage} />
+            </WidgetErrorBoundary>
           </div>
 
           {/* Main Content Grid */}
@@ -516,6 +597,13 @@ export default function DashboardPage() {
           loadDashboardData()
         }}
       />
+
+      {/* Keyboard Shortcuts Help Modal - NEW! */}
+      <KeyboardShortcutsModal
+        open={showShortcutsHelp}
+        onClose={() => setShowShortcutsHelp(false)}
+      />
     </DashboardLayout>
   )
+}
 }
