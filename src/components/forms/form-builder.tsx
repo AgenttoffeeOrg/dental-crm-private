@@ -1028,76 +1028,57 @@ button[type="submit"]:hover {
                 </div>
               </div>
 
-              {/* Scoring Configuration */}
+              {/* Form Settings */}
               <div className="space-y-4">
-                <Label className="text-base font-semibold">Lead Scoring Thresholds</Label>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="hot_threshold">Hot Lead (Red)</Label>
-                    <Input
-                      id="hot_threshold"
-                      type="number"
-                      value={selectedForm.scoring_config.hot_threshold}
-                      onChange={(e) => setSelectedForm({
-                        ...selectedForm,
-                        scoring_config: {
-                          ...selectedForm.scoring_config,
-                          hot_threshold: parseInt(e.target.value)
-                        }
-                      })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="warm_threshold">Warm Lead (Yellow)</Label>
-                    <Input
-                      id="warm_threshold"
-                      type="number"
-                      value={selectedForm.scoring_config.warm_threshold}
-                      onChange={(e) => setSelectedForm({
-                        ...selectedForm,
-                        scoring_config: {
-                          ...selectedForm.scoring_config,
-                          warm_threshold: parseInt(e.target.value)
-                        }
-                      })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Cold Lead (Blue)</Label>
-                    <Input value="< Warm threshold" disabled />
-                  </div>
-                </div>
-              </div>
-
-              {/* Auto Actions */}
-              <div className="space-y-4">
-                <Label className="text-base font-semibold">Automatic Actions</Label>
+                <Label className="text-base font-semibold">Form Behavior</Label>
                 <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="button_text">Submit Button Text</Label>
+                    <Input
+                      id="button_text"
+                      value={selectedForm.button_text || 'Submit'}
+                      onChange={(e) => setSelectedForm({
+                        ...selectedForm,
+                        button_text: e.target.value
+                      })}
+                      placeholder="Submit"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="success_message">Success Message</Label>
+                    <Textarea
+                      id="success_message"
+                      value={selectedForm.success_message || ''}
+                      onChange={(e) => setSelectedForm({
+                        ...selectedForm,
+                        success_message: e.target.value
+                      })}
+                      placeholder="Thank you! We'll be in touch soon."
+                      rows={3}
+                    />
+                  </div>
+                  
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="create_contact">Automatically create contact</Label>
+                    <Label htmlFor="enable_recaptcha">Enable reCAPTCHA Protection</Label>
                     <Switch
-                      id="create_contact"
-                      checked={selectedForm.auto_actions.create_contact}
+                      id="enable_recaptcha"
+                      checked={selectedForm.enable_recaptcha}
                       onCheckedChange={(checked) => setSelectedForm({
                         ...selectedForm,
-                        auto_actions: {
-                          ...selectedForm.auto_actions,
-                          create_contact: checked
-                        }
+                        enable_recaptcha: checked
                       })}
                     />
                   </div>
+                  
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="create_deal">Automatically create deal in pipeline</Label>
+                    <Label htmlFor="is_published">Publish Form</Label>
                     <Switch
-                      id="create_deal"
-                      checked={selectedForm.auto_actions.create_deal}
+                      id="is_published"
+                      checked={selectedForm.is_published}
                       onCheckedChange={(checked) => setSelectedForm({
                         ...selectedForm,
-                        auto_actions: {
-                          ...selectedForm.auto_actions,
-                          create_deal: checked
-                        }
+                        is_published: checked
                       })}
                     />
                   </div>
