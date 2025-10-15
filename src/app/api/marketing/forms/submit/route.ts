@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { processFormSubmission, type FormSubmission, type DealCreationRules } from '@/lib/marketing/form-processor';
 import { withMarketingCheck } from '@/lib/marketing/api-middleware';
+import { checkRateLimit, getTimeUntilReset } from '@/lib/rate-limiter';
 
 export async function POST(req: NextRequest) {
   // Check Marketing enabled
@@ -16,6 +17,36 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { formId, formName, payload, sourceUrl, dealRules, honeypot, formLoadTime, utmParams } = body;
+
+    // Get IP address for rate limiting
+    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    
+    // Rate limiting: max 10 form submissions per hour per IP
+    const rateLimit = checkRateLimit({
+      identifier: `form-submit:${ipAddress}`,
+      maxRequests: 10,
+      windowMs: 60 * 60 * 1000, // 1 hour
+    });
+
+    if (!rateLimit.allowed) {
+      const retryAfter = getTimeUntilReset(rateLimit.resetTime);
+      return NextResponse.json(
+        { 
+          error: 'Too many requests',
+          message: `Rate limit exceeded. Please try again in ${retryAfter} seconds.`,
+          retryAfter,
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': retryAfter.toString(),
+            'X-RateLimit-Limit': rateLimit.limit.toString(),
+            'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+            'X-RateLimit-Reset': new Date(rateLimit.resetTime).toISOString(),
+          },
+        }
+      );
+    }
 
     // Get tenant ID from session
     const supabase = createServiceClient();
