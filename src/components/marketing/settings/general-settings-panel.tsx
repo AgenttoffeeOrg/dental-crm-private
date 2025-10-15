@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { Rocket, TrendingUp, Users, Mail, CheckCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { cn } from '@/lib/utils'
 
 export function GeneralSettingsPanel() {
   const { appUser } = useAuth()
