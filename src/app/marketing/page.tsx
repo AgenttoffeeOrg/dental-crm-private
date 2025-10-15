@@ -30,7 +30,8 @@ import {
   AlertCircle,
   Zap,
   Rocket,
-  Share2
+  Share2,
+  Settings
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/lib/auth'
