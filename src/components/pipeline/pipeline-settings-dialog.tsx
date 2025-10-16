@@ -29,22 +29,22 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Pipeline, PipelineStage } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface PipelineSettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSettingsUpdated: () => void
   pipelineId?: string
-  tenantId?: string
 }
 
 export function PipelineSettingsDialog({ 
   open, 
   onOpenChange, 
   onSettingsUpdated,
-  pipelineId,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  pipelineId
 }: PipelineSettingsDialogProps) {
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [pipeline, setPipeline] = useState<Pipeline | null>(null)
   const [stages, setStages] = useState<PipelineStage[]>([])
   const [loading, setLoading] = useState(false)
@@ -58,20 +58,21 @@ export function PipelineSettingsDialog({
   const supabase = createClient()
 
   useEffect(() => {
-    if (open && pipelineId) {
+    if (open && pipelineId && orgId && !tenantLoading) {
       loadPipelineAndStages()
     }
-  }, [open, pipelineId])
+  }, [open, pipelineId, orgId, tenantLoading])
 
   const loadPipelineAndStages = async () => {
-    if (!pipelineId) return
+    if (!pipelineId || !orgId) return
 
     try {
-      // Load pipeline details
+      // Load pipeline details - WITH TENANT FILTER! 🔒
       const { data: pipelineData, error: pipelineError } = await supabase
         .from('pipelines')
         .select('*')
         .eq('id', pipelineId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .single()
 
       if (pipelineError) throw pipelineError
