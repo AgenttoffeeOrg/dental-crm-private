@@ -276,7 +276,7 @@ function DealListRow({
 
         {/* Value */}
         <div className="col-span-1 font-semibold text-green-700 text-sm">
-          {formatCurrency(deal.value_estimate_cents)}
+          {formatCurrencyValue(deal.value_estimate_cents)}
         </div>
 
         {/* Last Activity */}
@@ -895,10 +895,10 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
               {/* Stats */}
               <div className="flex gap-2">
                 <Badge variant="outline" className="font-semibold px-3 py-1.5 bg-blue-50 text-blue-700 border-blue-200">
-                  {filteredDeals.length} {filteredDeals.length === 1 ? 'Deal' : 'Deals'}
+                  {format.pluralize(filteredDeals.length, 'Deal')}
                 </Badge>
                 <Badge variant="outline" className="font-semibold px-3 py-1.5 bg-green-50 text-green-700 border-green-200">
-                  {formatCurrency(filteredDeals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))}
+                  {formatCurrencyValue(filteredDeals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))}
                 </Badge>
               </div>
             </div>
