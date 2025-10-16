@@ -28,6 +28,9 @@ import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { formatDistanceToNow, isToday, isTomorrow, isPast, isThisWeek, addDays } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { format } from '@/lib/formatting'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type FilterTab = 'all' | 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'no_due_date'
 
@@ -199,7 +202,7 @@ export default function TasksPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
-            <p className="text-gray-500 mt-1">{tasks.length} open tasks</p>
+            <p className="text-gray-500 mt-1">{format.pluralize(tasks.length, 'open task')}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setQueueOpen(true)} disabled={filteredTasks.length === 0}>
@@ -226,7 +229,7 @@ export default function TasksPage() {
           >
             All Tasks
             <Badge variant="secondary" className="ml-2 bg-white/20 text-white border-0">
-              {counts.all}
+              {format.number(counts.all)}
             </Badge>
           </button>
 
@@ -242,7 +245,7 @@ export default function TasksPage() {
             Overdue
             {counts.overdue > 0 && (
               <Badge variant="secondary" className="ml-2 bg-white/20 text-white border-0">
-                {counts.overdue}
+                {format.number(counts.overdue)}
               </Badge>
             )}
           </button>
@@ -344,7 +347,7 @@ export default function TasksPage() {
           </div>
           {selectedTasks.length > 0 && (
             <>
-              <Badge>{selectedTasks.length} selected</Badge>
+              <Badge>{format.pluralize(selectedTasks.length, 'task')} selected</Badge>
               <BulkActionsMenu
                 selectedTaskIds={selectedTasks}
                 onClearSelection={() => setSelectedTasks([])}
@@ -369,18 +372,17 @@ export default function TasksPage() {
         ) : viewMode === 'analytics' ? (
           <TaskAnalyticsDashboard />
         ) : loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-          </div>
+          <LoadingState message="Loading your tasks..." size="md" />
         ) : filteredTasks.length === 0 ? (
-          <div className="text-center py-12">
-            <CheckSquare className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-            <p className="text-gray-500 mb-4">No tasks in this view</p>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Task
-            </Button>
-          </div>
+          <EmptyState
+            icon={CheckSquare}
+            title="No tasks in this view"
+            description="Get started by creating a new task or adjust your filters."
+            action={{
+              label: "Create Task",
+              onClick: () => setCreateDialogOpen(true)
+            }}
+          />
         ) : (
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {/* Table Header */}
