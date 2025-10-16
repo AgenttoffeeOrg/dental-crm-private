@@ -31,13 +31,15 @@ CREATE INDEX idx_task_escalation_priority ON task_escalation_rules(priority);
 CREATE INDEX idx_task_escalation_active ON task_escalation_rules(is_active) WHERE is_active = true;
 
 -- Task Dependencies (Sequential task chains)
-CREATE TABLE IF NOT EXISTS task_dependencies (
+-- Drop and recreate to ensure clean state
+DROP TABLE IF EXISTS task_dependencies CASCADE;
+
+CREATE TABLE task_dependencies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     
     -- Parent-child relationship
-    -- Note: parent_task_id references tasks.id, but tasks table might not exist yet
-    -- Using UUID without foreign key constraint for now
+    -- Note: Using plain UUID without foreign key constraint
     parent_task_id UUID NOT NULL,
     child_task_template JSONB NOT NULL, -- Template for child task
     
