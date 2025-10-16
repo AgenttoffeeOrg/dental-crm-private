@@ -34,6 +34,7 @@ import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
+import { CreateAutomationSlideOver } from '@/components/automations/create-automation-slide-over'
 
 interface Automation {
   id: string
@@ -60,6 +61,7 @@ export default function AutomationsPage() {
   const [automations, setAutomations] = useState<Automation[]>([])
   const [stats, setStats] = useState<CategoryStats[]>([])
   const [loading, setLoading] = useState(true)
+  const [createSlideOverOpen, setCreateSlideOverOpen] = useState(false)
   const supabase = createClient()
   const { featureFlags } = useFeatureFlags()
 
@@ -140,12 +142,13 @@ export default function AutomationsPage() {
               <h1 className="text-3xl font-bold text-gray-900">
                 🤖 Automations
               </h1>
-              <Link href={`/automations/create?category=${activeTab}`}>
-                <Button className="bg-purple-600 hover:bg-purple-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Automation
-                </Button>
-              </Link>
+              <Button 
+                className="bg-purple-600 hover:bg-purple-700"
+                onClick={() => setCreateSlideOverOpen(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Automation
+              </Button>
             </div>
             <p className="text-gray-600">
               Build intelligent workflows across your entire CRM
@@ -240,6 +243,18 @@ export default function AutomationsPage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Create Automation Slide-Over */}
+      <CreateAutomationSlideOver
+        open={createSlideOverOpen}
+        onClose={() => setCreateSlideOverOpen(false)}
+        onAutomationCreated={() => {
+          fetchAutomations()
+          fetchStats()
+        }}
+        initialCategory={activeTab}
+        tenantId="550e8400-e29b-41d4-a716-446655440000"
+      />
     </DashboardLayout>
   )
 }
@@ -258,12 +273,13 @@ function DealAutomationsTab({ automations, onRefresh }: { automations: Automatio
           <p className="text-gray-600 mb-6">
             Automate deal workflows: auto-assign, stage transitions, win/loss follow-ups, SLA alerts
           </p>
-          <Link href="/automations/create?category=deal">
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Deal Automation
-            </Button>
-          </Link>
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => setCreateSlideOverOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create First Deal Automation
+          </Button>
         </div>
       </Card>
     )
@@ -282,12 +298,13 @@ function PipelineAutomationsTab({ automations, onRefresh }: { automations: Autom
           <p className="text-gray-600 mb-6">
             Automate pipeline management: capacity alerts, bottleneck detection, velocity tracking
           </p>
-          <Link href="/automations/create?category=pipeline">
-            <Button className="bg-green-600 hover:bg-green-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Pipeline Automation
-            </Button>
-          </Link>
+          <Button 
+            className="bg-green-600 hover:bg-green-700"
+            onClick={() => setCreateSlideOverOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create First Pipeline Automation
+          </Button>
         </div>
       </Card>
     )
@@ -306,12 +323,13 @@ function TaskAutomationsTab({ automations, onRefresh }: { automations: Automatio
           <p className="text-gray-600 mb-6">
             Automate task workflows: escalation chains, reminders, dependency sequences, auto-completion
           </p>
-          <Link href="/automations/create?category=task">
-            <Button className="bg-orange-600 hover:bg-orange-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Task Automation
-            </Button>
-          </Link>
+          <Button 
+            className="bg-orange-600 hover:bg-orange-700"
+            onClick={() => setCreateSlideOverOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create First Task Automation
+          </Button>
         </div>
       </Card>
     )
@@ -330,12 +348,13 @@ function MarketingAutomationsTab({ automations, onRefresh }: { automations: Auto
           <p className="text-gray-600 mb-6">
             Automate marketing workflows: nurture sequences, form responses, campaign follow-ups
           </p>
-          <Link href="/automations/create?category=marketing">
-            <Button className="bg-purple-600 hover:bg-purple-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Marketing Automation
-            </Button>
-          </Link>
+          <Button 
+            className="bg-purple-600 hover:bg-purple-700"
+            onClick={() => setCreateSlideOverOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create First Marketing Automation
+          </Button>
         </div>
       </Card>
     )
