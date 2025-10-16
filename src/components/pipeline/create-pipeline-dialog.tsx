@@ -46,16 +46,15 @@ interface CreatePipelineDialogProps {
   onOpenChange: (open: boolean) => void
   onPipelineCreated: () => void
   template?: PipelineTemplate | null
-  tenantId?: string
 }
 
 export function CreatePipelineDialog({ 
   open, 
   onOpenChange, 
   onPipelineCreated,
-  template,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  template
 }: CreatePipelineDialogProps) {
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [loading, setLoading] = useState(false)
   const [stages, setStages] = useState<string[]>([])
   const [newStage, setNewStage] = useState('')
@@ -122,7 +121,7 @@ export function CreatePipelineDialog({
     const stagesData = stages.map((stageName, index) => ({
       name: stageName,
       pipeline_id: pipelineId,
-      tenant_id: tenantId,
+      tenant_id: orgId, // ✅ SECURITY: Use authenticated user's org
       position: index,
     }))
 
@@ -154,7 +153,7 @@ export function CreatePipelineDialog({
         const { error: updateError } = await supabase
           .from('pipelines')
           .update({ is_default: false })
-          .eq('tenant_id', tenantId)
+          .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         
         if (updateError) {
           console.warn('Could not unset other defaults (is_default column may not exist yet):', updateError)
@@ -169,7 +168,7 @@ export function CreatePipelineDialog({
           name: data.name,
           description: data.description || null,
           is_default: data.is_default,
-          tenant_id: tenantId,
+          tenant_id: orgId, // ✅ SECURITY: Use authenticated user's org
         })
         .select()
         .single()
@@ -193,7 +192,7 @@ export function CreatePipelineDialog({
           .from('pipelines')
           .insert({
             name: data.name,
-            tenant_id: tenantId,
+            tenant_id: orgId, // ✅ SECURITY: Use authenticated user's org
           })
           .select()
           .single()
