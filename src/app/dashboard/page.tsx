@@ -24,6 +24,9 @@ import { useAuth } from '@/lib/auth'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { createClient } from '@/lib/supabase-client'
 import { getDashboardMetrics } from '@/lib/dashboard-analytics'
+import { format } from '@/lib/formatting'
+import { MetricCard } from '@/components/ui/metric-card'
+import { LoadingState } from '@/components/ui/loading-state'
 
 // Components
 import { SetupBanner } from '@/components/onboarding/setup-banner'
@@ -140,9 +143,7 @@ export default function DashboardRedesigned() {
   if (authLoading || loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
+        <LoadingState message="Loading your dashboard..." size="lg" />
       </DashboardLayout>
     )
   }
@@ -238,67 +239,48 @@ export default function DashboardRedesigned() {
             </Button>
           </div>
 
-          {/* KPI CARDS - Clean, Minimal */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* KPI CARDS - Refined with MetricCard */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* Revenue */}
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <DollarSign className="h-5 w-5 text-gray-400" />
-                  {revenueTrend.change !== 0 && (
-                    <div className={`flex items-center gap-1 ${revenueTrend.color}`}>
-                      <revenueTrend.icon className="h-4 w-4" />
-                      <span className="text-xs font-semibold">
-                        {revenueTrend.change > 0 ? '+' : ''}{revenueTrend.change.toFixed(1)}%
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {formatCurrency(stats.totalRevenue)}
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Total Revenue</p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              title="Total Revenue"
+              value={format.currency(stats.totalRevenue / 100)}
+              icon={DollarSign}
+              trend={revenueTrend.change > 0 ? 'up' : revenueTrend.change < 0 ? 'down' : 'neutral'}
+              change={revenueTrend.change !== 0 ? {
+                value: `${revenueTrend.change > 0 ? '+' : ''}${revenueTrend.change.toFixed(1)}%`,
+                color: revenueTrend.color,
+                icon: revenueTrend.change > 0 ? '↗' : '↘'
+              } : undefined}
+            />
 
             {/* Contacts */}
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <Users className="h-5 w-5 text-gray-400" />
-                </div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {stats.totalContacts}
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Contacts</p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              title="Total Contacts"
+              value={format.number(stats.totalContacts)}
+              icon={Users}
+              onClick={() => router.push('/contacts')}
+            />
 
             {/* Deals */}
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <Target className="h-5 w-5 text-gray-400" />
-                </div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {stats.totalDeals}
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Active Deals</p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              title="Active Deals"
+              value={format.number(stats.totalDeals)}
+              icon={Target}
+              onClick={() => router.push('/deals')}
+            />
 
             {/* Tasks */}
-            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <CheckCircle className="h-5 w-5 text-gray-400" />
-                </div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {stats.activeTasks}
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Tasks</p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              title="Pending Tasks"
+              value={format.number(stats.activeTasks)}
+              icon={CheckCircle}
+              badge={stats.activeTasks > 10 ? {
+                label: 'High',
+                variant: 'warning'
+              } : undefined}
+              onClick={() => router.push('/tasks')}
+            />
           </div>
 
           {/* PRIORITIES - Clean & Focused */}
