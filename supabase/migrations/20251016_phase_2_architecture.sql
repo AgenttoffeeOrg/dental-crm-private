@@ -139,11 +139,11 @@ CREATE INDEX IF NOT EXISTS idx_invitations_token ON user_invitations(invitation_
 CREATE INDEX IF NOT EXISTS idx_invitations_status ON user_invitations(status) WHERE status = 'pending';
 
 -- =====================================================
--- 7. HELPER FUNCTIONS (Enhanced)
+-- 7. HELPER FUNCTIONS (In public schema)
 -- =====================================================
 
 -- Get user's current org_id (from memberships, with fallback)
-CREATE OR REPLACE FUNCTION auth.get_user_org_id()
+CREATE OR REPLACE FUNCTION public.get_user_org_id()
 RETURNS UUID
 LANGUAGE SQL
 SECURITY DEFINER
@@ -160,7 +160,7 @@ AS $$
 $$;
 
 -- Check if user has access to specific org
-CREATE OR REPLACE FUNCTION auth.user_has_org_access(target_org_id UUID)
+CREATE OR REPLACE FUNCTION public.user_has_org_access(target_org_id UUID)
 RETURNS BOOLEAN
 LANGUAGE SQL
 SECURITY DEFINER
@@ -179,7 +179,7 @@ AS $$
 $$;
 
 -- Get user's role in specific org
-CREATE OR REPLACE FUNCTION auth.get_user_role_in_org(target_org_id UUID)
+CREATE OR REPLACE FUNCTION public.get_user_role_in_org(target_org_id UUID)
 RETURNS TEXT
 LANGUAGE SQL
 SECURITY DEFINER
@@ -195,7 +195,7 @@ AS $$
 $$;
 
 -- Get user's location access in org
-CREATE OR REPLACE FUNCTION auth.get_user_locations_in_org(target_org_id UUID)
+CREATE OR REPLACE FUNCTION public.get_user_locations_in_org(target_org_id UUID)
 RETURNS UUID[]
 LANGUAGE SQL
 SECURITY DEFINER
@@ -219,14 +219,14 @@ ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view org locations" ON locations;
 CREATE POLICY "Users can view org locations"
   ON locations FOR SELECT
-  USING (tenant_id = auth.get_user_org_id());
+  USING (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Admins can manage org locations" ON locations;
 CREATE POLICY "Admins can manage org locations"
   ON locations FOR ALL
   USING (
-    tenant_id = auth.get_user_org_id() 
-    AND auth.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
+    tenant_id = public.get_user_org_id() 
+    AND public.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
   );
 
 -- Org Memberships
@@ -235,14 +235,14 @@ ALTER TABLE org_memberships ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view org memberships" ON org_memberships;
 CREATE POLICY "Users can view org memberships"
   ON org_memberships FOR SELECT
-  USING (tenant_id = auth.get_user_org_id());
+  USING (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Admins can manage org memberships" ON org_memberships;
 CREATE POLICY "Admins can manage org memberships"
   ON org_memberships FOR ALL
   USING (
-    tenant_id = auth.get_user_org_id() 
-    AND auth.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
+    tenant_id = public.get_user_org_id() 
+    AND public.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
   );
 
 -- User Invitations
@@ -251,14 +251,14 @@ ALTER TABLE user_invitations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view org invitations" ON user_invitations;
 CREATE POLICY "Users can view org invitations"
   ON user_invitations FOR SELECT
-  USING (tenant_id = auth.get_user_org_id());
+  USING (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Admins can manage org invitations" ON user_invitations;
 CREATE POLICY "Admins can manage org invitations"
   ON user_invitations FOR ALL
   USING (
-    tenant_id = auth.get_user_org_id() 
-    AND auth.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
+    tenant_id = public.get_user_org_id() 
+    AND public.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
   );
 
 -- Service role bypass for all
