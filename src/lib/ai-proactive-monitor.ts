@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase-server'
 import OpenAI from 'openai'
+import { events } from '@/lib/events-unified'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -8,6 +9,7 @@ const openai = new OpenAI({
 /**
  * Proactive AI Monitor
  * Runs in background to detect patterns and generate suggestions
+ * NOW WIRED TO AUTOMATION SYSTEM - Emits events that trigger automations
  */
 
 export async function monitorDealsForSuggestions(tenantId: string) {
@@ -29,6 +31,7 @@ export async function monitorDealsForSuggestions(tenantId: string) {
     if (!deals) return
 
     const suggestions = []
+    const eventsEmitted = []
 
     for (const deal of deals) {
       // Calculate days since last activity
@@ -37,7 +40,7 @@ export async function monitorDealsForSuggestions(tenantId: string) {
         : new Date(deal.created_at)
       const daysSince = Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24))
 
-      // Cold Lead Detection
+      // Cold Lead Detection → Emit DEAL.AGING event
       if (daysSince > 7) {
         suggestions.push({
           tenant_id: tenantId,
@@ -48,9 +51,19 @@ export async function monitorDealsForSuggestions(tenantId: string) {
           priority: daysSince > 14 ? 'urgent' : 'high',
           status: 'pending'
         })
+
+        // 🔥 EMIT EVENT - This triggers automations!
+        await events.dealAging({
+          dealId: deal.id,
+          contactId: deal.contact_id,
+          tenantId,
+          daysSinceLastActivity: daysSince,
+          lastActivityAt: lastActivity.toISOString(),
+        })
+        eventsEmitted.push({ type: 'DEAL.AGING', dealId: deal.id, days: daysSince })
       }
 
-      // High-Value Opportunity Detection
+      // High-Value Opportunity Detection → Emit AI.SUGGESTION_GENERATED
       if (deal.value_estimate_cents > 1000000 && daysSince < 3) {
         suggestions.push({
           tenant_id: tenantId,
@@ -61,9 +74,21 @@ export async function monitorDealsForSuggestions(tenantId: string) {
           priority: 'high',
           status: 'pending'
         })
+
+        // 🔥 EMIT EVENT - Triggers high-value automations!
+        const suggestionId = crypto.randomUUID()
+        await events.aiSuggestionGenerated({
+          suggestionId,
+          suggestionType: 'high_value',
+          tenantId,
+          dealId: deal.id,
+          contactId: deal.contact_id,
+          priority: 'high',
+        })
+        eventsEmitted.push({ type: 'AI.SUGGESTION_GENERATED', dealId: deal.id, suggestionType: 'high_value' })
       }
 
-      // Stuck in Stage Detection
+      // Stuck in Stage Detection → Emit PIPELINE.STAGE_SLA_BREACHED
       const stageAge = deal.pipeline_stage_updated_at
         ? Math.floor((Date.now() - new Date(deal.pipeline_stage_updated_at).getTime()) / (1000 * 60 * 60 * 24))
         : daysSince
@@ -78,6 +103,19 @@ export async function monitorDealsForSuggestions(tenantId: string) {
           priority: 'medium',
           status: 'pending'
         })
+
+        // 🔥 EMIT EVENT - Triggers stage escalation automations!
+        if (deal.stage_id && deal.pipeline_id) {
+          await events.pipelineStageSLABreached({
+            pipelineId: deal.pipeline_id,
+            stageId: deal.stage_id,
+            dealId: deal.id,
+            tenantId,
+            maxDays: 14,
+            actualDays: stageAge,
+          })
+          eventsEmitted.push({ type: 'PIPELINE.STAGE_SLA_BREACHED', dealId: deal.id, days: stageAge })
+        }
       }
     }
 
@@ -88,10 +126,12 @@ export async function monitorDealsForSuggestions(tenantId: string) {
         .insert(suggestions)
     }
 
-    return suggestions
+    console.log(`[AI Monitor] Processed ${deals.length} deals, created ${suggestions.length} suggestions, emitted ${eventsEmitted.length} automation events`)
+
+    return { suggestions, eventsEmitted }
   } catch (error) {
-    console.error('Error monitoring deals:', error)
-    return []
+    console.error('[AI Monitor] Error monitoring deals:', error)
+    return { suggestions: [], eventsEmitted: [] }
   }
 }
 
