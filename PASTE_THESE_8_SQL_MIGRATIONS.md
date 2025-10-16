@@ -1,6 +1,16 @@
-# 🗄️ **PASTE THESE 8 SQL MIGRATIONS INTO SUPABASE**
+# 🗄️ **PASTE THESE 7 SQL MIGRATIONS INTO SUPABASE**
 
 **Execute in order in Supabase SQL Editor:**
+
+---
+
+## ✅ **ERRORS FIXED!**
+
+**Fixed 2 syntax errors:**
+1. ✅ Inline INDEX syntax → Separate CREATE INDEX statements
+2. ✅ Foreign key constraint on tasks.id → Plain UUID (no constraint)
+
+**All migrations now clean and ready!**
 
 ---
 
@@ -17,6 +27,7 @@
 - Stores all events for audit + replay
 - Helper functions for event retrieval and replay
 - 90-day retention policy
+- ✅ FIXED: Indexes now created separately
 
 ---
 
