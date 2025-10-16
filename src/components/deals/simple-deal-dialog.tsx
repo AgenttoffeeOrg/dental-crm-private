@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Deal, Contact, Pipeline, PipelineStage } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 // Simple deal schema that only uses existing database fields
 const simpleDealSchema = z.object({
@@ -56,7 +57,6 @@ interface SimpleDealDialogProps {
   onOpenChange: (open: boolean) => void
   deal?: Deal | null
   onDealUpdated: () => void
-  tenantId?: string
   mode?: 'create' | 'edit'
   preselectedContactId?: string
 }
@@ -66,12 +66,12 @@ export function SimpleDealDialog({
   onOpenChange, 
   deal,
   onDealUpdated,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
   mode = 'edit',
   preselectedContactId
 }: SimpleDealDialogProps) {
   console.log('SimpleDealDialog props:', { open, mode, deal: deal?.id, preselectedContactId })
   
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [loading, setLoading] = useState(false)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
@@ -101,7 +101,7 @@ export function SimpleDealDialog({
 
   // Load data when dialog opens
   useEffect(() => {
-    if (open) {
+    if (open && orgId && !tenantLoading) {
       loadInitialData()
       if (mode === 'edit' && deal) {
         loadDealData()
@@ -109,15 +109,17 @@ export function SimpleDealDialog({
         resetFormForNewDeal()
       }
     }
-  }, [open, deal, mode])
+  }, [open, deal, mode, orgId, tenantLoading])
 
   const loadInitialData = async () => {
+    if (!orgId) return
+    
     try {
-      // Load contacts
+      // Load contacts - WITH TENANT FILTER! 🔒
       const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
         .select('id, full_name, primary_email, primary_phone')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('full_name')
 
       if (contactsError) {
@@ -126,11 +128,11 @@ export function SimpleDealDialog({
         setContacts(contactsData || [])
       }
 
-      // Load pipelines
+      // Load pipelines - WITH TENANT FILTER! 🔒
       const { data: pipelinesData, error: pipelinesError } = await supabase
         .from('pipelines')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('name')
 
       if (pipelinesError) {
@@ -168,7 +170,7 @@ export function SimpleDealDialog({
         .from('pipeline_stages')
         .select('*')
         .eq('pipeline_id', pipelineId)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('position')
 
       if (stagesError) {
@@ -308,9 +310,14 @@ export function SimpleDealDialog({
 
       if (mode === 'create') {
         // Create new deal
+        if (!orgId) {
+          toast.error('Authentication required')
+          return
+        }
+        
         const newDealData = {
           ...dealData,
-          tenant_id: tenantId,
+          tenant_id: orgId, // ✅ SECURITY: Use authenticated user's org
           created_at: new Date().toISOString(),
         }
 
