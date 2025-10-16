@@ -31,6 +31,14 @@ interface Feature {
 
 const RECENT_FEATURES: Feature[] = [
   {
+    id: 'automations-exposed',
+    title: '🤖 Automations Now Visible!',
+    description: 'Build automated workflows with triggers (form submit, deal won, etc.) and actions (send email/SMS, create tasks, add tags). Now in main navigation!',
+    category: 'new',
+    date: 'January 16, 2025',
+    icon: '🤖',
+  },
+  {
     id: 'notifications-system',
     title: '🔔 Real-Time Notifications',
     description: 'Get instant alerts for deals, tasks, campaigns, and integrations. Configure per-event preferences, quiet hours, and digests.',

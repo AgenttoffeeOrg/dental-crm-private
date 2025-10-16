@@ -33,6 +33,7 @@ import {
   Workflow,
   LineChart,
   Bell,
+  GitBranch,
 } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
@@ -46,6 +47,7 @@ const getNavigation = (featureFlags: any) => [
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Marketing', href: '/marketing', icon: Mail },
+  { name: 'Automations', href: '/automations', icon: GitBranch, badge: 'NEW', badgeColor: 'bg-purple-500 text-white' },
   ...(featureFlags.marketingAudit.enabled ? [{
     name: 'Marketing Audit',
     href: '/marketing-audit',
