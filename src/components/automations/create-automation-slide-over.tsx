@@ -23,8 +23,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 type Category = 'deal' | 'pipeline' | 'task' | 'marketing'
 
@@ -72,7 +74,7 @@ export function CreateAutomationSlideOver({
   onClose,
   onAutomationCreated,
   initialCategory = 'deal',
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
+  tenantId,
 }: CreateAutomationSlideOverProps) {
   const [category, setCategory] = useState<Category>(initialCategory)
   const [name, setName] = useState('')

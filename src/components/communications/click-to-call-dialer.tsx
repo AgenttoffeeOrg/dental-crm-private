@@ -21,7 +21,9 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface ClickToCallDialerProps {
   isOpen: boolean
@@ -41,8 +43,8 @@ export function ClickToCallDialer({
   contactName = 'Unknown',
   contactId,
   dealId,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
-  userId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId,
+  userId
 }: ClickToCallDialerProps) {
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'connected' | 'ended'>('idle')
   const [callDuration, setCallDuration] = useState(0)

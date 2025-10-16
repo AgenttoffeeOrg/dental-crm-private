@@ -22,6 +22,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 
 interface SocialMediaComposerProps {
@@ -48,7 +49,7 @@ export function SocialMediaComposer({ onComplete, onCancel }: SocialMediaCompose
   const loadAccounts = async () => {
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId
 
       const { data } = await supabase
         .from('social_media_accounts')
@@ -117,7 +118,7 @@ export function SocialMediaComposer({ onComplete, onCancel }: SocialMediaCompose
 
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId
 
       // Create posts for each selected platform
       const posts = selectedPlatforms.map(platform => {

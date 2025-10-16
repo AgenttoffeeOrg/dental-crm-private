@@ -24,6 +24,7 @@ import {
   X
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 
 interface CSVRow {
@@ -137,7 +138,7 @@ export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
 
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId
 
       let imported = 0
       let duplicates = 0

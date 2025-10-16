@@ -31,6 +31,7 @@ import {
   Target
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface CampaignMetrics {
   channel: 'email' | 'sms' | 'whatsapp'
@@ -57,7 +58,7 @@ export function AnalyticsDashboard() {
   const loadAnalytics = async () => {
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId
 
       // Calculate date range
       const endDate = new Date()

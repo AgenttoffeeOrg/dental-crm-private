@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { Mail, MessageSquare, Edit, Trash, Plus, Copy, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 
 interface Template {
@@ -36,7 +37,7 @@ interface Template {
   is_active: boolean
 }
 
-export function TemplatesManager({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: { tenantId?: string }) {
+export function TemplatesManager({ tenantId }: { tenantId?: string }) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)

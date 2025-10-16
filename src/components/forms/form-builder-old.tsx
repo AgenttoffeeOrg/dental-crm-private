@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { useMarketingForms, type MarketingForm } from '@/hooks/use-marketing-forms'
 import { EmbedCodeModal } from '@/components/forms/embed-code-modal'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -423,7 +424,7 @@ interface FormBuilderProps {
   tenantId?: string
 }
 
-export function FormBuilder({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: FormBuilderProps) {
+export function FormBuilder({ tenantId }: FormBuilderProps) {
   // Use real database hook instead of mock data
   const { forms, loading, error, loadForms, createForm, updateForm, deleteForm, duplicateForm } = useMarketingForms()
   

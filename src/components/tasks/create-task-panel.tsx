@@ -11,8 +11,10 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { X, Phone, Mail, CheckSquare, Calendar, Repeat, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { addHours, addDays } from 'date-fns'
 
 interface CreateTaskPanelProps {
@@ -38,7 +40,7 @@ export function CreateTaskPanel({
   onTaskCreated,
   prefilledDealId,
   prefilledContactId,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId
 }: CreateTaskPanelProps) {
   const [formData, setFormData] = useState({
     title: '',

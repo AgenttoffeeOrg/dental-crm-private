@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,7 +22,7 @@ interface AudiencesListProps {
   tenantId?: string
 }
 
-export function AudiencesList({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: AudiencesListProps) {
+export function AudiencesList({ tenantId }: AudiencesListProps) {
   const [audiences, setAudiences] = useState<MarketingAudience[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()

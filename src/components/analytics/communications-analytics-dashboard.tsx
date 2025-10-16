@@ -17,6 +17,7 @@ import {
   Download
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface CommunicationsAnalyticsDashboardProps {
   tenantId?: string
@@ -24,7 +25,7 @@ interface CommunicationsAnalyticsDashboardProps {
 }
 
 export function CommunicationsAnalyticsDashboard({
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
+  tenantId,
   dateRange = 'month'
 }: CommunicationsAnalyticsDashboardProps) {
   const [loading, setLoading] = useState(true)

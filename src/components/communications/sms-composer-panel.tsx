@@ -2,10 +2,15 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Input } from '@/components/ui/input'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Label } from '@/components/ui/label'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Textarea } from '@/components/ui/textarea'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Badge } from '@/components/ui/badge'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { 
   X, 
   Send, 
@@ -31,8 +36,8 @@ export function SMSComposerPanel({
   to = '',
   contactId,
   dealId,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
-  userId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId,
+  userId
 }: SMSComposerPanelProps) {
   const [toNumber, setToNumber] = useState(to)
   const [message, setMessage] = useState('')

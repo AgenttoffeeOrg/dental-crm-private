@@ -26,6 +26,7 @@ import {
   CheckCircle2
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 
 interface FilterRule {
@@ -104,7 +105,7 @@ export function SmartSegmentBuilder({ onSave, onCancel, existingSegment }: Segme
   const loadAutoSuggestions = async () => {
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId
 
       // Get segment suggestions based on common patterns
       const { data: contacts } = await supabase
@@ -156,7 +157,7 @@ export function SmartSegmentBuilder({ onSave, onCancel, existingSegment }: Segme
     setCalculating(true)
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId
 
       // Build query based on filter rules
       let query = supabase
@@ -228,7 +229,7 @@ export function SmartSegmentBuilder({ onSave, onCancel, existingSegment }: Segme
 
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId
 
       const segmentData = {
         tenant_id: tenantId,

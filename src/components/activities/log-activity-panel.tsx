@@ -29,8 +29,10 @@ import {
   Sparkles
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface LogActivityPanelProps {
   open: boolean
@@ -70,7 +72,7 @@ export function LogActivityPanel({
   contactId,
   dealId,
   onActivityLogged,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
+  tenantId,
   defaultType = 'call'
 }: LogActivityPanelProps) {
   const [selectedType, setSelectedType] = useState<string>(defaultType)

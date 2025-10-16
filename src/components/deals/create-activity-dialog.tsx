@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import {
   Dialog,
   DialogContent,
@@ -61,7 +62,7 @@ export function CreateActivityDialog({
   contactId,
   onActivityCreated,
   preselectedType = null,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId
 }: CreateActivityDialogProps) {
   const [loading, setLoading] = useState(false)
   const [audioFile, setAudioFile] = useState<File | null>(null)

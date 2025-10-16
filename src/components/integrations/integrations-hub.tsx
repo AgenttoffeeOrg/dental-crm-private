@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -401,7 +402,7 @@ interface IntegrationsHubProps {
   tenantId?: string
 }
 
-export function IntegrationsHub({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: IntegrationsHubProps) {
+export function IntegrationsHub({ tenantId }: IntegrationsHubProps) {
   const [integrations, setIntegrations] = useState<IntegrationConfig[]>(INTEGRATION_CONFIGS)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')

@@ -12,6 +12,7 @@ import {
   User, Phone, Calendar, ArrowRight
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface AIArtifactsDisplayProps {
   activityId: string
@@ -36,7 +37,7 @@ interface ComprehensiveArtifacts {
 
 export function AIArtifactsDisplay({ 
   activityId, 
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId
 }: AIArtifactsDisplayProps) {
   const [artifacts, setArtifacts] = useState<ComprehensiveArtifacts>({})
   const [loading, setLoading] = useState(true)

@@ -36,9 +36,11 @@ import {
   Forward
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface ActivityDetailSlideInProps {
   isOpen: boolean
@@ -61,8 +63,8 @@ export function ActivityDetailSlideIn({
   isOpen,
   onClose,
   activityId,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
-  userId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId,
+  userId
 }: ActivityDetailSlideInProps) {
   const [activity, setActivity] = useState<any>(null)
   const [loading, setLoading] = useState(true)

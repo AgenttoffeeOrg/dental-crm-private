@@ -624,7 +624,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
     let filtered = [...deals]
     
     // TODO: Replace with actual current user ID from auth
-    const currentUserId = '550e8400-e29b-41d4-a716-446655440000'
+    const { userId: currentUserId } = useTenantContext()
     
     // 1. Owner filter
     if (ownerFilter === 'my') {

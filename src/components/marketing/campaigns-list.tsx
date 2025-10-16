@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +25,7 @@ interface CampaignsListProps {
   tenantId?: string
 }
 
-export function CampaignsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: CampaignsListProps) {
+export function CampaignsList({ tenantId }: CampaignsListProps) {
   const [campaigns, setCampaigns] = useState<CampaignWithRelations[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')

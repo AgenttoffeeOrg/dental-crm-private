@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { formatDateTimeForInput, addHoursToDate } from '@/lib/dates'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import type { Contact, Deal, AppUser } from '@/types/database'
 
 const taskSchema = z.object({
@@ -60,7 +62,7 @@ export function CreateTaskDialog({
   open, 
   onOpenChange, 
   onTaskCreated,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
+  tenantId,
   preselectedContactId,
   preselectedDealId
 }: CreateTaskDialogProps) {

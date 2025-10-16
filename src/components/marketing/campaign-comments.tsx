@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -21,7 +22,7 @@ interface CampaignCommentsProps {
 export function CampaignComments({ 
   entityType, 
   entityId,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId
 }: CampaignCommentsProps) {
   const [comments, setComments] = useState<MarketingComment[]>([])
   const [newComment, setNewComment] = useState('')

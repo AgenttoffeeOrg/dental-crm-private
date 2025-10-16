@@ -11,8 +11,10 @@ import {
   Filter, ChevronDown, TrendingUp
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 const ACTIVITY_ICONS = {
   call: { icon: Phone, color: 'text-green-600', bg: 'bg-green-50' },
@@ -23,7 +25,7 @@ const ACTIVITY_ICONS = {
   note: { icon: FileText, color: 'text-gray-600', bg: 'bg-gray-50' }
 }
 
-export function GlobalActivityFeed({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: { tenantId?: string }) {
+export function GlobalActivityFeed({ tenantId }: { tenantId?: string }) {
   const [activities, setActivities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')

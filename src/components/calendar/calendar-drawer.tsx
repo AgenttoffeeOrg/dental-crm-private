@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import {
   Sheet,
   SheetContent,
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react'
 import { format, isToday, isTomorrow, isPast, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import Link from 'next/link'
 
 interface CalendarDrawerProps {
@@ -52,7 +54,7 @@ export function CalendarDrawer({ open, onClose }: CalendarDrawerProps) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId
       const now = new Date()
       
       let startDate: Date, endDate: Date

@@ -24,6 +24,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface ModernCampaignBuilderProps {
   onComplete: (campaignData: any) => void
@@ -66,7 +67,7 @@ export function ModernCampaignBuilder({ onComplete, onCancel, initialChannel }: 
 
   const loadTemplatesAndSegments = async () => {
     const supabase = createClient()
-    const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+    const tenantId
 
     // Load templates
     const { data: templatesData } = await supabase
@@ -92,7 +93,7 @@ export function ModernCampaignBuilder({ onComplete, onCancel, initialChannel }: 
     if (!selectedSegment) return
     
     const supabase = createClient()
-    const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+    const tenantId
 
     // For now, use the segment's total_contacts
     // In production, apply additional filters based on channel opt-ins

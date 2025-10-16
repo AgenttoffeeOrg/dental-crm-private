@@ -34,6 +34,7 @@ import {
   Calendar
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -72,7 +73,7 @@ export function CampaignsDashboard() {
   const loadCampaigns = async () => {
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId
 
       const { data, error } = await supabase
         .from('marketing_campaigns')

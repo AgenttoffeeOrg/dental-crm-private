@@ -2,12 +2,19 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Input } from '@/components/ui/input'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Label } from '@/components/ui/label'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Textarea } from '@/components/ui/textarea'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Badge } from '@/components/ui/badge'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { X, Send, Users, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -25,8 +32,8 @@ export function BulkSendPanel({
   onClose,
   type,
   contacts,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
-  userId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId,
+  userId
 }: BulkSendPanelProps) {
   const [selectedContacts, setSelectedContacts] = useState<string[]>([])
   const [subject, setSubject] = useState('')

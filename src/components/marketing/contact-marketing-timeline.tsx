@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Mail, MousePointer, Eye, XCircle, UserX } from 'lucide-react'
@@ -16,7 +17,7 @@ interface ContactMarketingTimelineProps {
 
 export function ContactMarketingTimeline({ 
   contactId,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId
 }: ContactMarketingTimelineProps) {
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

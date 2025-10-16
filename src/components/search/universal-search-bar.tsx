@@ -24,6 +24,7 @@ import {
   X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -33,7 +34,7 @@ interface UniversalSearchBarProps {
 }
 
 export function UniversalSearchBar({ 
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
+  tenantId,
   className 
 }: UniversalSearchBarProps) {
   const [query, setQuery] = useState('')

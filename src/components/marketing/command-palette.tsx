@@ -24,6 +24,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface CommandItem {
   id: string
@@ -55,7 +56,7 @@ export function MarketingCommandPalette({ open, onOpenChange }: { open: boolean;
   const loadRecent = async () => {
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId
 
       const { data: campaigns } = await supabase
         .from('marketing_campaigns')

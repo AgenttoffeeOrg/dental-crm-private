@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase-client'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface EmailComposerPanelProps {
   isOpen: boolean
@@ -39,8 +40,8 @@ export function EmailComposerPanel({
   contactId,
   dealId,
   replyToActivityId,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
-  userId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId,
+  userId
 }: EmailComposerPanelProps) {
   const [toEmail, setToEmail] = useState(to)
   const [cc, setCc] = useState('')
