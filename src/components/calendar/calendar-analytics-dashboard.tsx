@@ -207,7 +207,7 @@ export function CalendarAnalyticsDashboard({
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Appointments</p>
+                <p className="text-sm text-gray-600">Total Activities</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {stats.totalAppointments}
                 </p>
@@ -221,9 +221,9 @@ export function CalendarAnalyticsDashboard({
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Completion Rate</p>
+                <p className="text-sm text-gray-600">Tasks Completed</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {stats.completionRate.toFixed(1)}%
+                  {stats.completedAppointments}
                 </p>
               </div>
               <CheckCircle className="h-10 w-10 text-green-600" />
@@ -235,12 +235,12 @@ export function CalendarAnalyticsDashboard({
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">No-Show Rate</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {stats.noShowRate.toFixed(1)}%
+                <p className="text-sm text-gray-600">Calls Made</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats.cancelledAppointments}
                 </p>
               </div>
-              <AlertCircle className="h-10 w-10 text-orange-600" />
+              <TrendingUp className="h-10 w-10 text-green-600" />
             </div>
           </CardContent>
         </Card>

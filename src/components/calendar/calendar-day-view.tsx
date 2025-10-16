@@ -3,48 +3,44 @@
 import { format, setHours, setMinutes, isWithinInterval, isSameHour, isSameMinute } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { Clock, MapPin, User } from 'lucide-react'
+import { Clock, CheckSquare, Phone, Mail, Users, DollarSign } from 'lucide-react'
+import { CalendarActivity } from '@/lib/calendar/activity-aggregator'
 
 interface CalendarDayViewProps {
   date: Date
-  appointments: any[]
-  providers: any[]
-  onAppointmentClick: (id: string) => void
-  onSlotClick: (date: Date) => void
+  activities: CalendarActivity[]
+  onActivityClick: (id: string, type: string) => void
 }
 
 export function CalendarDayView({
   date,
-  appointments,
-  providers,
-  onAppointmentClick,
-  onSlotClick
+  activities,
+  onActivityClick
 }: CalendarDayViewProps) {
   // Generate time slots from 7 AM to 7 PM (30-minute intervals)
   const hours = Array.from({ length: 13 }, (_, i) => 7 + i) // 7 AM to 7 PM
-  const slots = hours.flatMap(hour =>
-    [0, 30].map(minute => setMinutes(setHours(new Date(date), hour), minute))
-  )
 
-  const getAppointmentsForSlot = (slotTime: Date) => {
-    return appointments.filter(apt => {
-      const aptStart = new Date(apt.start_at)
-      const aptEnd = new Date(apt.end_at)
-      return isWithinInterval(slotTime, { start: aptStart, end: aptEnd }) ||
-        (isSameHour(slotTime, aptStart) && isSameMinute(slotTime, aptStart))
-    })
-  }
-
-  const getAppointmentPosition = (appointment: any) => {
-    const start = new Date(appointment.start_at)
+  const getActivityPosition = (activity: CalendarActivity) => {
+    const start = activity.start_time
     const startHour = start.getHours()
     const startMinute = start.getMinutes()
     const top = ((startHour - 7) * 2 + startMinute / 30) * 3 // 3rem per 30min slot
 
-    const duration = appointment.duration_minutes || 30
+    const duration = activity.duration_minutes || 30
     const height = (duration / 30) * 3 // 3rem per 30min
 
     return { top: `${top}rem`, height: `${height}rem` }
+  }
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'task': return CheckSquare
+      case 'call': return Phone
+      case 'email': return Mail
+      case 'meeting': return Users
+      case 'deal': return DollarSign
+      default: return Clock
+    }
   }
 
   return (
@@ -73,52 +69,45 @@ export function CalendarDayView({
 
           {/* Time slots grid */}
           <div className="relative">
-            {slots.map((slot, i) => (
+            {hours.map((hour) => (
               <div
-                key={i}
-                className={cn(
-                  "h-12 border-b hover:bg-blue-50 cursor-pointer transition-colors",
-                  i % 2 === 1 && "border-dashed"
-                )}
-                onClick={() => onSlotClick(slot)}
+                key={hour}
+                className="h-12 border-b"
               />
             ))}
 
-            {/* Appointments overlay */}
+            {/* Activities overlay */}
             <div className="absolute inset-0 pointer-events-none">
-              {appointments.map((apt) => {
-                const { top, height } = getAppointmentPosition(apt)
-                const color = apt.appointment_type?.color || apt.provider?.calendar_color || '#3B82F6'
+              {activities.map((activity) => {
+                const { top, height } = getActivityPosition(activity)
+                const Icon = getActivityIcon(activity.type)
 
                 return (
                   <div
-                    key={apt.id}
+                    key={activity.id}
                     className="absolute left-1 right-1 pointer-events-auto cursor-pointer rounded-lg p-2 text-white shadow-md hover:shadow-lg transition-all overflow-hidden"
                     style={{
                       top,
                       height,
-                      backgroundColor: color,
+                      backgroundColor: activity.color,
                       minHeight: '3rem'
                     }}
-                    onClick={() => onAppointmentClick(apt.id)}
+                    onClick={() => onActivityClick(activity.id, activity.type)}
                   >
-                    <div className="text-sm font-semibold truncate">
-                      {apt.title || apt.contact?.full_name}
+                    <div className="flex items-center gap-1">
+                      <Icon className="h-3 w-3 flex-shrink-0" />
+                      <div className="text-sm font-semibold truncate">
+                        {activity.title}
+                      </div>
                     </div>
                     <div className="text-xs opacity-90 flex items-center gap-1 mt-1">
                       <Clock className="h-3 w-3" />
-                      {format(new Date(apt.start_at), 'h:mm a')} - {format(new Date(apt.end_at), 'h:mm a')}
+                      {format(activity.start_time, 'h:mm a')}
+                      {activity.duration_minutes && ` (${activity.duration_minutes}m)`}
                     </div>
-                    {apt.provider && (
-                      <div className="text-xs opacity-90 flex items-center gap-1 mt-1">
-                        <User className="h-3 w-3" />
-                        {apt.provider.name}
-                      </div>
-                    )}
-                    {apt.operatory && (
-                      <div className="text-xs opacity-90 flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {apt.operatory.name}
+                    {activity.contact_name && (
+                      <div className="text-xs opacity-90 truncate mt-1">
+                        {activity.contact_name}
                       </div>
                     )}
                   </div>

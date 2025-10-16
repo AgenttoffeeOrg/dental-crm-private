@@ -3,18 +3,19 @@
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { CalendarActivity } from '@/lib/calendar/activity-aggregator'
 
 interface CalendarMonthViewProps {
   month: Date
-  appointments: any[]
-  onAppointmentClick: (id: string) => void
+  activities: CalendarActivity[]
+  onActivityClick: (id: string, type: string) => void
   onDayClick: (date: Date) => void
 }
 
 export function CalendarMonthView({
   month,
-  appointments,
-  onAppointmentClick,
+  activities,
+  onActivityClick,
   onDayClick
 }: CalendarMonthViewProps) {
   const monthStart = startOfMonth(month)
@@ -23,9 +24,9 @@ export function CalendarMonthView({
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 })
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
 
-  const getAppointmentsForDay = (day: Date) => {
-    return appointments.filter(apt =>
-      isSameDay(new Date(apt.start_at), day)
+  const getActivitiesForDay = (day: Date) => {
+    return activities.filter(activity =>
+      isSameDay(activity.start_time, day)
     )
   }
 
@@ -43,7 +44,7 @@ export function CalendarMonthView({
       {/* Calendar grid */}
       <div className="grid grid-cols-7">
         {days.map((day) => {
-          const dayAppointments = getAppointmentsForDay(day)
+          const dayActivities = getActivitiesForDay(day)
           const isCurrentMonth = isSameMonth(day, month)
           const isTodayDate = isToday(day)
 
@@ -64,38 +65,37 @@ export function CalendarMonthView({
                 )}>
                   {format(day, 'd')}
                 </span>
-                {dayAppointments.length > 0 && (
+                {dayActivities.length > 0 && (
                   <Badge variant="secondary" className="h-5 text-xs px-1.5">
-                    {dayAppointments.length}
+                    {dayActivities.length}
                   </Badge>
                 )}
               </div>
 
-              {/* Appointments */}
+              {/* Activities */}
               <div className="space-y-1">
-                {dayAppointments.slice(0, 3).map((apt) => {
-                  const color = apt.appointment_type?.color || apt.provider?.calendar_color || '#3B82F6'
+                {dayActivities.slice(0, 3).map((activity) => {
                   return (
                     <div
-                      key={apt.id}
+                      key={activity.id}
                       onClick={(e) => {
                         e.stopPropagation()
-                        onAppointmentClick(apt.id)
+                        onActivityClick(activity.id, activity.type)
                       }}
                       className="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity text-white"
-                      style={{ backgroundColor: color }}
+                      style={{ backgroundColor: activity.color }}
                     >
                       <span className="font-medium">
-                        {format(new Date(apt.start_at), 'h:mm a')}
+                        {format(activity.start_time, 'h:mm a')}
                       </span>
                       {' '}
-                      {apt.contact?.full_name || apt.title}
+                      {activity.title}
                     </div>
                   )
                 })}
-                {dayAppointments.length > 3 && (
+                {dayActivities.length > 3 && (
                   <div className="text-xs text-gray-500 text-center py-1">
-                    +{dayAppointments.length - 3} more
+                    +{dayActivities.length - 3} more
                   </div>
                 )}
               </div>
