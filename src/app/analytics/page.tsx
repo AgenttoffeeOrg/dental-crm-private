@@ -35,7 +35,7 @@ export default function AnalyticsPage() {
   }
 
   // Use the tenant_id from the logged in user
-  const tenantId = appUser?.tenant_id || '11111111-1111-1111-1111-111111111111'
+  const tenantId = appUser?.tenant_id || orgId
 
   return (
     <DashboardLayout>

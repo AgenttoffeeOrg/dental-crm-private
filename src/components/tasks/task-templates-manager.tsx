@@ -69,7 +69,7 @@ export function TaskTemplatesManager() {
       
       const templateData = {
         ...formData,
-        tenant_id: user?.user_metadata?.tenant_id || '11111111-1111-1111-1111-111111111111'
+        tenant_id: user?.user_metadata?.tenant_id || orgId
       }
 
       if (editingTemplate) {
@@ -158,7 +158,7 @@ export function TaskTemplatesManager() {
           notes: template.default_notes,
           status: 'open',
           assignee_user_id: user?.id,
-          tenant_id: user?.user_metadata?.tenant_id || '11111111-1111-1111-1111-111111111111'
+          tenant_id: user?.user_metadata?.tenant_id || orgId
         })
 
       if (error) throw error

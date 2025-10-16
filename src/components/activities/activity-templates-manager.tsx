@@ -153,7 +153,7 @@ export function ActivityTemplatesManager() {
       
       const templateData = {
         ...formData,
-        tenant_id: user?.user_metadata?.tenant_id || '11111111-1111-1111-1111-111111111111',
+        tenant_id: user?.user_metadata?.tenant_id || orgId,
         created_by_user_id: user?.id
       }
 
