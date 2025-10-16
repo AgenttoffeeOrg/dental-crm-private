@@ -11,6 +11,7 @@ DECLARE
   v_table_name TEXT;
   v_policy_count INTEGER := 0;
   v_has_deleted_at BOOLEAN;
+  v_has_tenant_id BOOLEAN;
 BEGIN
   -- List of tables we want to apply RLS to
   FOR v_table_name IN 
@@ -20,11 +21,25 @@ BEGIN
       'automations', 'automation_execution_logs', 'automation_nodes', 'automation_edges', 'automation_runs'
     ])
   LOOP
-    -- Check if table exists
+    -- Check if table exists AND has tenant_id column
     IF EXISTS (
       SELECT 1 FROM information_schema.tables 
       WHERE table_schema = 'public' AND table_name = v_table_name
     ) THEN
+      
+      -- Check if table has tenant_id column (REQUIRED for RLS)
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = v_table_name
+          AND column_name = 'tenant_id'
+      ) INTO v_has_tenant_id;
+      
+      -- Only apply RLS if table has tenant_id
+      IF NOT v_has_tenant_id THEN
+        RAISE NOTICE 'Skipping table (no tenant_id column): %', v_table_name;
+        CONTINUE; -- Skip to next table
+      END IF;
       
       RAISE NOTICE 'Applying RLS to table: %', v_table_name;
       
