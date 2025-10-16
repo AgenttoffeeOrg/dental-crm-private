@@ -12,7 +12,7 @@ import { categorizeDeal, autoTagDeal } from '@/lib/deal-categorization'
 export async function POST() {
   try {
     const supabase = await createServiceClient()
-    const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+    const tenantId = appUser.tenant_id
 
     console.log('🔄 Starting auto-categorization of deals...')
 

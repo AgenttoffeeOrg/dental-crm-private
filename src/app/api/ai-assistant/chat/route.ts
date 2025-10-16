@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     // Build rich context based on type
     let aiContext
-    const tid = tenantId || '550e8400-e29b-41d4-a716-446655440000'
+    const tid = tenantId || appUser.tenant_id
 
     switch (context) {
       case 'deal':

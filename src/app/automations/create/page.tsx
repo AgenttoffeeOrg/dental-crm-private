@@ -119,7 +119,7 @@ export default function CreateAutomationPage() {
       const { data, error } = await supabase
         .from('automations')
         .insert({
-          tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+          tenant_id: appUser.tenant_id,
           category,
           name,
           description,

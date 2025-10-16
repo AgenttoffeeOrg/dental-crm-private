@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     const { action, context, contextId, data, tenantId } = await request.json()
 
-    const tid = tenantId || '550e8400-e29b-41d4-a716-446655440000'
+    const tid = tenantId || appUser.tenant_id
     let aiContext
 
     // Build context based on type

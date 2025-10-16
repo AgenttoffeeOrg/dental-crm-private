@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     // Create file record in database using service role client
     const fileData = {
-      tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+      tenant_id: appUser.tenant_id,
       storage_path: uploadData.path,
       mime_type: mimeType, // Use corrected mime type
       size_bytes: file.size,
