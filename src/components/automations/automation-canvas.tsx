@@ -79,7 +79,7 @@ export function AutomationCanvas({
     }
 
     // Validate workflow
-    const hasT rigger = nodes.some(n => n.type === 'trigger')
+    const hasTrigger = nodes.some(n => n.type === 'trigger')
     if (!hasTrigger) {
       toast.error('Workflow must have at least one trigger')
       return
