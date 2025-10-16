@@ -22,14 +22,14 @@ CREATE TABLE IF NOT EXISTS automation_event_log (
     replay_count INTEGER DEFAULT 0,
     
     -- Timestamps
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
-    -- Indexing
-    INDEX idx_automation_event_log_tenant (tenant_id),
-    INDEX idx_automation_event_log_type (event_type),
-    INDEX idx_automation_event_log_created (created_at DESC),
-    INDEX idx_automation_event_log_tenant_type (tenant_id, event_type)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create indexes separately
+CREATE INDEX IF NOT EXISTS idx_automation_event_log_tenant ON automation_event_log(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_automation_event_log_type ON automation_event_log(event_type);
+CREATE INDEX IF NOT EXISTS idx_automation_event_log_created ON automation_event_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_automation_event_log_tenant_type ON automation_event_log(tenant_id, event_type);
 
 -- RLS Policies
 ALTER TABLE automation_event_log ENABLE ROW LEVEL SECURITY;

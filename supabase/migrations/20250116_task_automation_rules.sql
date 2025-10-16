@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS task_dependencies (
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     
     -- Parent-child relationship
-    parent_task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    -- Note: parent_task_id references tasks.id, but tasks table might not exist yet
+    -- Using UUID without foreign key constraint for now
+    parent_task_id UUID NOT NULL,
     child_task_template JSONB NOT NULL, -- Template for child task
     
     -- Status
