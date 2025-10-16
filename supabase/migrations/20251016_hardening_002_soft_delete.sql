@@ -213,25 +213,39 @@ END $$;
 -- =====================================================
 
 -- View to easily see all soft-deleted records across tables
-CREATE OR REPLACE VIEW soft_deleted_records AS
-SELECT 'contacts' as table_name, id, tenant_id, deleted_at, updated_at
-FROM contacts WHERE deleted_at IS NOT NULL
-UNION ALL
-SELECT 'deals', id, tenant_id, deleted_at, updated_at
-FROM deals WHERE deleted_at IS NOT NULL
-UNION ALL
-SELECT 'tasks', id, tenant_id, deleted_at, updated_at
-FROM tasks WHERE deleted_at IS NOT NULL
-UNION ALL
-SELECT 'pipelines', id, tenant_id, deleted_at, updated_at
-FROM pipelines WHERE deleted_at IS NOT NULL
-UNION ALL
-SELECT 'automations', id, tenant_id, deleted_at, updated_at
-FROM automations WHERE deleted_at IS NOT NULL
-UNION ALL
-SELECT 'marketing_campaigns', id, tenant_id, deleted_at, updated_at
-FROM marketing_campaigns WHERE deleted_at IS NOT NULL
-ORDER BY deleted_at DESC;
+-- Only include tables that exist
+DO $$
+BEGIN
+  -- Drop view if it exists
+  DROP VIEW IF EXISTS soft_deleted_records;
+  
+  -- Create view with only tables that exist
+  EXECUTE format($view$
+    CREATE VIEW soft_deleted_records AS
+    SELECT 'contacts' as table_name, id, tenant_id, deleted_at, created_at as record_created_at
+    FROM contacts WHERE deleted_at IS NOT NULL
+    %s
+    ORDER BY deleted_at DESC
+  $view$,
+    CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'deals') 
+      THEN 'UNION ALL SELECT ''deals'', id, tenant_id, deleted_at, created_at FROM deals WHERE deleted_at IS NOT NULL' 
+      ELSE '' END ||
+    CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tasks') 
+      THEN ' UNION ALL SELECT ''tasks'', id, tenant_id, deleted_at, created_at FROM tasks WHERE deleted_at IS NOT NULL' 
+      ELSE '' END ||
+    CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pipelines') 
+      THEN ' UNION ALL SELECT ''pipelines'', id, tenant_id, deleted_at, created_at FROM pipelines WHERE deleted_at IS NOT NULL' 
+      ELSE '' END ||
+    CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'automations') 
+      THEN ' UNION ALL SELECT ''automations'', id, tenant_id, deleted_at, created_at FROM automations WHERE deleted_at IS NOT NULL' 
+      ELSE '' END ||
+    CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'marketing_campaigns') 
+      THEN ' UNION ALL SELECT ''marketing_campaigns'', id, tenant_id, deleted_at, created_at FROM marketing_campaigns WHERE deleted_at IS NOT NULL' 
+      ELSE '' END
+  );
+
+  RAISE NOTICE '✅ Created soft_deleted_records view';
+END $$;
 
 COMMENT ON VIEW soft_deleted_records IS 
   'Utility view showing all soft-deleted records across entity tables. Useful for admin cleanup or recovery.';
