@@ -93,7 +93,10 @@ ALTER TABLE deals ADD CONSTRAINT deals_owner_same_tenant CHECK (
   ) = tenant_id
 );
 
-RAISE NOTICE '✅ Added tenant guards to deals table (4 constraints)';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Added tenant guards to deals table (4 constraints)';
+END $$;
 
 -- =====================================================
 -- 2. TASKS TABLE CONSTRAINTS
@@ -139,7 +142,10 @@ ALTER TABLE tasks ADD CONSTRAINT tasks_parent_same_tenant CHECK (
   ) = tenant_id
 );
 
-RAISE NOTICE '✅ Added tenant guards to tasks table (5 constraints)';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Added tenant guards to tasks table (5 constraints)';
+END $$;
 
 -- =====================================================
 -- 3. ACTIVITIES TABLE CONSTRAINTS
@@ -169,7 +175,10 @@ ALTER TABLE activities ADD CONSTRAINT activities_user_same_tenant CHECK (
   ) = tenant_id
 );
 
-RAISE NOTICE '✅ Added tenant guards to activities table (3 constraints)';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Added tenant guards to activities table (3 constraints)';
+END $$;
 
 -- =====================================================
 -- 4. CALLS TABLE CONSTRAINTS
@@ -191,7 +200,10 @@ ALTER TABLE calls ADD CONSTRAINT calls_user_same_tenant CHECK (
   ) = tenant_id
 );
 
-RAISE NOTICE '✅ Added tenant guards to calls table (2 constraints)';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Added tenant guards to calls table (2 constraints)';
+END $$;
 
 -- =====================================================
 -- 5. FILES TABLE CONSTRAINTS
@@ -228,9 +240,10 @@ BEGIN
       ) = tenant_id
     );
   END IF;
+  END IF;
+  
+  RAISE NOTICE '✅ Added tenant guards to files table (2-3 constraints)';
 END $$;
-
-RAISE NOTICE '✅ Added tenant guards to files table (2-3 constraints)';
 
 -- =====================================================
 -- 6. NOTES TABLE CONSTRAINTS
@@ -267,9 +280,10 @@ BEGIN
       ) = tenant_id
     );
   END IF;
+  END IF;
+  
+  RAISE NOTICE '✅ Added tenant guards to notes table (2-3 constraints)';
 END $$;
-
-RAISE NOTICE '✅ Added tenant guards to notes table (2-3 constraints)';
 
 -- =====================================================
 -- 7. PIPELINE_STAGES TABLE CONSTRAINTS
@@ -278,10 +292,13 @@ RAISE NOTICE '✅ Added tenant guards to notes table (2-3 constraints)';
 -- Validate pipeline_stages.pipeline_id belongs to same tenant
 ALTER TABLE pipeline_stages DROP CONSTRAINT IF EXISTS stages_pipeline_same_tenant;
 ALTER TABLE pipeline_stages ADD CONSTRAINT stages_pipeline_same_tenant CHECK (
-  (SELECT tenant_id FROM pipelines WHERE id = pipeline_stages.pipeline_id) = tenant_id
+  (SELECT tenant_id FROM pipelines WHERE id = pipeline_stages.pipeline_id  ) = tenant_id
 );
 
-RAISE NOTICE '✅ Added tenant guards to pipeline_stages table (1 constraint)';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Added tenant guards to pipeline_stages table (1 constraint)';
+END $$;
 
 -- =====================================================
 -- 8. MARKETING TABLES CONSTRAINTS
@@ -334,7 +351,10 @@ ALTER TABLE automation_execution_logs ADD CONSTRAINT logs_automation_same_tenant
   ) = tenant_id
 );
 
-RAISE NOTICE '✅ Added tenant guards to automation_execution_logs table (1 constraint)';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Added tenant guards to automation_execution_logs table (1 constraint)';
+END $$;
 
 -- =====================================================
 -- 10. VERIFICATION
