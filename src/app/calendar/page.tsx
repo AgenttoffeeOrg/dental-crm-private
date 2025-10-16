@@ -28,7 +28,9 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks, addMonths, subDays, subWeeks, subMonths } from 'date-fns'
+import { format as formatDate, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks, addMonths, subDays, subWeeks, subMonths } from 'date-fns'
+import { format } from '@/lib/formatting'
+import { LoadingState } from '@/components/ui/loading-state'
 import { CalendarDayView } from '@/components/calendar/calendar-day-view'
 import { CalendarWeekView } from '@/components/calendar/calendar-week-view'
 import { CalendarMonthView } from '@/components/calendar/calendar-month-view'
@@ -154,18 +156,18 @@ export default function CalendarPage() {
   const getDateRangeDisplay = () => {
     switch (viewMode) {
       case 'day':
-        return format(currentDate, 'EEEE, MMMM d, yyyy')
+        return formatDate(currentDate, 'EEEE, MMMM d, yyyy')
       case 'week':
       case 'timeline':
         const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
         const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 })
-        return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`
+        return `${formatDate(weekStart, 'MMM d')} - ${formatDate(weekEnd, 'MMM d, yyyy')}`
       case 'month':
-        return format(currentDate, 'MMMM yyyy')
+        return formatDate(currentDate, 'MMMM yyyy')
       case 'agenda':
-        return `Next 30 days from ${format(currentDate, 'MMM d, yyyy')}`
+        return `Next 30 days from ${formatDate(currentDate, 'MMM d, yyyy')}`
       default:
-        return format(currentDate, 'MMMM yyyy')
+        return formatDate(currentDate, 'MMMM yyyy')
     }
   }
 
