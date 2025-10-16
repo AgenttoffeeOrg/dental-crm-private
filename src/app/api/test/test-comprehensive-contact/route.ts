@@ -9,7 +9,7 @@ export async function POST() {
     
     // First, let's test creating a contact with comprehensive data
     const comprehensiveContactData = {
-      tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+      tenant_id: process.env.TEST_TENANT_ID || (await getFirstTenantId()),
       // Basic fields (existing)
       full_name: 'Comprehensive Test Patient',
       primary_phone: '+44 7700 999888',
@@ -69,7 +69,7 @@ export async function POST() {
       
       // Try with just basic fields to confirm basic creation works
       const basicContactData = {
-        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+        tenant_id: process.env.TEST_TENANT_ID || (await getFirstTenantId()),
         full_name: 'Basic Test Patient',
         primary_phone: '+44 7700 999777',
         primary_email: 'basic@test.com',

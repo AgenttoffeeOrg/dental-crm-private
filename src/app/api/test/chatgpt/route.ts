@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { data: activity, error: activityError } = await supabase
       .from('activities')
       .insert({
-        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+        tenant_id: process.env.TEST_TENANT_ID || (await getFirstTenantId()),
         contact_id: contacts?.[0]?.id || null,
         deal_id: deals?.[0]?.id || null,
         type: 'call',
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const { data: fileRecord, error: fileError } = await supabase
       .from('files')
       .insert({
-        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+        tenant_id: process.env.TEST_TENANT_ID || (await getFirstTenantId()),
         storage_path: `audio/chatgpt-test-${activity.id}-${Date.now()}.mp3`,
         mime_type: 'audio/mpeg',
         size_bytes: 50000, // 50KB mock file

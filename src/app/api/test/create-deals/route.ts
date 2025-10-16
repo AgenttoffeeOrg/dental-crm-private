@@ -11,7 +11,7 @@ export async function POST() {
     const { data: pipeline } = await supabase
       .from('pipelines')
       .select('id')
-      .eq('tenant_id', '550e8400-e29b-41d4-a716-446655440000')
+      .eq('tenant_id', process.env.TEST_TENANT_ID || (await getFirstTenantId()))
       .eq('is_default', true)
       .single()
     
@@ -35,7 +35,7 @@ export async function POST() {
     const stageClosedWon = stages.find(s => s.name === 'Closed Won')?.id
     const stageClosedLost = stages.find(s => s.name === 'Closed Lost')?.id
     
-    const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+    const tenantId = process.env.TEST_TENANT_ID || (await getFirstTenantId())
     const pipelineId = pipeline.id
     
     // Create deals in batches

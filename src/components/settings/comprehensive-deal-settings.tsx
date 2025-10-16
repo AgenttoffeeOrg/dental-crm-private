@@ -24,8 +24,9 @@ import {
 import { toast } from 'sonner'
 import { Settings, Save, DollarSign, Tag, Archive, AlertTriangle } from 'lucide-react'
 import type { DealSettings } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
-export function ComprehensiveDealSettings({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: { tenantId?: string }) {
+export function ComprehensiveDealSettings({ tenantId }: { tenantId?: string }) {
   const [settings, setSettings] = useState<Partial<DealSettings>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

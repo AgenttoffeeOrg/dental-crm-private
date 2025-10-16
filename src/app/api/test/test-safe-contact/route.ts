@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST() {
   const supabase = createServiceClient();
-  const tenantId = '550e8400-e29b-41d4-a716-446655440000';
+  const tenantId = process.env.TEST_TENANT_ID || (await getFirstTenantId());
 
   try {
     // Check if profile_data column exists more reliably

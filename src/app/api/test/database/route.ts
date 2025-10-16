@@ -9,7 +9,7 @@ export async function POST() {
 
     // Test if we can insert into files table
     const testFileData = {
-      tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+      tenant_id: process.env.TEST_TENANT_ID || (await getFirstTenantId()),
       storage_path: 'audio/test-123.mp3',
       mime_type: 'audio/mpeg',
       size_bytes: 1024,

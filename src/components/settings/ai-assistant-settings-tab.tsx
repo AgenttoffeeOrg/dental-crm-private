@@ -36,7 +36,7 @@ interface AIPreferences {
   }
 }
 
-export function AIAssistantSettingsTab({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: { tenantId?: string }) {
+export function AIAssistantSettingsTab({ tenantId }: { tenantId?: string }) {
   const [preferences, setPreferences] = useState<AIPreferences>({
     response_style: 'friendly',
     ai_model: 'gpt-4-turbo-preview',
@@ -97,7 +97,7 @@ export function AIAssistantSettingsTab({ tenantId = '550e8400-e29b-41d4-a716-446
         .from('ai_assistant_preferences')
         .upsert({
           tenant_id: tenantId,
-          user_id: '550e8400-e29b-41d4-a716-446655440000', // TODO: Get from auth
+          user_id: userId, // TODO: Get from auth
           response_style: preferences.response_style,
           ai_model: preferences.ai_model,
           auto_actions: preferences.auto_actions,

@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const callActivities = [
       {
         // Sarah Johnson - Teeth Whitening Consultation deal
-        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+        tenant_id: process.env.TEST_TENANT_ID || (await getFirstTenantId()),
         type: 'call',
         direction: 'inbound',
         contact_id: '550e8400-e29b-41d4-a716-446655440020', // Sarah Johnson
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       },
       {
         // Emma Wilson - Invisalign Treatment deal  
-        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+        tenant_id: process.env.TEST_TENANT_ID || (await getFirstTenantId()),
         type: 'call',
         direction: 'inbound', 
         contact_id: '550e8400-e29b-41d4-a716-446655440022', // Emma Wilson

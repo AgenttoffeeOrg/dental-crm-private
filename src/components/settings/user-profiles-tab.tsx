@@ -19,8 +19,9 @@ import {
 import { toast } from 'sonner'
 import { Users, Plus, Edit, Trash2, Copy, Check } from 'lucide-react'
 import type { UserProfile, CustomRole } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
-export function UserProfilesTab({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: { tenantId?: string }) {
+export function UserProfilesTab({ tenantId }: { tenantId?: string }) {
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [roles, setRoles] = useState<CustomRole[]>([])
   const [loading, setLoading] = useState(true)

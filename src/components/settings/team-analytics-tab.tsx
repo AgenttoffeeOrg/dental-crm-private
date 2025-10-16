@@ -22,7 +22,7 @@ interface UserStats {
   activitiesLogged: number
 }
 
-export function TeamAnalyticsTab({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: { tenantId?: string }) {
+export function TeamAnalyticsTab({ tenantId }: { tenantId?: string }) {
   const [stats, setStats] = useState<UserStats[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()

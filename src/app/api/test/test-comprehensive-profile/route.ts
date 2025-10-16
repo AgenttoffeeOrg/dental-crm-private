@@ -9,7 +9,7 @@ export async function POST() {
     
     // Test comprehensive contact data
     const comprehensiveContactData = {
-      tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+      tenant_id: process.env.TEST_TENANT_ID || (await getFirstTenantId()),
       full_name: 'Dr. Comprehensive Test Patient',
       primary_phone: '+44 7700 999111',
       primary_email: 'comprehensive.test@example.com',

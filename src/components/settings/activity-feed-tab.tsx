@@ -25,7 +25,7 @@ interface ActivityLogItem {
   }
 }
 
-export function ActivityFeedTab({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: { tenantId?: string }) {
+export function ActivityFeedTab({ tenantId }: { tenantId?: string }) {
   const [activities, setActivities] = useState<ActivityLogItem[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()

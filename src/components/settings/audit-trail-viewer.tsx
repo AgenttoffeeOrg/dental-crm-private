@@ -25,6 +25,7 @@ import { toast } from 'sonner'
 import { Shield, Search, Download, Eye, AlertTriangle, RefreshCw, Filter } from 'lucide-react'
 import { formatDateTime } from '@/lib/dates'
 import type { AuditTrail } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface AuditDetailDialogProps {
   audit: AuditTrail | null
@@ -170,7 +171,7 @@ function AuditDetailDialog({ audit, open, onOpenChange }: AuditDetailDialogProps
   )
 }
 
-export function AuditTrailViewer({ tenantId = '550e8400-e29b-41d4-a716-446655440000', isAdmin = true }: { tenantId?: string; isAdmin?: boolean }) {
+export function AuditTrailViewer({ tenantId, isAdmin = true }: { tenantId?: string; isAdmin?: boolean }) {
   const [audits, setAudits] = useState<AuditTrail[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedAudit, setSelectedAudit] = useState<AuditTrail | null>(null)

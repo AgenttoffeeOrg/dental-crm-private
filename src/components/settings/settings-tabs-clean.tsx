@@ -13,8 +13,8 @@ import { ComprehensiveDealSettings } from './comprehensive-deal-settings'
 import { UserProfilesTab } from './user-profiles-tab'
 
 export function SettingsTabs() {
-  const tenantId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
-  const currentUserId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
+  const tenantId // TODO: Get from auth context
+  const { userId: currentUserId } = useTenantContext() // TODO: Get from auth context
   const isAdmin = true // TODO: Get from user role
 
   return (

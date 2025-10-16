@@ -67,7 +67,7 @@ export function CommunicationsIntegrationsTab() {
     voiceToken: false
   })
 
-  const tenantId = '550e8400-e29b-41d4-a716-446655440000' // Replace with real tenant
+  const tenantId // Replace with real tenant
 
   useEffect(() => {
     loadSettings()
