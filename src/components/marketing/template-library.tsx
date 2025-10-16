@@ -75,12 +75,16 @@ export function TemplateLibrary() {
   const loadTemplates = async () => {
     try {
       const supabase = createClient()
-      const tenantId
+      // Note: This component needs tenant context when marketing_templates table exists
+      // For now, skip loading as table may not exist yet
+      setLoading(false)
+      return
 
+      /* Uncomment when marketing_templates table is created:
       const { data, error } = await supabase
         .from('marketing_templates')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId)
         .order('usage_count', { ascending: false })
 
       if (error) throw error

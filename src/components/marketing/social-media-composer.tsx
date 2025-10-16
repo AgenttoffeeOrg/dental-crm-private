@@ -49,12 +49,15 @@ export function SocialMediaComposer({ onComplete, onCancel }: SocialMediaCompose
   const loadAccounts = async () => {
     try {
       const supabase = createClient()
-      const tenantId
+      // Note: This component needs tenant context when social_media_accounts table exists
+      // For now, skip loading as table may not exist yet
+      return
 
+      /* Uncomment when social_media_accounts table is created:
       const { data } = await supabase
         .from('social_media_accounts')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId)
         .eq('is_active', true)
 
       setAccounts(data || [])

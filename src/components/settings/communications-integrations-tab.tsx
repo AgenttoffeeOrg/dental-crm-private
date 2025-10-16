@@ -67,8 +67,6 @@ export function CommunicationsIntegrationsTab() {
     voiceToken: false
   })
 
-  const tenantId // Replace with real tenant
-
   useEffect(() => {
     loadSettings()
   }, [])
@@ -77,10 +75,16 @@ export function CommunicationsIntegrationsTab() {
     setLoading(true)
     const supabase = createClient()
     
+    // Note: This component needs tenant context when integration_settings table exists
+    // For now, skip loading and use defaults
+    setLoading(false)
+    return
+    
+    /* Uncomment when integration_settings table is created:
     const { data, error } = await supabase
       .from('integration_settings')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', orgId)
       .single()
     
     // Handle errors gracefully
