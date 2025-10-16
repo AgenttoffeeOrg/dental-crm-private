@@ -40,7 +40,6 @@ import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface ActivityDetailSlideInProps {
   isOpen: boolean

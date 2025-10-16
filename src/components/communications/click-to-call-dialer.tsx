@@ -23,7 +23,6 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { createClient } from '@/lib/supabase-client'
-import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface ClickToCallDialerProps {
   isOpen: boolean

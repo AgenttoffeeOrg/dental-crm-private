@@ -26,7 +26,6 @@ import { createClient } from '@/lib/supabase-client'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
-import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 type Category = 'deal' | 'pipeline' | 'task' | 'marketing'
 
