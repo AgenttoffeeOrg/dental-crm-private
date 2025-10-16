@@ -10,6 +10,7 @@ DO $$
 DECLARE
   v_table_name TEXT;
   v_policy_count INTEGER := 0;
+  v_has_deleted_at BOOLEAN;
 BEGIN
   -- List of tables we want to apply RLS to
   FOR v_table_name IN 
@@ -27,6 +28,14 @@ BEGIN
       
       RAISE NOTICE 'Applying RLS to table: %', v_table_name;
       
+      -- Check if table has deleted_at column
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = v_table_name
+          AND column_name = 'deleted_at'
+      ) INTO v_has_deleted_at;
+      
       -- Enable RLS
       EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', v_table_name);
       
@@ -37,12 +46,20 @@ BEGIN
       EXECUTE format('DROP POLICY IF EXISTS %I ON %I', v_table_name || '_delete', v_table_name);
       EXECUTE format('DROP POLICY IF EXISTS %I ON %I', v_table_name || '_service_role', v_table_name);
       
-      -- Create SELECT policy with soft delete check
-      EXECUTE format('
-        CREATE POLICY %I ON %I
-        FOR SELECT
-        USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at))
-      ', v_table_name || '_select', v_table_name);
+      -- Create SELECT policy (with or without soft delete check)
+      IF v_has_deleted_at THEN
+        EXECUTE format('
+          CREATE POLICY %I ON %I
+          FOR SELECT
+          USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at))
+        ', v_table_name || '_select', v_table_name);
+      ELSE
+        EXECUTE format('
+          CREATE POLICY %I ON %I
+          FOR SELECT
+          USING (tenant_id = current_tenant_id())
+        ', v_table_name || '_select', v_table_name);
+      END IF;
       
       -- Create INSERT policy
       EXECUTE format('
