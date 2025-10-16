@@ -58,12 +58,12 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_notifications_user_unread ON notifications(user_id, created_at DESC) WHERE read_at IS NULL AND archived_at IS NULL;
-CREATE INDEX idx_notifications_user_created ON notifications(user_id, created_at DESC);
-CREATE INDEX idx_notifications_tenant ON notifications(tenant_id, created_at DESC);
-CREATE INDEX idx_notifications_event_id ON notifications(event_id) WHERE event_id IS NOT NULL;
-CREATE INDEX idx_notifications_group_key ON notifications(group_key, created_at DESC) WHERE group_key IS NOT NULL;
-CREATE INDEX idx_notifications_entity ON notifications(entity_type, entity_id) WHERE entity_type IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, created_at DESC) WHERE read_at IS NULL AND archived_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_tenant ON notifications(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_event_id ON notifications(event_id) WHERE event_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_notifications_group_key ON notifications(group_key, created_at DESC) WHERE group_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_notifications_entity ON notifications(entity_type, entity_id) WHERE entity_type IS NOT NULL;
 
 COMMENT ON TABLE notifications IS 'Core notifications table with full event context and quick actions';
 
@@ -113,8 +113,8 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_notification_preferences_user ON notification_preferences(user_id);
-CREATE INDEX idx_notification_preferences_tenant ON notification_preferences(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_notification_preferences_user ON notification_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_preferences_tenant ON notification_preferences(tenant_id);
 
 COMMENT ON TABLE notification_preferences IS 'User preferences for notification channels, schedules, and muting';
 
@@ -127,6 +127,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS notification_preferences_updated_at ON notification_preferences;
 CREATE TRIGGER notification_preferences_updated_at
   BEFORE UPDATE ON notification_preferences
   FOR EACH ROW
@@ -172,7 +173,7 @@ CREATE TABLE IF NOT EXISTS notification_policies (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_notification_policies_tenant ON notification_policies(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_notification_policies_tenant ON notification_policies(tenant_id);
 
 COMMENT ON TABLE notification_policies IS 'Org-level policies for role defaults, escalation, rate limits, and compliance';
 
@@ -208,9 +209,9 @@ CREATE TABLE IF NOT EXISTS notification_delivery_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_delivery_log_notification ON notification_delivery_log(notification_id, channel);
-CREATE INDEX idx_delivery_log_status ON notification_delivery_log(status, created_at DESC);
-CREATE INDEX idx_delivery_log_external_id ON notification_delivery_log(external_id) WHERE external_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_delivery_log_notification ON notification_delivery_log(notification_id, channel);
+CREATE INDEX IF NOT EXISTS idx_delivery_log_status ON notification_delivery_log(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_delivery_log_external_id ON notification_delivery_log(external_id) WHERE external_id IS NOT NULL;
 
 COMMENT ON TABLE notification_delivery_log IS 'Multi-channel delivery tracking with provider webhooks';
 
@@ -377,18 +378,21 @@ ALTER TABLE notification_policies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notification_delivery_log ENABLE ROW LEVEL SECURITY;
 
 -- Notifications: Users can only see their own
+DROP POLICY IF EXISTS notifications_user_isolation ON notifications;
 CREATE POLICY notifications_user_isolation
   ON notifications
   FOR ALL
   USING (user_id = auth.uid());
 
 -- Preferences: Users can manage their own
+DROP POLICY IF EXISTS preferences_user_isolation ON notification_preferences;
 CREATE POLICY preferences_user_isolation
   ON notification_preferences
   FOR ALL
   USING (user_id = auth.uid());
 
 -- Policies: Only admins can view/edit
+DROP POLICY IF EXISTS policies_admin_only ON notification_policies;
 CREATE POLICY policies_admin_only
   ON notification_policies
   FOR ALL
@@ -401,6 +405,7 @@ CREATE POLICY policies_admin_only
   );
 
 -- Delivery Log: Users can see logs for their notifications
+DROP POLICY IF EXISTS delivery_log_user_isolation ON notification_delivery_log;
 CREATE POLICY delivery_log_user_isolation
   ON notification_delivery_log
   FOR SELECT
