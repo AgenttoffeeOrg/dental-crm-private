@@ -50,6 +50,7 @@ import { CreateDealSlideOver } from '../deals/create-deal-slide-over'
 import { PipelineSettingsDialog } from './pipeline-settings-dialog'
 import { CreatePipelineDialog } from './create-pipeline-dialog'
 import type { Deal, Pipeline, PipelineStage, Contact, DealWithRelations } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 // Pipeline Templates
 const PIPELINE_TEMPLATES = [
@@ -91,9 +92,7 @@ const PIPELINE_TEMPLATES = [
   },
 ]
 
-interface PipelineBoardProps {
-  tenantId?: string
-}
+interface PipelineBoardProps {}
 
 type ViewMode = 'board' | 'list'
 
@@ -303,10 +302,11 @@ function DealListRow({
   )
 }
 
-export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: PipelineBoardProps) {
+export function PipelineBoard({}: PipelineBoardProps) {
   // Pipeline state - Initialize from URL to persist on reload!
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>(() => {
     // Read from URL on initial render
@@ -385,12 +385,14 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
 
   // Load pipelines on mount
   useEffect(() => {
-    loadPipelines()
-  }, [])
+    if (orgId && !tenantLoading) {
+      loadPipelines()
+    }
+  }, [orgId, tenantLoading])
 
   // Load pipeline data when selection changes
   useEffect(() => {
-    if (selectedPipelineId) {
+    if (selectedPipelineId && orgId && !tenantLoading) {
       // Update URL without page reload
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href)
@@ -405,14 +407,16 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
         fetchPipelineData()
       }
     }
-  }, [selectedPipelineId])
+  }, [selectedPipelineId, orgId, tenantLoading])
 
   const loadPipelines = async () => {
+    if (!orgId) return
+    
     try {
       const { data: pipelinesData, error } = await supabase
         .from('pipelines')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -431,6 +435,8 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
   }
 
   const fetchAllDeals = async () => {
+    if (!orgId) return
+    
     try {
       setLoading(true)
 
@@ -443,7 +449,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
           stage:pipeline_stages(*),
           pipeline:pipelines(name)
         `)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('created_at', { ascending: false })
 
       if (dealsError) throw dealsError
@@ -467,7 +473,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
         .from('pipeline_stages')
         .select('*')
         .eq('pipeline_id', selectedPipelineId)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('position')
 
       if (stagesError) throw stagesError
@@ -482,7 +488,7 @@ export function PipelineBoard({ tenantId = '550e8400-e29b-41d4-a716-446655440000
           pipeline:pipelines(name)
         `)
         .eq('pipeline_id', selectedPipelineId)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('created_at', { ascending: false })
 
       if (dealsError) throw dealsError
