@@ -44,16 +44,14 @@ import { toast } from 'sonner'
 import { ActivityTimeline } from './activity-timeline'
 import { formatDate, getActivityAge } from '@/lib/dates'
 import type { DealWithRelations, PipelineStage } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface DealDetailViewProps {
   dealId: string
-  tenantId?: string
 }
 
-export function DealDetailView({ 
-  dealId, 
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
-}: DealDetailViewProps) {
+export function DealDetailView({ dealId }: DealDetailViewProps) {
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [deal, setDeal] = useState<DealWithRelations | null>(null)
   const [stages, setStages] = useState<PipelineStage[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,14 +60,18 @@ export function DealDetailView({
   const supabase = createClient()
 
   useEffect(() => {
-    fetchDealData()
-  }, [dealId])
+    if (orgId && !tenantLoading) {
+      fetchDealData()
+    }
+  }, [dealId, orgId, tenantLoading])
 
   const fetchDealData = async () => {
+    if (!orgId) return
+    
     try {
       setLoading(true)
 
-      // Fetch deal with all related data
+      // Fetch deal with all related data - NOW WITH TENANT FILTER! 🔒
       const { data: dealData, error: dealError } = await supabase
         .from('deals')
         .select(`
@@ -78,6 +80,7 @@ export function DealDetailView({
           stage:pipeline_stages(*),
           owner:app_users(*)
         `)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .eq('id', dealId)
         .single()
 
@@ -87,7 +90,7 @@ export function DealDetailView({
       const { data: stagesData, error: stagesError } = await supabase
         .from('pipeline_stages')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('position')
 
       if (stagesError) throw stagesError
@@ -191,12 +194,15 @@ export function DealDetailView({
     return colors[stageName.toLowerCase()] || 'bg-gray-100 text-gray-800'
   }
 
-  if (loading) {
+  // Show loading while tenant context or deal data is loading
+  if (tenantLoading || loading || !orgId) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="flex items-center gap-3 text-gray-500">
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-          <span className="text-sm font-medium">Loading deal details...</span>
+          <span className="text-sm font-medium">
+            {tenantLoading ? 'Loading...' : !orgId ? 'Authenticating...' : 'Loading deal details...'}
+          </span>
         </div>
       </div>
     )
