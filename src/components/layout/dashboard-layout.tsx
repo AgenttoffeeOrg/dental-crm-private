@@ -9,6 +9,7 @@ import { UniversalSearchBar } from '@/components/search/universal-search-bar'
 import { NotificationsBellButton } from '@/components/notifications/notifications-bell-button'
 import { NotificationsDrawer } from '@/components/notifications/notifications-drawer'
 import { WhatsNewPanel } from '@/components/ui/whats-new-panel'
+import { CalendarIconButton } from '@/components/calendar/calendar-icon-button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,7 +57,6 @@ const getNavigation = (featureFlags: any) => [
     badge: 'New',
     badgeColor: 'bg-purple-500 text-white',
   }] : []),
-  { name: 'Calendar', href: '/calendar', icon: Calendar, badge: 'NEW', badgeColor: 'bg-green-500 text-white' },
   { name: 'Forms', href: '/forms', icon: FileText },
   { name: 'Integrations', href: '/integrations', icon: Zap },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
@@ -346,6 +346,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-3 ml-4">
               {/* What's New */}
               <WhatsNewPanel />
+              
+              {/* Calendar */}
+              <CalendarIconButton />
               
               {/* Notifications Bell */}
               <NotificationsBellButton onOpen={() => setNotifDrawerOpen(true)} />

@@ -15,45 +15,42 @@ import {
 } from '@/components/ui/select'
 import {
   Calendar,
-  Plus,
   Search,
   ChevronLeft,
   ChevronRight,
   Settings,
-  Filter,
   Download,
   CalendarDays,
   List,
   LayoutGrid,
-  Clock,
-  Users
+  ExternalLink,
+  Filter
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks, addMonths, subDays, subWeeks, subMonths, isToday } from 'date-fns'
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks, addMonths, subDays, subWeeks, subMonths } from 'date-fns'
 import { CalendarDayView } from '@/components/calendar/calendar-day-view'
 import { CalendarWeekView } from '@/components/calendar/calendar-week-view'
 import { CalendarMonthView } from '@/components/calendar/calendar-month-view'
 import { CalendarAgendaView } from '@/components/calendar/calendar-agenda-view'
-import { CalendarTimelineView } from '@/components/calendar/calendar-timeline-view'
-import { CreateAppointmentSlideOver } from '@/components/calendar/create-appointment-slide-over'
+import { activityAggregator, CalendarActivity } from '@/lib/calendar/activity-aggregator'
 import { cn } from '@/lib/utils'
 
-type ViewMode = 'day' | 'week' | 'month' | 'agenda' | 'timeline'
+type ViewMode = 'day' | 'week' | 'month' | 'agenda'
 
 export default function CalendarPage() {
   const supabase = createClient()
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [appointments, setAppointments] = useState<any[]>([])
-  const [providers, setProviders] = useState<any[]>([])
+  const [activities, setActivities] = useState<CalendarActivity[]>([])
   const [loading, setLoading] = useState(true)
-  const [createSlideOverOpen, setCreateSlideOverOpen] = useState(false)
-  const [selectedProviders, setSelectedProviders] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [activityTypeFilter, setActivityTypeFilter] = useState<string>('all')
+  const [bookingUrl, setBookingUrl] = useState<string>('')
 
   useEffect(() => {
     loadData()
+    loadBookingUrl()
   }, [currentDate, viewMode])
 
   const loadData = async () => {
@@ -81,50 +78,36 @@ export default function CalendarPage() {
           startDate = new Date(currentDate)
           endDate = addDays(currentDate, 30)
           break
-        case 'timeline':
-          startDate = startOfWeek(currentDate, { weekStartsOn: 1 })
-          endDate = endOfWeek(currentDate, { weekStartsOn: 1 })
-          break
         default:
           startDate = currentDate
           endDate = currentDate
       }
 
-      // Load appointments
-      const { data: appointmentsData, error: appointmentsError } = await supabase
-        .from('appointments')
-        .select(`
-          *,
-          contact:contacts(id, full_name, primary_phone, primary_email),
-          provider:providers(id, name, calendar_color),
-          operatory:operatories(id, name),
-          appointment_type:appointment_types(id, name, color, duration_minutes)
-        `)
-        .eq('tenant_id', tenantId)
-        .gte('start_at', startDate.toISOString())
-        .lte('start_at', endDate.toISOString())
-        .order('start_at')
+      // Load unified activities (tasks, calls, emails, meetings, deals)
+      const activitiesData = await activityAggregator.getActivities(
+        tenantId,
+        startDate,
+        endDate
+      )
 
-      if (appointmentsError) throw appointmentsError
-
-      setAppointments(appointmentsData || [])
-
-      // Load providers for filter
-      const { data: providersData, error: providersError } = await supabase
-        .from('providers')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .order('name')
-
-      if (providersError) throw providersError
-
-      setProviders(providersData || [])
+      setActivities(activitiesData)
     } catch (error) {
       console.error('Error loading calendar data:', error)
       toast.error('Failed to load calendar')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadBookingUrl = () => {
+    // Load primary booking URL from settings
+    const saved = localStorage.getItem('scheduling_apps_settings')
+    if (saved) {
+      const settings = JSON.parse(saved)
+      const enabledApp = Object.entries(settings).find(([_, s]: any) => s?.enabled && s?.booking_url)
+      if (enabledApp) {
+        setBookingUrl((enabledApp[1] as any).booking_url)
+      }
     }
   }
 
@@ -186,18 +169,22 @@ export default function CalendarPage() {
     }
   }
 
-  const filteredAppointments = appointments.filter(apt => {
-    if (selectedProviders.length > 0 && !selectedProviders.includes(apt.provider_id)) {
+  const filteredActivities = activities.filter(activity => {
+    // Filter by type
+    if (activityTypeFilter !== 'all' && activity.type !== activityTypeFilter) {
       return false
     }
+    
+    // Filter by search query
     if (searchQuery) {
       const search = searchQuery.toLowerCase()
       return (
-        apt.title?.toLowerCase().includes(search) ||
-        apt.contact?.full_name?.toLowerCase().includes(search) ||
-        apt.provider?.name?.toLowerCase().includes(search)
+        activity.title?.toLowerCase().includes(search) ||
+        activity.contact_name?.toLowerCase().includes(search) ||
+        activity.description?.toLowerCase().includes(search)
       )
     }
+    
     return true
   })
 
@@ -222,18 +209,23 @@ export default function CalendarPage() {
                 Export
               </Button>
               <Button variant="outline" size="sm" asChild>
-                <a href="/settings/calendar">
+                <a href="/settings/integrations">
                   <Settings className="h-4 w-4 mr-2" />
-                  Settings
+                  Calendar Settings
                 </a>
               </Button>
-              <Button
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                onClick={() => setCreateSlideOverOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Appointment
-              </Button>
+              {bookingUrl && (
+                <Button
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                  asChild
+                >
+                  <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Book Appointment
+                    <ExternalLink className="h-3 w-3 ml-2" />
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -268,34 +260,22 @@ export default function CalendarPage() {
                 />
               </div>
 
-              {/* Provider Filter */}
+              {/* Activity Type Filter */}
               <Select
-                value={selectedProviders[0] || 'all'}
-                onValueChange={(value) => {
-                  if (value === 'all') {
-                    setSelectedProviders([])
-                  } else {
-                    setSelectedProviders([value])
-                  }
-                }}
+                value={activityTypeFilter}
+                onValueChange={setActivityTypeFilter}
               >
                 <SelectTrigger className="w-48">
-                  <Users className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="All Providers" />
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="All Activities" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Providers</SelectItem>
-                  {providers.map((provider) => (
-                    <SelectItem key={provider.id} value={provider.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: provider.calendar_color }}
-                        />
-                        {provider.name}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">All Activities</SelectItem>
+                  <SelectItem value="task">Tasks</SelectItem>
+                  <SelectItem value="call">Calls</SelectItem>
+                  <SelectItem value="email">Emails</SelectItem>
+                  <SelectItem value="meeting">Meetings</SelectItem>
+                  <SelectItem value="deal">Deals</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -318,10 +298,6 @@ export default function CalendarPage() {
                     <List className="h-4 w-4 mr-1" />
                     Agenda
                   </TabsTrigger>
-                  <TabsTrigger value="timeline">
-                    <Clock className="h-4 w-4 mr-1" />
-                    Timeline
-                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -339,26 +315,22 @@ export default function CalendarPage() {
               {viewMode === 'day' && (
                 <CalendarDayView
                   date={currentDate}
-                  appointments={filteredAppointments}
-                  providers={providers}
-                  onAppointmentClick={(id) => console.log('Clicked:', id)}
-                  onSlotClick={(date) => setCreateSlideOverOpen(true)}
+                  activities={filteredActivities}
+                  onActivityClick={(id, type) => console.log('Clicked:', id, type)}
                 />
               )}
               {viewMode === 'week' && (
                 <CalendarWeekView
                   weekStart={startOfWeek(currentDate, { weekStartsOn: 1 })}
-                  appointments={filteredAppointments}
-                  providers={providers}
-                  onAppointmentClick={(id) => console.log('Clicked:', id)}
-                  onSlotClick={(date) => setCreateSlideOverOpen(true)}
+                  activities={filteredActivities}
+                  onActivityClick={(id, type) => console.log('Clicked:', id, type)}
                 />
               )}
               {viewMode === 'month' && (
                 <CalendarMonthView
                   month={currentDate}
-                  appointments={filteredAppointments}
-                  onAppointmentClick={(id) => console.log('Clicked:', id)}
+                  activities={filteredActivities}
+                  onActivityClick={(id, type) => console.log('Clicked:', id, type)}
                   onDayClick={(date) => {
                     setCurrentDate(date)
                     setViewMode('day')
@@ -368,33 +340,14 @@ export default function CalendarPage() {
               {viewMode === 'agenda' && (
                 <CalendarAgendaView
                   startDate={currentDate}
-                  appointments={filteredAppointments}
-                  onAppointmentClick={(id) => console.log('Clicked:', id)}
-                />
-              )}
-              {viewMode === 'timeline' && (
-                <CalendarTimelineView
-                  weekStart={startOfWeek(currentDate, { weekStartsOn: 1 })}
-                  appointments={filteredAppointments}
-                  providers={providers}
-                  onAppointmentClick={(id) => console.log('Clicked:', id)}
-                  onSlotClick={(providerId, date) => setCreateSlideOverOpen(true)}
+                  activities={filteredActivities}
+                  onActivityClick={(id, type) => console.log('Clicked:', id, type)}
                 />
               )}
             </>
           )}
         </div>
       </div>
-
-      {/* Create Appointment Slide-Over */}
-      <CreateAppointmentSlideOver
-        open={createSlideOverOpen}
-        onClose={() => setCreateSlideOverOpen(false)}
-        onAppointmentCreated={() => {
-          loadData()
-        }}
-        tenantId="550e8400-e29b-41d4-a716-446655440000"
-      />
     </DashboardLayout>
   )
 }
