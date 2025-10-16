@@ -39,36 +39,11 @@ CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
--- 2. LOCATIONS TABLE (For multi-location practices)
+-- 2. LOCATIONS TABLE - Already exists, just add indexes
 -- =====================================================
 
--- Verify locations table exists and has proper structure
-CREATE TABLE IF NOT EXISTS locations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  address TEXT,
-  city TEXT,
-  state TEXT,
-  postal_code TEXT,
-  country TEXT DEFAULT 'GB',
-  timezone TEXT DEFAULT 'Europe/London',
-  phone TEXT,
-  email TEXT,
-  is_primary BOOLEAN DEFAULT false,
-  active BOOLEAN DEFAULT true,
-  metadata JSONB DEFAULT '{}',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(tenant_id, name) -- Prevent duplicate location names per tenant
-);
-
 CREATE INDEX IF NOT EXISTS idx_locations_tenant ON locations(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_locations_active ON locations(tenant_id, active) WHERE active = true;
-
-DROP TRIGGER IF EXISTS update_locations_updated_at ON locations;
-CREATE TRIGGER update_locations_updated_at BEFORE UPDATE ON locations
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE INDEX IF NOT EXISTS idx_locations_active ON locations(tenant_id, is_active) WHERE is_active = true;
 
 -- =====================================================
 -- 3. ORG_MEMBERSHIPS TABLE (Multi-org support)
@@ -80,7 +55,7 @@ CREATE TABLE IF NOT EXISTS org_memberships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  role TEXT NOT NULL CHECK (role IN ('super_admin', 'admin', 'manager', 'staff', 'marketing', 'read_only')),
+  role TEXT NOT NULL CHECK (role IN ('owner', 'super_admin', 'admin', 'manager', 'staff', 'marketing', 'read_only')),
   location_ids UUID[] DEFAULT '{}', -- Empty array = all locations, specific IDs = scoped access
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'pending_approval', 'invited', 'declined')),
   invited_by_user_id UUID REFERENCES app_users(id),
@@ -112,7 +87,7 @@ INSERT INTO org_memberships (user_id, tenant_id, role, status, created_at)
 SELECT 
   au.id,
   au.tenant_id,
-  COALESCE(au.role, 'owner') as role, -- Default to owner if role is null
+  au.role, -- Use existing role directly (owner, manager, or staff)
   'active',
   au.created_at
 FROM app_users au
@@ -145,7 +120,7 @@ CREATE TABLE IF NOT EXISTS user_invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('super_admin', 'admin', 'manager', 'staff', 'marketing', 'read_only')),
+  role TEXT NOT NULL CHECK (role IN ('owner', 'super_admin', 'admin', 'manager', 'staff', 'marketing', 'read_only')),
   location_ids UUID[] DEFAULT '{}',
   invited_by_user_id UUID NOT NULL REFERENCES app_users(id),
   invitation_token TEXT NOT NULL UNIQUE,
@@ -251,7 +226,7 @@ CREATE POLICY "Admins can manage org locations"
   ON locations FOR ALL
   USING (
     tenant_id = auth.get_user_org_id() 
-    AND auth.get_user_role_in_org(tenant_id) IN ('super_admin', 'admin')
+    AND auth.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
   );
 
 -- Org Memberships
@@ -267,7 +242,7 @@ CREATE POLICY "Admins can manage org memberships"
   ON org_memberships FOR ALL
   USING (
     tenant_id = auth.get_user_org_id() 
-    AND auth.get_user_role_in_org(tenant_id) IN ('super_admin', 'admin')
+    AND auth.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
   );
 
 -- User Invitations
@@ -283,7 +258,7 @@ CREATE POLICY "Admins can manage org invitations"
   ON user_invitations FOR ALL
   USING (
     tenant_id = auth.get_user_org_id() 
-    AND auth.get_user_role_in_org(tenant_id) IN ('super_admin', 'admin')
+    AND auth.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
   );
 
 -- Service role bypass for all
