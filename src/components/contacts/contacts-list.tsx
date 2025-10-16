@@ -43,15 +43,15 @@ import { formatDate } from '@/lib/dates'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import type { Contact } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 type FilterType = 'all' | 'active' | 'leads' | 'patients' | 'cold'
 type SortType = 'name' | 'created' | 'activity' | 'value'
 
-interface ContactsListProps {
-  tenantId?: string
-}
+interface ContactsListProps {}
 
-export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: ContactsListProps) {
+export function ContactsList({}: ContactsListProps) {
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [contacts, setContacts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -65,6 +65,8 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
   const supabase = createClient()
 
   const fetchContacts = async () => {
+    if (!orgId) return // ✅ SECURITY: Guard clause
+    
     try {
       setLoading(true)
       console.log('[CONTACTS] Starting fetch...')
@@ -73,7 +75,7 @@ export function ContactsList({ tenantId = '550e8400-e29b-41d4-a716-446655440000'
       const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('created_at', { ascending: false })
 
       if (contactsError) {
