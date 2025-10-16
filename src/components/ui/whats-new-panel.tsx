@@ -33,9 +33,9 @@ const RECENT_FEATURES: Feature[] = [
   {
     id: 'calendar-module',
     title: '🗓️ Calendar & Scheduling',
-    description: 'Complete calendar system with appointments, provider scheduling, external sync (Google/Outlook), reminders, and online booking. Fully integrated with Contacts, Deals, and Tasks.',
+    description: 'View all your tasks, calls, meetings, and deals in a unified calendar. Connect external booking tools (Calendly, Cal.com) and sync with Google/Outlook calendars.',
     category: 'new',
-    date: 'January 16, 2025',
+    date: 'October 16, 2025',
     icon: '🗓️',
   },
   {
@@ -43,7 +43,7 @@ const RECENT_FEATURES: Feature[] = [
     title: '🤖 Automations Now Visible!',
     description: 'Build automated workflows with triggers (form submit, deal won, etc.) and actions (send email/SMS, create tasks, add tags). Now in main navigation!',
     category: 'new',
-    date: 'January 16, 2025',
+    date: 'October 16, 2025',
     icon: '🤖',
   },
   {
@@ -51,7 +51,7 @@ const RECENT_FEATURES: Feature[] = [
     title: '🔔 Real-Time Notifications',
     description: 'Get instant alerts for deals, tasks, campaigns, and integrations. Configure per-event preferences, quiet hours, and digests.',
     category: 'new',
-    date: 'January 16, 2025',
+    date: 'October 16, 2025',
     icon: '🔔',
   },
   {
@@ -59,7 +59,7 @@ const RECENT_FEATURES: Feature[] = [
     title: '⚙️ Settings Search (⌘K)',
     description: 'Instantly find any setting with fuzzy search. Press ⌘K in Settings to jump to any configuration.',
     category: 'new',
-    date: 'January 16, 2025',
+    date: 'October 16, 2025',
     icon: '🔍',
   },
   {
@@ -67,7 +67,7 @@ const RECENT_FEATURES: Feature[] = [
     title: '📍 Multi-Location Support',
     description: 'Manage multiple practice locations with location-specific settings and staff assignments.',
     category: 'new',
-    date: 'January 16, 2025',
+    date: 'October 16, 2025',
     icon: '📍',
   },
   {
@@ -75,7 +75,7 @@ const RECENT_FEATURES: Feature[] = [
     title: '↩️ Settings Rollback',
     description: 'View complete version history of all settings changes. One-click rollback to previous values.',
     category: 'new',
-    date: 'January 16, 2025',
+    date: 'October 16, 2025',
     icon: '↩️',
   },
   {
@@ -83,7 +83,7 @@ const RECENT_FEATURES: Feature[] = [
     title: '📖 Metrics Dictionary',
     description: 'Learn what every KPI means with formulas and context. Click "Metrics Dictionary" on Analytics page.',
     category: 'new',
-    date: 'January 16, 2025',
+    date: 'October 16, 2025',
     icon: '📖',
   },
 ]
