@@ -825,7 +825,7 @@ export function DealsTable() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="font-semibold text-gray-900">
-                          {formatCurrency(deal.value_estimate_cents)}
+                          {formatCurrencyValue(deal.value_estimate_cents)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
