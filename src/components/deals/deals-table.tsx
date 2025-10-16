@@ -47,7 +47,10 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { formatDistanceToNow, differenceInDays, format } from 'date-fns'
+import { formatDistanceToNow, differenceInDays, format as formatDate } from 'date-fns'
+import { format } from '@/lib/formatting'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import type { DealWithRelations, Pipeline, PipelineStage, AppUser } from '@/types/database'
 import { DealDetailView } from './deal-detail-view-modal'
 import { CreateDealSlideOver } from './create-deal-slide-over'
@@ -401,19 +404,16 @@ export function DealsTable() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `deals-export-${format(new Date(), 'yyyy-MM-dd-HHmm')}.csv`
+    a.download = `deals-export-${formatDate(new Date(), 'yyyy-MM-dd-HHmm')}.csv`
     a.click()
     URL.revokeObjectURL(url)
 
     toast.success(`Exported ${dealsToExport.length} deal(s)`)
   }
 
-  // Currency formatter
-  const formatCurrency = (cents: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: 'GBP',
-    }).format(cents / 100)
+  // Currency formatter - using refined formatting
+  const formatCurrencyValue = (cents: number) => {
+    return format.currency(cents / 100, 'GBP')
   }
 
   // Aging badge
@@ -493,7 +493,7 @@ export function DealsTable() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">All Deals</h1>
             <p className="text-sm text-gray-600 mt-1">
-              Manage deals across all pipelines • {totalCount} total
+              Manage deals across all pipelines • {format.number(totalCount)} total
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -633,7 +633,7 @@ export function DealsTable() {
           <div className="mt-4 flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <CheckSquare className="h-5 w-5 text-blue-600" />
             <span className="text-sm font-medium text-blue-900">
-              {selectedDealIds.size} deal(s) selected
+              {format.pluralize(selectedDealIds.size, 'deal')} selected
             </span>
             <div className="flex-1" />
             <DropdownMenu>
