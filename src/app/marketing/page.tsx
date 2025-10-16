@@ -51,7 +51,7 @@ interface MarketingStats {
 }
 
 export default function MarketingDashboard() {
-  const { tenant } = useAuth()
+  const { tenant, loading: authLoading } = useAuth()
   const [stats, setStats] = useState<MarketingStats>({
     totalContacts: 0,
     activeCampaigns: 0,
@@ -67,13 +67,18 @@ export default function MarketingDashboard() {
   const [activeChannel, setActiveChannel] = useState<'all' | 'email' | 'sms' | 'whatsapp'>('all')
 
   useEffect(() => {
-    if (tenant?.id) {
+    if (tenant?.id && !authLoading) {
       loadStats()
+    } else if (!authLoading) {
+      setLoading(false)
     }
-  }, [tenant?.id])
+  }, [tenant?.id, authLoading])
 
   const loadStats = async () => {
-    if (!tenant?.id) return // ✅ SECURITY: Guard clause
+    if (!tenant?.id) {
+      setLoading(false)
+      return
+    }
     
     try {
       const supabase = createClient()
