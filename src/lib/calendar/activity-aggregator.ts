@@ -251,6 +251,7 @@ export class ActivityAggregator {
       console.error('[Activity Aggregator] getDeals error:', error)
       return []
     }
+    */
   }
 
   private getTaskColor(priority: string): string {
