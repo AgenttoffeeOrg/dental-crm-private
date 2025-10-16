@@ -73,21 +73,23 @@ export default function MarketingDashboard() {
   }, [tenant?.id])
 
   const loadStats = async () => {
+    if (!tenant?.id) return // ✅ SECURITY: Guard clause
+    
     try {
       const supabase = createClient()
-      const tenantId = tenant?.id || '550e8400-e29b-41d4-a716-446655440000'
+      const orgId = tenant.id // ✅ SECURITY: Use authenticated tenant only
 
       // Get total contacts with marketing consent
       const { count: contactCount } = await supabase
         .from('contacts')
         .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
 
       // Get active campaigns
       const { data: campaigns, count: activeCampaignsCount } = await supabase
         .from('marketing_campaigns')
         .select('*', { count: 'exact' })
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .in('status', ['active', 'scheduled'])
 
       // Get campaign metrics for this month
@@ -98,7 +100,7 @@ export default function MarketingDashboard() {
       const { data: monthCampaigns } = await supabase
         .from('marketing_campaigns')
         .select('channel, metrics')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .gte('sent_at', startOfMonth.toISOString())
 
       let emailsSent = 0
