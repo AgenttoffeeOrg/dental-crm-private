@@ -10,11 +10,13 @@ import { ArrowLeft, Save, Play } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
+import { useAuth } from '@/lib/auth'
 import { toast } from 'sonner'
 import { AutomationCanvas } from '@/components/automations/automation-canvas'
 
 export default function CreateJourneyPage() {
   const router = useRouter()
+  const { appUser } = useAuth()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,13 +27,18 @@ export default function CreateJourneyPage() {
       toast.error('Please enter a journey name')
       return
     }
+    
+    if (!appUser?.tenant_id) {
+      toast.error('Authentication required')
+      return
+    }
 
     setLoading(true)
     try {
       const { data, error } = await supabase
         .from('marketing_journeys')
         .insert({
-          tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+          tenant_id: appUser.tenant_id, // ✅ SECURITY: Use authenticated user's org
           name,
           description,
           status: 'draft',

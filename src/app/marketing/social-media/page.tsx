@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-client'
+import { useAuth } from '@/lib/auth'
 
 interface SocialAccount {
   id: string
@@ -66,7 +67,7 @@ export default function SocialMediaPage() {
   const loadSocialData = async () => {
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId = appUser.tenant_id
 
       // Load connected accounts
       const { data: accountsData } = await supabase

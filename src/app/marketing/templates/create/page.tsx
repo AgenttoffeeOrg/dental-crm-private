@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Sparkles } from 'lucide-react'
 import { EmailBuilderAdvanced } from '@/components/marketing/email-builder-advanced'
 import { createClient } from '@/lib/supabase-client'
+import { useAuth } from '@/lib/auth'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -15,7 +16,7 @@ export default function CreateTemplatePage() {
   const handleSave = async (html: string, css: string) => {
     try {
       const supabase = createClient()
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const tenantId = appUser.tenant_id
 
       const { error } = await supabase
         .from('marketing_templates')
