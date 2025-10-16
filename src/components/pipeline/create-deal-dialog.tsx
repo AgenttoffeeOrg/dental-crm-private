@@ -7,15 +7,13 @@ interface CreateDealDialogProps {
   onOpenChange: (open: boolean) => void
   onDealCreated: () => void
   preselectedContactId?: string
-  tenantId?: string
 }
 
 export function CreateDealDialog({ 
   open, 
   onOpenChange, 
   onDealCreated, 
-  preselectedContactId,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  preselectedContactId
 }: CreateDealDialogProps) {
   return (
     <SimpleDealDialog
@@ -24,7 +22,6 @@ export function CreateDealDialog({
       onDealUpdated={onDealCreated}
       mode="create"
       preselectedContactId={preselectedContactId}
-      tenantId={tenantId}
     />
   )
 }
