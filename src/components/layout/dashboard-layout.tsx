@@ -34,6 +34,7 @@ import {
   LineChart,
   Bell,
   GitBranch,
+  Calendar,
 } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
@@ -55,7 +56,7 @@ const getNavigation = (featureFlags: any) => [
     badge: 'New',
     badgeColor: 'bg-purple-500 text-white',
   }] : []),
-  { name: 'Calendar', href: '/calendar', icon: LayoutDashboard, badge: 'NEW', badgeColor: 'bg-green-500 text-white' },
+  { name: 'Calendar', href: '/calendar', icon: Calendar, badge: 'NEW', badgeColor: 'bg-green-500 text-white' },
   { name: 'Forms', href: '/forms', icon: FileText },
   { name: 'Integrations', href: '/integrations', icon: Zap },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
