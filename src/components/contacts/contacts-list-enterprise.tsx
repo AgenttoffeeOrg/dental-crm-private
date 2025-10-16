@@ -58,7 +58,10 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { formatDistanceToNow, format } from 'date-fns'
+import { formatDistanceToNow, format as formatDate } from 'date-fns'
+import { format } from '@/lib/formatting'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import type { Contact, AppUser } from '@/types/database'
 import { CreateContactSlideOver } from './create-contact-slide-over'
 import { useSavedContactViews, type ContactFilters } from '@/hooks/use-saved-contact-views'
@@ -252,7 +255,7 @@ export function ContactsListEnterprise() {
     if (selectedContactIds.size === 0) return
 
     const confirmed = confirm(
-      `Are you sure you want to delete ${selectedContactIds.size} contact(s)? This will also delete all associated deals and tasks. This action cannot be undone.`
+      `Are you sure you want to delete ${format.pluralize(selectedContactIds.size, 'contact')}? This will also delete all associated deals and tasks. This action cannot be undone.`
     )
     if (!confirmed) return
 
@@ -264,7 +267,7 @@ export function ContactsListEnterprise() {
 
       if (error) throw error
 
-      toast.success(`${selectedContactIds.size} contact(s) deleted successfully`)
+      toast.success(`${format.pluralize(selectedContactIds.size, 'contact')} deleted successfully`)
       setSelectedContactIds(new Set())
       loadContacts()
     } catch (error) {
@@ -403,7 +406,7 @@ export function ContactsListEnterprise() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">
-            All Contacts • {totalCount} total
+            All Contacts • {format.number(totalCount)} total
           </h2>
           <p className="text-sm text-gray-600 mt-1">
             Manage patients, leads, and referrers
@@ -537,7 +540,7 @@ export function ContactsListEnterprise() {
         <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <CheckSquare className="h-5 w-5 text-blue-600" />
           <span className="text-sm font-medium text-blue-900">
-            {selectedContactIds.size} contact(s) selected
+            {format.pluralize(selectedContactIds.size, 'contact')} selected
           </span>
           <div className="flex-1" />
           <DropdownMenu>
