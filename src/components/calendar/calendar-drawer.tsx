@@ -27,7 +27,6 @@ import {
 } from 'lucide-react'
 import { format, isToday, isTomorrow, isPast, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import Link from 'next/link'
 
 interface CalendarDrawerProps {
