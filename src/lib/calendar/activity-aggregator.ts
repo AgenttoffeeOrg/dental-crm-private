@@ -53,16 +53,31 @@ export class ActivityAggregator {
       const activities: CalendarActivity[] = []
 
       // 1. Get Tasks
-      const tasks = await this.getTasks(tenantId, startDate, endDate, filters)
-      activities.push(...tasks)
+      try {
+        const tasks = await this.getTasks(tenantId, startDate, endDate, filters)
+        activities.push(...tasks)
+      } catch (error) {
+        console.error('[Activity Aggregator] Tasks error:', error)
+        // Continue even if tasks fail
+      }
 
       // 2. Get Activities (calls, emails, meetings)
-      const crmActivities = await this.getCRMActivities(tenantId, startDate, endDate, filters)
-      activities.push(...crmActivities)
+      try {
+        const crmActivities = await this.getCRMActivities(tenantId, startDate, endDate, filters)
+        activities.push(...crmActivities)
+      } catch (error) {
+        console.error('[Activity Aggregator] CRM activities error:', error)
+        // Continue even if activities fail
+      }
 
       // 3. Get Deals (with expected close dates)
-      const deals = await this.getDeals(tenantId, startDate, endDate, filters)
-      activities.push(...deals)
+      try {
+        const deals = await this.getDeals(tenantId, startDate, endDate, filters)
+        activities.push(...deals)
+      } catch (error) {
+        console.error('[Activity Aggregator] Deals error:', error)
+        // Continue even if deals fail
+      }
 
       // 4. Get External Calendar Events (Google/Outlook)
       // TODO: Implement when external sync is enabled
@@ -72,10 +87,12 @@ export class ActivityAggregator {
       // Sort by start time
       activities.sort((a, b) => a.start_time.getTime() - b.start_time.getTime())
 
+      console.log(`[Activity Aggregator] Loaded ${activities.length} activities`)
+
       return activities
     } catch (error) {
-      console.error('[Activity Aggregator] Error:', error)
-      throw error
+      console.error('[Activity Aggregator] Fatal error:', error)
+      return [] // Return empty array instead of throwing
     }
   }
 
@@ -183,40 +200,51 @@ export class ActivityAggregator {
     endDate: Date,
     filters?: any
   ): Promise<CalendarActivity[]> {
-    let query = this.supabase
-      .from('deals')
-      .select(`
-        *,
-        contact:contacts(id, full_name),
-        stage:pipeline_stages(name)
-      `)
-      .eq('tenant_id', tenantId)
-      .not('expected_close_date', 'is', null)
-      .gte('expected_close_date', format(startDate, 'yyyy-MM-dd'))
-      .lte('expected_close_date', format(endDate, 'yyyy-MM-dd'))
+    try {
+      const startDateStr = startDate.toISOString().split('T')[0]
+      const endDateStr = endDate.toISOString().split('T')[0]
 
-    if (filters?.contactId) {
-      query = query.eq('contact_id', filters.contactId)
+      let query = this.supabase
+        .from('deals')
+        .select(`
+          *,
+          contact:contacts(id, full_name),
+          stage:pipeline_stages(name)
+        `)
+        .eq('tenant_id', tenantId)
+        .not('expected_close_date', 'is', null)
+        .gte('expected_close_date', startDateStr)
+        .lte('expected_close_date', endDateStr)
+
+      if (filters?.contactId) {
+        query = query.eq('contact_id', filters.contactId)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('[Activity Aggregator] Deals query error:', error)
+        return [] // Return empty array instead of throwing
+      }
+
+      return (data || []).map(deal => ({
+        id: deal.id,
+        type: 'deal' as const,
+        title: deal.title,
+        description: `Expected close: ${deal.stage?.name || 'Unknown stage'}`,
+        start_time: new Date(deal.expected_close_date + 'T09:00:00'), // Default to 9am
+        contact_id: deal.contact_id,
+        contact_name: deal.contact?.full_name,
+        deal_id: deal.id,
+        deal_title: deal.title,
+        status: deal.status,
+        color: '#8B5CF6',
+        source: 'crm' as const
+      }))
+    } catch (error) {
+      console.error('[Activity Aggregator] getDeals error:', error)
+      return []
     }
-
-    const { data, error } = await query
-
-    if (error) throw error
-
-    return (data || []).map(deal => ({
-      id: deal.id,
-      type: 'deal' as const,
-      title: deal.title,
-      description: `Expected close: ${deal.stage?.name || 'Unknown stage'}`,
-      start_time: new Date(deal.expected_close_date),
-      contact_id: deal.contact_id,
-      contact_name: deal.contact?.full_name,
-      deal_id: deal.id,
-      deal_title: deal.title,
-      status: deal.status,
-      color: '#8B5CF6',
-      source: 'crm' as const
-    }))
   }
 
   private getTaskColor(priority: string): string {
@@ -237,19 +265,6 @@ export class ActivityAggregator {
       default: return '#6B7280'
     }
   }
-}
-
-// Helper function for formatting dates
-function format(date: Date, formatStr: string): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  
-  if (formatStr === 'yyyy-MM-dd') {
-    return `${year}-${month}-${day}`
-  }
-  
-  return date.toISOString()
 }
 
 export const activityAggregator = new ActivityAggregator()
