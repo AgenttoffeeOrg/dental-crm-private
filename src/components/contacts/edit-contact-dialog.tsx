@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Contact } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 const contactSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
@@ -70,16 +71,15 @@ interface EditContactDialogProps {
   onOpenChange: (open: boolean) => void
   contact: Contact
   onContactUpdated: () => void
-  tenantId?: string
 }
 
 export function EditContactDialog({ 
   open, 
   onOpenChange, 
   contact,
-  onContactUpdated,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  onContactUpdated
 }: EditContactDialogProps) {
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [loading, setLoading] = useState(false)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const supabase = createClient()

@@ -68,15 +68,14 @@ interface CreateContactDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onContactCreated: () => void
-  tenantId?: string
 }
 
 export function CreateContactDialog({ 
   open, 
   onOpenChange, 
-  onContactCreated,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  onContactCreated
 }: CreateContactDialogProps) {
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [loading, setLoading] = useState(false)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const supabase = createClient()
@@ -96,7 +95,7 @@ export function CreateContactDialog({
     try {
       const contactData = {
         ...data,
-        tenant_id: tenantId,
+        tenant_id: orgId,
         tags: selectedTags,
         primary_email: data.primary_email || null,
         primary_phone: data.primary_phone || null,

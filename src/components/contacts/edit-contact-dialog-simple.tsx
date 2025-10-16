@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import type { Contact } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 const contactSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
@@ -38,7 +39,7 @@ export function EditContactDialog({
   onOpenChange, 
   contact,
   onContactUpdated,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000'
+  tenantId
 }: EditContactDialogProps) {
   const [loading, setLoading] = useState(false)
   const supabase = createClient()

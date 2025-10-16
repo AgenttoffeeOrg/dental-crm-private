@@ -49,6 +49,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Contact } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 // Simple separator component fallback
 const Separator = () => <hr className="border-gray-200 my-6" />
@@ -130,7 +131,6 @@ interface ContactProfileDialogProps {
   onOpenChange: (open: boolean) => void
   contact?: Contact | null // Make contact optional for new contact creation
   onContactUpdated: () => void
-  tenantId?: string
   mode?: 'create' | 'edit' // Add mode to distinguish between create and edit
 }
 
@@ -139,9 +139,9 @@ export function ContactProfileDialog({
   onOpenChange, 
   contact,
   onContactUpdated,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
   mode = 'edit'
 }: ContactProfileDialogProps) {
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [loading, setLoading] = useState(false)
   const [customFields, setCustomFields] = useState<CustomField[]>([])
   const [showCustomFieldBuilder, setShowCustomFieldBuilder] = useState(false)
@@ -249,7 +249,7 @@ export function ContactProfileDialog({
       const { data, error } = await supabase
         .from('custom_contact_fields')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId)
         .eq('active', true)
 
       if (error) {
@@ -367,7 +367,7 @@ export function ContactProfileDialog({
         // Create new contact
         const newContactData = {
           ...contactData,
-          tenant_id: tenantId,
+          tenant_id: orgId,
           tags: [],
           created_at: new Date().toISOString(),
         }
