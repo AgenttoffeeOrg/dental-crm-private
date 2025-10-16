@@ -57,9 +57,9 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'lead_sources') THEN
     ALTER TABLE lead_sources ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
   END IF;
+  
+  RAISE NOTICE '✅ Added deleted_at columns to entity tables';
 END $$;
-
-RAISE NOTICE '✅ Added deleted_at columns to entity tables';
 
 -- =====================================================
 -- 2. ADD INDEXES FOR SOFT DELETE QUERIES
@@ -73,7 +73,10 @@ CREATE INDEX IF NOT EXISTS idx_pipelines_not_deleted ON pipelines(tenant_id, del
 CREATE INDEX IF NOT EXISTS idx_automations_not_deleted ON automations(tenant_id, deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_marketing_campaigns_not_deleted ON marketing_campaigns(tenant_id, deleted_at) WHERE deleted_at IS NULL;
 
-RAISE NOTICE '✅ Created partial indexes for soft delete queries';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created partial indexes for soft delete queries';
+END $$;
 
 -- =====================================================
 -- 3. ATTACH updated_at TRIGGERS
