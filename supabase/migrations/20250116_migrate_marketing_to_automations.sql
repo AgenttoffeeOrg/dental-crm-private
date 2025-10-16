@@ -178,6 +178,9 @@ AND NOT EXISTS (
 -- MIGRATE JOURNEY LOGS
 -- =====================================================
 
+-- Note: marketing_journey_logs has different structure (log_type, not node_type)
+-- We'll map what we can and set defaults for missing fields
+
 INSERT INTO automation_execution_logs (
     id,
     tenant_id,
@@ -187,7 +190,6 @@ INSERT INTO automation_execution_logs (
     node_type,
     status,
     error_message,
-    execution_time_ms,
     executed_at
 )
 SELECT 
@@ -196,11 +198,14 @@ SELECT
     l.journey_id as automation_id,
     l.run_id,
     l.node_key,
-    l.node_type,
-    l.status,
-    l.error_message,
-    l.execution_time_ms,
-    l.created_at as executed_at
+    COALESCE(l.log_type, 'node_executed') as node_type, -- Map log_type to node_type
+    CASE 
+        WHEN l.log_type = 'error' THEN 'failed'
+        WHEN l.log_type = 'completed' THEN 'success'
+        ELSE 'success'
+    END as status,
+    l.error_details as error_message,
+    l.occurred_at as executed_at
 FROM marketing_journey_logs l
 WHERE EXISTS (SELECT 1 FROM automations WHERE automations.id = l.journey_id)
 AND NOT EXISTS (
