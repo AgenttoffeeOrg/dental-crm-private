@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 // Schema for incoming lead data
 const leadWebhookSchema = z.object({
+  tenant_id: z.string().uuid(), // ✅ SECURITY: Require tenant_id in webhook payload
   source: z.string(),
   source_id: z.string().optional(),
   contact: z.object({
@@ -67,11 +68,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // Validate the incoming data
+    // Validate the incoming data - INCLUDES tenant_id validation! 🔒
     const validatedData = leadWebhookSchema.parse(body)
     
     const supabase = createServiceClient()
-    const tenantId = process.env.DEFAULT_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000'
+    const tenantId = validatedData.tenant_id // ✅ SECURITY: From validated request body
 
     // Find the lead source
     const { data: leadSource, error: sourceError } = await supabase
