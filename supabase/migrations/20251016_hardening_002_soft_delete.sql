@@ -8,26 +8,59 @@
 -- 1. ADD deleted_at COLUMNS
 -- =====================================================
 
--- Core CRM tables
-ALTER TABLE contacts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE deals ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE pipelines ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE pipeline_stages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE tasks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE activities ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE calls ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE files ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE notes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+-- Core CRM tables (only if they exist)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'contacts') THEN
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'deals') THEN
+    ALTER TABLE deals ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'pipelines') THEN
+    ALTER TABLE pipelines ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'pipeline_stages') THEN
+    ALTER TABLE pipeline_stages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'activities') THEN
+    ALTER TABLE activities ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'calls') THEN
+    ALTER TABLE calls ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'files') THEN
+    ALTER TABLE files ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'notes') THEN
+    ALTER TABLE notes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
 
--- Marketing tables
-ALTER TABLE marketing_campaigns ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE marketing_templates ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE marketing_segments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE marketing_journeys ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-ALTER TABLE marketing_forms ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  -- Marketing tables
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'marketing_campaigns') THEN
+    ALTER TABLE marketing_campaigns ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'marketing_templates') THEN
+    ALTER TABLE marketing_templates ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'marketing_segments') THEN
+    ALTER TABLE marketing_segments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'marketing_journeys') THEN
+    ALTER TABLE marketing_journeys ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'marketing_forms') THEN
+    ALTER TABLE marketing_forms ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
 
--- Automation tables
-ALTER TABLE automations ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  -- Automation tables
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'automations') THEN
+    ALTER TABLE automations ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+END $$;
 
 -- Integration tables (if they exist)
 DO $$
@@ -46,7 +79,12 @@ BEGIN
 END $$;
 
 -- Location tables
-ALTER TABLE locations ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'locations') THEN
+    ALTER TABLE locations ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+  END IF;
+END $$;
 
 -- Custom fields, tags, etc.
 DO $$
@@ -66,12 +104,28 @@ END $$;
 -- =====================================================
 
 -- Performance: Index for "not deleted" queries (most common case)
-CREATE INDEX IF NOT EXISTS idx_contacts_not_deleted ON contacts(tenant_id, deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_deals_not_deleted ON deals(tenant_id, deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_tasks_not_deleted ON tasks(tenant_id, deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_pipelines_not_deleted ON pipelines(tenant_id, deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_automations_not_deleted ON automations(tenant_id, deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_marketing_campaigns_not_deleted ON marketing_campaigns(tenant_id, deleted_at) WHERE deleted_at IS NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'contacts') THEN
+    CREATE INDEX IF NOT EXISTS idx_contacts_not_deleted ON contacts(tenant_id, deleted_at) WHERE deleted_at IS NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'deals') THEN
+    CREATE INDEX IF NOT EXISTS idx_deals_not_deleted ON deals(tenant_id, deleted_at) WHERE deleted_at IS NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tasks') THEN
+    CREATE INDEX IF NOT EXISTS idx_tasks_not_deleted ON tasks(tenant_id, deleted_at) WHERE deleted_at IS NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pipelines') THEN
+    CREATE INDEX IF NOT EXISTS idx_pipelines_not_deleted ON pipelines(tenant_id, deleted_at) WHERE deleted_at IS NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'automations') THEN
+    CREATE INDEX IF NOT EXISTS idx_automations_not_deleted ON automations(tenant_id, deleted_at) WHERE deleted_at IS NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'marketing_campaigns') THEN
+    CREATE INDEX IF NOT EXISTS idx_marketing_campaigns_not_deleted ON marketing_campaigns(tenant_id, deleted_at) WHERE deleted_at IS NULL;
+  END IF;
+  RAISE NOTICE '✅ Created partial indexes for soft delete queries';
+END $$;
 
 DO $$
 BEGIN
