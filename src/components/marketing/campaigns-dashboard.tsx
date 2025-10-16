@@ -71,9 +71,10 @@ export function CampaignsDashboard() {
   }, [])
 
   const loadCampaigns = async () => {
+    if (!orgId) return
+    const tenantId = orgId
     try {
       const supabase = createClient()
-      const tenantId
 
       const { data, error } = await supabase
         .from('marketing_campaigns')

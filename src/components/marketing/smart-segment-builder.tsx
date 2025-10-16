@@ -105,7 +105,6 @@ export function SmartSegmentBuilder({ onSave, onCancel, existingSegment }: Segme
   const loadAutoSuggestions = async () => {
     try {
       const supabase = createClient()
-      const tenantId
 
       // Get segment suggestions based on common patterns
       const { data: contacts } = await supabase
@@ -157,7 +156,6 @@ export function SmartSegmentBuilder({ onSave, onCancel, existingSegment }: Segme
     setCalculating(true)
     try {
       const supabase = createClient()
-      const tenantId
 
       // Build query based on filter rules
       let query = supabase
@@ -229,7 +227,6 @@ export function SmartSegmentBuilder({ onSave, onCancel, existingSegment }: Segme
 
     try {
       const supabase = createClient()
-      const tenantId
 
       const segmentData = {
         tenant_id: tenantId,

@@ -66,8 +66,9 @@ export function ModernCampaignBuilder({ onComplete, onCancel, initialChannel }: 
   }, [selectedSegment])
 
   const loadTemplatesAndSegments = async () => {
+    if (!orgId) return
+    const tenantId = orgId
     const supabase = createClient()
-    const tenantId
 
     // Load templates
     const { data: templatesData } = await supabase
@@ -93,7 +94,6 @@ export function ModernCampaignBuilder({ onComplete, onCancel, initialChannel }: 
     if (!selectedSegment) return
     
     const supabase = createClient()
-    const tenantId
 
     // For now, use the segment's total_contacts
     // In production, apply additional filters based on channel opt-ins

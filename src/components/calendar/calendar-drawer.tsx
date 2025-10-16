@@ -36,6 +36,7 @@ interface CalendarDrawerProps {
 
 export function CalendarDrawer({ open, onClose }: CalendarDrawerProps) {
   const supabase = createClient()
+  const { orgId } = useTenantContext()
   const [view, setView] = useState<'today' | 'week' | 'month'>('today')
   const [tasks, setTasks] = useState<any[]>([])
   const [activities, setActivities] = useState<any[]>([])
@@ -51,9 +52,10 @@ export function CalendarDrawer({ open, onClose }: CalendarDrawerProps) {
   }, [open, view])
 
   const loadData = async () => {
+    if (!orgId) return
+    const tenantId = orgId
     setLoading(true)
     try {
-      const tenantId
       const now = new Date()
       
       let startDate: Date, endDate: Date

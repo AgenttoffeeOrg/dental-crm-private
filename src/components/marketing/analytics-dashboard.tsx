@@ -56,9 +56,10 @@ export function AnalyticsDashboard() {
   }, [timeRange, selectedChannel])
 
   const loadAnalytics = async () => {
+    if (!orgId) return
+    const tenantId = orgId
     try {
       const supabase = createClient()
-      const tenantId
 
       // Calculate date range
       const endDate = new Date()
