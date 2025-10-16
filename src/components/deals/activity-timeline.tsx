@@ -29,12 +29,12 @@ import { CreateActivityDialog } from './create-activity-dialog'
 import { formatDateTime, getActivityAge } from '@/lib/dates'
 import { storageService } from '@/lib/storage'
 import type { ActivityWithRelations } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface ActivityTimelineProps {
   dealId?: string // Made optional - if empty, shows all contact activities
   contactId: string
   onActivityAdded?: () => void
-  tenantId?: string
   showAllContactActivities?: boolean // New prop to explicitly control context
 }
 
@@ -42,9 +42,9 @@ export function ActivityTimeline({
   dealId, 
   contactId, 
   onActivityAdded,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
   showAllContactActivities = false
 }: ActivityTimelineProps) {
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [activities, setActivities] = useState<ActivityWithRelations[]>([])
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -56,10 +56,14 @@ export function ActivityTimeline({
   const supabase = createClient()
 
   useEffect(() => {
-    fetchActivities()
-  }, [dealId, contactId, showAllContactActivities])
+    if (orgId && !tenantLoading) {
+      fetchActivities()
+    }
+  }, [dealId, contactId, showAllContactActivities, orgId, tenantLoading])
 
   const fetchActivities = async () => {
+    if (!orgId) return
+    
     try {
       setLoading(true)
 
@@ -73,7 +77,7 @@ export function ActivityTimeline({
             files(*)
           )
         `)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('occurred_at', { ascending: false })
 
       // Context-aware filtering

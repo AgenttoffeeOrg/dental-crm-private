@@ -26,20 +26,20 @@ import { formatDistanceToNow, isPast, isToday } from 'date-fns'
 import { cn } from '@/lib/utils'
 import type { Task } from '@/types/database'
 import Link from 'next/link'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface DealTasksProps {
   dealId: string
   contactId: string
   onTaskUpdate?: () => void
-  tenantId?: string
 }
 
 export function DealTasks({ 
   dealId, 
   contactId, 
-  onTaskUpdate,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000' 
+  onTaskUpdate
 }: DealTasksProps) {
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
