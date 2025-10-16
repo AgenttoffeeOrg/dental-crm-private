@@ -218,15 +218,15 @@ export class AutomationEventListener {
     tenantId: string,
     triggerType: string,
     eventData: unknown
-  ): Promise<Array<{ id: string; entry_trigger_type: string; entry_trigger_config: unknown }>> {
+  ): Promise<Array<{ id: string; trigger_type: string; trigger_config: unknown; category: string }>> {
     try {
-      // Query active journeys/automations
+      // Query active automations from NEW standalone table
       const { data: automations, error } = await this.supabase
-        .from('marketing_journeys')
-        .select('id, entry_trigger_type, entry_trigger_config')
+        .from('automations')
+        .select('id, trigger_type, trigger_config, category')
         .eq('tenant_id', tenantId)
         .eq('status', 'active')
-        .eq('entry_trigger_type', triggerType)
+        .eq('trigger_type', triggerType)
 
       if (error) {
         console.error('[Automation Listener] Error querying automations:', error)
@@ -239,13 +239,48 @@ export class AutomationEventListener {
 
       // Filter by conditions if specified
       const matchingAutomations = automations.filter(automation => {
-        return this.matchesConditions(automation.entry_trigger_config, eventData)
+        return this.matchesConditions(automation.trigger_config, eventData)
       })
 
-      return matchingAutomations
+      // Filter out marketing automations if marketing feature is disabled
+      const filteredAutomations = await this.filterByFeatureFlags(matchingAutomations)
+
+      return filteredAutomations
     } catch (error) {
       console.error('[Automation Listener] Error finding matching automations:', error)
       return []
+    }
+  }
+
+  /**
+   * Filter automations based on feature flags
+   * Marketing automations only execute if marketing feature is enabled
+   */
+  private async filterByFeatureFlags(
+    automations: Array<{ id: string; trigger_type: string; trigger_config: unknown; category: string }>
+  ): Promise<Array<{ id: string; trigger_type: string; trigger_config: unknown; category: string }>> {
+    try {
+      // Get feature flags (simplified - in production, get from database)
+      // For now, check if marketing_journeys table has data to determine if marketing is enabled
+      const { count } = await this.supabase
+        .from('marketing_journeys')
+        .select('*', { count: 'exact', head: true })
+        .limit(1)
+
+      const isMarketingEnabled = (count || 0) > 0 // Simplified check
+
+      // Filter out marketing automations if marketing not enabled
+      return automations.filter(automation => {
+        if (automation.category === 'marketing' && !isMarketingEnabled) {
+          console.log(`[Automation Listener] Skipping marketing automation ${automation.id} - marketing feature disabled`)
+          return false
+        }
+        return true
+      })
+    } catch (error) {
+      console.error('[Automation Listener] Error filtering by feature flags:', error)
+      // On error, allow all non-marketing automations
+      return automations.filter(a => a.category !== 'marketing')
     }
   }
 
