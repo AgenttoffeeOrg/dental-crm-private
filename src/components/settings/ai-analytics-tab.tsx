@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Brain, TrendingUp, Mail, CheckSquare, DollarSign, Sparkles } from 'lucide-react'
 
-export function AIAnalyticsTab({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: { tenantId?: string }) {
+export function AIAnalyticsTab({ tenantId }: { tenantId?: string }) {
   const [stats, setStats] = useState({
     totalQueries: 0,
     totalDrafts: 0,

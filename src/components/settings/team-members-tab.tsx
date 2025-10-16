@@ -24,7 +24,7 @@ const PLACEHOLDER_USERS = [
 
 export function TeamMembersTab() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
-  const tenantId = '550e8400-e29b-41d4-a716-446655440000' // TODO: Get from auth context
+  const tenantId // TODO: Get from auth context
 
   const handleInviteUser = () => {
     setInviteDialogOpen(true)

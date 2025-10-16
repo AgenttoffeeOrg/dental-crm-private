@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { Shield, Plus, Edit, Trash2, Lock, Check, X } from 'lucide-react'
 import { PermissionMatrixModal } from './permission-matrix-modal'
 import type { CustomRole } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface CreateRoleDialogProps {
   open: boolean
@@ -209,7 +210,7 @@ function CreateRoleDialog({ open, onOpenChange, tenantId, onCreated, editingRole
   )
 }
 
-export function CustomRolesTab({ tenantId = '550e8400-e29b-41d4-a716-446655440000' }: { tenantId?: string }) {
+export function CustomRolesTab({ tenantId }: { tenantId?: string }) {
   const [roles, setRoles] = useState<CustomRole[]>([])
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
