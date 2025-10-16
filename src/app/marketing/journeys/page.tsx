@@ -11,23 +11,29 @@ import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import type { MarketingJourney } from '@/types/marketing'
+import { useAuth } from '@/lib/auth'
 
 export default function JourneysPage() {
+  const { appUser, loading: authLoading } = useAuth()
   const [journeys, setJourneys] = useState<MarketingJourney[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
   useEffect(() => {
-    fetchJourneys()
-  }, [])
+    if (appUser?.tenant_id && !authLoading) {
+      fetchJourneys()
+    }
+  }, [appUser?.tenant_id, authLoading])
 
   const fetchJourneys = async () => {
+    if (!appUser?.tenant_id) return
+    
     try {
       setLoading(true)
       const { data, error } = await supabase
         .from('marketing_journeys')
         .select('*')
-        .eq('tenant_id', '550e8400-e29b-41d4-a716-446655440000')
+        .eq('tenant_id', appUser.tenant_id) // ✅ SECURITY: Filter by org
         .order('created_at', { ascending: false })
 
       if (error) throw error
