@@ -63,6 +63,7 @@ import {
 import { formatDateTime } from '@/lib/dates'
 import { toast } from 'sonner'
 import type { Deal, Contact, PipelineStage } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 interface DealDetailViewProps {
   dealId: string
@@ -82,6 +83,7 @@ const navigation = [
 
 export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailViewProps) {
   const pathname = usePathname()
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [deal, setDeal] = useState<Deal | null>(null)
   const [contact, setContact] = useState<Contact | null>(null)
   const [stage, setStage] = useState<PipelineStage | null>(null)
@@ -102,15 +104,19 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
   const supabase = createClient()
 
   useEffect(() => {
-    fetchDealData()
-    fetchStages()
-  }, [dealId])
+    if (orgId && !tenantLoading) {
+      fetchDealData()
+      fetchStages()
+    }
+  }, [dealId, orgId, tenantLoading])
 
   const fetchDealData = async () => {
+    if (!orgId) return
+    
     try {
       setLoading(true)
       
-      // Fetch deal with related data
+      // Fetch deal with related data - WITH TENANT FILTER! 🔒
       const { data: dealData, error: dealError } = await supabase
         .from('deals')
         .select(`
@@ -118,6 +124,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
           contact:contacts(*),
           stage:pipeline_stages(*)
         `)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .eq('id', dealId)
         .single()
 
@@ -149,10 +156,13 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
   }
 
   const fetchStages = async () => {
+    if (!orgId) return
+    
     try {
       const { data: stagesData, error } = await supabase
         .from('pipeline_stages')
         .select('*')
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('position')
 
       if (!error && stagesData) {
