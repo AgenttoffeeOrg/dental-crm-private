@@ -200,6 +200,12 @@ export class ActivityAggregator {
     endDate: Date,
     filters?: any
   ): Promise<CalendarActivity[]> {
+    // Note: expected_close_date column doesn't exist in deals table yet
+    // Return empty array to prevent errors
+    // TODO: Add expected_close_date column to deals table
+    return []
+    
+    /* Uncomment when expected_close_date column is added:
     try {
       const startDateStr = startDate.toISOString().split('T')[0]
       const endDateStr = endDate.toISOString().split('T')[0]
