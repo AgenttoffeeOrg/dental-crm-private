@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const { data: activity, error: activityError } = await supabase
       .from('activities')
       .insert({
-        tenant_id: contact?.tenant_id || '550e8400-e29b-41d4-a716-446655440000', // TODO: Better tenant detection
+        tenant_id: contact?.tenant_id || body.tenant_id || request.headers.get('X-Tenant-ID'), // TODO: Better tenant detection
         type: 'email',
         contact_id: contact?.id || null,
         deal_id: null, // TODO: Smart deal detection based on email thread

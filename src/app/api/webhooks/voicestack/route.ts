@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       const { data: activity, error: activityError } = await supabase
         .from('activities')
         .insert({
-          tenant_id: contact?.tenant_id || '550e8400-e29b-41d4-a716-446655440000',
+          tenant_id: contact?.tenant_id || body.tenant_id || request.headers.get('X-Tenant-ID'),
           type: 'call',
           contact_id: contact?.id || null,
           deal_id: null, // TODO: Smart deal linking based on recent interactions
