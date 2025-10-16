@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Deal, Contact, Pipeline, PipelineStage } from '@/types/database'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 // Simple separator component fallback
 const Separator = () => <hr className="border-gray-200 my-6" />
@@ -108,7 +109,6 @@ interface DealProfileDialogProps {
   onOpenChange: (open: boolean) => void
   deal?: Deal | null
   onDealUpdated: () => void
-  tenantId?: string
   mode?: 'create' | 'edit'
   preselectedContactId?: string
 }
@@ -118,10 +118,10 @@ export function DealProfileDialog({
   onOpenChange, 
   deal,
   onDealUpdated,
-  tenantId = '550e8400-e29b-41d4-a716-446655440000',
   mode = 'edit',
   preselectedContactId
 }: DealProfileDialogProps) {
+  const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [loading, setLoading] = useState(false)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
@@ -147,7 +147,7 @@ export function DealProfileDialog({
 
   // Load data when dialog opens
   useEffect(() => {
-    if (open) {
+    if (open && orgId && !tenantLoading) {
       loadInitialData()
       if (mode === 'edit' && deal) {
         loadDealData()
@@ -155,25 +155,27 @@ export function DealProfileDialog({
         resetFormForNewDeal()
       }
     }
-  }, [open, deal, mode])
+  }, [open, deal, mode, orgId, tenantLoading])
 
   const loadInitialData = async () => {
+    if (!orgId) return
+    
     try {
-      // Load contacts
+      // Load contacts - WITH TENANT FILTER! 🔒
       const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
         .select('id, full_name, primary_email, primary_phone')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('full_name')
 
       if (contactsError) throw contactsError
       setContacts(contactsData || [])
 
-      // Load pipelines
+      // Load pipelines - WITH TENANT FILTER! 🔒
       const { data: pipelinesData, error: pipelinesError } = await supabase
         .from('pipelines')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
         .order('name')
 
       if (pipelinesError) throw pipelinesError
@@ -333,10 +335,15 @@ export function DealProfileDialog({
       }
 
       if (mode === 'create') {
-        // Create new deal
+        if (!orgId) {
+          toast.error('Authentication required')
+          return
+        }
+        
+        // Create new deal - WITH ORG ID! 🔒
         const newDealData = {
           ...dealData,
-          tenant_id: tenantId,
+          tenant_id: orgId, // ✅ SECURITY: Use authenticated user's org
           created_at: new Date().toISOString(),
         }
 
@@ -363,6 +370,11 @@ export function DealProfileDialog({
           toast.error('Deal ID is missing')
           return
         }
+        
+        if (!orgId) {
+          toast.error('Authentication required')
+          return
+        }
 
         console.log('Updating deal with comprehensive data:', dealData)
 
@@ -370,6 +382,7 @@ export function DealProfileDialog({
           .from('deals')
           .update(dealData)
           .eq('id', deal.id)
+          .eq('tenant_id', orgId) // ✅ SECURITY: Verify org ownership
 
         if (error) {
           console.error('Supabase error updating deal:', error)
