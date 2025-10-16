@@ -35,6 +35,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
 import { CreateAutomationSlideOver } from '@/components/automations/create-automation-slide-over'
+import { useAuth } from '@/lib/auth'
 
 interface Automation {
   id: string
@@ -57,6 +58,7 @@ interface CategoryStats {
 }
 
 export default function AutomationsPage() {
+  const { appUser, loading: authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<'deal' | 'pipeline' | 'task' | 'marketing'>('deal')
   const [automations, setAutomations] = useState<Automation[]>([])
   const [stats, setStats] = useState<CategoryStats[]>([])
@@ -66,17 +68,21 @@ export default function AutomationsPage() {
   const { featureFlags } = useFeatureFlags()
 
   useEffect(() => {
-    fetchAutomations()
-    fetchStats()
-  }, [])
+    if (appUser?.tenant_id && !authLoading) {
+      fetchAutomations()
+      fetchStats()
+    }
+  }, [appUser?.tenant_id, authLoading])
 
   const fetchAutomations = async () => {
+    if (!appUser?.tenant_id) return
+    
     try {
       setLoading(true)
       const { data, error } = await supabase
         .from('automations')
         .select('*')
-        .eq('tenant_id', '550e8400-e29b-41d4-a716-446655440000')
+        .eq('tenant_id', appUser.tenant_id) // ✅ SECURITY: Filter by org
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -90,10 +96,12 @@ export default function AutomationsPage() {
   }
 
   const fetchStats = async () => {
+    if (!appUser?.tenant_id) return
+    
     try {
       const { data, error } = await supabase
         .rpc('get_automation_stats_by_category', {
-          p_tenant_id: '550e8400-e29b-41d4-a716-446655440000'
+          p_tenant_id: appUser.tenant_id // ✅ SECURITY: Use authenticated user's org
         })
 
       if (error) throw error
