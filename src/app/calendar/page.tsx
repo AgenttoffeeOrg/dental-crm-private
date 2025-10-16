@@ -37,11 +37,13 @@ import { CalendarMonthView } from '@/components/calendar/calendar-month-view'
 import { CalendarAgendaView } from '@/components/calendar/calendar-agenda-view'
 import { activityAggregator, CalendarActivity } from '@/lib/calendar/activity-aggregator'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/auth'
 
 type ViewMode = 'day' | 'week' | 'month' | 'agenda'
 
 export default function CalendarPage() {
   const supabase = createClient()
+  const { appUser, loading: authLoading } = useAuth()
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [activities, setActivities] = useState<CalendarActivity[]>([])
@@ -51,14 +53,18 @@ export default function CalendarPage() {
   const [bookingUrl, setBookingUrl] = useState<string>('')
 
   useEffect(() => {
-    loadData()
-    loadBookingUrl()
-  }, [currentDate, viewMode])
+    if (appUser?.tenant_id && !authLoading) {
+      loadData()
+      loadBookingUrl()
+    }
+  }, [currentDate, viewMode, appUser?.tenant_id, authLoading])
 
   const loadData = async () => {
+    if (!appUser?.tenant_id) return
+    
     setLoading(true)
     try {
-      const tenantId = '550e8400-e29b-41d4-a716-446655440000'
+      const orgId = appUser.tenant_id
 
       // Calculate date range based on view
       let startDate: Date, endDate: Date
@@ -87,7 +93,7 @@ export default function CalendarPage() {
 
       // Load unified activities (tasks, calls, emails, meetings, deals)
       const activitiesData = await activityAggregator.getActivities(
-        tenantId,
+        orgId, // ✅ SECURITY: Use authenticated user's org
         startDate,
         endDate
       )
