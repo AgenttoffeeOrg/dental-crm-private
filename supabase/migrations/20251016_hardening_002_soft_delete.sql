@@ -127,11 +127,6 @@ BEGIN
   RAISE NOTICE '✅ Created partial indexes for soft delete queries';
 END $$;
 
-DO $$
-BEGIN
-  RAISE NOTICE '✅ Created partial indexes for soft delete queries';
-END $$;
-
 -- =====================================================
 -- 3. ATTACH updated_at TRIGGERS
 -- =====================================================
