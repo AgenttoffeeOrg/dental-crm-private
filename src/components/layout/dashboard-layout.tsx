@@ -55,6 +55,7 @@ const getNavigation = (featureFlags: any) => [
     badge: 'New',
     badgeColor: 'bg-purple-500 text-white',
   }] : []),
+  { name: 'Calendar', href: '/calendar', icon: LayoutDashboard, badge: 'NEW', badgeColor: 'bg-green-500 text-white' },
   { name: 'Forms', href: '/forms', icon: FileText },
   { name: 'Integrations', href: '/integrations', icon: Zap },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },

@@ -31,6 +31,14 @@ interface Feature {
 
 const RECENT_FEATURES: Feature[] = [
   {
+    id: 'calendar-module',
+    title: '🗓️ Calendar & Scheduling',
+    description: 'Complete calendar system with appointments, provider scheduling, external sync (Google/Outlook), reminders, and online booking. Fully integrated with Contacts, Deals, and Tasks.',
+    category: 'new',
+    date: 'January 16, 2025',
+    icon: '🗓️',
+  },
+  {
     id: 'automations-exposed',
     title: '🤖 Automations Now Visible!',
     description: 'Build automated workflows with triggers (form submit, deal won, etc.) and actions (send email/SMS, create tasks, add tags). Now in main navigation!',
