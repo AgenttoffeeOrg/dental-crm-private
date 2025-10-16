@@ -35,6 +35,8 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/lib/auth'
+import { format } from '@/lib/formatting'
+import { LoadingState } from '@/components/ui/loading-state'
 
 interface MarketingStats {
   totalContacts: number
@@ -224,7 +226,7 @@ export default function MarketingDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-blue-600 mb-1">Total Contacts</p>
-                        <p className="text-3xl font-bold text-gray-900">{loading ? '...' : stats.totalContacts.toLocaleString()}</p>
+                        <p className="text-3xl font-bold text-gray-900">{loading ? '...' : format.number(stats.totalContacts)}</p>
                         <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
                           Ready for marketing
@@ -242,7 +244,7 @@ export default function MarketingDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-green-600 mb-1">Active Campaigns</p>
-                        <p className="text-3xl font-bold text-gray-900">{loading ? '...' : stats.activeCampaigns}</p>
+                        <p className="text-3xl font-bold text-gray-900">{loading ? '...' : format.number(stats.activeCampaigns)}</p>
                         <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                           <Activity className="h-3 w-3 text-green-600" />
                           Currently running
@@ -260,7 +262,7 @@ export default function MarketingDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-purple-600 mb-1">Avg Open Rate</p>
-                        <p className="text-3xl font-bold text-gray-900">{loading ? '...' : `${stats.avgOpenRate.toFixed(1)}%`}</p>
+                        <p className="text-3xl font-bold text-gray-900">{loading ? '...' : format.percent(stats.avgOpenRate / 100, 1)}</p>
                         <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
                           This month
@@ -278,7 +280,7 @@ export default function MarketingDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-orange-600 mb-1">Avg Click Rate</p>
-                        <p className="text-3xl font-bold text-gray-900">{loading ? '...' : `${stats.avgClickRate.toFixed(1)}%`}</p>
+                        <p className="text-3xl font-bold text-gray-900">{loading ? '...' : format.percent(stats.avgClickRate / 100, 1)}</p>
                         <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                           <TrendingUp className="h-3 w-3 text-green-600" />
                           Engagement
@@ -315,7 +317,7 @@ export default function MarketingDashboard() {
                         <Mail className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-gray-900">{stats.emailsSentThisMonth.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-gray-900">{format.number(stats.emailsSentThisMonth)}</p>
                         <p className="text-sm text-gray-600">Emails Sent</p>
                       </div>
                     </div>
@@ -325,7 +327,7 @@ export default function MarketingDashboard() {
                         <MessageSquare className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-gray-900">{stats.smsSentThisMonth.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-gray-900">{format.number(stats.smsSentThisMonth)}</p>
                         <p className="text-sm text-gray-600">SMS Sent</p>
                       </div>
                     </div>
@@ -335,7 +337,7 @@ export default function MarketingDashboard() {
                         <Phone className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-gray-900">{stats.whatsappSentThisMonth.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-gray-900">{format.number(stats.whatsappSentThisMonth)}</p>
                         <p className="text-sm text-gray-600">WhatsApp Sent</p>
                       </div>
                     </div>

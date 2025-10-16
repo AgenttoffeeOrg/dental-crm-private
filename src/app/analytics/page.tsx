@@ -19,6 +19,7 @@ import { MarketingAnalyticsV2 } from '@/components/analytics/marketing-analytics
 import { CohortAnalysis } from '@/components/analytics/cohort-analysis'
 import { PredictiveAnalytics } from '@/components/analytics/predictive-analytics'
 import { useAuth } from '@/lib/auth'
+import { LoadingState } from '@/components/ui/loading-state'
 
 export default function AnalyticsPage() {
   const { appUser, loading } = useAuth()
@@ -28,12 +29,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="h-full flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
-            <p className="text-gray-600">Loading analytics...</p>
-          </div>
-        </div>
+        <LoadingState message="Loading analytics..." size="lg" />
       </DashboardLayout>
     )
   }
