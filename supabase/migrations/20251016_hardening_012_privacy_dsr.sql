@@ -39,7 +39,10 @@ COMMENT ON TABLE erasure_tombstones IS
    Provides audit trail showing what was deleted, when, why, and by whom.
    Does NOT contain the erased data itself (that would defeat the purpose).';
 
-RAISE NOTICE '✅ Created erasure_tombstones table';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created erasure_tombstones table';
+END $$;
 
 -- =====================================================
 -- 2. DATA SUBJECT REQUESTS (DSR) TABLE
@@ -99,7 +102,10 @@ COMMENT ON TABLE data_subject_requests IS
    Tracks lifecycle from request → verification → fulfillment → completion.
    30-day SLA for GDPR compliance.';
 
-RAISE NOTICE '✅ Created data_subject_requests table';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created data_subject_requests table';
+END $$;
 
 -- =====================================================
 -- 3. ENABLE RLS ON PRIVACY TABLES
@@ -123,7 +129,10 @@ CREATE POLICY dsr_admin_only ON data_subject_requests
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
-RAISE NOTICE '✅ Applied RLS to privacy tables (admin-only)';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied RLS to privacy tables (admin-only)';
+END $$;
 
 -- =====================================================
 -- 4. ERASE CONTACT PII FUNCTION
@@ -280,7 +289,10 @@ COMMENT ON FUNCTION erase_contact_pii IS
    - Updates DSR if provided
    Does NOT delete business records (deals, tasks) - only erases PII.';
 
-RAISE NOTICE '✅ Created erase_contact_pii() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created erase_contact_pii() function';
+END $$;
 
 -- =====================================================
 -- 5. EXPORT CONTACT DATA FUNCTION (For Access/Portability Requests)
@@ -363,7 +375,10 @@ COMMENT ON FUNCTION export_contact_data IS
    Returns JSON with contact + all related records.
    Use this for GDPR Access Requests and Portability Requests.';
 
-RAISE NOTICE '✅ Created export_contact_data() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created export_contact_data() function';
+END $$;
 
 -- =====================================================
 -- 6. CREATE DSR REQUEST FUNCTION (Self-service)
@@ -421,7 +436,10 @@ COMMENT ON FUNCTION create_dsr_request IS
    Can be called from public form (self-service DSR portal).
    Automatically links to contact if email matches.';
 
-RAISE NOTICE '✅ Created create_dsr_request() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created create_dsr_request() function';
+END $$;
 
 -- =====================================================
 -- 7. VERIFICATION
