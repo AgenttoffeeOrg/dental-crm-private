@@ -18,7 +18,10 @@ ALTER TABLE contacts ADD COLUMN IF NOT EXISTS primary_phone_e164 TEXT;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS merged_into_id UUID REFERENCES contacts(id) ON DELETE SET NULL;
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS is_duplicate BOOLEAN DEFAULT false;
 
-RAISE NOTICE '✅ Added normalization columns to contacts';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Added normalization columns to contacts';
+END $$;
 
 -- =====================================================
 -- 2. CREATE UNIQUE INDEXES (Enforce uniqueness per tenant)
@@ -42,7 +45,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_contacts_phone_e164
 CREATE INDEX IF NOT EXISTS idx_contacts_is_duplicate ON contacts(tenant_id, is_duplicate) WHERE is_duplicate = true;
 CREATE INDEX IF NOT EXISTS idx_contacts_merged_into ON contacts(merged_into_id) WHERE merged_into_id IS NOT NULL;
 
-RAISE NOTICE '✅ Created unique indexes for normalized fields';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created unique indexes for normalized fields';
+END $$;
 
 -- =====================================================
 -- 3. EMAIL NORMALIZATION FUNCTION
@@ -161,7 +167,10 @@ CREATE TRIGGER trig_contacts_normalize
   FOR EACH ROW
   EXECUTE FUNCTION contacts_normalize_fields();
 
-RAISE NOTICE '✅ Created auto-normalization trigger on contacts';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created auto-normalization trigger on contacts';
+END $$;
 
 -- =====================================================
 -- 6. BACKFILL EXISTING DATA
@@ -173,7 +182,10 @@ SET primary_email_norm = normalize_email(primary_email),
     primary_phone_e164 = normalize_phone(primary_phone, 'GB')
 WHERE primary_email_norm IS NULL OR primary_phone_e164 IS NULL;
 
-RAISE NOTICE '✅ Backfilled normalization for existing contacts';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Backfilled normalization for existing contacts';
+END $$;
 
 -- =====================================================
 -- 7. DUPLICATE DETECTION FUNCTION
@@ -228,7 +240,10 @@ COMMENT ON FUNCTION find_duplicate_contacts IS
   'Finds potential duplicate contacts by normalized email or phone.
    Returns matches within the same tenant, excluding deleted and merged records.';
 
-RAISE NOTICE '✅ Created find_duplicate_contacts() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created find_duplicate_contacts() function';
+END $$;
 
 -- =====================================================
 -- 8. MERGE CONTACTS FUNCTION
@@ -363,7 +378,10 @@ COMMENT ON FUNCTION merge_contacts IS
    Marks source as duplicate and soft-deletes it.
    Logs audit event for traceability.';
 
-RAISE NOTICE '✅ Created merge_contacts() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created merge_contacts() function';
+END $$;
 
 -- =====================================================
 -- 9. UNMERGE CONTACTS FUNCTION (Recovery)
@@ -403,7 +421,10 @@ COMMENT ON FUNCTION unmerge_contact IS
    Does NOT move records back - they stay with the target contact.
    This is a recovery function in case merge was accidental.';
 
-RAISE NOTICE '✅ Created unmerge_contact() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created unmerge_contact() function';
+END $$;
 
 -- =====================================================
 -- 10. VERIFICATION
