@@ -1,19 +1,26 @@
 -- ================================================================
--- A4: ENTITLEMENTS VERIFICATION
+-- A4: ENTITLEMENTS VERIFICATION (CRITICAL SECURITY TEST)
 -- ================================================================
 -- Purpose: Verify entitlement system is secure and hierarchical
+-- SECURITY: Verify check_entitlement() cannot be spoofed
+-- APPROACH: Test with existing tenants, verify feature gates work
 -- ================================================================
 
 BEGIN;
 
--- Create test tenant
-INSERT INTO tenants (id, name, slug, created_at, updated_at)
-VALUES ('EEEEEEEE-0000-0000-0000-000000000099'::uuid, 'Entitlement Test Tenant', 'entitle-test', NOW(), NOW())
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO app_users (id, tenant_id, email, role, full_name, created_at, updated_at)
-VALUES ('EEEEEEEE-0000-0000-0000-0000000000AA'::uuid, 'EEEEEEEE-0000-0000-0000-000000000099'::uuid, 'entitle@test.com', 'admin', 'Entitle User', NOW(), NOW())
-ON CONFLICT (id) DO NOTHING;
+-- Use existing tenants for testing
+DO $$
+DECLARE
+  v_tenant_count int;
+BEGIN
+  SELECT COUNT(*) INTO v_tenant_count FROM tenants;
+  
+  IF v_tenant_count < 1 THEN
+    RAISE EXCEPTION '⚠️  No tenants found. Run seed script first: npx ts-node scripts/seed/verify_seed.ts';
+  END IF;
+  
+  RAISE NOTICE '✅ Using existing tenants for entitlement tests';
+END $$;
 
 -- ================================================================
 -- TEST 1: Feature Hierarchy
@@ -58,10 +65,10 @@ WHERE proname = 'check_entitlement'
 -- TEST 3: Base Entitlement (crm_base)
 -- ================================================================
 
--- Grant crm_base to test tenant
+-- Grant crm_base to first tenant
 INSERT INTO tenant_entitlements (tenant_id, feature_id, is_enabled)
 SELECT 
-  'EEEEEEEE-0000-0000-0000-000000000099'::uuid,
+  (SELECT id FROM tenants LIMIT 1),
   f.id,
   true
 FROM features f
@@ -77,7 +84,7 @@ SELECT
   CASE WHEN COUNT(*) = 1 THEN '✅ PASS' ELSE '❌ FAIL' END AS status
 FROM tenant_entitlements te
 JOIN features f ON f.id = te.feature_id
-WHERE te.tenant_id = 'EEEEEEEE-0000-0000-0000-000000000099'::uuid
+WHERE te.tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND f.code = 'crm_base'
   AND te.is_enabled = true;
 
@@ -85,10 +92,10 @@ WHERE te.tenant_id = 'EEEEEEEE-0000-0000-0000-000000000099'::uuid
 -- TEST 4: Marketing Base Entitlement
 -- ================================================================
 
--- Grant marketing to test tenant
+-- Grant marketing to first tenant
 INSERT INTO tenant_entitlements (tenant_id, feature_id, is_enabled)
 SELECT 
-  'EEEEEEEE-0000-0000-0000-000000000099'::uuid,
+  (SELECT id FROM tenants LIMIT 1),
   f.id,
   true
 FROM features f
@@ -102,7 +109,7 @@ SELECT
   CASE WHEN COUNT(*) = 1 THEN '✅ PASS' ELSE '❌ FAIL' END AS status
 FROM tenant_entitlements te
 JOIN features f ON f.id = te.feature_id
-WHERE te.tenant_id = 'EEEEEEEE-0000-0000-0000-000000000099'::uuid
+WHERE te.tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND f.code = 'marketing'
   AND te.is_enabled = true;
 
@@ -124,7 +131,7 @@ WHERE f.code = 'email_warmup';
 -- Grant nested add-on WITHOUT granting parent (should work in DB, but check_entitlement should fail)
 INSERT INTO tenant_entitlements (tenant_id, feature_id, is_enabled)
 SELECT 
-  'EEEEEEEE-0000-0000-0000-000000000099'::uuid,
+  (SELECT id FROM tenants LIMIT 1),
   f.id,
   true
 FROM features f
@@ -142,7 +149,7 @@ ON CONFLICT (tenant_id, feature_id) DO UPDATE SET is_enabled = true;
 -- Grant automations
 INSERT INTO tenant_entitlements (tenant_id, feature_id, is_enabled)
 SELECT 
-  'EEEEEEEE-0000-0000-0000-000000000099'::uuid,
+  (SELECT id FROM tenants LIMIT 1),
   f.id,
   true
 FROM features f
@@ -156,7 +163,7 @@ SELECT
   CASE WHEN COUNT(*) = 2 THEN '✅ PASS' ELSE '❌ FAIL' END AS status
 FROM tenant_entitlements te
 JOIN features f ON f.id = te.feature_id
-WHERE te.tenant_id = 'EEEEEEEE-0000-0000-0000-000000000099'::uuid
+WHERE te.tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND f.code IN ('automations', 'marketing')
   AND te.is_enabled = true;
 
@@ -209,7 +216,7 @@ WHERE table_schema = 'public'
 -- Set quota for email sends
 UPDATE tenant_entitlements
 SET quota_limit = 1000, quota_used = 0, quota_reset_at = NOW() + INTERVAL '1 month'
-WHERE tenant_id = 'EEEEEEEE-0000-0000-0000-000000000099'::uuid
+WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND feature_id = (SELECT id FROM features WHERE code = 'marketing' LIMIT 1);
 
 SELECT 
@@ -219,7 +226,7 @@ SELECT
   quota_reset_at > NOW() AS reset_in_future,
   CASE WHEN quota_limit = 1000 AND quota_used = 0 AND quota_reset_at > NOW() THEN '✅ PASS' ELSE '❌ FAIL' END AS status
 FROM tenant_entitlements
-WHERE tenant_id = 'EEEEEEEE-0000-0000-0000-000000000099'::uuid
+WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND feature_id = (SELECT id FROM features WHERE code = 'marketing' LIMIT 1);
 
 -- ================================================================
