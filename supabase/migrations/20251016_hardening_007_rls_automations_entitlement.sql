@@ -102,7 +102,10 @@ CREATE POLICY automations_service_role ON automations
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied combined entitlement RLS to automations table';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied combined entitlement RLS to automations table';
+END $$;
 
 -- =====================================================
 -- 2. AUTOMATION_NODES (Supporting table)
@@ -133,7 +136,10 @@ CREATE POLICY automation_nodes_service ON automation_nodes
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied entitlement RLS to automation_nodes';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied entitlement RLS to automation_nodes';
+END $$;
 
 -- =====================================================
 -- 3. AUTOMATION_EDGES (Supporting table)
@@ -164,7 +170,10 @@ CREATE POLICY automation_edges_service ON automation_edges
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied entitlement RLS to automation_edges';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied entitlement RLS to automation_edges';
+END $$;
 
 -- =====================================================
 -- 4. AUTOMATION_RUNS (Execution history)
@@ -194,7 +203,10 @@ CREATE POLICY automation_runs_service ON automation_runs
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied entitlement RLS to automation_runs';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied entitlement RLS to automation_runs';
+END $$;
 
 -- =====================================================
 -- 5. UPDATE AUTOMATION_EXECUTION_LOGS (Already has basic RLS)
@@ -223,7 +235,10 @@ CREATE POLICY automation_logs_service_role ON automation_execution_logs
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Updated entitlement RLS on automation_execution_logs';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Updated entitlement RLS on automation_execution_logs';
+END $$;
 
 -- =====================================================
 -- VERIFICATION
