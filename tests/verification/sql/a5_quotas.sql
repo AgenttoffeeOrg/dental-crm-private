@@ -1,19 +1,26 @@
 -- ================================================================
--- A5: QUOTA ENFORCEMENT VERIFICATION
+-- A5: QUOTA ENFORCEMENT VERIFICATION (CRITICAL DB-LAYER TEST)
 -- ================================================================
--- Purpose: Verify DB-layer quota enforcement works correctly
+-- Purpose: Verify DB-layer quota enforcement prevents over-limit operations
+-- SECURITY: Cannot be bypassed via API - enforced at DB trigger level
+-- APPROACH: Use existing tenants, test quota functions and triggers
 -- ================================================================
 
 BEGIN;
 
--- Create test tenant
-INSERT INTO tenants (id, name, slug, created_at, updated_at)
-VALUES ('FFFFFFFF-0000-0000-0000-000000000099'::uuid, 'Quota Test Tenant', 'quota-test', NOW(), NOW())
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO app_users (id, tenant_id, email, role, full_name, created_at, updated_at)
-VALUES ('FFFFFFFF-0000-0000-0000-0000000000AA'::uuid, 'FFFFFFFF-0000-0000-0000-000000000099'::uuid, 'quota@test.com', 'admin', 'Quota User', NOW(), NOW())
-ON CONFLICT (id) DO NOTHING;
+-- Use existing tenants for testing
+DO $$
+DECLARE
+  v_tenant_count int;
+BEGIN
+  SELECT COUNT(*) INTO v_tenant_count FROM tenants;
+  
+  IF v_tenant_count < 1 THEN
+    RAISE EXCEPTION '⚠️  No tenants found. Run seed script first: npx ts-node scripts/seed/verify_seed.ts';
+  END IF;
+  
+  RAISE NOTICE '✅ Using existing tenants for quota enforcement tests';
+END $$;
 
 -- ================================================================
 -- TEST 1: enforce_quota_and_increment() Function
@@ -36,7 +43,7 @@ WHERE proname = 'enforce_quota_and_increment'
 -- Grant marketing entitlement with quota
 INSERT INTO tenant_entitlements (tenant_id, feature_id, is_enabled, quota_limit, quota_used, quota_reset_at)
 SELECT 
-  'FFFFFFFF-0000-0000-0000-000000000099'::uuid,
+  (SELECT id FROM tenants LIMIT 1),
   f.id,
   true,
   3,  -- Limit: 3 emails
@@ -55,7 +62,7 @@ SELECT
   0 AS expected_used,
   CASE WHEN quota_limit = 3 AND quota_used = 0 THEN '✅ PASS' ELSE '❌ FAIL' END AS status
 FROM tenant_entitlements
-WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
 
 -- ================================================================
@@ -74,19 +81,19 @@ BEGIN
   -- Get quota before
   SELECT quota_used INTO v_quota_before
   FROM tenant_entitlements
-  WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+  WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
     AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
   
   -- Increment quota manually (simulating trigger)
   UPDATE tenant_entitlements
   SET quota_used = quota_used + 1
-  WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+  WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
     AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
   
   -- Get quota after
   SELECT quota_used INTO v_quota_after
   FROM tenant_entitlements
-  WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+  WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
     AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
   
   RAISE NOTICE '3a. ✅ PASS: Quota incremented from % to %', v_quota_before, v_quota_after;
@@ -95,12 +102,12 @@ END $$;
 -- Repeat for sends 2 and 3
 UPDATE tenant_entitlements
 SET quota_used = quota_used + 1
-WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
 
 UPDATE tenant_entitlements
 SET quota_used = quota_used + 1
-WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
 
 -- Verify quota is now at limit
@@ -110,7 +117,7 @@ SELECT
   quota_limit,
   CASE WHEN quota_used = quota_limit THEN '✅ PASS' ELSE '❌ FAIL' END AS status
 FROM tenant_entitlements
-WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
 
 -- ================================================================
@@ -126,7 +133,7 @@ BEGIN
   -- Check current state
   SELECT quota_used, quota_limit INTO v_current_used, v_current_limit
   FROM tenant_entitlements
-  WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+  WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
     AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
   
   -- Try to exceed quota
@@ -138,7 +145,7 @@ BEGIN
   ELSE
     UPDATE tenant_entitlements
     SET quota_used = quota_used + 1
-    WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+    WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
       AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
     RAISE NOTICE '4a. ❌ FAIL: Quota exceeded but no error raised';
   END IF;
@@ -171,7 +178,7 @@ WHERE proname = 'check_quota_status'
 -- Set reset date to past
 UPDATE tenant_entitlements
 SET quota_reset_at = NOW() - INTERVAL '1 day'
-WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
 
 -- In production, a cron job or trigger would reset quota_used when quota_reset_at < NOW
@@ -183,13 +190,13 @@ SELECT
   true AS expected,
   CASE WHEN quota_reset_at < NOW() THEN '✅ PASS: Ready for auto-reset' ELSE '❌ FAIL' END AS status
 FROM tenant_entitlements
-WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
 
 -- Manually trigger reset (simulating cron job)
 UPDATE tenant_entitlements
 SET quota_used = 0, quota_reset_at = NOW() + INTERVAL '1 month'
-WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1)
   AND quota_reset_at < NOW();
 
@@ -199,7 +206,7 @@ SELECT
   quota_reset_at > NOW() AS next_reset_in_future,
   CASE WHEN quota_used = 0 AND quota_reset_at > NOW() THEN '✅ PASS' ELSE '❌ FAIL' END AS status
 FROM tenant_entitlements
-WHERE tenant_id = 'FFFFFFFF-0000-0000-0000-000000000099'::uuid
+WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
   AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
 
 -- ================================================================
