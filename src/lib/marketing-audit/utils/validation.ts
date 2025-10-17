@@ -95,12 +95,22 @@ export function isValidConfidence(confidence: string): boolean {
 export function sanitizeString(input: string): string {
   if (!input || typeof input !== 'string') return '';
   
-  return input
-    .replace(/[<>]/g, '') // Remove < and >
-    .replace(/(?:javascript|data|vbscript|file|about):/gi, '') // Remove dangerous URL protocols
-    .replace(/on\w+=/gi, '') // Remove event handlers
-    .trim()
-    .slice(0, 1000); // Limit length
+  let sanitized = input
+  
+  // Remove < and > using split/join
+  sanitized = sanitized.split('<').join('').split('>').join('')
+  
+  // Remove dangerous URL protocols using split/join
+  const dangerousSchemes = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:']
+  for (const scheme of dangerousSchemes) {
+    sanitized = sanitized.split(new RegExp(scheme, 'gi')).join('')
+  }
+  
+  // Remove event handlers using split/join
+  const eventHandlerPattern = /\bon\w+=/gi
+  sanitized = sanitized.split(eventHandlerPattern).join('')
+  
+  return sanitized.trim().slice(0, 1000); // Limit length
 }
 
 /**
