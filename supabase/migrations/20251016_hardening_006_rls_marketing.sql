@@ -55,7 +55,10 @@ CREATE POLICY marketing_campaigns_service ON marketing_campaigns
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied entitlement RLS to marketing_campaigns';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied entitlement RLS to marketing_campaigns';
+END $$;
 
 -- =====================================================
 -- 2. MARKETING_TEMPLATES
@@ -103,7 +106,10 @@ CREATE POLICY marketing_templates_service ON marketing_templates
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied entitlement RLS to marketing_templates';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied entitlement RLS to marketing_templates';
+END $$;
 
 -- =====================================================
 -- 3. MARKETING_SEGMENTS
@@ -151,7 +157,10 @@ CREATE POLICY marketing_segments_service ON marketing_segments
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied entitlement RLS to marketing_segments';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied entitlement RLS to marketing_segments';
+END $$;
 
 -- =====================================================
 -- 4. MARKETING_JOURNEYS
@@ -199,7 +208,10 @@ CREATE POLICY marketing_journeys_service ON marketing_journeys
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied entitlement RLS to marketing_journeys';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied entitlement RLS to marketing_journeys';
+END $$;
 
 -- =====================================================
 -- 5. MARKETING_FORMS
@@ -247,7 +259,10 @@ CREATE POLICY marketing_forms_service ON marketing_forms
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied entitlement RLS to marketing_forms';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied entitlement RLS to marketing_forms';
+END $$;
 
 -- =====================================================
 -- 6. MARKETING_CAMPAIGN_SENDS (Transactional table)
