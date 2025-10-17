@@ -61,6 +61,7 @@ export function SocialMediaComposer({ onComplete, onCancel }: SocialMediaCompose
         .eq('is_active', true)
 
       setAccounts(data || [])
+      */
     } catch (error) {
       console.error('[SOCIAL] Error loading accounts:', error)
     }
