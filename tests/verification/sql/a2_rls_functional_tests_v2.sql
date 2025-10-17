@@ -112,13 +112,34 @@ WHERE (
 AND title LIKE 'Test Deal%';
 
 -- Create test deals (if table exists)
+-- NOTE: deals.contact_id is NOT NULL, so we must reference the contacts we created above
 DO $$
+DECLARE
+  v_contact_t1_id uuid;
+  v_contact_t2_id uuid;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'deals') THEN
-    INSERT INTO deals (tenant_id, title, created_at, updated_at)
-    VALUES
-      ('00000000-0000-0000-0000-000000000001'::uuid, 'Test Deal T1', NOW(), NOW()),
-      ('00000000-0000-0000-0000-000000000002'::uuid, 'Test Deal T2', NOW(), NOW());
+    -- Get the contact IDs we created in TEST 1
+    SELECT id INTO v_contact_t1_id FROM contacts 
+    WHERE tenant_id::text = '00000000-0000-0000-0000-000000000001' 
+      AND primary_email = 'contact1@tenant1.test' 
+    LIMIT 1;
+    
+    SELECT id INTO v_contact_t2_id FROM contacts 
+    WHERE tenant_id::text = '00000000-0000-0000-0000-000000000002' 
+      AND primary_email = 'contact2@tenant2.test' 
+    LIMIT 1;
+    
+    IF v_contact_t1_id IS NOT NULL AND v_contact_t2_id IS NOT NULL THEN
+      INSERT INTO deals (tenant_id, contact_id, title, value, currency, created_at, updated_at)
+      VALUES
+        ('00000000-0000-0000-0000-000000000001'::uuid, v_contact_t1_id, 'Test Deal T1', 1000, 'GBP', NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000002'::uuid, v_contact_t2_id, 'Test Deal T2', 2000, 'GBP', NOW(), NOW());
+      
+      RAISE NOTICE '✅ Created test deals linked to same-tenant contacts';
+    ELSE
+      RAISE NOTICE '⚠️  Could not find test contacts - skipping deal creation';
+    END IF;
   END IF;
 END $$;
 
