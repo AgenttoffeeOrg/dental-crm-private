@@ -46,7 +46,10 @@ COMMENT ON TABLE webhook_events IS
   'Stores all incoming webhook events for idempotency and audit.
    Primary key on id (provider event ID) prevents duplicate processing.';
 
-RAISE NOTICE '✅ Created webhook_events table';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created webhook_events table';
+END $$;
 
 -- =====================================================
 -- 2. ENABLE RLS ON WEBHOOK_EVENTS
@@ -70,7 +73,10 @@ CREATE POLICY webhook_events_service ON webhook_events
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied RLS to webhook_events';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied RLS to webhook_events';
+END $$;
 
 -- =====================================================
 -- 3. WEBHOOK PROCESSING FUNCTION
@@ -144,7 +150,10 @@ COMMENT ON FUNCTION register_webhook_event IS
    Returns is_new=true if this is the first time we''ve seen this event.
    Returns is_new=false if this is a duplicate/replay (safe to ignore).';
 
-RAISE NOTICE '✅ Created register_webhook_event() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created register_webhook_event() function';
+END $$;
 
 -- =====================================================
 -- 4. MARK WEBHOOK AS PROCESSED
@@ -180,7 +189,10 @@ COMMENT ON FUNCTION mark_webhook_processed IS
   'Marks a webhook event as processed (completed or failed).
    Call this after successfully processing the webhook payload.';
 
-RAISE NOTICE '✅ Created mark_webhook_processed() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created mark_webhook_processed() function';
+END $$;
 
 -- =====================================================
 -- 5. CLEANUP OLD WEBHOOK EVENTS (Retention Policy)
@@ -213,7 +225,10 @@ COMMENT ON FUNCTION cleanup_old_webhook_events IS
    Default retention: 90 days.
    Run this periodically via cron job or pg_cron.';
 
-RAISE NOTICE '✅ Created cleanup_old_webhook_events() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created cleanup_old_webhook_events() function';
+END $$;
 
 -- =====================================================
 -- 6. WEBHOOK STATS VIEW
@@ -239,7 +254,10 @@ COMMENT ON VIEW webhook_stats IS
   'Aggregated webhook statistics for the last 30 days.
    Useful for monitoring webhook health and performance.';
 
-RAISE NOTICE '✅ Created webhook_stats view';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created webhook_stats view';
+END $$;
 
 -- =====================================================
 -- 7. VERIFICATION
