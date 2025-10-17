@@ -24,10 +24,11 @@ ON CONFLICT (id) DO NOTHING;
 -- Create test users
 -- Note: In production, these would be created via auth.users
 -- For testing, we'll create app_users directly
+-- Using 'owner' role which is always valid
 INSERT INTO app_users (id, tenant_id, email, role, full_name, created_at, updated_at)
 VALUES 
-  ('10000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'user1@tenant1.test', 'admin', 'User One', NOW(), NOW()),
-  ('20000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, 'user2@tenant2.test', 'admin', 'User Two', NOW(), NOW())
+  ('10000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'user1@tenant1.test', 'owner', 'User One', NOW(), NOW()),
+  ('20000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, 'user2@tenant2.test', 'owner', 'User Two', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- ================================================================
