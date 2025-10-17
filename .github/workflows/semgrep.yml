@@ -33,6 +33,11 @@ jobs:
         with:
           fetch-depth: 0  # Full history for baseline comparison
       
+      - name: Fix git ownership issue in container
+        run: |
+          git config --global --add safe.directory /__w/dental-crm-private/dental-crm-private
+          git config --global --add safe.directory '*'
+      
       - name: Get baseline commit (merge-base with main)
         id: baseline
         run: |
