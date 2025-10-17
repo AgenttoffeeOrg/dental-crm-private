@@ -112,11 +112,15 @@ WHERE (
 AND title LIKE 'Test Deal%';
 
 -- Create test deals (if table exists)
--- NOTE: deals.contact_id is NOT NULL, so we must reference the contacts we created above
+-- NOTE: deals requires: tenant_id, contact_id, pipeline_id, stage_id, title
 DO $$
 DECLARE
   v_contact_t1_id uuid;
   v_contact_t2_id uuid;
+  v_pipeline_t1_id uuid;
+  v_pipeline_t2_id uuid;
+  v_stage_t1_id uuid;
+  v_stage_t2_id uuid;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'deals') THEN
     -- Get the contact IDs we created in TEST 1
@@ -130,15 +134,44 @@ BEGIN
       AND primary_email = 'contact2@tenant2.test' 
     LIMIT 1;
     
-    IF v_contact_t1_id IS NOT NULL AND v_contact_t2_id IS NOT NULL THEN
-      INSERT INTO deals (tenant_id, contact_id, title, value, currency, created_at, updated_at)
-      VALUES
-        ('00000000-0000-0000-0000-000000000001'::uuid, v_contact_t1_id, 'Test Deal T1', 1000, 'GBP', NOW(), NOW()),
-        ('00000000-0000-0000-0000-000000000002'::uuid, v_contact_t2_id, 'Test Deal T2', 2000, 'GBP', NOW(), NOW());
+    -- Get pipeline IDs for each tenant (use any existing pipeline)
+    SELECT id INTO v_pipeline_t1_id FROM pipelines 
+    WHERE tenant_id::text = '00000000-0000-0000-0000-000000000001' 
+    LIMIT 1;
+    
+    SELECT id INTO v_pipeline_t2_id FROM pipelines 
+    WHERE tenant_id::text = '00000000-0000-0000-0000-000000000002' 
+    LIMIT 1;
+    
+    -- Get first stage for each pipeline
+    IF v_pipeline_t1_id IS NOT NULL THEN
+      SELECT id INTO v_stage_t1_id FROM pipeline_stages 
+      WHERE pipeline_id = v_pipeline_t1_id 
+      ORDER BY position LIMIT 1;
+    END IF;
+    
+    IF v_pipeline_t2_id IS NOT NULL THEN
+      SELECT id INTO v_stage_t2_id FROM pipeline_stages 
+      WHERE pipeline_id = v_pipeline_t2_id 
+      ORDER BY position LIMIT 1;
+    END IF;
+    
+    -- Only create deals if we have all required references
+    IF v_contact_t1_id IS NOT NULL AND v_contact_t2_id IS NOT NULL 
+       AND v_pipeline_t1_id IS NOT NULL AND v_pipeline_t2_id IS NOT NULL
+       AND v_stage_t1_id IS NOT NULL AND v_stage_t2_id IS NOT NULL THEN
       
-      RAISE NOTICE '✅ Created test deals linked to same-tenant contacts';
+      INSERT INTO deals (tenant_id, contact_id, pipeline_id, stage_id, title, value_estimate_cents, currency, treatment_tags, created_at, updated_at)
+      VALUES
+        ('00000000-0000-0000-0000-000000000001'::uuid, v_contact_t1_id, v_pipeline_t1_id, v_stage_t1_id, 'Test Deal T1', 100000, 'GBP', ARRAY[]::text[], NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000002'::uuid, v_contact_t2_id, v_pipeline_t2_id, v_stage_t2_id, 'Test Deal T2', 200000, 'GBP', ARRAY[]::text[], NOW(), NOW());
+      
+      RAISE NOTICE '✅ Created test deals with all required FK references';
     ELSE
-      RAISE NOTICE '⚠️  Could not find test contacts - skipping deal creation';
+      RAISE NOTICE '⚠️  Missing required data - skipping deal creation';
+      RAISE NOTICE '    Contacts: T1=%, T2=%', v_contact_t1_id IS NOT NULL, v_contact_t2_id IS NOT NULL;
+      RAISE NOTICE '    Pipelines: T1=%, T2=%', v_pipeline_t1_id IS NOT NULL, v_pipeline_t2_id IS NOT NULL;
+      RAISE NOTICE '    Stages: T1=%, T2=%', v_stage_t1_id IS NOT NULL, v_stage_t2_id IS NOT NULL;
     END IF;
   END IF;
 END $$;
