@@ -1,0 +1,8 @@
+# RLS FUNCTIONAL TESTS RESULTS
+# =============================
+# Paste results from Supabase SQL Editor below this line:
+
+| test_name                                                | policies_with_tenant_filter | status |
+| -------------------------------------------------------- | --------------------------- | ------ |
+| RLS Policy - Deals has tenant_id filter in SELECT policy | 1                           | ✅ PASS |
+

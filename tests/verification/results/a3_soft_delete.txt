@@ -1,0 +1,4 @@
+# SOFT DELETE & UPDATED_AT TEST RESULTS
+# ======================================
+# Paste results from Supabase SQL Editor below this line:
+

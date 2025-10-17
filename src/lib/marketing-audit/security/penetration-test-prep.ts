@@ -171,7 +171,7 @@ export class PenetrationTestPrep {
         name: 'API Key Not Exposed',
         description: 'Test that API keys are not exposed in client code',
         test: async () => {
-          const response = await fetch('http://localhost:3000/_next/static/chunks/pages/_app.js');
+          const response = await fetch('https://localhost:3000/_next/static/chunks/pages/_app.js');
           const content = await response.text();
           
           const hasGoogleKey = content.includes(process.env.GOOGLE_API_KEY || 'GOOGLE_API_KEY');

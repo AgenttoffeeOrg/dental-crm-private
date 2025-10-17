@@ -1,0 +1,6 @@
+# ENTITLEMENTS TEST RESULTS ⭐ CRITICAL
+# ======================================
+# Paste results from Supabase SQL Editor below this line:
+| test_name               | quota_limit | quota_used | reset_in_future | status |
+| ----------------------- | ----------- | ---------- | --------------- | ------ |
+| 9b. Quota set correctly | 1000        | 0          | true            | ✅ PASS |

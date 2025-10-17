@@ -3,7 +3,7 @@
 export function sanitizeInput(input: string): string {
   return input
     .replace(/[<>]/g, '')
-    .replace(/javascript:/gi, '')
+    .replace(/(?:javascript|data|vbscript|file|about):/gi, '') // Check all dangerous URL schemes
     .trim()
 }
 
@@ -29,7 +29,25 @@ export function escapeHtml(text: string): string {
 }
 
 export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  // Use crypto for secure random IDs
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // Fallback for older environments
+  return `${Date.now()}-${Date.now().toString(36)}`
+}
+
+/**
+ * Generate a cryptographically secure random integer between 0 (inclusive) and max (exclusive)
+ */
+export function secureRandomInt(max: number): number {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const array = new Uint32Array(1)
+    crypto.getRandomValues(array)
+    return array[0] % max
+  }
+  // Fallback to Math.random (less secure but functional)
+  return Math.floor(Math.random() * max)
 }
 
 // Rate limiting helper

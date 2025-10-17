@@ -28,7 +28,12 @@ class AnalyticsSDK {
   }
 
   private generateSessionId() {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    // Use crypto for secure random session IDs
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID()
+    }
+    // Fallback for older environments
+    return `${Date.now()}-${Date.now().toString(36)}`
   }
 
   private startSession() {

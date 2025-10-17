@@ -11,6 +11,7 @@
 
 import { createClient } from '@/lib/supabase-client'
 import { events } from '@/lib/events-unified'
+import { secureRandomInt } from '@/lib/utils/security'
 
 // =====================================================
 // TASK ESCALATION
@@ -382,8 +383,8 @@ export async function checkTaskReassignments(tenantId: string): Promise<{
 
       if (!users || users.length === 0) continue
 
-      // Pick random user (or use round-robin logic)
-      const newAssignee = users[Math.floor(Math.random() * users.length)]
+      // Pick random user using secure randomness
+      const newAssignee = users[secureRandomInt(users.length)]
 
       // Reassign
       await supabase

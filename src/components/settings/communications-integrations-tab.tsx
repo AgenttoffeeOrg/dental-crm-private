@@ -59,7 +59,26 @@ interface IntegrationSettings {
 
 export function CommunicationsIntegrationsTab() {
   const [loading, setLoading] = useState(false)
-  const [settings, setSettings] = useState<IntegrationSettings | null>(null)
+  const [settings, setSettings] = useState<IntegrationSettings>({
+    tenant_id: '',
+    email_provider: 'sendgrid',
+    email_api_key: '',
+    email_from_address: '',
+    email_from_name: '',
+    is_email_configured: false,
+    sms_account_sid: '',
+    sms_auth_token: '',
+    sms_from_number: '',
+    is_sms_configured: false,
+    whatsapp_account_sid: '',
+    whatsapp_auth_token: '',
+    whatsapp_from_number: '',
+    is_whatsapp_configured: false,
+    voice_account_sid: '',
+    voice_auth_token: '',
+    voice_from_number: '',
+    is_voice_configured: false
+  })
   const [showSecrets, setShowSecrets] = useState({
     emailKey: false,
     smsToken: false,
@@ -132,19 +151,27 @@ export function CommunicationsIntegrationsTab() {
     }
     
     setLoading(false)
+    */
   }
 
   const saveSettings = async () => {
-    if (!settings) return
-    
     setLoading(true)
+    
+    // TODO: Implement when integration_settings table is created
+    toast.info('Save integration settings', {
+      description: 'Database migration required to save settings'
+    })
+    
+    setLoading(false)
+    
+    /* Uncomment when integration_settings table is created:
     const supabase = createClient()
     
     const { error } = await supabase
       .from('integration_settings')
       .upsert({
         ...settings,
-        tenant_id: tenantId,
+        tenant_id: orgId,
         updated_at: new Date().toISOString()
       })
     
@@ -155,8 +182,7 @@ export function CommunicationsIntegrationsTab() {
       toast.success('Integration settings saved!')
       loadSettings()
     }
-    
-    setLoading(false)
+    */
   }
 
   const testIntegration = async (type: 'email' | 'sms' | 'whatsapp' | 'voice') => {
@@ -174,11 +200,9 @@ export function CommunicationsIntegrationsTab() {
     toast.success('Webhook URL copied!')
   }
 
-  if (loading && !settings) {
+  if (loading) {
     return <div className="p-8 text-center text-muted-foreground">Loading integration settings...</div>
   }
-
-  if (!settings) return null
 
   const baseWebhookUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/api/webhooks`

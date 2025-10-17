@@ -1,0 +1,9 @@
+# RLS INVENTORY TEST RESULTS
+# ==========================
+| metric                        | count |
+| ----------------------------- | ----- |
+| Total public tables           | 142   |
+| Tables with RLS enabled       | 77    |
+| Tables with tenant_id column  | 146   |
+| Total RLS policies            | 260   |
+| Tables with deleted_at column | 16    |

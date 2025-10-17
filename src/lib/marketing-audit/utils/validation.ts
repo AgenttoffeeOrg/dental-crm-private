@@ -97,7 +97,7 @@ export function sanitizeString(input: string): string {
   
   return input
     .replace(/[<>]/g, '') // Remove < and >
-    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/(?:javascript|data|vbscript|file|about):/gi, '') // Remove dangerous URL protocols
     .replace(/on\w+=/gi, '') // Remove event handlers
     .trim()
     .slice(0, 1000); // Limit length

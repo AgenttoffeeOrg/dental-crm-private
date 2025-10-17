@@ -13,6 +13,16 @@ import Link from 'next/link'
 export default function CreateTemplatePage() {
   const router = useRouter()
 
+  // Helper to strip all HTML tags completely
+  const stripHtml = (html: string): string => {
+    let text = html
+    // Keep replacing until no more tags found
+    while (/<[^>]*>/g.test(text)) {
+      text = text.replace(/<[^>]*>/g, '')
+    }
+    return text
+  }
+
   const handleSave = async (html: string, css: string) => {
     try {
       const supabase = createClient()
@@ -27,7 +37,7 @@ export default function CreateTemplatePage() {
           category: 'custom',
           content_html: html,
           content_css: css,
-          content_text: html.replace(/<[^>]*>/g, ''), // Strip HTML for plain text
+          content_text: stripHtml(html), // Strip all HTML tags for plain text
           is_favorite: false,
           usage_count: 0
         })

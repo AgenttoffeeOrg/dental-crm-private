@@ -329,9 +329,9 @@ export function checkForSQLInjection(value: string): boolean {
  */
 export function checkForXSS(value: string): boolean {
   const xssPatterns = [
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
-    /javascript:/gi,
+    /<script\b/gi, // More robust script tag detection
+    /<iframe\b/gi, // More robust iframe detection
+    /(?:javascript|data|vbscript|file|about):/gi,
     /on\w+\s*=/gi, // onclick, onerror, etc.
   ]
 
@@ -342,11 +342,24 @@ export function checkForXSS(value: string): boolean {
  * Sanitize user input
  */
 export function sanitizeInput(value: string): string {
-  return value
-    .trim()
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+\s*=/gi, '')
+  let sanitized = value.trim()
+  
+  // Remove all script tags and their content (repeatedly until none remain)
+  while (/<script\b[^>]*>[\s\S]*?<\/script>/gi.test(sanitized)) {
+    sanitized = sanitized.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+  }
+  
+  // Remove all iframe tags and their content (repeatedly until none remain)
+  while (/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi.test(sanitized)) {
+    sanitized = sanitized.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
+  }
+  
+  // Remove dangerous URL schemes (global replacement)
+  sanitized = sanitized.replace(/(?:javascript|data|vbscript|file|about):/gi, '')
+  
+  // Remove event handlers (global replacement)
+  sanitized = sanitized.replace(/on\w+\s*=/gi, '')
+  
+  return sanitized
 }
 

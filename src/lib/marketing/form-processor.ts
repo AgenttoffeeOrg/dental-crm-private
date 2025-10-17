@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@/lib/supabase-client';
+import { secureRandomInt } from '@/lib/utils/security';
 
 export interface FormSubmission {
   formId: string;
@@ -176,8 +177,8 @@ async function roundRobinAssignment(tenantId: string): Promise<string | null> {
   if (!users || users.length === 0) return null;
 
   // Get last assigned user index from settings or use 0
-  // For simplicity, just rotate through users
-  const randomIndex = Math.floor(Math.random() * users.length);
+  // For simplicity, just rotate through users (using secure randomness)
+  const randomIndex = secureRandomInt(users.length);
   return users[randomIndex].id;
 }
 

@@ -1,0 +1,3 @@
+| test_name                                     | found_count | expected | status |
+| --------------------------------------------- | ----------- | -------- | ------ |
+| 3a. Service role CAN see soft-deleted contact | 1           | 1        | ✅ PASS |
