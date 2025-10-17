@@ -25,7 +25,10 @@ CREATE INDEX IF NOT EXISTS idx_automation_correlation
   ON automation_execution_logs(correlation_id) 
   WHERE correlation_id IS NOT NULL;
 
-RAISE NOTICE '✅ Added idempotency columns to automation_execution_logs';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Added idempotency columns to automation_execution_logs';
+END $$;
 
 -- =====================================================
 -- 2. AUTOMATION DEAD LETTER QUEUE (DLQ)
@@ -63,7 +66,10 @@ COMMENT ON TABLE automation_dlq IS
   'Dead Letter Queue for failed automation executions.
    Stores executions that failed after max retries for manual investigation and replay.';
 
-RAISE NOTICE '✅ Created automation_dlq table';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created automation_dlq table';
+END $$;
 
 -- =====================================================
 -- 3. ENABLE RLS ON DLQ
@@ -98,7 +104,10 @@ CREATE POLICY automation_dlq_service ON automation_dlq
   FOR ALL
   USING (auth.role() = 'service_role');
 
-RAISE NOTICE '✅ Applied RLS to automation_dlq';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Applied RLS to automation_dlq';
+END $$;
 
 -- =====================================================
 -- 4. IDEMPOTENCY KEY BUILDER FUNCTION
@@ -124,7 +133,10 @@ COMMENT ON FUNCTION build_automation_idempotency_key IS
   'Builds a deterministic idempotency key for automation executions.
    Ensures same event + automation + entity combination only executes once.';
 
-RAISE NOTICE '✅ Created build_automation_idempotency_key() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created build_automation_idempotency_key() function';
+END $$;
 
 -- =====================================================
 -- 5. CHECK EXECUTION ELIGIBILITY (Loop Guard)
@@ -211,7 +223,10 @@ COMMENT ON FUNCTION check_automation_eligible IS
    Prevents: disabled automations, infinite loops, duplicate executions.
    Returns: is_eligible, reason, existing_execution_id';
 
-RAISE NOTICE '✅ Created check_automation_eligible() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created check_automation_eligible() function';
+END $$;
 
 -- =====================================================
 -- 6. SEND TO DLQ FUNCTION
@@ -280,7 +295,10 @@ COMMENT ON FUNCTION send_to_automation_dlq IS
   'Sends a failed automation execution to the Dead Letter Queue.
    Call this when max retries are exceeded.';
 
-RAISE NOTICE '✅ Created send_to_automation_dlq() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created send_to_automation_dlq() function';
+END $$;
 
 -- =====================================================
 -- 7. REPLAY FROM DLQ FUNCTION
@@ -341,7 +359,10 @@ COMMENT ON FUNCTION replay_from_dlq IS
   'Replays a failed automation from DLQ.
    Creates a new execution log and marks DLQ entry as replaying.';
 
-RAISE NOTICE '✅ Created replay_from_dlq() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created replay_from_dlq() function';
+END $$;
 
 -- =====================================================
 -- 8. CONCURRENCY LEASE TABLE (Per-tenant concurrency limiting)
@@ -367,7 +388,10 @@ COMMENT ON TABLE automation_concurrency_leases IS
    Ensures only N workers process automations for a tenant concurrently.
    Leases expire automatically to prevent deadlocks.';
 
-RAISE NOTICE '✅ Created automation_concurrency_leases table';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created automation_concurrency_leases table';
+END $$;
 
 -- =====================================================
 -- 9. ACQUIRE LEASE FUNCTION
@@ -423,7 +447,10 @@ COMMENT ON FUNCTION acquire_automation_lease IS
    Returns true if lease acquired, false if already held by another worker.
    Automatically cleans up expired leases.';
 
-RAISE NOTICE '✅ Created acquire_automation_lease() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created acquire_automation_lease() function';
+END $$;
 
 -- =====================================================
 -- 10. RELEASE LEASE FUNCTION
@@ -450,7 +477,10 @@ COMMENT ON FUNCTION release_automation_lease IS
   'Releases a concurrency lease held by a worker.
    Should be called after automation execution completes.';
 
-RAISE NOTICE '✅ Created release_automation_lease() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created release_automation_lease() function';
+END $$;
 
 -- =====================================================
 -- 11. VERIFICATION
