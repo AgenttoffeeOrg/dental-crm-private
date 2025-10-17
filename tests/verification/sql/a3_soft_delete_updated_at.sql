@@ -62,7 +62,7 @@ SELECT
   '1b. Contact has deleted_at timestamp' AS test_name,
   COUNT(*) AS actual_count,
   1 AS expected_count,
-  CASE WHEN COUNT(*) = 1 AND deleted_at IS NOT NULL THEN '✅ PASS' ELSE '❌ FAIL' END AS status
+  CASE WHEN COUNT(*) = 1 AND MAX(deleted_at) IS NOT NULL THEN '✅ PASS' ELSE '❌ FAIL' END AS status
 FROM contacts
 WHERE id = 'AAAAAAAA-0000-0000-0000-000000000001'::uuid;
 
