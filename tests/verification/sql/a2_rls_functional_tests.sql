@@ -53,10 +53,11 @@ ON CONFLICT (id) DO NOTHING;
 -- ================================================================
 
 -- Create contacts for each tenant
-INSERT INTO contacts (tenant_id, full_name, primary_email, lifecycle_stage, created_at, updated_at)
+-- Using only essential columns that exist in all schemas
+INSERT INTO contacts (tenant_id, full_name, primary_email, created_at, updated_at)
 VALUES
-  ('00000000-0000-0000-0000-000000000001'::uuid, 'Contact from Tenant 1', 'contact1@tenant1.test', 'lead', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000002'::uuid, 'Contact from Tenant 2', 'contact2@tenant2.test', 'lead', NOW(), NOW());
+  ('00000000-0000-0000-0000-000000000001'::uuid, 'Contact from Tenant 1', 'contact1@tenant1.test', NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000002'::uuid, 'Contact from Tenant 2', 'contact2@tenant2.test', NOW(), NOW());
 
 -- Verify: As service_role, we can see both
 SELECT 'Service Role - Should see BOTH contacts' AS test_name, COUNT(*) AS count, 2 AS expected
