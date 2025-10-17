@@ -1,0 +1,75 @@
+# Dependabot Configuration
+# Automatically checks for dependency updates and creates PRs
+#
+# Documentation: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+
+updates:
+  # npm dependencies (package.json)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    
+    # Grouping strategy for related updates
+    groups:
+      # Group minor and patch updates together
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+      # Group development dependencies
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    
+    # Automatically rebase PRs when base branch is updated
+    rebase-strategy: "auto"
+    
+    # Add labels to PRs for easy filtering
+    labels:
+      - "dependencies"
+      - "automated"
+    
+    # Commit message prefix
+    commit-message:
+      prefix: "build(deps)"
+      prefix-development: "build(deps-dev)"
+    
+    # Ignore specific dependencies if needed (example - uncomment to use)
+    # ignore:
+    #   - dependency-name: "some-package"
+    #     versions: ["1.x", "2.x"]
+    
+    # Reviewer assignments (optional - add your GitHub username)
+    # reviewers:
+    #   - "your-github-username"
+    
+    # Allow Dependabot to update vulnerable dependencies immediately
+    # (outside of the normal schedule)
+    allow:
+      - dependency-type: "all"
+    
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automated"
+    commit-message:
+      prefix: "ci"
+
