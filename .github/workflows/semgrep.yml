@@ -1,0 +1,87 @@
+# Semgrep SAST (Static Application Security Testing)
+# Scans code for security vulnerabilities, bugs, and anti-patterns
+# Uses baseline scanning: only NEW findings in PRs will block merges
+# https://semgrep.dev/docs/semgrep-ci/running-semgrep-ci-with-github-actions/
+
+name: "Semgrep SAST"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  semgrep:
+    name: Semgrep Scan
+    runs-on: ubuntu-latest
+    
+    container:
+      image: returntocorp/semgrep
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for baseline comparison
+      
+      - name: Get baseline commit (merge-base with main)
+        id: baseline
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # For PRs, use merge-base to find common ancestor with main
+            BASELINE=$(git merge-base origin/main HEAD)
+            echo "commit=$BASELINE" >> $GITHUB_OUTPUT
+            echo "📍 Baseline commit: $BASELINE"
+            echo "   Only findings introduced AFTER this commit will block the PR"
+          else
+            # For main branch pushes, scan everything
+            echo "commit=" >> $GITHUB_OUTPUT
+            echo "📍 No baseline (scanning main branch)"
+          fi
+      
+      - name: Run Semgrep scan
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
+          semgrep ci \
+            --config p/ci \
+            --config p/javascript \
+            --config p/typescript \
+            --config p/react \
+            --config p/nextjs \
+            --config p/security-audit \
+            --sarif \
+            --sarif-output=semgrep.sarif \
+            ${{ steps.baseline.outputs.commit && format('--baseline-commit {0}', steps.baseline.outputs.commit) || '' }}
+      
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+      
+      - name: Scan Summary
+        if: always()
+        run: |
+          echo "✅ Semgrep scan complete!"
+          echo ""
+          echo "📊 View detailed results:"
+          echo "   • GitHub Security: https://github.com/${{ github.repository }}/security/code-scanning"
+          echo "   • Semgrep Cloud: https://semgrep.dev/orgs/-/findings"
+          echo ""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "🎯 Baseline scanning enabled:"
+            echo "   Only NEW security issues introduced in this PR will fail the check"
+            echo "   Existing issues in main branch are ignored"
+          fi
+
