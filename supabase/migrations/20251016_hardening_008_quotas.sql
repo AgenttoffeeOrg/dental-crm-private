@@ -102,7 +102,10 @@ COMMENT ON FUNCTION enforce_quota_and_increment(TEXT, INTEGER) IS
    If quota_limit IS NULL, usage is unlimited (but still tracked).
    Automatically resets quota if past quota_reset_at date.';
 
-RAISE NOTICE '✅ Created enforce_quota_and_increment() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created enforce_quota_and_increment() function';
+END $$;
 
 -- =====================================================
 -- 2. QUOTA CHECK FUNCTION (Non-enforcing, for UI)
@@ -176,7 +179,10 @@ COMMENT ON FUNCTION check_quota_status(TEXT) IS
    Used by UI to display usage warnings.
    is_near_limit = true when >= 85% used.';
 
-RAISE NOTICE '✅ Created check_quota_status() function';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created check_quota_status() function';
+END $$;
 
 -- =====================================================
 -- 3. TRIGGER FOR MARKETING CAMPAIGN SENDS
@@ -223,7 +229,7 @@ BEGIN
 
     RAISE NOTICE '✅ Created quota trigger on marketing_campaign_sends';
   ELSE
-    RAISE NOTICE '⚠️  marketing_campaign_sends table does not exist - skipping trigger';
+    RAISE NOTICE 'ℹ️  marketing_campaign_sends table does not exist - skipping trigger';
   END IF;
 END $$;
 
@@ -269,7 +275,10 @@ SET quota_reset_at = (DATE_TRUNC('month', NOW()) + INTERVAL '1 month')::TIMESTAM
 WHERE quota_reset_at IS NULL
   AND quota_limit IS NOT NULL;
 
-RAISE NOTICE '✅ Initialized quota reset dates for existing entitlements';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Initialized quota reset dates for existing entitlements';
+END $$;
 
 -- =====================================================
 -- 6. VERIFICATION
