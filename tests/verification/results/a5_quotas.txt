@@ -1,0 +1,7 @@
+# QUOTA ENFORCEMENT TEST RESULTS
+# ===============================
+# Paste results from Supabase SQL Editor below this line:
+
+| test_name                                            | trigger_count | status                                                  |
+| ---------------------------------------------------- | ------------- | ------------------------------------------------------- |
+| 7a. Quota trigger on marketing_campaign_sends exists | 0             | ⚠️ INFO: Trigger not found (may not be implemented yet) |
