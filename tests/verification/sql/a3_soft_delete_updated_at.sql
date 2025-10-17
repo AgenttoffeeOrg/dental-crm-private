@@ -7,12 +7,12 @@
 BEGIN;
 
 -- Create test tenant and user
-INSERT INTO tenants (id, name, slug, created_at, updated_at)
-VALUES ('99999999-0000-0000-0000-000000000099'::uuid, 'Soft Delete Test Tenant', 'soft-delete-test', NOW(), NOW())
+INSERT INTO tenants (id, name, created_at, updated_at)
+VALUES ('99999999-0000-0000-0000-000000000099'::uuid, 'Soft Delete Test Tenant', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO app_users (id, tenant_id, email, role, full_name, created_at, updated_at)
-VALUES ('99999999-0000-0000-0000-0000000000AA'::uuid, '99999999-0000-0000-0000-000000000099'::uuid, 'softdelete@test.com', 'admin', 'Test User', NOW(), NOW())
+VALUES ('99999999-0000-0000-0000-0000000000AA'::uuid, '99999999-0000-0000-0000-000000000099'::uuid, 'softdelete@test.com', 'owner', 'Test User', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- ================================================================
@@ -20,8 +20,8 @@ ON CONFLICT (id) DO NOTHING;
 -- ================================================================
 
 -- Create a test contact
-INSERT INTO contacts (id, tenant_id, full_name, primary_email, lifecycle_stage, created_at, updated_at)
-VALUES ('AAAAAAAA-0000-0000-0000-000000000001'::uuid, '99999999-0000-0000-0000-000000000099'::uuid, 'Soft Delete Test Contact', 'test@softdelete.com', 'lead', NOW(), NOW());
+INSERT INTO contacts (id, tenant_id, full_name, primary_email, created_at, updated_at)
+VALUES ('AAAAAAAA-0000-0000-0000-000000000001'::uuid, '99999999-0000-0000-0000-000000000099'::uuid, 'Soft Delete Test Contact', 'test@softdelete.com', NOW(), NOW());
 
 -- Verify contact is visible
 SELECT 
@@ -99,8 +99,8 @@ WHERE d.id = 'DDDDDDDD-0000-0000-0000-000000000001'::uuid;
 -- ================================================================
 
 -- Create parent contact and child activities
-INSERT INTO contacts (id, tenant_id, full_name, primary_email, lifecycle_stage, created_at, updated_at)
-VALUES ('EEEEEEEE-0000-0000-0000-000000000001'::uuid, '99999999-0000-0000-0000-000000000099'::uuid, 'Cascade Test Contact', 'cascade@test.com', 'lead', NOW(), NOW());
+INSERT INTO contacts (id, tenant_id, full_name, primary_email, created_at, updated_at)
+VALUES ('EEEEEEEE-0000-0000-0000-000000000001'::uuid, '99999999-0000-0000-0000-000000000099'::uuid, 'Cascade Test Contact', 'cascade@test.com', NOW(), NOW());
 
 INSERT INTO activities (tenant_id, contact_id, type, subject, created_by, created_at, updated_at)
 VALUES ('99999999-0000-0000-0000-000000000099'::uuid, 'EEEEEEEE-0000-0000-0000-000000000001'::uuid, 'note', 'Test Activity', '99999999-0000-0000-0000-0000000000AA'::uuid, NOW(), NOW());
