@@ -15,10 +15,10 @@
 BEGIN;
 
 -- Create test tenants
-INSERT INTO tenants (id, name, slug, created_at, updated_at)
+INSERT INTO tenants (id, name, created_at, updated_at)
 VALUES 
-  ('00000000-0000-0000-0000-000000000001'::uuid, 'Test Tenant One', 'test-tenant-1', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000002'::uuid, 'Test Tenant Two', 'test-tenant-2', NOW(), NOW())
+  ('00000000-0000-0000-0000-000000000001'::uuid, 'Test Tenant One', NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000002'::uuid, 'Test Tenant Two', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- Create test users
