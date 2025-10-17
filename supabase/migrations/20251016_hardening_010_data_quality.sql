@@ -173,18 +173,55 @@ BEGIN
 END $$;
 
 -- =====================================================
--- 6. BACKFILL EXISTING DATA
+-- 6. BACKFILL EXISTING DATA (Handle duplicates gracefully)
 -- =====================================================
 
--- Normalize existing contacts
-UPDATE contacts
-SET primary_email_norm = normalize_email(primary_email),
-    primary_phone_e164 = normalize_phone(primary_phone, 'GB')
-WHERE primary_email_norm IS NULL OR primary_phone_e164 IS NULL;
-
+-- Normalize existing contacts one by one, skip duplicates
 DO $$
+DECLARE
+  v_contact RECORD;
+  v_normalized_email TEXT;
+  v_normalized_phone TEXT;
+  v_duplicate_count INTEGER := 0;
+  v_success_count INTEGER := 0;
 BEGIN
-  RAISE NOTICE '✅ Backfilled normalization for existing contacts';
+  FOR v_contact IN 
+    SELECT id, primary_email, primary_phone
+    FROM contacts
+    WHERE (primary_email_norm IS NULL AND primary_email IS NOT NULL)
+       OR (primary_phone_e164 IS NULL AND primary_phone IS NOT NULL)
+  LOOP
+    BEGIN
+      -- Normalize
+      v_normalized_email := normalize_email(v_contact.primary_email);
+      v_normalized_phone := normalize_phone(v_contact.primary_phone, 'GB');
+      
+      -- Try to update (will fail if duplicate exists)
+      UPDATE contacts
+      SET primary_email_norm = v_normalized_email,
+          primary_phone_e164 = v_normalized_phone
+      WHERE id = v_contact.id;
+      
+      v_success_count := v_success_count + 1;
+      
+    EXCEPTION
+      WHEN unique_violation THEN
+        -- Duplicate found - mark this contact as potential duplicate
+        UPDATE contacts
+        SET is_duplicate = true
+        WHERE id = v_contact.id;
+        
+        v_duplicate_count := v_duplicate_count + 1;
+        
+        RAISE NOTICE 'Duplicate found: contact % has duplicate email/phone', v_contact.id;
+    END;
+  END LOOP;
+  
+  RAISE NOTICE '✅ Backfilled normalization: % successful, % duplicates marked', v_success_count, v_duplicate_count;
+  
+  IF v_duplicate_count > 0 THEN
+    RAISE NOTICE 'ℹ️  Found % potential duplicates. Use find_duplicate_contacts() and merge_contacts() to resolve.', v_duplicate_count;
+  END IF;
 END $$;
 
 -- =====================================================
