@@ -1,0 +1,22 @@
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "   dental-crm-sonarcloud",
+        "projectKey": "${env.SONAR_PROJECT_KEY}"
+    },
+    "semgrep.enable": true,
+    "semgrep.scan": {
+        "configuration": ["auto"],
+        "exclude": ["node_modules/**", "dist/**", "build/**", ".next/**", "coverage/**"],
+        "include": ["src/**", "components/**", "pages/**", "app/**", "lib/**", "supabase/**"],
+        "jobs": 4
+    },
+    "semgrep.url": "https://semgrep.dev",
+    "semgrep.notification": true,
+    "files.watcherExclude": {
+        "**/node_modules/**": true,
+        "**/.git/**": true,
+        "**/dist/**": true,
+        "**/build/**": true,
+        "**/.next/**": true
+    }
+}
