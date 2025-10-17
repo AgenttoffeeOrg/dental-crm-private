@@ -1,0 +1,58 @@
+# Aikido Security Scanning Workflow
+# Scans for vulnerabilities in dependencies, secrets in code, and IaC misconfigurations
+# https://docs.aikido.dev
+
+name: "Aikido Security"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  aikido-scan:
+    name: Aikido Security Scan
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+      
+      - name: Aikido Security Scan Info
+        run: |
+          echo "🛡️ Aikido Security is scanning this repository for:"
+          echo "  ✓ Vulnerable dependencies (SCA)"
+          echo "  ✓ Hardcoded secrets and credentials"
+          echo "  ✓ Infrastructure-as-Code misconfigurations"
+          echo "  ✓ Container vulnerabilities"
+          echo ""
+          echo "📊 Workspace: ${{ vars.AIKIDO_WORKSPACE }}"
+          echo "🔍 Repository: ${{ github.repository }}"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo ""
+          echo "ℹ️  Aikido scans are performed automatically via the GitHub App."
+          echo "    The Aikido status check will appear on this PR and must pass to merge."
+          echo ""
+          echo "🔗 View results at: https://app.aikido.dev/workspace/${{ vars.AIKIDO_WORKSPACE }}/repos"
+      
+      # Aikido Security performs automatic scanning via their GitHub App
+      # The status check "Aikido Security" will appear on PRs and can block merges
+      # No additional action needed - this workflow provides visibility and documentation
+      
+      - name: Scan Complete
+        run: |
+          echo "✅ Workflow complete. Check the 'Aikido Security' status for results."
+          echo "📊 Dashboard: https://app.aikido.dev"
+
