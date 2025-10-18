@@ -1,0 +1,17 @@
+{
+  "name": "dental-crm-checkly",
+  "version": "1.0.0",
+  "description": "Checkly synthetic monitoring for dental-crm",
+  "private": true,
+  "scripts": {
+    "checkly:test": "checkly test",
+    "checkly:deploy": "checkly deploy --force",
+    "checkly:list": "checkly list"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "checkly": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
+
