@@ -1,0 +1,419 @@
+{
+  "timestamp": "2025-10-18T22:55:05.723Z",
+  "gitCommit": "678628eda21faae39c6d9516d9c95a3743e70894",
+  "gitBranch": "main",
+  "baseUrl": "http://localhost:3000",
+  "totalScreens": 51,
+  "successful": 51,
+  "failed": 0,
+  "results": [
+    {
+      "name": "login",
+      "url": "/login",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:45:40.802Z",
+      "filePath": "001_login_desktop.png"
+    },
+    {
+      "name": "login",
+      "url": "/login",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:45:55.557Z",
+      "filePath": "001_login_mobile.png"
+    },
+    {
+      "name": "dashboard",
+      "url": "/dashboard",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:46:11.803Z",
+      "filePath": "002_dashboard_desktop.png"
+    },
+    {
+      "name": "dashboard",
+      "url": "/dashboard",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:46:26.259Z",
+      "filePath": "002_dashboard_mobile.png"
+    },
+    {
+      "name": "notifications",
+      "url": "/notifications",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:46:40.976Z",
+      "filePath": "003_notifications_desktop.png"
+    },
+    {
+      "name": "notifications",
+      "url": "/notifications",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:46:55.080Z",
+      "filePath": "003_notifications_mobile.png"
+    },
+    {
+      "name": "contacts-list",
+      "url": "/contacts",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:47:09.674Z",
+      "filePath": "004_contacts-list_desktop.png"
+    },
+    {
+      "name": "contacts-list",
+      "url": "/contacts",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:47:23.705Z",
+      "filePath": "004_contacts-list_mobile.png"
+    },
+    {
+      "name": "contacts-new",
+      "url": "/contacts/new",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:47:38.476Z",
+      "filePath": "005_contacts-new_desktop.png"
+    },
+    {
+      "name": "contacts-new",
+      "url": "/contacts/new",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:47:52.740Z",
+      "filePath": "005_contacts-new_mobile.png"
+    },
+    {
+      "name": "deals-list",
+      "url": "/deals",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:48:07.785Z",
+      "filePath": "006_deals-list_desktop.png"
+    },
+    {
+      "name": "deals-list",
+      "url": "/deals",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:48:21.873Z",
+      "filePath": "006_deals-list_mobile.png"
+    },
+    {
+      "name": "pipeline",
+      "url": "/pipeline",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:48:36.985Z",
+      "filePath": "007_pipeline_desktop.png"
+    },
+    {
+      "name": "pipeline",
+      "url": "/pipeline",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:48:51.124Z",
+      "filePath": "007_pipeline_mobile.png"
+    },
+    {
+      "name": "tasks-list",
+      "url": "/tasks",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:49:05.943Z",
+      "filePath": "008_tasks-list_desktop.png"
+    },
+    {
+      "name": "tasks-list",
+      "url": "/tasks",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:49:20.168Z",
+      "filePath": "008_tasks-list_mobile.png"
+    },
+    {
+      "name": "tasks-new",
+      "url": "/tasks/new",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:49:35.445Z",
+      "filePath": "009_tasks-new_desktop.png"
+    },
+    {
+      "name": "tasks-new",
+      "url": "/tasks/new",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:49:49.854Z",
+      "filePath": "009_tasks-new_mobile.png"
+    },
+    {
+      "name": "calendar",
+      "url": "/calendar",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:50:04.512Z",
+      "filePath": "010_calendar_desktop.png"
+    },
+    {
+      "name": "calendar",
+      "url": "/calendar",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:50:18.533Z",
+      "filePath": "010_calendar_mobile.png"
+    },
+    {
+      "name": "marketing-hub",
+      "url": "/marketing",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:50:33.374Z",
+      "filePath": "011_marketing-hub_desktop.png"
+    },
+    {
+      "name": "marketing-hub",
+      "url": "/marketing",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:50:47.635Z",
+      "filePath": "011_marketing-hub_mobile.png"
+    },
+    {
+      "name": "marketing-campaigns",
+      "url": "/marketing/campaigns",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:51:02.860Z",
+      "filePath": "012_marketing-campaigns_desktop.png"
+    },
+    {
+      "name": "marketing-campaigns",
+      "url": "/marketing/campaigns",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:51:16.975Z",
+      "filePath": "012_marketing-campaigns_mobile.png"
+    },
+    {
+      "name": "marketing-audiences",
+      "url": "/marketing/audiences",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:51:31.625Z",
+      "filePath": "013_marketing-audiences_desktop.png"
+    },
+    {
+      "name": "marketing-journeys",
+      "url": "/marketing/journeys",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:51:43.449Z",
+      "filePath": "014_marketing-journeys_desktop.png"
+    },
+    {
+      "name": "marketing-templates",
+      "url": "/marketing/templates",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:51:53.004Z",
+      "filePath": "015_marketing-templates_desktop.png"
+    },
+    {
+      "name": "marketing-reports",
+      "url": "/marketing/reports",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:52:01.099Z",
+      "filePath": "016_marketing-reports_desktop.png"
+    },
+    {
+      "name": "marketing-reports",
+      "url": "/marketing/reports",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:52:07.783Z",
+      "filePath": "016_marketing-reports_mobile.png"
+    },
+    {
+      "name": "marketing-social",
+      "url": "/marketing/social-media",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:52:17.951Z",
+      "filePath": "017_marketing-social_desktop.png"
+    },
+    {
+      "name": "marketing-audit",
+      "url": "/marketing-audit",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:52:28.298Z",
+      "filePath": "018_marketing-audit_desktop.png"
+    },
+    {
+      "name": "marketing-audit",
+      "url": "/marketing-audit",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:52:35.166Z",
+      "filePath": "018_marketing-audit_mobile.png"
+    },
+    {
+      "name": "analytics",
+      "url": "/analytics",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:53:35.689Z",
+      "filePath": "019_analytics_desktop.png"
+    },
+    {
+      "name": "analytics",
+      "url": "/analytics",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:53:45.641Z",
+      "filePath": "019_analytics_mobile.png"
+    },
+    {
+      "name": "analytics-metrics",
+      "url": "/analytics/metrics",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:53:50.672Z",
+      "filePath": "020_analytics-metrics_desktop.png"
+    },
+    {
+      "name": "automations-list",
+      "url": "/automations",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:53:55.154Z",
+      "filePath": "021_automations-list_desktop.png"
+    },
+    {
+      "name": "automations-list",
+      "url": "/automations",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:53:59.308Z",
+      "filePath": "021_automations-list_mobile.png"
+    },
+    {
+      "name": "automations-create",
+      "url": "/automations/create",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:04.570Z",
+      "filePath": "022_automations-create_desktop.png"
+    },
+    {
+      "name": "forms-list",
+      "url": "/forms",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:09.243Z",
+      "filePath": "023_forms-list_desktop.png"
+    },
+    {
+      "name": "forms-list",
+      "url": "/forms",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:13.449Z",
+      "filePath": "023_forms-list_mobile.png"
+    },
+    {
+      "name": "forms-templates",
+      "url": "/forms/templates",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:18.546Z",
+      "filePath": "024_forms-templates_desktop.png"
+    },
+    {
+      "name": "settings-general",
+      "url": "/settings",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:23.785Z",
+      "filePath": "025_settings-general_desktop.png"
+    },
+    {
+      "name": "settings-general",
+      "url": "/settings",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:27.824Z",
+      "filePath": "025_settings-general_mobile.png"
+    },
+    {
+      "name": "settings-marketing",
+      "url": "/settings/marketing",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:32.471Z",
+      "filePath": "026_settings-marketing_desktop.png"
+    },
+    {
+      "name": "settings-calendar",
+      "url": "/settings/calendar",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:36.506Z",
+      "filePath": "027_settings-calendar_desktop.png"
+    },
+    {
+      "name": "integrations",
+      "url": "/integrations",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:41.220Z",
+      "filePath": "028_integrations_desktop.png"
+    },
+    {
+      "name": "integrations",
+      "url": "/integrations",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:45.368Z",
+      "filePath": "028_integrations_mobile.png"
+    },
+    {
+      "name": "signup",
+      "url": "/sign-up",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:52.214Z",
+      "filePath": "029_signup_desktop.png"
+    },
+    {
+      "name": "signup",
+      "url": "/sign-up",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:54:56.276Z",
+      "filePath": "029_signup_mobile.png"
+    },
+    {
+      "name": "reset-password",
+      "url": "/reset-password",
+      "viewport": "desktop",
+      "success": true,
+      "timestamp": "2025-10-18T22:55:01.629Z",
+      "filePath": "030_reset-password_desktop.png"
+    },
+    {
+      "name": "reset-password",
+      "url": "/reset-password",
+      "viewport": "mobile",
+      "success": true,
+      "timestamp": "2025-10-18T22:55:05.660Z",
+      "filePath": "030_reset-password_mobile.png"
+    }
+  ]
+}

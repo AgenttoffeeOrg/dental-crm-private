@@ -11,8 +11,6 @@ const DealsTable = dynamic(
   { ssr: false }
 )
 
-export const dynamic = 'force-dynamic'
-
 export default function DealsPage() {
   return (
     <DashboardLayout>

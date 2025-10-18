@@ -11,8 +11,6 @@ const PipelineBoard = dynamic(
   { ssr: false }
 )
 
-export const dynamic = 'force-dynamic'
-
 export default function PipelinePage() {
   return (
     <DashboardLayout>
