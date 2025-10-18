@@ -1,0 +1,95 @@
+%% ===============================================
+%% DENTAL CRM - SYSTEM ARCHITECTURE
+%% ===============================================
+%% Platform: Next.js (Railway) + Supabase + Integrations
+%% Last Updated: 2025-10-18
+
+graph TB
+    %% Users
+    Users[👥 Users<br/>Desktop + Mobile]
+    
+    %% Front-end
+    NextJS[Next.js 15.5.4<br/>React 19 + TypeScript<br/>Tailwind CSS + Radix UI]
+    
+    %% Backend API
+    API[API Routes<br/>RESTful Endpoints<br/>Webhooks]
+    
+    %% Database & Auth
+    Supabase[(Supabase<br/>PostgreSQL 15<br/>Auth + Storage + Realtime)]
+    
+    %% Cache Layer
+    Redis[(Redis/Upstash<br/>Rate Limiting<br/>Session Cache)]
+    
+    %% External Integrations
+    subgraph AI [AI Services]
+        OpenAI[OpenAI<br/>Whisper + GPT-4]
+    end
+    
+    subgraph Communications [Communications]
+        Twilio[Twilio<br/>SMS + Voice + WhatsApp]
+        Email[Resend/SendGrid<br/>Transactional Email]
+    end
+    
+    subgraph Payments [Payments]
+        Stripe[Stripe<br/>Subscriptions + Billing]
+    end
+    
+    subgraph Marketing [Marketing Tools]
+        Google[Google APIs<br/>My Business + Analytics]
+        SEO[BrightLocal/SEMrush<br/>SEO Audits]
+    end
+    
+    subgraph PMS [Practice Management]
+        Dentrix[Dentrix]
+        OpenDental[Open Dental]
+        Generic[Generic PMS<br/>Webhook Adapter]
+    end
+    
+    subgraph Monitoring [Observability]
+        Sentry[Sentry<br/>Error Tracking]
+        Uptime[UptimeRobot<br/>Uptime Monitoring]
+    end
+    
+    %% Background Jobs
+    Cron[Railway Cron Jobs<br/>Scheduled Audits<br/>Background Tasks]
+    
+    %% Connections
+    Users --> NextJS
+    NextJS --> API
+    API --> Supabase
+    API --> Redis
+    
+    API --> OpenAI
+    API --> Twilio
+    API --> Email
+    API --> Stripe
+    API --> Google
+    API --> SEO
+    
+    Dentrix -.->|Webhooks| API
+    OpenDental -.->|Webhooks| API
+    Generic -.->|Webhooks| API
+    
+    Cron --> API
+    
+    NextJS --> Sentry
+    API --> Sentry
+    Uptime -.->|Monitors| NextJS
+    
+    %% Storage
+    Supabase -->|Stores| Storage[(File Storage<br/>Audio + Images + PDFs)]
+    
+    %% Realtime
+    Supabase -.->|WebSocket| NextJS
+    
+    %% Styling
+    classDef primary fill:#667eea,stroke:#4c51bf,color:#fff
+    classDef database fill:#48bb78,stroke:#2f855a,color:#fff
+    classDef external fill:#ed8936,stroke:#c05621,color:#fff
+    classDef monitoring fill:#9f7aea,stroke:#6b46c1,color:#fff
+    
+    class NextJS,API primary
+    class Supabase,Redis,Storage database
+    class OpenAI,Twilio,Email,Stripe,Google,SEO,Dentrix,OpenDental,Generic external
+    class Sentry,Uptime,Cron monitoring
+

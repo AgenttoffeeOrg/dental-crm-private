@@ -34,7 +34,13 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "demo:seed": "ts-node scripts/demo/seed.ts",
     "demo:clear": "ts-node scripts/demo/clear.ts",
-    "demo:reset": "npm run demo:clear && npm run demo:seed"
+    "demo:reset": "npm run demo:clear && npm run demo:seed",
+    "screens:seed": "tsx tools/seed.ts",
+    "screens:manifest": "tsx tools/build-screens-manifest.ts",
+    "screens:run": "tsx tools/screenshot-all.ts",
+    "screens:all": "npm run screens:seed && npm run screens:manifest && npm run screens:run",
+    "diagram:build": "mmdc -i docs/architecture.mmd -o 'CRM screenshots/architecture.png' && mmdc -i docs/deployment.mmd -o 'CRM screenshots/deployment.png'",
+    "investor:pack": "npm run screens:all && npm run diagram:build && tsx tools/stack-cost-export.ts && tsx tools/feature-matrix.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -124,7 +130,10 @@
     "postcss": "^8",
     "prettier": "^3.1.1",
     "tailwindcss": "^4.0.0-beta.19",
-    "typescript": "^5"
+    "tsx": "^4.7.0",
+    "typescript": "^5",
+    "@mermaid-js/mermaid-cli": "^10.6.1",
+    "glob": "^10.3.10"
   },
   "engines": {
     "node": ">=20.0.0",

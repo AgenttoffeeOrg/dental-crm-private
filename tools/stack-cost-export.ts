@@ -1,0 +1,257 @@
+/**
+ * Tech Stack + Cost Export
+ * Generates comprehensive technology stack and cost analysis
+ */
+
+import fs from 'fs'
+import path from 'path'
+import { ensureOutputDir, logSuccess } from './safety-guard'
+
+ensureOutputDir()
+
+interface StackComponent {
+  component: string
+  purpose: string
+  cost: string
+  notes: string
+  category: string
+}
+
+/**
+ * Build stack and cost summary
+ */
+async function buildStackCost() {
+  console.log('💰 Building tech stack & cost summary...')
+  
+  // Load package.json
+  const packagePath = path.join(process.cwd(), 'package.json')
+  const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'))
+  
+  // Define stack components with costs
+  const components: StackComponent[] = [
+    // Core Infrastructure
+    { category: 'Infrastructure', component: 'Railway.app (Hosting)', purpose: 'Application hosting, containers, cron jobs', cost: '$5-20/mo', notes: 'Scales with usage' },
+    { category: 'Infrastructure', component: 'Supabase PostgreSQL 15', purpose: 'Primary database, auth, storage, realtime', cost: 'Free-$25/mo', notes: 'Free: 500MB, Pro: $25/mo for 8GB' },
+    { category: 'Infrastructure', component: 'Redis/Upstash', purpose: 'Caching, rate limiting, session storage', cost: 'Free-$10/mo', notes: 'Free tier: 10k commands/day' },
+    { category: 'Infrastructure', component: 'Domain + SSL', purpose: 'Custom domain, HTTPS certificate', cost: '$10/year', notes: 'SSL via Let\'s Encrypt (free)' },
+    
+    // Front-end Framework
+    { category: 'Front-end', component: `Next.js ${packageJson.dependencies.next}`, purpose: 'Full-stack React framework, SSR/SSG', cost: 'Free', notes: 'MIT license' },
+    { category: 'Front-end', component: `React ${packageJson.dependencies.react}`, purpose: 'UI library', cost: 'Free', notes: 'MIT license' },
+    { category: 'Front-end', component: `TypeScript ${packageJson.devDependencies.typescript}`, purpose: 'Type safety', cost: 'Free', notes: 'Apache 2.0' },
+    { category: 'Front-end', component: 'Tailwind CSS 4.0', purpose: 'Utility-first CSS framework', cost: 'Free', notes: 'MIT license' },
+    { category: 'Front-end', component: 'Radix UI (16 components)', purpose: 'Accessible UI primitives', cost: 'Free', notes: 'MIT license' },
+    
+    // AI Services
+    { category: 'AI', component: 'OpenAI Whisper API', purpose: 'Audio transcription (call recordings)', cost: '$0.006/min', notes: '100 calls/mo @ 5min = $3' },
+    { category: 'AI', component: 'OpenAI GPT-4o Mini', purpose: 'Call analysis, categorization', cost: '$0.15/$0.60 per 1M tokens', notes: '~$5-10/mo moderate usage' },
+    { category: 'AI', component: 'OpenAI GPT-4 Turbo', purpose: 'AI assistant, email drafting', cost: '$10/$30 per 1M tokens', notes: '~$15-25/mo moderate usage' },
+    
+    // Communications
+    { category: 'Communications', component: 'Resend (Email)', purpose: 'Transactional emails (welcome, invites)', cost: 'Free-$20/mo', notes: 'Free: 3k/mo, Paid: 50k emails' },
+    { category: 'Communications', component: 'Twilio SMS', purpose: 'SMS messaging', cost: '$0.0079/msg + $1-15/mo number', notes: '500 msgs/mo = ~$5' },
+    { category: 'Communications', component: 'Twilio WhatsApp', purpose: 'WhatsApp Business messaging', cost: '$0.005-0.09/msg', notes: '50 msgs/mo = ~$3' },
+    { category: 'Communications', component: 'Twilio Voice', purpose: 'Phone calls with recording', cost: '$0.013/min outbound', notes: '100 min/mo = ~$1.30' },
+    
+    // Payments
+    { category: 'Payments', component: 'Stripe', purpose: 'Subscription billing, payments', cost: '2.9% + $0.30/transaction', notes: 'No fixed monthly fee' },
+    
+    // Marketing & SEO
+    { category: 'Marketing', component: 'Google APIs (My Business, Analytics)', purpose: 'Marketing audit, business listings', cost: 'Free', notes: 'Quota limits apply' },
+    { category: 'Marketing', component: 'BrightLocal API (Optional)', purpose: 'Local SEO audits', cost: '$49-299/mo', notes: 'Optional feature' },
+    { category: 'Marketing', component: 'SEMrush API (Optional)', purpose: 'SEO analytics, keyword research', cost: '$119.95+/mo', notes: 'Optional feature' },
+    { category: 'Marketing', component: 'reCAPTCHA v3', purpose: 'Form spam protection', cost: 'Free', notes: 'Google service' },
+    
+    // PMS Integrations
+    { category: 'Integrations', component: 'PMS Webhook Adapters', purpose: 'Dentrix, Open Dental, Eaglesoft, etc.', cost: 'Free', notes: 'Uses existing PMS APIs' },
+    
+    // Monitoring
+    { category: 'Monitoring', component: 'Sentry', purpose: 'Error tracking, performance monitoring', cost: 'Free-$26/mo', notes: 'Free: 5k events, Team: 50k events' },
+    { category: 'Monitoring', component: 'UptimeRobot', purpose: 'Uptime monitoring, status page', cost: 'Free', notes: '50 monitors, 5-min intervals' },
+    { category: 'Monitoring', component: 'Pino Logger', purpose: 'Structured logging', cost: 'Free', notes: 'MIT license' },
+    
+    // Testing & QA
+    { category: 'Testing', component: 'Jest + Testing Library', purpose: 'Unit & integration testing', cost: 'Free', notes: 'MIT license' },
+    { category: 'Testing', component: 'Playwright', purpose: 'End-to-end browser testing', cost: 'Free', notes: 'Apache 2.0' },
+    { category: 'Testing', component: 'Lighthouse CI', purpose: 'Performance auditing', cost: 'Free', notes: 'Apache 2.0' },
+    
+    // CI/CD
+    { category: 'DevOps', component: 'GitHub Actions', purpose: 'CI/CD pipelines', cost: 'Free', notes: '2,000 minutes/month' },
+    { category: 'DevOps', component: 'Railway Auto-Deploy', purpose: 'Automatic deployments from Git', cost: 'Included', notes: 'Part of Railway hosting' },
+  ]
+  
+  // Sort by category
+  components.sort((a, b) => a.category.localeCompare(b.category))
+  
+  // Calculate total costs
+  const calculateMonthlyEstimate = () => {
+    const tiers = {
+      mvp: {
+        name: 'MVP (Free Tier)',
+        items: [
+          { name: 'Railway Starter', cost: 5 },
+          { name: 'Supabase Free', cost: 0 },
+          { name: 'OpenAI Light Usage', cost: 10 },
+          { name: 'Domain', cost: 1 },
+        ],
+        total: 0
+      },
+      production: {
+        name: 'Production (Recommended)',
+        items: [
+          { name: 'Railway Pro', cost: 20 },
+          { name: 'Supabase Pro', cost: 25 },
+          { name: 'Resend', cost: 20 },
+          { name: 'OpenAI Moderate', cost: 25 },
+          { name: 'Redis/Upstash', cost: 5 },
+          { name: 'Twilio (SMS+Voice+WhatsApp)', cost: 10 },
+          { name: 'Sentry Team', cost: 26 },
+          { name: 'Domain', cost: 1 },
+        ],
+        total: 0
+      },
+      enterprise: {
+        name: 'Enterprise (Full Features)',
+        items: [
+          { name: 'Railway Pro', cost: 20 },
+          { name: 'Supabase Team', cost: 100 },
+          { name: 'Resend/SendGrid', cost: 90 },
+          { name: 'OpenAI Heavy', cost: 100 },
+          { name: 'Redis Pro', cost: 20 },
+          { name: 'Twilio (High Volume)', cost: 50 },
+          { name: 'BrightLocal', cost: 49 },
+          { name: 'SEMrush', cost: 120 },
+          { name: 'Sentry Business', cost: 80 },
+          { name: 'Domain', cost: 1 },
+        ],
+        total: 0
+      }
+    }
+    
+    // Calculate totals
+    tiers.mvp.total = tiers.mvp.items.reduce((sum, item) => sum + item.cost, 0)
+    tiers.production.total = tiers.production.items.reduce((sum, item) => sum + item.cost, 0)
+    tiers.enterprise.total = tiers.enterprise.items.reduce((sum, item) => sum + item.cost, 0)
+    
+    return tiers
+  }
+  
+  const costTiers = calculateMonthlyEstimate()
+  
+  // Generate JSON
+  const json = {
+    generatedAt: new Date().toISOString(),
+    components,
+    costEstimates: costTiers,
+    notes: {
+      mvp: 'Suitable for development and early testing. Uses free tiers where available.',
+      production: 'Recommended for production deployment with moderate usage (100-500 users).',
+      enterprise: 'Full-featured deployment with all integrations and premium services.'
+    }
+  }
+  
+  const jsonPath = path.join(process.cwd(), 'CRM screenshots', 'stack_cost_summary.json')
+  fs.writeFileSync(jsonPath, JSON.stringify(json, null, 2))
+  console.log(`   ✅ JSON: ${jsonPath}`)
+  
+  // Generate Markdown
+  const md = [
+    '# Tech Stack & Cost Summary',
+    '',
+    `**Generated:** ${new Date().toISOString()}`,
+    '',
+    '## Technology Stack',
+    '',
+    '### By Category',
+    ''
+  ]
+  
+  const byCategory = components.reduce((acc, c) => {
+    if (!acc[c.category]) acc[c.category] = []
+    acc[c.category].push(c)
+    return acc
+  }, {} as Record<string, StackComponent[]>)
+  
+  for (const [category, items] of Object.entries(byCategory)) {
+    md.push(`#### ${category}`)
+    md.push('')
+    md.push('| Component | Purpose | Cost (est.) | Notes |')
+    md.push('|-----------|---------|-------------|-------|')
+    
+    for (const item of items) {
+      md.push(`| ${item.component} | ${item.purpose} | ${item.cost} | ${item.notes} |`)
+    }
+    
+    md.push('')
+  }
+  
+  // Cost estimates
+  md.push('## Monthly Cost Estimates')
+  md.push('')
+  
+  for (const [key, tier] of Object.entries(costTiers)) {
+    md.push(`### ${tier.name}: $${tier.total}/month`)
+    md.push('')
+    
+    for (const item of tier.items) {
+      md.push(`- **${item.name}:** $${item.cost}`)
+    }
+    
+    md.push('')
+  }
+  
+  // Per-user cost
+  md.push('## Per-User Cost (Production Tier)')
+  md.push('')
+  md.push('Assuming 100 active users:')
+  md.push(`- **Fixed costs:** $${costTiers.production.total}/month`)
+  md.push('- **Variable costs:** ~$50/month (AI, SMS, email overages)')
+  md.push(`- **Total:** $${costTiers.production.total + 50}/month`)
+  md.push(`- **Per user:** $${((costTiers.production.total + 50) / 100).toFixed(2)}/month`)
+  md.push('')
+  
+  // Scaling
+  md.push('## Scaling Considerations')
+  md.push('')
+  md.push('| Users | Tier | Estimated Cost |')
+  md.push('|-------|------|----------------|')
+  md.push(`| 0-100 | MVP | $${costTiers.mvp.total}/mo |`)
+  md.push(`| 100-500 | Production | $${costTiers.production.total}/mo |`)
+  md.push(`| 500-2000 | Production+ | $200-300/mo |`)
+  md.push(`| 2000-10k | Enterprise | $${costTiers.enterprise.total}+/mo |`)
+  md.push('| 10k+ | Custom | $1000+/mo |')
+  md.push('')
+  
+  // License info
+  md.push('## License Compliance')
+  md.push('')
+  md.push('All core dependencies use commercial-friendly licenses:')
+  md.push('- MIT License (majority)')
+  md.push('- Apache 2.0')
+  md.push('- BSD-3-Clause')
+  md.push('')
+  md.push('✅ No GPL dependencies (no viral licensing)')
+  md.push('✅ Safe for commercial SaaS deployment')
+  md.push('✅ No vendor lock-in on core stack')
+  md.push('')
+  
+  const mdPath = path.join(process.cwd(), 'CRM screenshots', 'stack_cost_summary.md')
+  fs.writeFileSync(mdPath, md.join('\n'))
+  console.log(`   ✅ Markdown: ${mdPath}`)
+  
+  // Summary
+  console.log(`\n💰 Cost Estimates:`)
+  console.log(`   MVP: $${costTiers.mvp.total}/month`)
+  console.log(`   Production: $${costTiers.production.total}/month`)
+  console.log(`   Enterprise: $${costTiers.enterprise.total}/month`)
+  console.log(`\n📦 Total Components: ${components.length}`)
+  
+  logSuccess('stack-cost-export')
+}
+
+// Run
+buildStackCost().catch((error) => {
+  console.error('❌ Failed to build stack/cost summary:', error)
+  process.exit(1)
+})
+

@@ -1,0 +1,87 @@
+%% ===============================================
+%% DENTAL CRM - CI/CD DEPLOYMENT PIPELINE
+%% ===============================================
+%% Platform: GitHub → GitHub Actions → Railway
+%% Last Updated: 2025-10-18
+
+graph LR
+    %% Development
+    Dev[👨‍💻 Developer<br/>Local Workstation]
+    
+    %% Version Control
+    GitHub[GitHub Repository<br/>main + feature branches]
+    
+    %% CI/CD
+    subgraph CI [GitHub Actions]
+        Lint[ESLint + Prettier<br/>Code Quality]
+        TypeCheck[TypeScript<br/>Type Check]
+        Test[Jest + Playwright<br/>Unit + E2E Tests]
+        Build[Next.js Build<br/>Production Bundle]
+    end
+    
+    %% Deployment Platform
+    subgraph Railway [Railway.app]
+        BuildContainer[Build Container<br/>npm install + build]
+        Deploy[Deploy Container<br/>Start Application]
+        Health[Health Checks<br/>Readiness Probe]
+    end
+    
+    %% Environments
+    subgraph Envs [Environments]
+        Staging[Staging<br/>staging.railway.app]
+        Production[Production<br/>app.railway.app]
+    end
+    
+    %% Configuration
+    Secrets[Environment Variables<br/>& Secrets<br/>Railway Config]
+    
+    %% Monitoring
+    Monitoring[Monitoring<br/>Sentry + UptimeRobot<br/>Real-time Alerts]
+    
+    %% Rollback
+    Rollback[Rollback<br/>Previous Deployment<br/>One-click Revert]
+    
+    %% Database
+    Database[(Supabase<br/>PostgreSQL 15<br/>Migrations)]
+    
+    %% Flow
+    Dev -->|git push| GitHub
+    
+    GitHub -->|PR Opened| CI
+    Lint --> TypeCheck
+    TypeCheck --> Test
+    Test --> Build
+    
+    GitHub -->|Merge to main| Railway
+    BuildContainer --> Deploy
+    Deploy --> Health
+    
+    Health -->|Pass| Production
+    Health -->|Fail| Rollback
+    
+    Secrets --> Railway
+    Database -.->|Connected| Production
+    Database -.->|Connected| Staging
+    
+    Production --> Monitoring
+    Staging --> Monitoring
+    
+    Monitoring -.->|Alert| Dev
+    
+    %% Preview Deployments
+    GitHub -.->|PR| Preview[Preview Deploy<br/>pr-123.railway.app]
+    Preview -.->|Test| Dev
+    
+    %% Styling
+    classDef dev fill:#4299e1,stroke:#2c5282,color:#fff
+    classDef ci fill:#48bb78,stroke:#2f855a,color:#fff
+    classDef deploy fill:#667eea,stroke:#4c51bf,color:#fff
+    classDef config fill:#ed8936,stroke:#c05621,color:#fff
+    classDef monitor fill:#9f7aea,stroke:#6b46c1,color:#fff
+    
+    class Dev,GitHub dev
+    class Lint,TypeCheck,Test,Build ci
+    class BuildContainer,Deploy,Health,Staging,Production deploy
+    class Secrets,Database config
+    class Monitoring,Rollback monitor
+

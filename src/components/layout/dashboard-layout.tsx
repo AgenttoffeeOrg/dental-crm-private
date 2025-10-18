@@ -41,6 +41,7 @@ import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
 import { createClient } from '@/lib/supabase-client'
 import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
+import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 
 const getNavigation = (featureFlags: any) => [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -50,13 +51,7 @@ const getNavigation = (featureFlags: any) => [
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Marketing', href: '/marketing', icon: Mail },
   { name: 'Automations', href: '/automations', icon: GitBranch, badge: 'NEW', badgeColor: 'bg-purple-500 text-white' },
-  ...(featureFlags.marketingAudit.enabled ? [{
-    name: 'Marketing Audit',
-    href: '/marketing-audit',
-    icon: LineChart,
-    badge: 'New',
-    badgeColor: 'bg-purple-500 text-white',
-  }] : []),
+  { name: 'Marketing Audit', href: '/marketing-audit', icon: LineChart, badge: 'New', badgeColor: 'bg-purple-500 text-white' },
   { name: 'Forms', href: '/forms', icon: FileText },
   { name: 'Integrations', href: '/integrations', icon: Zap },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
