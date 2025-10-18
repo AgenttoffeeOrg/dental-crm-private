@@ -17,7 +17,7 @@ export function generateCSP(): string {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://*.supabase.co https://accounts.google.com https://www.googleapis.com https://*.google-analytics.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://www.googleapis.com https://*.google-analytics.com",
     "frame-src 'self' https://accounts.google.com",
     "object-src 'none'",
     "base-uri 'self'",
