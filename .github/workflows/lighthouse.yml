@@ -73,32 +73,36 @@ jobs:
           script: |
             const baseUrl = process.env.BASE_URL || 'https://dental-crm-private-production.up.railway.app';
             
+            const message = [
+              '## 🔦 Lighthouse CI Results',
+              '',
+              '**Tested against:** `' + baseUrl + '`',
+              '',
+              '**Routes tested:**',
+              '- Homepage (`/`)',
+              '- Login (`/login`)',
+              '- Dashboard (`/dashboard`)',
+              '- Marketing Audit (`/marketing-audit`)',
+              '- Offline (`/offline`)',
+              '',
+              '**Quality Budgets:**',
+              '- ✅ Performance: ≥90',
+              '- ✅ Accessibility: ≥90',
+              '- ✅ Best Practices: ≥95',
+              '- ✅ SEO: ≥90',
+              '',
+              '**Core Web Vitals:**',
+              '- LCP (Largest Contentful Paint): ≤2.5s',
+              '- TBT (Total Blocking Time): ≤200ms',
+              '- CLS (Cumulative Layout Shift): ≤0.1',
+              '',
+              '📊 View detailed reports in workflow artifacts: **lighthouse-reports**'
+            ].join('\n');
+            
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 🔦 Lighthouse CI Results
-
-**Tested against:** \`${baseUrl}\`
-
-**Routes tested:**
-- Homepage (\`/\`)
-- Login (\`/login\`)
-- Dashboard (\`/dashboard\`)
-- Marketing Audit (\`/marketing-audit\`)
-- Offline (\`/offline\`)
-
-**Quality Budgets:**
-- ✅ Performance: ≥90
-- ✅ Accessibility: ≥90
-- ✅ Best Practices: ≥95
-- ✅ SEO: ≥90
-
-**Core Web Vitals:**
-- LCP (Largest Contentful Paint): ≤2.5s
-- TBT (Total Blocking Time): ≤200ms
-- CLS (Cumulative Layout Shift): ≤0.1
-
-📊 View detailed reports in workflow artifacts: **lighthouse-reports**`
+              body: message
             });
 
