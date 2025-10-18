@@ -1,0 +1,58 @@
+name: SQLFluff
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - '**.sql'
+      - '.sqlfluff'
+      - '.sqlfluffignore'
+  push:
+    branches: ["main"]
+    paths:
+      - '**.sql'
+      - '.sqlfluff'
+      - '.sqlfluffignore'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  lint-sql:
+    name: Lint SQL Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+      
+      - name: Install SQLFluff
+        run: |
+          python -m pip install --upgrade pip
+          pip install "sqlfluff~=3.0"
+      
+      - name: Display SQLFluff version
+        run: sqlfluff --version
+      
+      - name: Lint SQL files
+        run: |
+          echo "🔍 Linting SQL files with SQLFluff..."
+          sqlfluff lint . --dialect postgres --format github-annotation
+        continue-on-error: false
+      
+      - name: SQL Lint Summary
+        if: always()
+        run: |
+          echo "📊 SQLFluff Lint completed"
+          echo "See annotations above for any issues found"
+
