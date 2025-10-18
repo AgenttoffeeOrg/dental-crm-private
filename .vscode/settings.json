@@ -15,9 +15,9 @@
   "sonarlint.disableTelemetry": true,
   "files.associations": {
     "*.sql": "sql"
-},
-"sonarlint.connectedMode.project": {
-    "connectionId": "   dental-crm-sonarcloud",
+  },
+  "sonarlint.connectedMode.project": {
+    "connectionId": "dental-crm-sonarcloud",
     "projectKey": "AgenttoffeeOrg_dental-crm-private"
-}
+  }
 }
