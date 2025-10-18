@@ -3,6 +3,7 @@
  * Utilities for performance-optimized lazy loading
  */
 
+import React from 'react'
 import dynamic from 'next/dynamic';
 import { ComponentType, lazy, Suspense } from 'react';
 

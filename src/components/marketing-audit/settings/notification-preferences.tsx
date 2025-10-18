@@ -124,7 +124,7 @@ export function NotificationPreferences({ practiceId }: NotificationPreferencesP
                 Score Regression Alert
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Alert when your score drops significantly (>5 points)
+                Alert when your score drops significantly (&gt;5 points)
               </div>
             </div>
             <input

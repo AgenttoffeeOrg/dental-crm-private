@@ -218,7 +218,7 @@ export const DEAL_WORKFLOWS: WorkflowTemplate[] = [
         type: 'send_email',
         config: {
           template_id: 'deal_welcome',
-          subject: 'Welcome! Let's Get Started',
+          subject: "Welcome! Let's Get Started",
         },
       },
       {
@@ -376,7 +376,7 @@ export const CONTACT_WORKFLOWS: WorkflowTemplate[] = [
         type: 'send_email',
         config: {
           template_id: 'we_miss_you',
-          subject: 'We'd Love to Hear From You',
+          subject: "We'd Love to Hear From You",
         },
       },
       {

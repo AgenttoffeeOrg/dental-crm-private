@@ -20,7 +20,7 @@ describe('Entitlement Security Tests', () => {
   test('check_entitlement() does NOT accept tenant_id parameter', async () => {
     // Verify function signature doesn't allow tenant_id bypass
     const { data: functions } = await supabaseService.rpc('pg_get_functiondef', {
-      funcoid: 'check_entitlement'::regproc
+      funcoid: 'check_entitlement' as any
     })
 
     // Should NOT contain p_tenant_id in signature

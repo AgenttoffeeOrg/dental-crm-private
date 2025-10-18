@@ -1,0 +1,66 @@
+name: Demo Reset
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Demo/Staging BASE_URL (e.g., https://staging.example.com)'
+        required: true
+        default: 'https://dental-crm-demo.up.railway.app'
+
+jobs:
+  reset-demo:
+    name: Reset Demo Tenant
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Reset demo environment
+        # yamllint disable-line rule:line-length
+        env:
+          # Secret will be configured in repository settings
+          DEMO_RESET_TOKEN: ${{ secrets.DEMO_RESET_TOKEN }} # pragma: allowlist secret
+          BASE_URL: ${{ github.event.inputs.base_url }}
+        run: |
+          # Validate token is configured
+          if [ -z "$DEMO_RESET_TOKEN" ]; then
+            echo "❌ DEMO_RESET_TOKEN secret not configured"
+            echo "Add DEMO_RESET_TOKEN to repository secrets at:"
+            echo "https://github.com/${{ github.repository }}/settings/secrets/actions"
+            exit 1
+          fi
+          
+          echo "🔄 Resetting demo environment at $BASE_URL"
+          
+          RESPONSE=$(curl -sS -X POST "$BASE_URL/api/admin/demo-reset" \
+            -H "x-demo-reset-token: $DEMO_RESET_TOKEN" \
+            -H "Content-Type: application/json" \
+            -w "\n%{http_code}" \
+            -f)
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Demo reset successful!"
+            echo "$BODY" | jq '.'
+          else
+            echo "❌ Demo reset failed with HTTP $HTTP_CODE"
+            echo "$BODY"
+            exit 1
+          fi
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ Demo environment has been reset"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "What happened:"
+          echo "  • All demo tenant data cleared"
+          echo "  • Fresh demo data seeded"
+          echo "  • All features enabled"
+          echo "  • Ready for demonstrations"
+          echo ""
+

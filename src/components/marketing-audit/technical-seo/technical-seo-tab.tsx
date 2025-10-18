@@ -90,7 +90,7 @@ export function TechnicalSEOTab({ metrics, score, recommendations }: TechnicalSE
             </div>
             <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
               <span>Good: ≤2.5s</span>
-              <span>Poor: >4.0s</span>
+              <span>Poor: &gt;4.0s</span>
             </div>
             <div className="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
@@ -115,7 +115,7 @@ export function TechnicalSEOTab({ metrics, score, recommendations }: TechnicalSE
             </div>
             <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
               <span>Good: ≤100ms</span>
-              <span>Poor: >300ms</span>
+              <span>Poor: &gt;300ms</span>
             </div>
             <div className="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
@@ -140,7 +140,7 @@ export function TechnicalSEOTab({ metrics, score, recommendations }: TechnicalSE
             </div>
             <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
               <span>Good: ≤0.1</span>
-              <span>Poor: >0.25</span>
+              <span>Poor: &gt;0.25</span>
             </div>
             <div className="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div

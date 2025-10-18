@@ -1,0 +1,12 @@
+{
+  "testFilePattern": "**/*test*.sql,**/*spec*.sql,**/tests/**/*.sql,**/verification/**/*.sql",
+  "excludedRules": [
+    "plsql:S1192"
+  ],
+  "ruleParameters": {
+    "plsql:S1192": {
+      "threshold": "10"
+    }
+  }
+}
+
