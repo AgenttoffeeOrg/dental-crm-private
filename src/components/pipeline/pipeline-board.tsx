@@ -306,7 +306,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
   // Pipeline state - Initialize from URL to persist on reload!
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { orgId, isLoading: tenantLoading } = useTenantContext()
+  const { orgId, userId: currentUserId, isLoading: tenantLoading } = useTenantContext()
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>(() => {
     // Read from URL on initial render
@@ -623,8 +623,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
   const filteredDeals = React.useMemo(() => {
     let filtered = [...deals]
     
-    // TODO: Replace with actual current user ID from auth
-    const { userId: currentUserId } = useTenantContext()
+    // Use currentUserId from top-level hook (already extracted above)
     
     // 1. Owner filter
     if (ownerFilter === 'my') {
@@ -695,7 +694,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
     })
     
     return filtered
-  }, [deals, ownerFilter, localSearchQuery, sourceFilter, treatmentFilter, marketingSourceFilter, sortBy, sortOrder])
+  }, [deals, ownerFilter, localSearchQuery, sourceFilter, treatmentFilter, marketingSourceFilter, sortBy, sortOrder, currentUserId])
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat('en-GB', {
