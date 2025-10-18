@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -63,8 +63,28 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notifDrawerOpen, setNotifDrawerOpen] = useState(false)
+  const [tenantContext, setTenantContext] = useState<any>(null)
   const featureFlags = useFeatureFlags()
   const navigation = getNavigation(featureFlags)
+
+  // Fetch tenant context for location switcher
+  useEffect(() => {
+    const fetchTenantContext = async () => {
+      try {
+        const response = await fetch('/api/tenant/context')
+        if (response.ok) {
+          const data = await response.json()
+          setTenantContext(data)
+        }
+      } catch (error) {
+        console.error('Error fetching tenant context:', error)
+      }
+    }
+
+    if (appUser) {
+      fetchTenantContext()
+    }
+  }, [appUser])
 
   // Debug logging - minimal
   if (process.env.NODE_ENV === 'development') {
@@ -339,6 +359,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
               {/* User Actions - FAR RIGHT */}
               <div className="flex items-center gap-3 ml-4">
+              {/* Location Switcher - Multi-Location Organizations */}
+              {tenantContext?.isMultiLocation && tenantContext?.primaryTenant && (
+                <LocationSwitcher
+                  currentLocationId={tenantContext.primaryTenant.id}
+                  currentLocationName={tenantContext.primaryTenant.location_name || tenantContext.primaryTenant.name}
+                  isMultiLocation={tenantContext.isMultiLocation}
+                />
+              )}
+              
               {/* What's New */}
               <WhatsNewPanel />
               
