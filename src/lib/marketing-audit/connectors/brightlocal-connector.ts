@@ -6,7 +6,7 @@
  */
 
 import { BaseAPIConnector } from './base-connector';
-import type { APIConnectorError } from '../utils/errors';
+import type { ConnectorError } from '../utils/errors';
 
 export interface BrightLocalCitationData {
   total_citations: number;
@@ -63,7 +63,7 @@ export class BrightLocalConnector extends BaseAPIConnector {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            api-key: this.apiKey,
+            'api-key': this.apiKey,
             'account-id': this.accountId,
             business_name: businessName,
             address1: address,

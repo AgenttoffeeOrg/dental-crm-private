@@ -5,6 +5,8 @@
  * UX Focus: Make the app usable by everyone, including screen reader users.
  */
 
+import React from 'react'
+
 /**
  * Generate ARIA label for score
  */

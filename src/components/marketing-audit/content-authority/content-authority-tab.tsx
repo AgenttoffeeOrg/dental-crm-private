@@ -132,7 +132,7 @@ export function ContentAuthorityTab({ metrics, score, recommendations, phase }: 
                 {metrics.toxic_backlinks_percent.toFixed(1)}%
               </div>
               <div className="text-xs text-gray-500">
-                Target: <5%
+                Target: &lt;5%
               </div>
             </div>
           </div>
