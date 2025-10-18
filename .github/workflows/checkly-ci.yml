@@ -40,13 +40,14 @@ jobs:
           CHECKLY_REGION_LIST: ${{ vars.CHECKLY_REGION_LIST }}
         run: |
           echo "🧪 Running Checkly synthetic checks against $BASE_URL"
-          npx checkly test --reporter=junit --reporter=list
+          npx checkly test --reporter=list
       
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: checkly-test-results
-          path: checkly/checkly-junit.xml
+          path: checkly/*.log
           retention-days: 7
+          if-no-files-found: ignore
 
