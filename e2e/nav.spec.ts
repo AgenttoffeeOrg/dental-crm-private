@@ -1,9 +1,12 @@
 import { test, expect } from '@playwright/test'
 import percySnapshot from '@percy/playwright'
+import { login } from './helpers/auth'
 
 /**
  * Navigation tests - Verify primary navigation works
  * Tests critical user flows through the application
+ * 
+ * Requires TEST_EMAIL and TEST_PASSWORD environment variables
  */
 
 const PRIMARY_ROUTES = [
@@ -25,9 +28,17 @@ const PRIMARY_ROUTES = [
 ]
 
 test.describe('Navigation Tests', () => {
+  test.skip(({ browserName }) => {
+    // Skip navigation tests if credentials not provided
+    return !process.env.TEST_EMAIL || !process.env.TEST_PASSWORD
+  }, 'TEST_EMAIL and TEST_PASSWORD environment variables required')
+
   test.beforeEach(async ({ page }) => {
-    // Start from the homepage
-    await page.goto('/')
+    // Login before each navigation test
+    await login(page)
+    
+    // Wait for redirect to dashboard or home
+    await page.waitForTimeout(2000)
   })
 
   test('all primary routes are accessible', async ({ page }) => {
