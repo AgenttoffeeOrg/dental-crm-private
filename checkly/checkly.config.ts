@@ -24,7 +24,7 @@ const config = defineConfig({
     // Run checks from multiple regions for global coverage
     locations: (process.env.CHECKLY_REGION_LIST || 'eu-west-1,us-east-1,ap-south-1')
       .split(',')
-      .map(r => r.trim()),
+      .map(r => r.trim()) as any, // Type cast to avoid Checkly Region type issues
     
     // Tags for organization
     tags: ['production', 'dental-crm'],
