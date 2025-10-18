@@ -39,25 +39,22 @@ jobs:
         env:
           BASE_URL: ${{ vars.BASE_URL }}
         run: |
-          echo "Configuring Lighthouse CI for BASE_URL=$BASE_URL"
+          echo "Using BASE_URL=$BASE_URL"
+          if [ -z "$BASE_URL" ]; then
+            export BASE_URL="https://dental-crm-private-production.up.railway.app"
+            echo "BASE_URL not set, using default: $BASE_URL"
+          fi
           
           # Update lighthouserc.json with actual BASE_URL
-          node -e "
-            const fs = require('fs');
-            const config = require('./lighthouserc.json');
-            const baseUrl = process.env.BASE_URL || 'https://dental-crm-private-production.up.railway.app';
-            
-            // Replace template URLs with actual BASE_URL
-            config.ci.collect.url = config.ci.collect.url.map(url => 
-              url.replace(/\$\{BASE_URL\}/g, baseUrl.replace(/\/$/, ''))
-            );
-            
-            fs.writeFileSync('lighthouserc.json', JSON.stringify(config, null, 2));
-            console.log('URLs configured:', config.ci.collect.url);
-          "
+          sed -i.bak "s|\${BASE_URL}|$BASE_URL|g" lighthouserc.json
+          cat lighthouserc.json | grep -A 5 '"url"'
 
       - name: Run Lighthouse CI
-        run: npx lhci autorun --upload.target=filesystem --upload.outputDir=./lhci-reports
+        env:
+          BASE_URL: ${{ vars.BASE_URL }}
+        run: |
+          export BASE_URL="${BASE_URL:-https://dental-crm-private-production.up.railway.app}"
+          npx lhci autorun --upload.target=filesystem --upload.outputDir=./lhci-reports
 
       - name: Upload Lighthouse reports
         if: always()
