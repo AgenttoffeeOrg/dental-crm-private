@@ -1,6 +1,23 @@
 {
-    "sonarlint.connectedMode.project": {
-        "connectionId": "   dental-crm-sonarcloud",
-        "projectKey": "AgenttoffeeOrg_dental-crm-private"
+  "sonarlint.pathToCompileCommands": "${workspaceFolder}/compile_commands.json",
+  "sonarlint.testFilePattern": "**/*test*.{ts,tsx,js,jsx,sql},**/*spec*.{ts,tsx,js,jsx,sql},**/tests/**/*,**/__tests__/**/*,**/verification/**/*.sql",
+  "sonarlint.rules": {
+    "plsql:S1192": {
+      "level": "off",
+      "parameters": {
+        "threshold": "100"
+      }
+    },
+    "typescript:S1192": {
+      "level": "off"
     }
+  },
+  "sonarlint.disableTelemetry": true,
+  "files.associations": {
+    "*.sql": "sql"
+},
+"sonarlint.connectedMode.project": {
+    "connectionId": "   dental-crm-sonarcloud",
+    "projectKey": "AgenttoffeeOrg_dental-crm-private"
+}
 }
