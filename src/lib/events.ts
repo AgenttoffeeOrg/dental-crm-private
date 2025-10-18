@@ -56,18 +56,18 @@ class EventService {
     const listeners = this.listeners.get(event)
     if (!listeners || listeners.size === 0) {
       // Log the event even if no listeners
-      console.log(`[Event] ${event}:`, data)
+      console.log('[Event]', event, ':', data)
       return
     }
 
-    console.log(`[Event] ${event} (${listeners.size} listeners):`, data)
+    console.log('[Event]', event, '(', listeners.size, 'listeners):', data)
 
     // Execute all listeners
     const promises = Array.from(listeners).map(async (listener) => {
       try {
         await listener(data)
       } catch (error) {
-        console.error(`[Event] Error in ${event} listener:`, error)
+        console.error('[Event] Error in', event, 'listener:', error)
       }
     })
 
@@ -167,7 +167,7 @@ export function setupEventListeners() {
 
     allEvents.forEach(event => {
       eventService.on(event, (data) => {
-        console.log(`[CRM Event] ${event}:`, data)
+        console.log('[CRM Event]', event, ':', data)
       })
     })
   }

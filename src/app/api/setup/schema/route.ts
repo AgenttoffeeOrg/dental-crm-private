@@ -30,7 +30,7 @@ export async function POST() {
         })
         console.log(`✅ Disabled RLS for ${table}`)
       } catch (error) {
-        console.log(`RLS already disabled for ${table} or error:`, error)
+        console.log('RLS already disabled for', table, 'or error:', error)
       }
     }
 

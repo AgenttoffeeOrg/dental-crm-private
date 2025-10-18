@@ -116,15 +116,18 @@ SET active_seats = (
 )
 WHERE s.tenant_id IS NOT NULL;
 
-  -- =====================================================
-  -- 5. BACKFILL: Create Tenant Admin records
-  -- =====================================================
-  
-  -- Find owners and create tenant_admin records for them
-  -- Note: This is handled by migration 001a automatically
-  -- Just verify they exist
-  
+-- =====================================================
+-- 5. BACKFILL: Create Tenant Admin records
+-- =====================================================
+
+-- Find owners and create tenant_admin records for them
+-- Note: This is handled by migration 001a automatically
+-- Just verify they exist
+
+DO $$
+BEGIN
   RAISE NOTICE '✅ Tenant admins already created by migration 001a';
+END $$;
 
 -- =====================================================
 -- 6. VERIFICATION: Count backfilled records

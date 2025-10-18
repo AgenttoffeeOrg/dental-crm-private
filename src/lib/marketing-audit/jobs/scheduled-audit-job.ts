@@ -134,7 +134,7 @@ export class ScheduledAuditJob {
       
       console.log(`[ScheduledAuditJob] ✅ Completed audit for: ${practice.name}`);
     } catch (error) {
-      console.error(`[ScheduledAuditJob] ❌ Failed audit for: ${practice.name}`, error);
+      console.error('[ScheduledAuditJob] ❌ Failed audit for:', practice.name, error);
       
       // Log error
       await supabase

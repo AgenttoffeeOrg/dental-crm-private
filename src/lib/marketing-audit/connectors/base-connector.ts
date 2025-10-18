@@ -106,7 +106,7 @@ export abstract class BaseAPIConnector {
    * Log errors (override in subclasses for custom logging)
    */
   protected logError(error: Error, context?: any): void {
-    console.error(`[${this.constructor.name} Error]`, {
+      console.error('[', this.constructor.name, 'Error]', {
       message: error.message,
       name: error.name,
       context,

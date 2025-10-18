@@ -18,5 +18,6 @@
         "**/dist/**": true,
         "**/build/**": true,
         "**/.next/**": true
-    }
+    },
+    "semgrep.scan.onlyGitDirty": false
 }

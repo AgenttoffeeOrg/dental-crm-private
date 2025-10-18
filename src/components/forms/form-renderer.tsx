@@ -69,8 +69,17 @@ export function FormRenderer({ form, onSubmit, standalone = false }: FormRendere
         return `Must be no more than ${field.validation.max}`
       }
       if (field.validation.pattern && value) {
-        const regex = new RegExp(field.validation.pattern)
-        if (!regex.test(value)) {
+        try {
+          // Validate pattern is safe (limit length and complexity)
+          if (field.validation.pattern.length > 100) {
+            return 'Pattern validation error'
+          }
+          const regex = new RegExp(field.validation.pattern)
+          if (!regex.test(value)) {
+            return 'Invalid format'
+          }
+        } catch (error) {
+          // Invalid regex pattern
           return 'Invalid format'
         }
       }

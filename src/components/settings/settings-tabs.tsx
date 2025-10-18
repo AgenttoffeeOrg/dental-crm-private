@@ -31,6 +31,7 @@ import { MarketingAuditSettingsTab } from './marketing-audit-settings-tab'
 import { NotificationsPreferencesTab } from './notifications-preferences-tab'
 import { NotificationsPoliciesTab } from './notifications-policies-tab'
 import { LocationsSettingsTab } from './locations-settings-tab'
+import { MultiLocationManagementTab } from './multi-location-management-tab'
 import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -80,6 +81,12 @@ export function SettingsTabs() {
             className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
           >
             👥 Team
+          </TabsTrigger>
+          <TabsTrigger 
+            value="multi-location" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            🏢 Multi-Location
           </TabsTrigger>
           <TabsTrigger 
             value="roles" 
@@ -205,6 +212,10 @@ export function SettingsTabs() {
           </div>
           <TeamMembersTab />
         </div>
+      </TabsContent>
+
+      <TabsContent value="multi-location" className="space-y-6">
+        <MultiLocationManagementTab />
       </TabsContent>
 
       <TabsContent value="roles" className="space-y-6">

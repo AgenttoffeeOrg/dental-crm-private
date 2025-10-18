@@ -4,6 +4,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { DealsTable } from '@/components/deals/deals-table'
 import { GlobalAIAssistant } from '@/components/ai/global-ai-assistant'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { LocationBanner } from '@/components/ui/location-indicator'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,7 @@ export default function DealsPage() {
   return (
     <DashboardLayout>
       <div className="h-full flex flex-col">
+        <LocationBanner />
         <div className="px-6 pt-6 pb-4">
           <Breadcrumbs items={[{ label: 'Deals' }]} />
         </div>

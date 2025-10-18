@@ -21,12 +21,12 @@ export async function POST() {
           sql: `ALTER TABLE public.${table} DISABLE ROW LEVEL SECURITY;`
         })
         if (error) {
-          console.log(`Could not disable RLS for ${table}:`, error.message)
+          console.log('Could not disable RLS for', table, ':', error.message)
         } else {
           console.log(`✅ Disabled RLS for ${table}`)
         }
       } catch (err) {
-        console.log(`RLS disable attempt for ${table}:`, err)
+        console.log('RLS disable attempt for', table, ':', err)
       }
     }
 
@@ -37,12 +37,12 @@ export async function POST() {
           sql: `GRANT ALL ON public.${table} TO anon, authenticated;`
         })
         if (error) {
-          console.log(`Could not grant permissions for ${table}:`, error.message)
+          console.log('Could not grant permissions for', table, ':', error.message)
         } else {
           console.log(`✅ Granted permissions for ${table}`)
         }
       } catch (err) {
-        console.log(`Permission grant attempt for ${table}:`, err)
+        console.log('Permission grant attempt for', table, ':', err)
       }
     }
 

@@ -21,103 +21,147 @@ BEGIN;
 -- =====================================================
 
 -- =====================================================
--- 1. UPDATE CONTACTS TABLE RLS
+-- 1. UPDATE CONTACTS TABLE RLS (if exists)
 -- =====================================================
 
--- Drop existing policy
-DROP POLICY IF EXISTS contacts_tenant_isolation ON contacts;
-
--- Create new dual-path policy
-CREATE POLICY contacts_tenant_isolation ON contacts
-  FOR ALL
-  USING (tenant_id = ANY(public.get_accessible_tenants()));
-
-COMMENT ON POLICY contacts_tenant_isolation ON contacts IS 
-  'Dual-path: Single tenant for 95% users (fast), multiple for 5% (acceptable)';
-
--- =====================================================
--- 2. UPDATE DEALS TABLE RLS
--- =====================================================
-
-DROP POLICY IF EXISTS deals_tenant_isolation ON deals;
-
-CREATE POLICY deals_tenant_isolation ON deals
-  FOR ALL
-  USING (tenant_id = ANY(public.get_accessible_tenants()));
-
-COMMENT ON POLICY deals_tenant_isolation ON deals IS 
-  'Dual-path: Tenant isolation with multi-location support';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'contacts') THEN
+    EXECUTE 'DROP POLICY IF EXISTS contacts_tenant_isolation ON contacts';
+    EXECUTE 'CREATE POLICY contacts_tenant_isolation ON contacts
+      FOR ALL
+      USING (tenant_id = ANY(public.get_accessible_tenants()))';
+    RAISE NOTICE '✅ Updated RLS: contacts';
+  ELSE
+    RAISE NOTICE 'ℹ️  Table contacts does not exist, skipping';
+  END IF;
+END $$;
 
 -- =====================================================
--- 3. UPDATE ACTIVITIES TABLE RLS
+-- 2. UPDATE DEALS TABLE RLS (if exists)
 -- =====================================================
 
-DROP POLICY IF EXISTS activities_tenant_isolation ON activities;
-
-CREATE POLICY activities_tenant_isolation ON activities
-  FOR ALL
-  USING (tenant_id = ANY(public.get_accessible_tenants()));
-
--- =====================================================
--- 4. UPDATE PIPELINES TABLE RLS
--- =====================================================
-
-DROP POLICY IF EXISTS pipelines_tenant_isolation ON pipelines;
-
-CREATE POLICY pipelines_tenant_isolation ON pipelines
-  FOR ALL
-  USING (tenant_id = ANY(public.get_accessible_tenants()));
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'deals') THEN
+    EXECUTE 'DROP POLICY IF EXISTS deals_tenant_isolation ON deals';
+    EXECUTE 'CREATE POLICY deals_tenant_isolation ON deals
+      FOR ALL
+      USING (tenant_id = ANY(public.get_accessible_tenants()))';
+    RAISE NOTICE '✅ Updated RLS: deals';
+  ELSE
+    RAISE NOTICE 'ℹ️  Table deals does not exist, skipping';
+  END IF;
+END $$;
 
 -- =====================================================
--- 5. UPDATE STAGES TABLE RLS
+-- 3. UPDATE ACTIVITIES TABLE RLS (if exists)
 -- =====================================================
 
-DROP POLICY IF EXISTS stages_tenant_isolation ON stages;
-
-CREATE POLICY stages_tenant_isolation ON stages
-  FOR ALL
-  USING (tenant_id = ANY(public.get_accessible_tenants()));
-
--- =====================================================
--- 6. UPDATE APP_USERS TABLE RLS
--- =====================================================
-
--- Drop existing policies
-DROP POLICY IF EXISTS app_users_tenant_isolation ON app_users;
-DROP POLICY IF EXISTS app_users_select_policy ON app_users;
-
--- Create new dual-path policy
-CREATE POLICY app_users_tenant_isolation ON app_users
-  FOR SELECT
-  USING (tenant_id = ANY(public.get_accessible_tenants()));
-
--- Users can update their own profile
-CREATE POLICY app_users_update_own ON app_users
-  FOR UPDATE
-  USING (id = auth.uid());
-
-COMMENT ON POLICY app_users_tenant_isolation ON app_users IS 
-  'Users see app_users from all their accessible locations';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'activities') THEN
+    EXECUTE 'DROP POLICY IF EXISTS activities_tenant_isolation ON activities';
+    EXECUTE 'CREATE POLICY activities_tenant_isolation ON activities
+      FOR ALL
+      USING (tenant_id = ANY(public.get_accessible_tenants()))';
+    RAISE NOTICE '✅ Updated RLS: activities';
+  ELSE
+    RAISE NOTICE 'ℹ️  Table activities does not exist, skipping';
+  END IF;
+END $$;
 
 -- =====================================================
--- 7. UPDATE USER_INVITATIONS TABLE RLS
+-- 4. UPDATE PIPELINES TABLE RLS (if exists)
 -- =====================================================
 
-DROP POLICY IF EXISTS user_invitations_tenant_isolation ON user_invitations;
-
-CREATE POLICY user_invitations_tenant_isolation ON user_invitations
-  FOR ALL
-  USING (tenant_id = ANY(public.get_accessible_tenants()));
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pipelines') THEN
+    EXECUTE 'DROP POLICY IF EXISTS pipelines_tenant_isolation ON pipelines';
+    EXECUTE 'CREATE POLICY pipelines_tenant_isolation ON pipelines
+      FOR ALL
+      USING (tenant_id = ANY(public.get_accessible_tenants()))';
+    RAISE NOTICE '✅ Updated RLS: pipelines';
+  ELSE
+    RAISE NOTICE 'ℹ️  Table pipelines does not exist, skipping';
+  END IF;
+END $$;
 
 -- =====================================================
--- 8. UPDATE CUSTOM_ROLES TABLE RLS
+-- 5. UPDATE STAGES TABLE RLS (if exists)
 -- =====================================================
 
-DROP POLICY IF EXISTS custom_roles_tenant_isolation ON custom_roles;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stages') THEN
+    EXECUTE 'DROP POLICY IF EXISTS stages_tenant_isolation ON stages';
+    EXECUTE 'CREATE POLICY stages_tenant_isolation ON stages
+      FOR ALL
+      USING (tenant_id = ANY(public.get_accessible_tenants()))';
+    RAISE NOTICE '✅ Updated RLS: stages';
+  ELSE
+    RAISE NOTICE 'ℹ️  Table stages does not exist, skipping';
+  END IF;
+END $$;
 
-CREATE POLICY custom_roles_tenant_isolation ON custom_roles
-  FOR ALL
-  USING (tenant_id = ANY(public.get_accessible_tenants()));
+-- =====================================================
+-- 6. UPDATE APP_USERS TABLE RLS (if exists)
+-- =====================================================
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'app_users') THEN
+    EXECUTE 'DROP POLICY IF EXISTS app_users_tenant_isolation ON app_users';
+    EXECUTE 'DROP POLICY IF EXISTS app_users_select_policy ON app_users';
+    
+    EXECUTE 'CREATE POLICY app_users_tenant_isolation ON app_users
+      FOR SELECT
+      USING (tenant_id = ANY(public.get_accessible_tenants()))';
+    
+    EXECUTE 'CREATE POLICY app_users_update_own ON app_users
+      FOR UPDATE
+      USING (id = auth.uid())';
+    
+    RAISE NOTICE '✅ Updated RLS: app_users';
+  ELSE
+    RAISE NOTICE 'ℹ️  Table app_users does not exist, skipping';
+  END IF;
+END $$;
+
+-- =====================================================
+-- 7. UPDATE USER_INVITATIONS TABLE RLS (if exists)
+-- =====================================================
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_invitations') THEN
+    EXECUTE 'DROP POLICY IF EXISTS user_invitations_tenant_isolation ON user_invitations';
+    EXECUTE 'CREATE POLICY user_invitations_tenant_isolation ON user_invitations
+      FOR ALL
+      USING (tenant_id = ANY(public.get_accessible_tenants()))';
+    RAISE NOTICE '✅ Updated RLS: user_invitations';
+  ELSE
+    RAISE NOTICE 'ℹ️  Table user_invitations does not exist, skipping';
+  END IF;
+END $$;
+
+-- =====================================================
+-- 8. UPDATE CUSTOM_ROLES TABLE RLS (if exists)
+-- =====================================================
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'custom_roles') THEN
+    EXECUTE 'DROP POLICY IF EXISTS custom_roles_tenant_isolation ON custom_roles';
+    EXECUTE 'CREATE POLICY custom_roles_tenant_isolation ON custom_roles
+      FOR ALL
+      USING (tenant_id = ANY(public.get_accessible_tenants()))';
+    RAISE NOTICE '✅ Updated RLS: custom_roles';
+  ELSE
+    RAISE NOTICE 'ℹ️  Table custom_roles does not exist, skipping';
+  END IF;
+END $$;
 
 -- =====================================================
 -- 9. UPDATE AUDIT_LOGS TABLE RLS (if exists)
@@ -218,10 +262,8 @@ SELECT
     ELSE FALSE 
   END AS is_primary_location
 FROM app_users au
-INNER JOIN tenants t ON t.id = ANY(
-  -- Get user's accessible tenants using the dual-path function
-  (SELECT public.get_accessible_tenants())
-)
+CROSS JOIN LATERAL unnest(public.get_accessible_tenants()) AS accessible_tenant_id
+INNER JOIN tenants t ON t.id = accessible_tenant_id
 WHERE au.id = auth.uid();
 
 COMMENT ON VIEW user_accessible_locations IS 

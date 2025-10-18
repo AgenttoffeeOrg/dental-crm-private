@@ -137,7 +137,7 @@ export async function POST() {
           .eq('id', deal.id)
 
         if (updateError) {
-          console.error(`Error updating deal ${deal.id}:`, updateError)
+          console.error('Error updating deal:', deal.id, updateError)
           results.errors++
           continue
         }
@@ -148,7 +148,7 @@ export async function POST() {
         results.byPipeline[category.pipelineName] = (results.byPipeline[category.pipelineName] || 0) + 1
 
       } catch (error) {
-        console.error(`Error processing deal ${deal.id}:`, error)
+        console.error('Error processing deal:', deal.id, error)
         results.errors++
       }
     }

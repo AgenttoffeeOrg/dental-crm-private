@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     const recordingUrl = params.RecordingUrl
     const direction = params.Direction // inbound or outbound-api
     
-    console.log(`[WEBHOOK VOICE][${correlationId}] Call update:`, { 
+    console.log('[WEBHOOK VOICE]', correlationId, 'Call update:', { 
       callSid, 
       callStatus, 
       from, 
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (updateError) {
-        console.error(`[WEBHOOK VOICE][${correlationId}] Error updating activity:`, updateError)
+        console.error('[WEBHOOK VOICE]', correlationId, 'Error updating activity:', updateError)
         
         await supabase.rpc('add_to_dlq', {
           p_tenant_id: contact?.tenant_id || null,
@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (createError) {
-        console.error(`[WEBHOOK VOICE][${correlationId}] Error creating activity:`, createError)
+        console.error('[WEBHOOK VOICE]', correlationId, 'Error creating activity:', createError)
         
         await supabase.rpc('add_to_dlq', {
           p_tenant_id: contact?.tenant_id || null,
@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: unknown) {
-    console.error(`[WEBHOOK VOICE][${correlationId}] Unexpected error:`, error)
+    console.error('[WEBHOOK VOICE]', correlationId, 'Unexpected error:', error)
     
     await supabase.from('integration_logs').insert({
       tenant_id: null,

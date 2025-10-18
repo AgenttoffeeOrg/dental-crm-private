@@ -452,7 +452,7 @@ class UnifiedEventService {
       try {
         await listener(data)
       } catch (error) {
-        console.error(`[Event] Error in ${event} listener:`, error)
+        console.error('[Event] Error in', event, 'listener:', error)
         // Don't throw - isolate errors to prevent cascade failures
       }
     })
@@ -654,7 +654,7 @@ export function setupUnifiedEventListeners() {
     
     allEvents.forEach(event => {
       eventService.on(event, (data) => {
-        console.log(`[CRM Event] ${event}:`, data)
+        console.log('[CRM Event]', event, ':', data)
       })
     })
   }

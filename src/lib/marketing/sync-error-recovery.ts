@@ -60,7 +60,7 @@ export async function retrySyncWithBackoff(
         return true;
       }
     } catch (error) {
-      console.error(`[Sync Recovery] Attempt ${attempt} failed:`, error);
+      console.error('[Sync Recovery] Attempt', attempt, 'failed:', error);
       
       // Exponential backoff: 1s, 2s, 4s
       if (attempt < maxRetries) {

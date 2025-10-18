@@ -51,7 +51,7 @@ export const requireEntitlements = (
       })
 
       if (error) {
-        console.error(`[Entitlement Check] Error checking ${code}:`, error)
+        console.error('[Entitlement Check] Error checking', code, ':', error)
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to verify entitlements',

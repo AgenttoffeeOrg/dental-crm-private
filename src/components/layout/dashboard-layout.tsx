@@ -41,6 +41,7 @@ import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
 import { createClient } from '@/lib/supabase-client'
 import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
+import { LocationSwitcher } from '@/components/layout/location-switcher'
 
 const getNavigation = (featureFlags: any) => [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -231,18 +232,24 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-gray-50">
           {/* MOBILE HEADER - Shows on small screens */}
-          <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              DentalCRM
-            </h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2"
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
+          <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                DentalCRM
+              </h1>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2"
+              >
+                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </Button>
+            </div>
+            {/* Location switcher for mobile */}
+            <div className="mt-3">
+              <LocationSwitcher currentTenantId={appUser?.tenant_id} />
+            </div>
           </div>
 
           {/* LEFT SIDEBAR - ENTERPRISE NAVIGATION */}
@@ -270,6 +277,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           >
             <X className="h-5 w-5" />
           </Button>
+        </div>
+
+        {/* Location Switcher */}
+        <div className="px-4 py-3 border-b border-gray-200">
+          <LocationSwitcher currentTenantId={appUser?.tenant_id} />
         </div>
 
         {/* Navigation Menu - Vertical */}

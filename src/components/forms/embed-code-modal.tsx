@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import DOMPurify from 'dompurify'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +38,17 @@ export function EmbedCodeModal({ form, open, onClose }: EmbedCodeModalProps) {
     formId: form.id,
     formSlug: form.public_url_slug || undefined,
   })
+
+  // Sanitize HTML to prevent XSS attacks
+  const sanitizedIframeCode = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      return DOMPurify.sanitize(iframeCode, {
+        ADD_TAGS: ['iframe'],
+        ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling']
+      })
+    }
+    return iframeCode
+  }, [iframeCode])
 
   const scriptCode = generateScriptEmbed({
     formId: form.id,
@@ -202,7 +214,7 @@ export function EmbedCodeModal({ form, open, onClose }: EmbedCodeModalProps) {
             <div className="border-t pt-4">
               <Label className="font-semibold">Preview</Label>
               <div className="mt-2 border rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
-                <div dangerouslySetInnerHTML={{ __html: iframeCode }} />
+                <div dangerouslySetInnerHTML={{ __html: sanitizedIframeCode }} />
               </div>
             </div>
           </TabsContent>

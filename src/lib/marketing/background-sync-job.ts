@@ -50,7 +50,7 @@ export async function runBackgroundSync(tenantId: string): Promise<SyncJobResult
         contactsSynced++;
       } catch (error) {
         errors++;
-        console.error(`[Background Sync] Error syncing contact ${contact.id}:`, error);
+        console.error('[Background Sync] Error syncing contact', contact.id, ':', error);
       }
     }
 
