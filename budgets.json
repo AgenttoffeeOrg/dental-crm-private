@@ -1,0 +1,78 @@
+[
+  {
+    "path": "/",
+    "timings": [
+      {
+        "metric": "interactive",
+        "budget": 4000
+      },
+      {
+        "metric": "first-contentful-paint",
+        "budget": 2000
+      }
+    ],
+    "resourceSizes": [
+      {
+        "resourceType": "script",
+        "budget": 300
+      },
+      {
+        "resourceType": "stylesheet",
+        "budget": 100
+      },
+      {
+        "resourceType": "image",
+        "budget": 500
+      },
+      {
+        "resourceType": "total",
+        "budget": 1500
+      }
+    ],
+    "resourceCounts": [
+      {
+        "resourceType": "third-party",
+        "budget": 10
+      }
+    ]
+  },
+  {
+    "path": "/login",
+    "timings": [
+      {
+        "metric": "interactive",
+        "budget": 3000
+      }
+    ],
+    "resourceSizes": [
+      {
+        "resourceType": "script",
+        "budget": 200
+      },
+      {
+        "resourceType": "total",
+        "budget": 1000
+      }
+    ]
+  },
+  {
+    "path": "/dashboard",
+    "timings": [
+      {
+        "metric": "interactive",
+        "budget": 5000
+      }
+    ],
+    "resourceSizes": [
+      {
+        "resourceType": "script",
+        "budget": 400
+      },
+      {
+        "resourceType": "total",
+        "budget": 2000
+      }
+    ]
+  }
+]
+
