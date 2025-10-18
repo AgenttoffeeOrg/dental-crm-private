@@ -16,8 +16,10 @@ jobs:
 
     steps:
       - name: Reset demo environment
+        # yamllint disable-line rule:line-length
         env:
-          DEMO_RESET_TOKEN: ${{ secrets.DEMO_RESET_TOKEN }}
+          # Secret will be configured in repository settings
+          DEMO_RESET_TOKEN: ${{ secrets.DEMO_RESET_TOKEN }} # pragma: allowlist secret
           BASE_URL: ${{ github.event.inputs.base_url }}
         run: |
           # Validate token is configured
