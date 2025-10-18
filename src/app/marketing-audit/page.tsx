@@ -7,9 +7,6 @@
 
 'use client';
 
-import { useFeatureFlags } from '@/lib/hooks/use-feature-flags';
-import { redirect } from 'next/navigation';
-import { useEffect } from 'react';
 import { AuditDashboard } from '@/components/marketing-audit/dashboard/audit-dashboard';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
@@ -17,17 +14,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { LineChart } from 'lucide-react';
 
 export default function MarketingAuditPage() {
-  const { marketingAudit } = useFeatureFlags();
-  
-  useEffect(() => {
-    if (!marketingAudit.enabled) {
-      redirect('/dashboard');
-    }
-  }, [marketingAudit.enabled]);
-  
-  if (!marketingAudit.enabled) {
-    return null;
-  }
+  // Feature is always available - removed feature flag check for production
   
   return (
     <DashboardLayout>
