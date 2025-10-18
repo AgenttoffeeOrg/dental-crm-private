@@ -348,9 +348,11 @@ export function LocationsSettingsTab({ tenantId }: { tenantId?: string }) {
                         {location.locationType}
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {location.address.line1}, {location.address.city}, {location.address.state}
-                    </p>
+                    {location.address && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        {location.address.line1 || 'No address'}, {location.address.city || ''}, {location.address.state || ''}
+                      </p>
+                    )}
                     {location.phone && (
                       <p className="text-xs text-gray-500 mt-1">{location.phone}</p>
                     )}
