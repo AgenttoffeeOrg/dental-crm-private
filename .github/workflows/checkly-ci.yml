@@ -1,0 +1,53 @@
+name: Checkly CI - Synthetic Monitoring Tests
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  checkly-test:
+    name: Run Checkly Synthetic Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Checkly CLI
+        run: npm install -g checkly@latest
+      
+      - name: Install check dependencies
+        working-directory: ./checkly
+        run: npm install
+      
+      - name: Run Checkly tests
+        working-directory: ./checkly
+        env:
+          CHECKLY_API_KEY: ${{ secrets.CHECKLY_API_KEY }}
+          CHECKLY_ACCOUNT_ID: ${{ vars.CHECKLY_ACCOUNT_ID }}
+          BASE_URL: ${{ vars.BASE_URL }}
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          CHECKLY_REGION_LIST: ${{ vars.CHECKLY_REGION_LIST }}
+        run: |
+          echo "🧪 Running Checkly synthetic checks against $BASE_URL"
+          npx checkly test --reporter=list
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkly-test-results
+          path: checkly/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
