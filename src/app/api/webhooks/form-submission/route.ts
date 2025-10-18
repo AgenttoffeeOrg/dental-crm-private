@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { z } from 'zod'
 
-const DEFAULT_TENANT_ID = body.tenant_id || request.headers.get('X-Tenant-ID')
-
 // Define a schema for incoming form data
 const formSubmissionSchema = z.object({
   formId: z.string().uuid(),

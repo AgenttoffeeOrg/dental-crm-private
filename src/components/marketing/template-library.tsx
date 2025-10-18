@@ -89,6 +89,7 @@ export function TemplateLibrary() {
 
       if (error) throw error
       setTemplates(data || [])
+      */
     } catch (error) {
       console.error('[TEMPLATES] Error loading:', error)
       toast.error('Failed to load templates')
@@ -143,7 +144,7 @@ export function TemplateLibrary() {
 
     try {
       const supabase = createClient()
-      const { error} = await supabase
+      const { error } = await supabase
         .from('marketing_templates')
         .delete()
         .eq('id', templateId)

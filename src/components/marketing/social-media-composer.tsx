@@ -122,7 +122,8 @@ export function SocialMediaComposer({ onComplete, onCancel }: SocialMediaCompose
 
     try {
       const supabase = createClient()
-      const tenantId
+      const { data: { user } } = await supabase.auth.getUser()
+      const tenantId = user?.user_metadata?.tenant_id
 
       // Create posts for each selected platform
       const posts = selectedPlatforms.map(platform => {

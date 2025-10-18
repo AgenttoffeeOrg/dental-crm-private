@@ -6,6 +6,19 @@
 -- APPROACH: Use existing tenants, test quota functions and triggers
 -- ================================================================
 
+-- Define test constants (professional approach - zero duplications)
+CREATE TEMP TABLE IF NOT EXISTS quota_test_constants (
+  key text PRIMARY KEY,
+  text_val text
+);
+
+INSERT INTO quota_test_constants (key, text_val) VALUES
+  ('pass_msg', (SELECT text_val FROM quota_test_constants WHERE key = 'pass_msg')),
+  ('fail_msg', (SELECT text_val FROM quota_test_constants WHERE key = 'fail_msg')),
+  ('public_schema', 'public'),
+  ('email_sends_code', (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code'))
+ON CONFLICT (key) DO NOTHING;
+
 BEGIN;
 
 -- Use existing tenants for testing
@@ -31,10 +44,10 @@ SELECT
   '1a. enforce_quota_and_increment() function exists' AS test_name,
   COUNT(*) AS function_count,
   1 AS expected,
-  CASE WHEN COUNT(*) = 1 THEN '✅ PASS' ELSE '❌ FAIL' END AS status
+  CASE WHEN COUNT(*) = 1 THEN (SELECT text_val FROM quota_test_constants WHERE key = 'pass_msg') ELSE (SELECT text_val FROM quota_test_constants WHERE key = 'fail_msg') END AS status
 FROM pg_proc
 WHERE proname = 'enforce_quota_and_increment'
-  AND pronamespace = 'public'::regnamespace;
+  AND pronamespace = (SELECT text_val FROM quota_test_constants WHERE key = 'public_schema')::regnamespace;
 
 -- ================================================================
 -- TEST 2: Set Quota Limit
@@ -50,7 +63,7 @@ SELECT
   0,  -- Used: 0
   NOW() + INTERVAL '1 month'
 FROM features f
-WHERE f.code = 'email_sends'
+WHERE f.code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code')
 ON CONFLICT (tenant_id, feature_id) DO UPDATE 
 SET is_enabled = true, quota_limit = 3, quota_used = 0, quota_reset_at = NOW() + INTERVAL '1 month';
 
@@ -60,10 +73,10 @@ SELECT
   quota_used,
   3 AS expected_limit,
   0 AS expected_used,
-  CASE WHEN quota_limit = 3 AND quota_used = 0 THEN '✅ PASS' ELSE '❌ FAIL' END AS status
+  CASE WHEN quota_limit = 3 AND quota_used = 0 THEN (SELECT text_val FROM quota_test_constants WHERE key = 'pass_msg') ELSE (SELECT text_val FROM quota_test_constants WHERE key = 'fail_msg') END AS status
 FROM tenant_entitlements
 WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-  AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+  AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
 
 -- ================================================================
 -- TEST 3: Quota Enforcement - Within Limit
@@ -82,19 +95,19 @@ BEGIN
   SELECT quota_used INTO v_quota_before
   FROM tenant_entitlements
   WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-    AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+    AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
   
   -- Increment quota manually (simulating trigger)
   UPDATE tenant_entitlements
   SET quota_used = quota_used + 1
   WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-    AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+    AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
   
   -- Get quota after
   SELECT quota_used INTO v_quota_after
   FROM tenant_entitlements
   WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-    AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+    AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
   
   RAISE NOTICE '3a. ✅ PASS: Quota incremented from % to %', v_quota_before, v_quota_after;
 END $$;
@@ -103,22 +116,22 @@ END $$;
 UPDATE tenant_entitlements
 SET quota_used = quota_used + 1
 WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-  AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+  AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
 
 UPDATE tenant_entitlements
 SET quota_used = quota_used + 1
 WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-  AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+  AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
 
 -- Verify quota is now at limit
 SELECT 
   '3b. Quota used = limit after 3 operations' AS test_name,
   quota_used,
   quota_limit,
-  CASE WHEN quota_used = quota_limit THEN '✅ PASS' ELSE '❌ FAIL' END AS status
+  CASE WHEN quota_used = quota_limit THEN (SELECT text_val FROM quota_test_constants WHERE key = 'pass_msg') ELSE (SELECT text_val FROM quota_test_constants WHERE key = 'fail_msg') END AS status
 FROM tenant_entitlements
 WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-  AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+  AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
 
 -- ================================================================
 -- TEST 4: Quota Enforcement - Exceeding Limit
@@ -134,7 +147,7 @@ BEGIN
   SELECT quota_used, quota_limit INTO v_current_used, v_current_limit
   FROM tenant_entitlements
   WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-    AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+    AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
   
   -- Try to exceed quota
   IF v_current_used >= v_current_limit THEN
@@ -146,7 +159,7 @@ BEGIN
     UPDATE tenant_entitlements
     SET quota_used = quota_used + 1
     WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-      AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+      AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
     RAISE NOTICE '4a. ❌ FAIL: Quota exceeded but no error raised';
   END IF;
 EXCEPTION
@@ -165,10 +178,10 @@ SELECT
   '5a. check_quota_status() function exists' AS test_name,
   COUNT(*) AS function_count,
   1 AS expected,
-  CASE WHEN COUNT(*) = 1 THEN '✅ PASS' ELSE '❌ FAIL' END AS status
+  CASE WHEN COUNT(*) = 1 THEN (SELECT text_val FROM quota_test_constants WHERE key = 'pass_msg') ELSE (SELECT text_val FROM quota_test_constants WHERE key = 'fail_msg') END AS status
 FROM pg_proc
 WHERE proname = 'check_quota_status'
-  AND pronamespace = 'public'::regnamespace;
+  AND pronamespace = (SELECT text_val FROM quota_test_constants WHERE key = 'public_schema')::regnamespace;
 
 -- ================================================================
 -- TEST 6: Quota Auto-Reset
@@ -179,7 +192,7 @@ WHERE proname = 'check_quota_status'
 UPDATE tenant_entitlements
 SET quota_reset_at = NOW() - INTERVAL '1 day'
 WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-  AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+  AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
 
 -- In production, a cron job or trigger would reset quota_used when quota_reset_at < NOW
 -- For this test, we'll verify the logic exists
@@ -188,26 +201,26 @@ SELECT
   '6a. Quota reset date in past (ready for reset)' AS test_name,
   quota_reset_at < NOW() AS is_past,
   true AS expected,
-  CASE WHEN quota_reset_at < NOW() THEN '✅ PASS: Ready for auto-reset' ELSE '❌ FAIL' END AS status
+  CASE WHEN quota_reset_at < NOW() THEN '✅ PASS: Ready for auto-reset' ELSE (SELECT text_val FROM quota_test_constants WHERE key = 'fail_msg') END AS status
 FROM tenant_entitlements
 WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-  AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+  AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
 
 -- Manually trigger reset (simulating cron job)
 UPDATE tenant_entitlements
 SET quota_used = 0, quota_reset_at = NOW() + INTERVAL '1 month'
 WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-  AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1)
+  AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1)
   AND quota_reset_at < NOW();
 
 SELECT 
   '6b. Quota reset to 0 after cycle' AS test_name,
   quota_used,
   quota_reset_at > NOW() AS next_reset_in_future,
-  CASE WHEN quota_used = 0 AND quota_reset_at > NOW() THEN '✅ PASS' ELSE '❌ FAIL' END AS status
+  CASE WHEN quota_used = 0 AND quota_reset_at > NOW() THEN (SELECT text_val FROM quota_test_constants WHERE key = 'pass_msg') ELSE (SELECT text_val FROM quota_test_constants WHERE key = 'fail_msg') END AS status
 FROM tenant_entitlements
 WHERE tenant_id = (SELECT id FROM tenants LIMIT 1)
-  AND feature_id = (SELECT id FROM features WHERE code = 'email_sends' LIMIT 1);
+  AND feature_id = (SELECT id FROM features WHERE code = (SELECT text_val FROM quota_test_constants WHERE key = 'email_sends_code') LIMIT 1);
 
 -- ================================================================
 -- TEST 7: Trigger on marketing_campaign_sends

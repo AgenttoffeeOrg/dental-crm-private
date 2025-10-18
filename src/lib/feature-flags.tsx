@@ -5,6 +5,8 @@
  * All flags default to FALSE in production for safety.
  */
 
+import React from 'react'
+
 // Environment-based feature flags
 const getEnvFlag = (key: string, defaultValue: boolean = false): boolean => {
   if (typeof window !== 'undefined') {

@@ -130,3 +130,8 @@ echo ""
 echo -e "${YELLOW}⚠️  Note: Some tests require manual execution in Supabase${NC}"
 echo -e "${YELLOW}   due to RLS and authentication context requirements.${NC}\n"
 
+
+
+
+
+
