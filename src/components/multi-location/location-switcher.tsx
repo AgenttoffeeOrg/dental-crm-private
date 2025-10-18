@@ -96,17 +96,17 @@ export function LocationSwitcher({
       })
 
       if (response.ok) {
-        // Refresh the page to reload with new location context
-        router.refresh()
-        window.location.reload()
+        // CRITICAL: Force a full page refresh with cache bypass
+        // This ensures all state is reset and auth is re-fetched
+        window.location.href = window.location.pathname + '?_refresh=' + Date.now()
       } else {
         const data = await response.json()
         alert('Failed to switch location: ' + (data.error || 'Unknown error'))
+        setSwitching(false)
       }
     } catch (error: any) {
       console.error('Error switching location:', error)
       alert('Failed to switch location')
-    } finally {
       setSwitching(false)
       setIsOpen(false)
     }
