@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "Semgrep.semgrep",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode"
+  ],
+  "unwantedRecommendations": []
+}
+
+

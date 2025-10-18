@@ -187,6 +187,10 @@ export function validatePattern(
   errorMessage: string = 'Invalid format'
 ): { valid: boolean; error?: string } {
   try {
+    // Validate pattern is safe (limit length and complexity)
+    if (pattern.length > 100) {
+      return { valid: false, error: 'Pattern too long' }
+    }
     const regex = new RegExp(pattern)
     if (!regex.test(value)) {
       return { valid: false, error: errorMessage }

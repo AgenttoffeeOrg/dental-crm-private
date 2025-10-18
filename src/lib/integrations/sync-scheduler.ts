@@ -475,7 +475,7 @@ export class SyncJobScheduler {
           `${result.errors} errors in ${result.duration}ms`
         )
       } catch (error) {
-        console.error(`[Sync Scheduler] Error running sync for ${connection.id}:`, error)
+        console.error('[Sync Scheduler] Error running sync for', connection.id, ':', error)
         failed++
       }
     }

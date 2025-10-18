@@ -64,7 +64,7 @@ function handleMetric(metric: Metric) {
 
   // Log in development
   if (process.env.NODE_ENV === 'development') {
-    console.log(`[Web Vitals] ${metric.name}:`, {
+    console.log('[Web Vitals]', metric.name, ':', {
       value: Math.round(metric.value),
       rating: vitalsMetric.rating,
     });

@@ -125,7 +125,7 @@ export class AuditOrchestrator {
       await this.sendCompletionNotification(auditId, practice);
       
     } catch (error) {
-      console.error(`[Orchestrator] Audit ${auditId} failed:`, error);
+      console.error('[Orchestrator] Audit', auditId, 'failed:', error);
       
       await this.supabase
         .from('marketing_audit_runs')

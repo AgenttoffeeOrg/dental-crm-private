@@ -53,7 +53,7 @@ export function useEntitlement(featureCode: string, requireParent: boolean = tru
           setHasAccess(data === true)
         }
       } catch (err: any) {
-        console.error(`[useEntitlement] Error checking ${featureCode}:`, err)
+        console.error('[useEntitlement] Error checking', featureCode, ':', err)
         if (isMounted) {
           setError(err.message || 'Failed to check entitlement')
           setHasAccess(false)
@@ -118,7 +118,7 @@ export function useEntitlements(featureCodes: string[], requireAll: boolean = tr
             })
 
             if (rpcError) {
-              console.error(`[useEntitlements] Error checking ${code}:`, rpcError)
+              console.error('[useEntitlements] Error checking', code, ':', rpcError)
               return { code, hasAccess: false }
             }
 

@@ -371,3 +371,5 @@ test.afterAll(async ({ browser }) => {
   console.log('✅ Contacts workflow tests complete')
 })
 
+
+

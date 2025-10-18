@@ -1,0 +1,27 @@
+# SQLFluff ignore patterns
+
+# Dependencies
+**/node_modules/**
+**/dist/**
+**/build/**
+**/.next/**
+**/coverage/**
+
+# Python environments
+**/.venv/**
+**/venv/**
+**/.cache/**
+
+# dbt artifacts (if added later)
+**/.dbt/**
+
+# Test artifacts
+**/.pytest_cache/**
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+

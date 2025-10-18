@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     const numMedia = parseInt(params.NumMedia || '0')
     const profileName = params.ProfileName // WhatsApp display name
     
-    console.log(`[WEBHOOK WHATSAPP][${correlationId}] Received:`, { 
+    console.log('[WEBHOOK WHATSAPP]', correlationId, 'Received:', { 
       from, 
       profileName,
       messageSid,
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (activityError) {
-      console.error(`[WEBHOOK WHATSAPP][${correlationId}] Error creating activity:`, activityError)
+      console.error('[WEBHOOK WHATSAPP]', correlationId, 'Error creating activity:', activityError)
       
       // Add to DLQ
       await supabase.rpc('add_to_dlq', {
@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: unknown) {
-    console.error(`[WEBHOOK WHATSAPP][${correlationId}] Unexpected error:`, error)
+    console.error('[WEBHOOK WHATSAPP]', correlationId, 'Unexpected error:', error)
     
     await supabase.from('integration_logs').insert({
       tenant_id: null,

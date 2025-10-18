@@ -13,6 +13,7 @@
 
 import { useAuth } from '@/lib/auth'
 import { useMemo } from 'react'
+import { useAccessibleLocations, useCurrentLocation } from './use-multi-location'
 
 export interface TenantContext {
   /** Current organization ID (tenant_id) */
@@ -41,6 +42,24 @@ export interface TenantContext {
   
   /** User's full name */
   fullName: string | null
+  
+  // Multi-location support
+  /** All accessible locations for multi-location users */
+  accessibleLocations: Array<{
+    id: string
+    name: string
+    location_name: string | null
+  }>
+  
+  /** Is user part of a multi-location setup? */
+  isMultiLocation: boolean
+  
+  /** Current location details */
+  currentLocation: {
+    id: string | null
+    name: string | null
+    displayName: string | null
+  }
 }
 
 /**
@@ -64,6 +83,8 @@ export interface TenantContext {
  */
 export function useTenantContext(): TenantContext {
   const { appUser, loading, error } = useAuth()
+  const { locations: accessibleLocs, isMultiLocation } = useAccessibleLocations()
+  const { currentLocation } = useCurrentLocation()
 
   return useMemo(() => ({
     orgId: appUser?.tenant_id || null,
@@ -75,7 +96,19 @@ export function useTenantContext(): TenantContext {
     error: error || null,
     email: appUser?.email || null,
     fullName: appUser?.full_name || null,
-  }), [appUser, loading, error])
+    // Multi-location data
+    accessibleLocations: accessibleLocs.map(loc => ({
+      id: loc.id,
+      name: loc.name,
+      location_name: loc.location_name
+    })),
+    isMultiLocation,
+    currentLocation: {
+      id: currentLocation?.id || null,
+      name: currentLocation?.name || null,
+      displayName: currentLocation?.location_name || currentLocation?.name || null
+    }
+  }), [appUser, loading, error, accessibleLocs, isMultiLocation, currentLocation])
 }
 
 /**

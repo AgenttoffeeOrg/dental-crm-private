@@ -54,7 +54,7 @@ export class PerformanceMonitor {
     
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Performance] ${name}: ${duration}ms`, metadata || '');
+      console.log('[Performance]', name, ':', duration, 'ms', metadata || '');
     }
     
     // In production, send to monitoring service (Sentry, DataDog, etc.)

@@ -118,7 +118,7 @@ export async function retryWithBackoff<T>(
       
       // If this was the last attempt, throw
       if (attempt === opts.maxRetries) {
-        console.error(`[Retry] ❌ Failed after ${attempt + 1} attempts:`, lastError.message)
+        console.error('[Retry] ❌ Failed after', attempt + 1, 'attempts:', lastError.message)
         throw lastError
       }
       
@@ -131,7 +131,7 @@ export async function retryWithBackoff<T>(
         opts.jitter
       )
       
-      console.log(`[Retry] ⏳ Attempt ${attempt + 1} failed, retrying in ${delay}ms:`, lastError.message)
+      console.log('[Retry] ⏳ Attempt', attempt + 1, 'failed, retrying in', delay, 'ms:', lastError.message)
       
       // Call onRetry callback
       opts.onRetry(attempt + 1, lastError, delay)
@@ -334,7 +334,7 @@ export async function processDLQItems(limit: number = 100): Promise<{
       
       succeeded++
     } catch (error) {
-      console.error(`[DLQ] Failed to process item ${item.id}:`, error)
+      console.error('[DLQ] Failed to process item', item.id, ':', error)
       
       // If max retries reached, mark as permanently failed
       if (item.retry_count >= 4) {

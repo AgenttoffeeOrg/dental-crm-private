@@ -69,7 +69,7 @@ export class WebhookDispatcher {
           await this.sleep(this.retryDelay * Math.pow(2, attempt));
         }
       } catch (error: any) {
-        console.error(`[Webhook] Attempt ${attempt + 1} error:`, error.message);
+        console.error('[Webhook] Attempt', attempt + 1, 'error:', error.message);
         
         if (attempt < this.maxRetries - 1) {
           await this.sleep(this.retryDelay * Math.pow(2, attempt));

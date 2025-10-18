@@ -199,7 +199,7 @@ export class AutomationEventListener {
 
           console.log(`[Automation Listener] Triggered automation ${automation.id} for contact ${effectiveContactId}`)
         } catch (error) {
-          console.error(`[Automation Listener] Error triggering automation ${automation.id}:`, error)
+          console.error('[Automation Listener] Error triggering automation:', automation.id, error)
         }
       }
 
@@ -207,7 +207,7 @@ export class AutomationEventListener {
       await this.updateEventLog(eventType, eventData, triggeredAutomationIds, automationRunIds)
 
     } catch (error) {
-      console.error(`[Automation Listener] Error handling event ${eventType}:`, error)
+      console.error('[Automation Listener] Error handling event', eventType, ':', error)
     }
   }
 

@@ -68,7 +68,7 @@ export function AssociationPicker({
 
       setOptions(formatted)
     } catch (error) {
-      console.error(`Error loading ${type}s:`, error)
+      console.error('Error loading', type, 's:', error)
       toast.error(`Failed to load ${type}s`)
     } finally {
       setLoading(false)

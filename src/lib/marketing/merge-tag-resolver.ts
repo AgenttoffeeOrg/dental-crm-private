@@ -118,7 +118,9 @@ export function resolveMergeTags(
   // Custom fields (from JSONB)
   const customFields = (contact as any).custom_fields || {}
   Object.keys(customFields).forEach(key => {
-    const regex = new RegExp(`\\{\\{contact\\.custom\\.${key}\\}\\}`, 'g')
+    // Escape special regex characters to prevent ReDoS
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`\\{\\{contact\\.custom\\.${escapedKey}\\}\\}`, 'g')
     resolved = resolved.replace(regex, customFields[key] || '')
   })
   

@@ -186,7 +186,9 @@ export function formatURLForDisplay(url: string): string {
 export function highlightText(text: string, searchTerm: string): string {
   if (!searchTerm) return text;
   
-  const regex = new RegExp(`(${searchTerm})`, 'gi');
+  // Escape special regex characters to prevent ReDoS
+  const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escapedTerm})`, 'gi');
   return text.replace(regex, '<mark>$1</mark>');
 }
 

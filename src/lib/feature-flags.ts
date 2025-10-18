@@ -44,7 +44,7 @@ export const FeatureFlags = {
    * Impact: Feature flag for gradual rollout (5% of users)
    * Performance: Zero impact on single-location (95% of users)
    */
-  ENABLE_MULTI_LOCATION: getEnvFlag('ENABLE_MULTI_LOCATION', false),
+  ENABLE_MULTI_LOCATION: getEnvFlag('ENABLE_MULTI_LOCATION', true), // ✅ ENABLED FOR TESTING
   
   /**
    * ENABLE_SEAT_ENFORCEMENT
@@ -58,21 +58,21 @@ export const FeatureFlags = {
    * Enables per-tenant subdomains (practice.dentalcrm.com)
    * Impact: Feature flag - requires DNS configuration
    */
-  ENABLE_SUBDOMAIN_ROUTING: getEnvFlag('ENABLE_SUBDOMAIN_ROUTING', false),
+  ENABLE_SUBDOMAIN_ROUTING: getEnvFlag('ENABLE_SUBDOMAIN_ROUTING', false), // Keep off (requires DNS)
   
   /**
    * ENABLE_BILLING
    * Enables Stripe billing integration
    * Impact: Feature flag - requires Stripe configuration
    */
-  ENABLE_BILLING: getEnvFlag('ENABLE_BILLING', false),
+  ENABLE_BILLING: getEnvFlag('ENABLE_BILLING', true), // ✅ ENABLED FOR TESTING
   
   /**
    * ENABLE_EMAIL_SENDING
    * Enables actual email sending (vs console logging)
    * Impact: Feature flag - requires email provider setup
    */
-  ENABLE_EMAIL_SENDING: getEnvFlag('ENABLE_EMAIL_SENDING', false),
+  ENABLE_EMAIL_SENDING: getEnvFlag('ENABLE_EMAIL_SENDING', false), // Keep off (will log to console)
 } as const
 
 /**
@@ -89,21 +89,5 @@ export function getEnabledFeatures(): string[] {
   return Object.entries(FeatureFlags)
     .filter(([_, enabled]) => enabled)
     .map(([feature]) => feature)
-}
-
-/**
- * Feature flag guard for components
- * Usage: <FeatureGuard feature="ENABLE_MULTI_LOCATION">...</FeatureGuard>
- */
-export function withFeatureFlag<P extends object>(
-  Component: React.ComponentType<P>,
-  feature: keyof typeof FeatureFlags
-) {
-  return function FeatureFlaggedComponent(props: P) {
-    if (!isFeatureEnabled(feature)) {
-      return null
-    }
-    return <Component {...props} />
-  }
 }
 

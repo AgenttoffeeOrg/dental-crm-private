@@ -41,7 +41,7 @@ export class WidgetErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log error to console in development
-    console.error(`[Widget Error: ${this.props.widgetName}]`, error, errorInfo)
+    console.error('[Widget Error:', this.props.widgetName, ']', error, errorInfo)
     
     // Update state with error details
     this.setState({

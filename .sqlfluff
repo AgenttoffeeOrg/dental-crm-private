@@ -1,0 +1,45 @@
+[sqlfluff]
+dialect = postgres
+templater = jinja
+exclude_rules = 
+# Strict but practical defaults:
+max_line_length = 120
+nocolor = True
+
+[sqlfluff:rules]
+# Start with common readability/safety rules enabled by default
+# We can tune later based on actual violations
+
+[sqlfluff:templater:jinja]
+# Apply jinja templating for any {{variables}} in SQL
+apply_dbt_builtins = False
+
+[sqlfluff:indentation]
+# Standard indentation rules
+tab_space_size = 2
+indent_unit = space
+
+[sqlfluff:layout]
+# Layout rules for consistent formatting
+type = postgres
+
+[sqlfluff:rules:capitalisation.keywords]
+# Prefer uppercase keywords for readability
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.identifiers]
+# Allow lower/mixed case for identifiers (more flexible)
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+# Function names uppercase
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.literals]
+# String literals can be any case
+capitalisation_policy = consistent
+
+[core]
+# Speed up on CI by not failing on templating errors
+ignore_templating_errors = True
+

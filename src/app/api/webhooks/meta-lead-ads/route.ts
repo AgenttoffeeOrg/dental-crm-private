@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         
         if (!leadgenId) continue
         
-        console.log(`[WEBHOOK META][${correlationId}] Lead received:`, { leadgenId, pageId, formId, adId })
+        console.log('[WEBHOOK META]', correlationId, 'Lead received:', { leadgenId, pageId, formId, adId })
         
         // 4. IDEMPOTENCY: Check if already processed
         const payloadHash = hashPayload(change.value)
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: unknown) {
-    console.error(`[WEBHOOK META][${correlationId}] Unexpected error:`, error)
+    console.error('[WEBHOOK META]', correlationId, 'Unexpected error:', error)
     
     await supabase.from('integration_logs').insert({
       tenant_id: null,

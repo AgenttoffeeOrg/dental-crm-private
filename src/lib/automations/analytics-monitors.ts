@@ -120,7 +120,7 @@ async function getCurrentKPIValue(tenantId: string, kpiName: string): Promise<nu
         return null
     }
   } catch (error) {
-    console.error(`[Analytics Monitor] Error calculating ${kpiName}:`, error)
+      console.error('[Analytics Monitor] Error calculating', kpiName, ':', error)
     return null
   }
 }

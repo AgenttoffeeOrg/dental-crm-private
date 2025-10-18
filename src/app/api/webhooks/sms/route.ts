@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     const body = params.Body
     const numMedia = parseInt(params.NumMedia || '0')
     
-    console.log(`[WEBHOOK SMS][${correlationId}] Received:`, { 
+    console.log('[WEBHOOK SMS]', correlationId, 'Received:', { 
       from, 
       to, 
       messageSid,
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (activityError) {
-      console.error(`[WEBHOOK SMS][${correlationId}] Error creating activity:`, activityError)
+      console.error('[WEBHOOK SMS]', correlationId, 'Error creating activity:', activityError)
       
       // Add to DLQ for retry
       await supabase.rpc('add_to_dlq', {
@@ -245,7 +245,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: unknown) {
-    console.error(`[WEBHOOK SMS][${correlationId}] Unexpected error:`, error)
+    console.error('[WEBHOOK SMS]', correlationId, 'Unexpected error:', error)
     
     // Log error with correlation ID
     await supabase.from('integration_logs').insert({

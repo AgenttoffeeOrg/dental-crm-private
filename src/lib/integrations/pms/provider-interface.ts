@@ -178,7 +178,7 @@ export abstract class PMSProviderBase {
     result: SyncResult
   ): Promise<void> {
     // Implementation will call Supabase to log
-    console.log(`[PMS SYNC] ${syncType} ${direction}:`, result)
+    console.log('[PMS SYNC]', syncType, direction, ':', result)
   }
 }
 

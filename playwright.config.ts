@@ -1,19 +1,11 @@
+import { defineConfig, devices } from '@playwright/test'
+
 /**
- * Playwright Configuration for E2E and Visual Tests
+ * Playwright configuration for E2E tests
+ * @see https://playwright.dev/docs/test-configuration
  */
-
-import { defineConfig, devices } from '@playwright/test';
-
 export default defineConfig({
-  testDir: './tests',
-  
-  // Maximum time one test can run
-  timeout: 60 * 1000,
-  
-  // Test configuration
-  expect: {
-    timeout: 10000,
-  },
+  testDir: './e2e',
   
   // Run tests in files in parallel
   fullyParallel: true,
@@ -30,16 +22,16 @@ export default defineConfig({
   // Reporter to use
   reporter: [
     ['html'],
-    ['junit', { outputFile: 'test-results/junit.xml' }],
     ['list'],
+    ...(process.env.CI ? [['github']] : []),
   ],
   
-  // Shared settings for all the projects below
+  // Shared settings for all projects
   use: {
-    // Base URL to use in actions like `await page.goto('/')`
+    // Base URL for all tests
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     
-    // Collect trace when retrying the failed test
+    // Collect trace on first retry
     trace: 'on-first-retry',
     
     // Screenshot on failure
@@ -47,6 +39,12 @@ export default defineConfig({
     
     // Video on failure
     video: 'retain-on-failure',
+    
+    // Navigation timeout
+    navigationTimeout: 30000,
+    
+    // Action timeout
+    actionTimeout: 10000,
   },
 
   // Configure projects for major browsers
@@ -55,40 +53,34 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    
+
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
-    
+
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-    
-    // Mobile viewports
+
+    // Mobile viewports for responsive testing
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
     },
-    
+
     {
       name: 'Mobile Safari',
       use: { ...devices['iPhone 12'] },
     },
-    
-    // Tablet viewports
-    {
-      name: 'iPad',
-      use: { ...devices['iPad Pro'] },
-    },
   ],
 
-  // Run your local dev server before starting the tests
-  webServer: {
+  // Run local dev server before starting tests
+  webServer: process.env.CI ? undefined : {
     command: 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    timeout: 120000,
   },
-});
+})
