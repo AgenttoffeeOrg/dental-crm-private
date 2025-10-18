@@ -211,7 +211,7 @@ function calculateChiSquared(
 /**
  * Auto-declare winner and disable losing variants
  */
-export async function autoDecl areWinner(formId: string): Promise<boolean> {
+export async function autoDeclareWinner(formId: string): Promise<boolean> {
   const results = await getABTestResults(formId)
 
   const winner = results.find(r => r.isWinner)

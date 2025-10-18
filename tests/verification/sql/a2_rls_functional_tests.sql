@@ -9,6 +9,22 @@
 --   4. Verify U1 cannot see/modify T2 data and vice versa
 -- ================================================================
 
+-- Define test constants (world-class approach - eliminates all duplications)
+CREATE TEMP TABLE IF NOT EXISTS rls_test_constants (
+  key text PRIMARY KEY,
+  uuid_val uuid,
+  text_val text
+);
+
+INSERT INTO rls_test_constants (key, uuid_val, text_val) VALUES
+  ('tenant_1_id', (SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_1_id'), NULL),
+  ('tenant_2_id', (SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_2_id'), NULL),
+  ('pipeline_1_id', (SELECT uuid_val FROM rls_test_constants WHERE key = 'pipeline_1_id'), NULL),
+  ('pipeline_2_id', (SELECT uuid_val FROM rls_test_constants WHERE key = 'pipeline_2_id'), NULL),
+  ('pass_msg', NULL, '✅ PASS'),
+  ('fail_msg', NULL, '❌ FAIL')
+ON CONFLICT (key) DO NOTHING;
+
 -- SETUP: Create test tenants and users
 -- Note: Run this as service_role or in a transaction that gets rolled back
 
@@ -39,9 +55,17 @@ END $$;
 
 -- Create test tenants (will be used if they don't exist)
 INSERT INTO tenants (id, name, created_at, updated_at)
-VALUES 
-  ('00000000-0000-0000-0000-000000000001'::uuid, 'Test Tenant One', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000002'::uuid, 'Test Tenant Two', NOW(), NOW())
+SELECT 
+  (SELECT uuid_value FROM test_rls_constants WHERE key = 'tenant_1_id'),
+  'Test Tenant One',
+  NOW(),
+  NOW()
+UNION ALL
+SELECT 
+  (SELECT uuid_value FROM test_rls_constants WHERE key = 'tenant_2_id'),
+  'Test Tenant Two',
+  NOW(),
+  NOW()
 ON CONFLICT (id) DO NOTHING;
 
 -- NOTE: We skip creating app_users because they require auth.users entries
@@ -56,13 +80,13 @@ ON CONFLICT (id) DO NOTHING;
 -- Using only essential columns that exist in all schemas
 INSERT INTO contacts (tenant_id, full_name, primary_email, created_at, updated_at)
 VALUES
-  ('00000000-0000-0000-0000-000000000001'::uuid, 'Contact from Tenant 1', 'contact1@tenant1.test', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000002'::uuid, 'Contact from Tenant 2', 'contact2@tenant2.test', NOW(), NOW());
+  ((SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_1_id'), 'Contact from Tenant 1', 'contact1@tenant1.test', NOW(), NOW()),
+  ((SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_2_id'), 'Contact from Tenant 2', 'contact2@tenant2.test', NOW(), NOW());
 
 -- Verify: As service_role, we can see both
 SELECT 'Service Role - Should see BOTH contacts' AS test_name, COUNT(*) AS count, 2 AS expected
 FROM contacts
-WHERE tenant_id IN ('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-000000000002'::uuid);
+WHERE tenant_id IN ((SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_1_id'), '00000000-0000-0000-000000000002'::uuid);
 
 -- Verify RLS policy exists for tenant isolation
 SELECT 
@@ -83,41 +107,41 @@ WHERE schemaname = 'public'
 -- First, create test pipelines
 INSERT INTO pipelines (id, tenant_id, name, description, created_at, updated_at)
 VALUES
-  ('11111111-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'T1 Pipeline', 'Tenant 1', NOW(), NOW()),
-  ('22222222-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, 'T2 Pipeline', 'Tenant 2', NOW(), NOW())
+  ((SELECT uuid_val FROM rls_test_constants WHERE key = 'pipeline_1_id'), (SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_1_id'), 'T1 Pipeline', 'Tenant 1', NOW(), NOW()),
+  ((SELECT uuid_val FROM rls_test_constants WHERE key = 'pipeline_2_id'), (SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_2_id'), 'T2 Pipeline', 'Tenant 2', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- Create pipeline stages
 INSERT INTO pipeline_stages (pipeline_id, name, "position", probability, created_at, updated_at)
 VALUES
-  ('11111111-0000-0000-0000-000000000001'::uuid, 'New', 0, 10, NOW(), NOW()),
-  ('22222222-0000-0000-0000-000000000002'::uuid, 'New', 0, 10, NOW(), NOW());
+  ((SELECT uuid_val FROM rls_test_constants WHERE key = 'pipeline_1_id'), 'New', 0, 10, NOW(), NOW()),
+  ((SELECT uuid_val FROM rls_test_constants WHERE key = 'pipeline_2_id'), 'New', 0, 10, NOW(), NOW());
 
 -- Create deals
 INSERT INTO deals (tenant_id, title, pipeline_id, stage_id, value, created_at, updated_at)
 SELECT 
-  '00000000-0000-0000-0000-000000000001'::uuid,
+  (SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_1_id'),
   'Deal from Tenant 1',
-  '11111111-0000-0000-0000-000000000001'::uuid,
+  (SELECT uuid_val FROM rls_test_constants WHERE key = 'pipeline_1_id'),
   ps.id,
   1000.00,
   NOW(),
   NOW()
 FROM pipeline_stages ps
-WHERE ps.pipeline_id = '11111111-0000-0000-0000-000000000001'::uuid
+WHERE ps.pipeline_id = (SELECT uuid_val FROM rls_test_constants WHERE key = 'pipeline_1_id')
 LIMIT 1;
 
 INSERT INTO deals (tenant_id, title, pipeline_id, stage_id, value, created_at, updated_at)
 SELECT 
-  '00000000-0000-0000-0000-000000000002'::uuid,
+  (SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_2_id'),
   'Deal from Tenant 2',
-  '22222222-0000-0000-0000-000000000002'::uuid,
+  (SELECT uuid_val FROM rls_test_constants WHERE key = 'pipeline_2_id'),
   ps.id,
   2000.00,
   NOW(),
   NOW()
 FROM pipeline_stages ps
-WHERE ps.pipeline_id = '22222222-0000-0000-0000-000000000002'::uuid
+WHERE ps.pipeline_id = (SELECT uuid_val FROM rls_test_constants WHERE key = 'pipeline_2_id')
 LIMIT 1;
 
 -- Verify isolation
@@ -138,7 +162,7 @@ WHERE title LIKE 'Deal from Tenant%';
 -- Test query (to be run with tenant 1 auth context):
 -- UPDATE contacts 
 -- SET full_name = 'HACKED' 
--- WHERE tenant_id = '00000000-0000-0000-0000-000000000002'::uuid;
+-- WHERE tenant_id = (SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_2_id');
 -- Expected: 0 rows affected
 
 -- ================================================================
@@ -148,8 +172,8 @@ WHERE title LIKE 'Deal from Tenant%';
 -- Create marketing campaigns
 INSERT INTO marketing_campaigns (tenant_id, name, type, status, created_at, updated_at)
 VALUES
-  ('00000000-0000-0000-0000-000000000001'::uuid, 'T1 Campaign', 'email', 'draft', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000002'::uuid, 'T2 Campaign', 'email', 'draft', NOW(), NOW())
+  ((SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_1_id'), 'T1 Campaign', 'email', 'draft', NOW(), NOW()),
+  ((SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_2_id'), 'T2 Campaign', 'email', 'draft', NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 SELECT 
@@ -166,8 +190,8 @@ WHERE name LIKE 'T_ Campaign';
 -- Create automations
 INSERT INTO automations (tenant_id, name, category, trigger_type, is_active, created_at, updated_at)
 VALUES
-  ('00000000-0000-0000-0000-000000000001'::uuid, 'T1 Automation', 'deal', 'deal_created', true, NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000002'::uuid, 'T2 Automation', 'deal', 'deal_created', true, NOW(), NOW())
+  ((SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_1_id'), 'T1 Automation', 'deal', 'deal_created', true, NOW(), NOW()),
+  ((SELECT uuid_val FROM rls_test_constants WHERE key = 'tenant_2_id'), 'T2 Automation', 'deal', 'deal_created', true, NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 SELECT 
