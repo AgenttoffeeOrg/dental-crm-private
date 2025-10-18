@@ -5,7 +5,7 @@
  * and organization discovery by domain matching.
  */
 
-import { createServerClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 /**
  * Normalize a website URL to extract the host
@@ -109,7 +109,7 @@ export async function findOrganizationsByWebsite(
     return []
   }
   
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Find tenants with matching website_host
   const { data: tenants, error } = await supabase
@@ -153,7 +153,7 @@ export async function findOrganizationsByEmail(
     return []
   }
   
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Find tenants with matching website_host
   const { data: tenants, error } = await supabase
@@ -186,7 +186,7 @@ export async function isWebsiteHostAvailable(
     return false
   }
   
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   let query = supabase
     .from('tenants')
@@ -225,7 +225,7 @@ export async function isSubdomainAvailable(
   subdomain: string,
   excludeTenantId?: string
 ): Promise<boolean> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   let query = supabase
     .from('tenants')
@@ -336,7 +336,7 @@ export async function searchOrganizations(
     return []
   }
   
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Use PostgreSQL full-text search
   const { data: tenants, error } = await supabase

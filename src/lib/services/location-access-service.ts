@@ -5,7 +5,7 @@
  * Only used for multi-location organizations (5% of users).
  */
 
-import { createServerClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { FeatureFlags } from '@/lib/feature-flags'
 
 export interface LocationAccessInfo {
@@ -37,7 +37,7 @@ export async function grantLocationAccess(
     }
   }
   
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Use database function for idempotency
   const { data, error } = await supabase.rpc('grant_location_access', {
@@ -77,7 +77,7 @@ export async function revokeLocationAccess(
     }
   }
   
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Use database function
   const { data, error } = await supabase.rpc('revoke_location_access', {
@@ -111,7 +111,7 @@ export async function revokeLocationAccess(
 export async function getUserLocationAccess(
   userId: string
 ): Promise<LocationAccessInfo[]> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   const { data, error } = await supabase
     .from('user_location_access')
@@ -172,7 +172,7 @@ export async function getLocationUsers(
   granted_at: string
   is_primary: boolean
 }>> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Get users from user_location_access
   const { data: accessData, error: accessError } = await supabase
@@ -297,7 +297,7 @@ export async function hasLocationAccess(
   userId: string,
   tenantId: string
 ): Promise<boolean> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Check if this is user's primary tenant
   const { data: appUser } = await supabase
@@ -331,7 +331,7 @@ export async function getLocationAccessStats(dentalGroupId: string): Promise<{
   multi_location_users: number
   single_location_users: number
 }> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Count locations in group
   const { count: totalLocations } = await supabase

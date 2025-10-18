@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { sendJoinRequestRejected } from '@/lib/services/email-service'
 
 export async function POST(
@@ -13,7 +13,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     const requestId = params.id
     
     // Get current user

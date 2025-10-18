@@ -5,7 +5,7 @@
  * and billing operations for both single-location and multi-location organizations.
  */
 
-import { createServerClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { FeatureFlags } from '@/lib/feature-flags'
 import { SeatRequirements } from '@/config/billing'
 
@@ -48,7 +48,7 @@ export interface SeatUsage {
 export async function getSubscription(
   tenantId: string
 ): Promise<SubscriptionInfo | null> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   const { data, error } = await supabase
     .from('subscriptions')
@@ -161,7 +161,7 @@ export async function getSeatUsage(tenantId: string): Promise<SeatUsage | null> 
  * Count active users for a tenant (real-time count)
  */
 export async function countActiveSeats(tenantId: string): Promise<number> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   const { count, error } = await supabase
     .from('app_users')
@@ -180,7 +180,7 @@ export async function countActiveSeats(tenantId: string): Promise<number> {
  * Sync subscription seat count with actual user count
  */
 export async function syncSeatCount(tenantId: string): Promise<void> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   const actualCount = await countActiveSeats(tenantId)
   
@@ -240,7 +240,7 @@ export async function reserveSeats(
     }
   }
   
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Atomic increment
   const { error } = await supabase.rpc('increment_active_seats', {
@@ -292,7 +292,7 @@ export async function releaseSeats(
   tenantId: string,
   count: number = 1
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Atomic decrement
   const { error } = await supabase.rpc('decrement_active_seats', {
@@ -352,7 +352,7 @@ export function calculateMinimumSeatsForLocations(
 export async function canAddNewLocation(
   dentalGroupId: string
 ): Promise<{ allowed: boolean; reason?: string; minimumSeatsNeeded?: number }> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Get subscription for dental group
   const { data: subscription } = await supabase
@@ -405,7 +405,7 @@ export async function canAddNewLocation(
  * Get all plans (for plan selection UI)
  */
 export async function getAvailablePlans(interval?: 'monthly' | 'yearly') {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   let query = supabase
     .from('plans')
@@ -431,7 +431,7 @@ export async function getAvailablePlans(interval?: 'monthly' | 'yearly') {
  * Get plan entitlements
  */
 export async function getPlanEntitlements(planId: string) {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   const { data, error } = await supabase
     .from('plan_entitlements')
@@ -459,7 +459,7 @@ export async function hasEntitlement(
     return false
   }
   
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   const { data } = await supabase
     .from('plan_entitlements')

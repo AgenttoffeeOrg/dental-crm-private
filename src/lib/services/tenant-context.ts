@@ -8,7 +8,7 @@
  * - Performance optimization (dual-path architecture)
  */
 
-import { createServerClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { cache } from 'react'
 
 export interface TenantInfo {
@@ -46,7 +46,7 @@ export interface UserTenantContext {
  * Cached per request for performance
  */
 export const getTenantContext = cache(async (): Promise<UserTenantContext | null> => {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Get current user
   const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -219,7 +219,7 @@ export async function getDentalGroup(): Promise<{ id: string; name: string } | n
 export async function switchActiveLocation(
   targetTenantId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createServerClient()
+  const supabase = await createServerSupabaseClient()
   
   // Verify user has access to target tenant
   const hasAccess = await hasAccessToTenant(targetTenantId)

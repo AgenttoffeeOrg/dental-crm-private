@@ -1,0 +1,323 @@
+[
+  {
+    "name": "login",
+    "url": "/login",
+    "requiredRole": "public",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Auth",
+    "priority": 1
+  },
+  {
+    "name": "dashboard",
+    "url": "/dashboard",
+    "requiredRole": "user",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Core",
+    "priority": 1
+  },
+  {
+    "name": "notifications",
+    "url": "/notifications",
+    "requiredRole": "user",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Core",
+    "priority": 2
+  },
+  {
+    "name": "contacts-list",
+    "url": "/contacts",
+    "requiredRole": "user",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "CRM",
+    "priority": 3
+  },
+  {
+    "name": "contacts-new",
+    "url": "/contacts/new",
+    "requiredRole": "user",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "CRM",
+    "priority": 3
+  },
+  {
+    "name": "deals-list",
+    "url": "/deals",
+    "requiredRole": "user",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "CRM",
+    "priority": 3
+  },
+  {
+    "name": "pipeline",
+    "url": "/pipeline",
+    "requiredRole": "user",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "CRM",
+    "priority": 3
+  },
+  {
+    "name": "tasks-list",
+    "url": "/tasks",
+    "requiredRole": "user",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "CRM",
+    "priority": 3
+  },
+  {
+    "name": "tasks-new",
+    "url": "/tasks/new",
+    "requiredRole": "user",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "CRM",
+    "priority": 3
+  },
+  {
+    "name": "calendar",
+    "url": "/calendar",
+    "requiredRole": "user",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "CRM",
+    "priority": 3
+  },
+  {
+    "name": "marketing-hub",
+    "url": "/marketing",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Marketing",
+    "priority": 4
+  },
+  {
+    "name": "marketing-campaigns",
+    "url": "/marketing/campaigns",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Marketing",
+    "priority": 4
+  },
+  {
+    "name": "marketing-audiences",
+    "url": "/marketing/audiences",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop"
+    ],
+    "category": "Marketing",
+    "priority": 4
+  },
+  {
+    "name": "marketing-journeys",
+    "url": "/marketing/journeys",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop"
+    ],
+    "category": "Marketing",
+    "priority": 4
+  },
+  {
+    "name": "marketing-templates",
+    "url": "/marketing/templates",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop"
+    ],
+    "category": "Marketing",
+    "priority": 4
+  },
+  {
+    "name": "marketing-reports",
+    "url": "/marketing/reports",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Marketing",
+    "priority": 4
+  },
+  {
+    "name": "marketing-social",
+    "url": "/marketing/social-media",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop"
+    ],
+    "category": "Marketing",
+    "priority": 4
+  },
+  {
+    "name": "marketing-audit",
+    "url": "/marketing-audit",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Marketing",
+    "priority": 4
+  },
+  {
+    "name": "analytics",
+    "url": "/analytics",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Analytics",
+    "priority": 4
+  },
+  {
+    "name": "analytics-metrics",
+    "url": "/analytics/metrics",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop"
+    ],
+    "category": "Analytics",
+    "priority": 4
+  },
+  {
+    "name": "automations-list",
+    "url": "/automations",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Automation",
+    "priority": 5
+  },
+  {
+    "name": "automations-create",
+    "url": "/automations/create",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop"
+    ],
+    "category": "Automation",
+    "priority": 5
+  },
+  {
+    "name": "forms-list",
+    "url": "/forms",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Forms",
+    "priority": 6
+  },
+  {
+    "name": "forms-templates",
+    "url": "/forms/templates",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop"
+    ],
+    "category": "Forms",
+    "priority": 6
+  },
+  {
+    "name": "settings-general",
+    "url": "/settings",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Settings",
+    "priority": 7
+  },
+  {
+    "name": "settings-marketing",
+    "url": "/settings/marketing",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop"
+    ],
+    "category": "Settings",
+    "priority": 7
+  },
+  {
+    "name": "settings-calendar",
+    "url": "/settings/calendar",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop"
+    ],
+    "category": "Settings",
+    "priority": 7
+  },
+  {
+    "name": "integrations",
+    "url": "/integrations",
+    "requiredRole": "admin",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Integrations",
+    "priority": 8
+  },
+  {
+    "name": "signup",
+    "url": "/sign-up",
+    "requiredRole": "public",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Auth",
+    "priority": 9
+  },
+  {
+    "name": "reset-password",
+    "url": "/reset-password",
+    "requiredRole": "public",
+    "viewport": [
+      "desktop",
+      "mobile"
+    ],
+    "category": "Auth",
+    "priority": 9
+  }
+]

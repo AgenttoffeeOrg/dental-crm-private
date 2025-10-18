@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { 
   getUserLocationAccess,
   grantLocationAccess,
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -136,7 +136,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
     
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
     
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()

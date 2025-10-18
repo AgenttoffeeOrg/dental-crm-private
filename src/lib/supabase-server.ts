@@ -52,4 +52,4 @@ export function createServiceClient() {
 
 // Aliases for compatibility with existing code
 export const createClient = createServiceClient
-export const createServerClient = createServerSupabaseClient
+// Note: createServerClient is imported from @supabase/ssr, use createServerSupabaseClient for the wrapper
