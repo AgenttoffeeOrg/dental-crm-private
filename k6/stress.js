@@ -23,7 +23,7 @@ export const options = {
   thresholds: {
     // Warning thresholds only - don't fail the test
     http_req_failed: [{ threshold: 'rate<0.05', abortOnFail: false }],
-    'http_req_duration{route:~.*api.*}': [{ threshold: 'p95<500', abortOnFail: false }],
+    http_req_duration: [{ threshold: 'p(95)<500', abortOnFail: false }],
     checks: [{ threshold: 'rate>0.95', abortOnFail: false }],
   },
   tags: {

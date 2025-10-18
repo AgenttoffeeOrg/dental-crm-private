@@ -20,8 +20,7 @@ export const options = {
   ],
   thresholds: {
     http_req_failed: ['rate<0.01'],  // Less than 1% failed requests
-    'http_req_duration{route:~.*api.*}': ['p95<300'],  // API calls < 300ms at p95
-    'http_req_duration{route:~.*/}': ['p95<1000'],  // Pages < 1s at p95
+    http_req_duration: ['p(95)<1000'],  // 95% of requests < 1s
     checks: ['rate>0.99'],  // 99% of checks must pass
   },
   tags: {

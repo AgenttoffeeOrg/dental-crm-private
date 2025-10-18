@@ -17,7 +17,7 @@ export const options = {
   duration: '1m',
   thresholds: {
     http_req_failed: ['rate<0.01'], // Less than 1% failed requests
-    'http_req_duration{staticAsset:false}': ['p95<500'], // 95% of requests < 500ms
+    http_req_duration: ['p(95)<500'], // 95% of requests < 500ms
     checks: ['rate>0.95'], // 95% of checks must pass
   },
   tags: {
