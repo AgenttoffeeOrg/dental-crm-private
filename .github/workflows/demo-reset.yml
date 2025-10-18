@@ -15,18 +15,16 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Check if DEMO_RESET_TOKEN is configured
-        env:
-          DEMO_RESET_TOKEN: ${{ secrets.DEMO_RESET_TOKEN }}
+      - name: Fail if token not configured
+        if: ${{ secrets.DEMO_RESET_TOKEN == '' }}
         run: |
-          if [ -z "$DEMO_RESET_TOKEN" ]; then
-            echo "❌ DEMO_RESET_TOKEN secret not configured"
-            echo "Add DEMO_RESET_TOKEN to repository secrets first"
-            exit 1
-          fi
-          echo "✅ DEMO_RESET_TOKEN configured"
+          echo "❌ DEMO_RESET_TOKEN secret not configured"
+          echo "Add DEMO_RESET_TOKEN to repository secrets at:"
+          echo "https://github.com/${{ github.repository }}/settings/secrets/actions"
+          exit 1
 
       - name: Reset demo environment
+        if: ${{ secrets.DEMO_RESET_TOKEN != '' }}
         env:
           DEMO_RESET_TOKEN: ${{ secrets.DEMO_RESET_TOKEN }}
           BASE_URL: ${{ github.event.inputs.base_url }}
