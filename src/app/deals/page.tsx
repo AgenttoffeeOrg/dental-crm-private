@@ -1,9 +1,15 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { DealsTable } from '@/components/deals/deals-table'
 import { GlobalAIAssistant } from '@/components/ai/global-ai-assistant'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+
+// Dynamic import to prevent SSR hydration issues
+const DealsTable = dynamic(
+  () => import('@/components/deals/deals-table').then(mod => ({ default: mod.DealsTable })),
+  { ssr: false }
+)
 
 export const dynamic = 'force-dynamic'
 
