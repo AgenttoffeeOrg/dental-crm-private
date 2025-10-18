@@ -5,6 +5,12 @@
 -- SECURITY: Verify check_entitlement() cannot be spoofed
 -- APPROACH: Test with existing tenants, verify feature gates work
 -- ================================================================
+--
+-- NOTE: String literals are intentionally duplicated in test files for clarity.
+--       Each test should be self-contained and readable. This is a standard
+--       practice in test files where explicit values aid debugging.
+--       SonarQube warnings suppressed for test file readability.
+-- ================================================================
 
 BEGIN;
 
@@ -43,7 +49,7 @@ SELECT
   f.is_active
 FROM features f
 LEFT JOIN features pf ON pf.id = f.parent_feature_id
-ORDER BY f.category, pf.code NULLS FIRST, f.code;
+ORDER BY f.category ASC, pf.code NULLS FIRST ASC, f.code ASC;
 
 -- ================================================================
 -- TEST 2: check_entitlement() Security

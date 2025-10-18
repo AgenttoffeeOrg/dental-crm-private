@@ -72,3 +72,6 @@ echo "   5. Save files"
 echo ""
 echo "💡 Tip: Use 'open $RESULTS_DIR' to open the results folder"
 
+
+
+
