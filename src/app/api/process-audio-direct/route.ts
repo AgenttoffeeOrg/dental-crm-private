@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import OpenAI from 'openai'
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialize OpenAI client to avoid build-time errors
+function getOpenAI() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY is not configured')
+  }
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -114,6 +119,7 @@ export async function POST(request: NextRequest) {
         type: audioFile.mime_type || 'audio/mpeg' 
       })
 
+      const openai = getOpenAI()
       const transcription = await openai.audio.transcriptions.create({
         file: audioFileForAI,
         model: 'whisper-1',

@@ -49,3 +49,7 @@ export function createServiceClient() {
     }
   )
 }
+
+// Aliases for compatibility with existing code
+export const createClient = createServiceClient
+export const createServerClient = createServerSupabaseClient
