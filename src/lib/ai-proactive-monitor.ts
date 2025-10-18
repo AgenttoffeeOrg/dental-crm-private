@@ -1,10 +1,7 @@
 import { createServiceClient } from '@/lib/supabase-server'
-import OpenAI from 'openai'
+import { getOpenAIClient } from '@/lib/openai-client'
 import { events } from '@/lib/events-unified'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
 
 /**
  * Proactive AI Monitor

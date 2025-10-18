@@ -17,12 +17,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { getOpenAIClient } from '@/lib/openai-client'
 import { createServiceClient } from '@/lib/supabase-server'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 
 // Schema context for OpenAI
 const SCHEMA_CONTEXT = `

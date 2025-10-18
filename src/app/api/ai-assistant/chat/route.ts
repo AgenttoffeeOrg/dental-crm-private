@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { getOpenAIClient } from '@/lib/openai-client'
 import { buildDealContext, buildContactContext, buildGlobalContext } from '@/lib/ai-context-builder'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,6 +68,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Call GPT-4 Turbo
+    const openai = getOpenAIClient()
     const completion = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview',
       messages: aiMessages,

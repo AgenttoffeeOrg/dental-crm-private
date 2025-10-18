@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { getOpenAIClient } from '@/lib/openai-client'
 import { createServiceClient } from '@/lib/supabase-server'
 import { buildDealContext } from '@/lib/ai-context-builder'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
-
 export async function POST(request: NextRequest) {
+  const openai = getOpenAIClient()
   try {
     const { activityId, dealId, contactId, tenantId, incomingEmailContent } = await request.json()
 
