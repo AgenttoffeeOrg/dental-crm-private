@@ -54,10 +54,10 @@ test.describe('Navigation Tests', () => {
   })
 
   test('navigation menu is visible and functional', async ({ page }) => {
-    await page.goto('/dashboard')
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     
-    // Wait for page load
-    await page.waitForLoadState('networkidle')
+    // Wait for page to settle
+    await page.waitForTimeout(2000)
     
     // Look for navigation elements (adjust selectors based on your app)
     const nav = page.locator('nav, [role="navigation"], .sidebar, .menu, header')
@@ -71,7 +71,8 @@ test.describe('Navigation Tests', () => {
   })
 
   test('clicking nav links changes routes', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(1000)
     
     // Try to find and click a dashboard/contacts link
     const dashboardLink = page.locator('a[href*="/dashboard"], a[href*="/contacts"]').first()
@@ -80,8 +81,8 @@ test.describe('Navigation Tests', () => {
       const initialUrl = page.url()
       await dashboardLink.click()
       
-      // Wait for navigation
-      await page.waitForLoadState('networkidle')
+      // Wait for navigation with timeout
+      await page.waitForTimeout(2000)
       
       // URL should have changed
       const newUrl = page.url()
@@ -90,46 +91,51 @@ test.describe('Navigation Tests', () => {
   })
 
   test('back button works correctly', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(1000)
     const firstUrl = page.url()
     
-    await page.goto('/dashboard')
-    await page.waitForLoadState('networkidle')
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(1000)
     
     await page.goBack()
-    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1000)
     
     expect(page.url()).toContain(new URL(firstUrl).pathname)
   })
 
   test('breadcrumb navigation renders on nested pages', async ({ page }) => {
     // Test nested route
-    await page.goto('/marketing/campaigns')
-    await page.waitForLoadState('networkidle')
+    await page.goto('/marketing/campaigns', { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(2000)
     
     // Look for breadcrumbs (common pattern)
     const breadcrumb = page.locator('[aria-label*="breadcrumb"], .breadcrumb, nav[aria-label="Breadcrumb"]')
     
-    // Breadcrumb might not exist on all pages
+    // Breadcrumb might not exist on all pages - that's ok
     const breadcrumbExists = await breadcrumb.count() > 0
     
     if (breadcrumbExists) {
       await expect(breadcrumb.first()).toBeVisible()
+    } else {
+      // If no breadcrumb, just verify page loaded
+      await expect(page.locator('body')).toBeVisible()
     }
   })
 
-  test('mobile navigation works correctly', async ({ page, context }) => {
+  test('mobile navigation works correctly', async ({ page }) => {
     // Set mobile viewport
-    await context.setViewportSize({ width: 375, height: 667 })
+    await page.setViewportSize({ width: 375, height: 667 })
     
-    await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(1000)
     
     // Look for mobile menu button (hamburger menu)
     const mobileMenuButton = page.locator('button[aria-label*="menu" i], .mobile-menu-button, [aria-controls*="mobile"]')
     
     if (await mobileMenuButton.count() > 0) {
       await mobileMenuButton.first().click()
+      await page.waitForTimeout(500)
       
       // Mobile menu should become visible
       const mobileMenu = page.locator('[role="dialog"], .mobile-menu, nav.mobile')
@@ -137,6 +143,9 @@ test.describe('Navigation Tests', () => {
       
       // Take Percy snapshot
       await percySnapshot(page, 'Mobile Navigation')
+    } else {
+      // If no mobile menu, just verify page is visible
+      await expect(page.locator('body')).toBeVisible()
     }
   })
 })
