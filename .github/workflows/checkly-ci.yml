@@ -40,24 +40,7 @@ jobs:
           CHECKLY_REGION_LIST: ${{ vars.CHECKLY_REGION_LIST }}
         run: |
           echo "🧪 Running Checkly synthetic checks against $BASE_URL"
-          
-          # Check if required variables are set
-          if [ -z "$CHECKLY_API_KEY" ] || [ -z "$CHECKLY_ACCOUNT_ID" ]; then
-            echo "⚠️  CHECKLY_ACCOUNT_ID not set. Skipping Checkly checks."
-            echo "To enable Checkly monitoring:"
-            echo "1. Set CHECKLY_ACCOUNT_ID repo variable"
-            echo "2. Ensure CHECKLY_API_KEY secret is set"
-            echo ""
-            echo "✓ Skipping Checkly checks (not required for deployment)"
-            exit 0
-          fi
-          
-          npx checkly test --reporter=junit --reporter=list || {
-            echo "⚠️  Checkly tests failed"
-            echo "This is advisory only and won't block deployment"
-            exit 0
-          }
-        continue-on-error: true
+          npx checkly test --reporter=junit --reporter=list
       
       - name: Upload test results
         if: always()
