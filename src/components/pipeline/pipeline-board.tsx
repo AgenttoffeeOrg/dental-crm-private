@@ -757,7 +757,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
             setCreatePipelineDialogOpen(false)
           }}
           template={selectedTemplate}
-          tenantId={tenantId}
+          tenantId={orgId}
         />
       </div>
     )
@@ -1364,7 +1364,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
           setCreatePipelineDialogOpen(false)
         }}
         template={selectedTemplate}
-        tenantId={tenantId}
+        tenantId={orgId}
       />
 
       <PipelineSettingsDialog
@@ -1372,7 +1372,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
         onOpenChange={setSettingsDialogOpen}
         onSettingsUpdated={fetchPipelineData}
         pipelineId={selectedPipelineId}
-        tenantId={tenantId}
+        tenantId={orgId}
       />
 
       {/* Deal Detail Modal - Controlled by URL */}
