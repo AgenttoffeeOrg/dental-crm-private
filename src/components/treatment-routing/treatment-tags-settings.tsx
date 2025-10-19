@@ -743,8 +743,9 @@ export function TreatmentTagsSettings({ tenantId }: { tenantId: string }) {
 
       setLocations(data || [])
     } catch (error) {
-      console.error('Error loading locations:', error)
-      // Don't show error toast for locations as it's not critical
+      // Silently handle missing practice_locations table
+      // This table is optional and created by a separate migration
+      console.info('[Treatment Tags] practice_locations table not available - multi-location features disabled')
       setLocations([])
     }
   }
