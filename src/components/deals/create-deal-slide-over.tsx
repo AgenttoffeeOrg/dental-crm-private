@@ -198,10 +198,9 @@ export function CreateDealSlideOver({
         currency: 'GBP',
         treatment_tags: selectedTreatments,
         source: formData.source || null,
-        notes: formData.notes.trim() || null,
+        internal_notes: formData.notes.trim() || null,
         tenant_id: appUser.tenant_id,
-        owner_id: appUser.id,
-        status: 'active'
+        owner_user_id: appUser.id
       }
 
       const { data, error } = await supabase
