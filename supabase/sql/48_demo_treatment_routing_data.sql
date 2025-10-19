@@ -461,7 +461,7 @@ BEGIN
   RAISE NOTICE '  Auto-routing: ENABLED ✓';
   RAISE NOTICE '  AI extraction: ENABLED ✓';
   RAISE NOTICE '  Manual override: ALLOWED ✓';
-  RAISE NOTICE '  Confidence threshold: 70%';
+  RAISE NOTICE '  Confidence threshold: 70%%';
   RAISE NOTICE '';
   RAISE NOTICE 'NEXT STEPS:';
   RAISE NOTICE '1. Go to Settings → Treatment Routing';
