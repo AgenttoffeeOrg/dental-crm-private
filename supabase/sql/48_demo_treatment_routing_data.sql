@@ -323,103 +323,115 @@ BEGIN
   -- Map Dental Implants to High Value Pipeline
   INSERT INTO treatment_tag_pipeline_mappings (
     tenant_id,
+    location_id,
     treatment_tag_id,
     pipeline_id,
     priority,
     created_by_user_id
   ) VALUES (
     v_tenant_id,
+    NULL,
     v_tag_id_implants,
     v_pipeline_high_value,
     1,
     v_user_id
   )
-  ON CONFLICT (tenant_id, treatment_tag_id, pipeline_id) DO NOTHING;
+  ON CONFLICT (tenant_id, location_id, treatment_tag_id, pipeline_id) DO NOTHING;
   RAISE NOTICE '  ✓ Mapped: Dental Implants → High Value Pipeline';
   
   -- Map Orthodontics to High Value Pipeline
   INSERT INTO treatment_tag_pipeline_mappings (
     tenant_id,
+    location_id,
     treatment_tag_id,
     pipeline_id,
     priority,
     created_by_user_id
   ) VALUES (
     v_tenant_id,
+    NULL,
     v_tag_id_ortho,
     v_pipeline_high_value,
     1,
     v_user_id
   )
-  ON CONFLICT (tenant_id, treatment_tag_id, pipeline_id) DO NOTHING;
+  ON CONFLICT (tenant_id, location_id, treatment_tag_id, pipeline_id) DO NOTHING;
   RAISE NOTICE '  ✓ Mapped: Orthodontics → High Value Pipeline';
   
   -- Map Cosmetic Dentistry to Routine Pipeline
   INSERT INTO treatment_tag_pipeline_mappings (
     tenant_id,
+    location_id,
     treatment_tag_id,
     pipeline_id,
     priority,
     created_by_user_id
   ) VALUES (
     v_tenant_id,
+    NULL,
     v_tag_id_cosmetic,
     v_pipeline_routine,
     2,
     v_user_id
   )
-  ON CONFLICT (tenant_id, treatment_tag_id, pipeline_id) DO NOTHING;
+  ON CONFLICT (tenant_id, location_id, treatment_tag_id, pipeline_id) DO NOTHING;
   RAISE NOTICE '  ✓ Mapped: Cosmetic Dentistry → Routine Pipeline';
   
   -- Map Root Canal to Routine Pipeline
   INSERT INTO treatment_tag_pipeline_mappings (
     tenant_id,
+    location_id,
     treatment_tag_id,
     pipeline_id,
     priority,
     created_by_user_id
   ) VALUES (
     v_tenant_id,
+    NULL,
     v_tag_id_root_canal,
     v_pipeline_routine,
     2,
     v_user_id
   )
-  ON CONFLICT (tenant_id, treatment_tag_id, pipeline_id) DO NOTHING;
+  ON CONFLICT (tenant_id, location_id, treatment_tag_id, pipeline_id) DO NOTHING;
   RAISE NOTICE '  ✓ Mapped: Root Canal Therapy → Routine Pipeline';
   
   -- Map Preventive Care to Routine Pipeline
   INSERT INTO treatment_tag_pipeline_mappings (
     tenant_id,
+    location_id,
     treatment_tag_id,
     pipeline_id,
     priority,
     created_by_user_id
   ) VALUES (
     v_tenant_id,
+    NULL,
     v_tag_id_cleaning,
     v_pipeline_routine,
     3,
     v_user_id
   )
-  ON CONFLICT (tenant_id, treatment_tag_id, pipeline_id) DO NOTHING;
+  ON CONFLICT (tenant_id, location_id, treatment_tag_id, pipeline_id) DO NOTHING;
   RAISE NOTICE '  ✓ Mapped: Preventive Care → Routine Pipeline';
   
   -- Map Emergency to High Value Pipeline (urgent, needs attention)
   INSERT INTO treatment_tag_pipeline_mappings (
     tenant_id,
+    location_id,
     treatment_tag_id,
     pipeline_id,
     priority,
     created_by_user_id
   ) VALUES (
     v_tenant_id,
+    NULL,
     v_tag_id_emergency,
     v_pipeline_high_value,
     1,
     v_user_id
   )
-  ON CONFLICT (tenant_id, treatment_tag_id, pipeline_id) DO NOTHING;
+  ON CONFLICT (tenant_id, location_id, treatment_tag_id, pipeline_id) DO NOTHING;
   RAISE NOTICE '  ✓ Mapped: Emergency Treatment → High Value Pipeline';
   
   RAISE NOTICE '';
