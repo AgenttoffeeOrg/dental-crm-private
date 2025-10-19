@@ -40,6 +40,9 @@ BEGIN;
 -- (Handle potential schema variations from older migrations)
 
 DO $$
+DECLARE
+  v_column_type TEXT;
+  v_has_data BOOLEAN;
 BEGIN
   -- Check if role_permissions table exists
   IF EXISTS (
@@ -80,8 +83,93 @@ BEGIN
       ELSE
         RAISE EXCEPTION 'role_permissions table exists but has no permission column. Please check table structure.';
       END IF;
+    END IF;
+    
+    -- Now check the data type of permission_key column
+    SELECT data_type INTO v_column_type
+    FROM information_schema.columns 
+    WHERE table_schema = 'public'
+    AND table_name = 'role_permissions' 
+    AND column_name = 'permission_key';
+    
+    -- If it's UUID but should be TEXT, we need to fix it
+    IF v_column_type = 'uuid' THEN
+      RAISE NOTICE 'ℹ permission_key column is UUID but should be TEXT';
+      
+      -- Check if table has any data
+      EXECUTE 'SELECT EXISTS(SELECT 1 FROM role_permissions LIMIT 1)' INTO v_has_data;
+      
+      IF v_has_data THEN
+        RAISE NOTICE '⚠ Table has data - will migrate to correct structure';
+        
+        -- Create backup of existing data
+        CREATE TEMP TABLE role_permissions_backup AS 
+        SELECT * FROM role_permissions;
+        
+        -- Drop the constraint and column
+        ALTER TABLE role_permissions DROP CONSTRAINT IF EXISTS role_permissions_permission_key_fkey;
+        ALTER TABLE role_permissions DROP CONSTRAINT IF EXISTS role_permissions_role_id_permission_key_key;
+        DROP INDEX IF EXISTS role_permissions_permission_key_idx;
+        ALTER TABLE role_permissions DROP COLUMN permission_key;
+        
+        -- Add column with correct type
+        ALTER TABLE role_permissions 
+          ADD COLUMN permission_key TEXT NOT NULL DEFAULT 'temp';
+        
+        -- For existing rows, we can't migrate UUID to TEXT automatically
+        -- So we'll clear the table (since we're about to repopulate it anyway)
+        TRUNCATE role_permissions;
+        
+        -- Recreate constraints
+        ALTER TABLE role_permissions
+          ADD CONSTRAINT role_permissions_permission_key_fkey 
+          FOREIGN KEY (permission_key) 
+          REFERENCES permission_definitions(key) 
+          ON DELETE CASCADE;
+        
+        ALTER TABLE role_permissions
+          ADD CONSTRAINT role_permissions_role_id_permission_key_key 
+          UNIQUE(role_id, permission_key);
+        
+        CREATE INDEX role_permissions_permission_key_idx 
+          ON role_permissions(permission_key);
+        
+        -- Remove default
+        ALTER TABLE role_permissions ALTER COLUMN permission_key DROP DEFAULT;
+        
+        RAISE NOTICE '✓ Fixed: Changed permission_key from UUID to TEXT';
+        RAISE NOTICE '  → Existing permissions will be repopulated by this migration';
+        
+      ELSE
+        -- Table is empty, easy fix
+        ALTER TABLE role_permissions DROP CONSTRAINT IF EXISTS role_permissions_permission_key_fkey;
+        ALTER TABLE role_permissions DROP CONSTRAINT IF EXISTS role_permissions_role_id_permission_key_key;
+        DROP INDEX IF EXISTS role_permissions_permission_key_idx;
+        ALTER TABLE role_permissions DROP COLUMN permission_key;
+        
+        ALTER TABLE role_permissions 
+          ADD COLUMN permission_key TEXT NOT NULL;
+        
+        ALTER TABLE role_permissions
+          ADD CONSTRAINT role_permissions_permission_key_fkey 
+          FOREIGN KEY (permission_key) 
+          REFERENCES permission_definitions(key) 
+          ON DELETE CASCADE;
+        
+        ALTER TABLE role_permissions
+          ADD CONSTRAINT role_permissions_role_id_permission_key_key 
+          UNIQUE(role_id, permission_key);
+        
+        CREATE INDEX role_permissions_permission_key_idx 
+          ON role_permissions(permission_key);
+        
+        RAISE NOTICE '✓ Fixed: Changed permission_key from UUID to TEXT (table was empty)';
+      END IF;
+      
+    ELSIF v_column_type = 'text' OR v_column_type = 'character varying' THEN
+      RAISE NOTICE '✓ role_permissions.permission_key has correct type (TEXT)';
     ELSE
-      RAISE NOTICE '✓ role_permissions table structure is correct';
+      RAISE NOTICE '⚠ permission_key has unexpected type: % (proceeding anyway)', v_column_type;
     END IF;
     
   ELSE
@@ -98,7 +186,7 @@ BEGIN
     CREATE INDEX role_permissions_role_id_idx ON role_permissions(role_id);
     CREATE INDEX role_permissions_permission_key_idx ON role_permissions(permission_key);
     
-    RAISE NOTICE '✓ Created role_permissions table';
+    RAISE NOTICE '✓ Created role_permissions table with correct structure';
   END IF;
 END $$;
 
