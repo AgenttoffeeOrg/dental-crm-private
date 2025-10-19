@@ -10,6 +10,12 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -42,6 +48,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ActivityTimeline } from './activity-timeline'
+import { DealTreatmentTags } from './deal-treatment-tags'
 import { formatDate, getActivityAge } from '@/lib/dates'
 import type { DealWithRelations, PipelineStage } from '@/types/database'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
@@ -431,21 +438,18 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
               </div>
             </div>
 
-            {/* Treatment Tags */}
-            {deal.treatment_tags.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Tag className="h-4 w-4" />
-                  Treatments
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {deal.treatment_tags.map(tag => (
-                    <Badge key={tag} variant="secondary" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
+            {/* Treatment Tags - Using shared component */}
+            {deal && orgId && (
+              <DealTreatmentTags
+                dealId={dealId}
+                dealTags={deal.treatment_tags || []}
+                orgId={orgId}
+                onTagsChange={(newTags) => {
+                  setDeal(prev => prev ? { ...prev, treatment_tags: newTags } : null)
+                }}
+                showHistory={true}
+                editable={true}
+              />
             )}
           </div>
         </div>

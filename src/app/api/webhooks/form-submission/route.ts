@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { z } from 'zod'
+import { extractTagsFromDealText } from '@/lib/treatment-routing/ai-extractor'
+import { quickRouteDeal } from '@/lib/treatment-routing'
+
+// TODO: This should come from auth/request context, not hardcoded
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || '00000000-0000-0000-0000-000000000000'
 
 // Define a schema for incoming form data
 const formSubmissionSchema = z.object({
   formId: z.string().uuid(),
   formData: z.record(z.string(), z.any()), // Dynamic form fields
   source: z.string().optional(), // e.g., "Website Contact Form", "Facebook Lead Ad"
+  tenantId: z.string().uuid().optional(), // Allow tenant ID to be passed
 })
 
 export async function POST(req: Request) {
@@ -15,7 +21,10 @@ export async function POST(req: Request) {
   try {
     const body = await req.json()
     const validatedData = formSubmissionSchema.parse(body)
-    const { formId, formData, source } = validatedData
+    const { formId, formData, source, tenantId } = validatedData
+    
+    // Use provided tenant ID or fallback to default
+    const effectiveTenantId = tenantId || DEFAULT_TENANT_ID
 
     // Extract basic contact information
     const contactName = formData.full_name || 'Unknown Lead'
@@ -25,7 +34,6 @@ export async function POST(req: Request) {
 
     // Calculate lead score based on form data
     let totalLeadScore = 50 // Base score
-    let treatmentKeywords: string[] = []
     let dealType: 'new_lead' | 'existing_patient' = 'new_lead'
 
     // Score based on urgency
@@ -65,26 +73,43 @@ export async function POST(req: Request) {
       totalLeadScore += 15
     }
 
-    // Extract treatment keywords from reason for inquiry
-    if (reasonForInquiry) {
-      const keywords = ['implant', 'whitening', 'braces', 'emergency', 'pain', 'checkup', 'cleaning']
-      const lowerReason = reasonForInquiry.toLowerCase()
-      keywords.forEach(keyword => {
-        if (lowerReason.includes(keyword)) {
-          treatmentKeywords.push(keyword)
-          // Add keyword-based scoring
-          const keywordScores: Record<string, number> = {
-            'implant': 20,
-            'whitening': 15,
-            'braces': 15,
-            'emergency': 30,
-            'pain': 25,
-            'checkup': 5,
-            'cleaning': 5
+    // ===== PHASE 9: AI-POWERED TREATMENT TAG EXTRACTION =====
+    let treatmentTags: string[] = []
+    
+    // Check if form explicitly provides treatment tags
+    if (formData.treatment_tags && Array.isArray(formData.treatment_tags)) {
+      treatmentTags = formData.treatment_tags
+      console.log(`[Form Webhook] Using explicit treatment tags:`, treatmentTags)
+    } else {
+      // AI-powered tag extraction from form content
+      const formText = [
+        formData.reason_for_inquiry,
+        formData.treatment_type,
+        formData.service_interest,
+        formData.message,
+        formData.notes,
+      ]
+        .filter(Boolean)
+        .join(' ');
+      
+      if (formText.trim()) {
+        try {
+          const extractionResult = await extractTagsFromDealText(
+            formText,
+            effectiveTenantId
+          );
+          treatmentTags = extractionResult.extractedTags.map(t => t.tagName);
+          console.log(`[Form Webhook] AI extracted ${treatmentTags.length} tags:`, treatmentTags);
+          
+          // Add lead score bonus for high-value treatments
+          if (treatmentTags.length > 0) {
+            totalLeadScore += Math.min(20, treatmentTags.length * 5);
           }
-          totalLeadScore += keywordScores[keyword] || 0
+        } catch (error) {
+          console.error('[Form Webhook] Tag extraction failed:', error);
+          // Continue without tags - will route to unsorted
         }
-      })
+      }
     }
 
     // Ensure score is within bounds
@@ -131,15 +156,15 @@ export async function POST(req: Request) {
         })
         .eq('id', contactId)
     } else {
-      const { data: newContact, error: newContactError } = await supabase
+      const { data: newContact, error: newContactError} = await supabase
         .from('contacts')
         .insert({
-          tenant_id: DEFAULT_TENANT_ID,
+          tenant_id: effectiveTenantId,
           full_name: contactName,
           primary_email: contactEmail,
           primary_phone: contactPhone,
           lead_score: totalLeadScore,
-          tags: treatmentKeywords.length > 0 ? treatmentKeywords : [],
+          tags: treatmentTags.length > 0 ? treatmentTags : [],
         })
         .select('id')
         .single()
@@ -148,95 +173,99 @@ export async function POST(req: Request) {
       contactId = newContact.id
     }
 
-    // 2. Create Deal directly in pipeline (skip leads table)
+    // ===== PHASE 9: UNIVERSAL TREATMENT TAG ROUTING =====
+    // 2. Create Deal with automatic routing
     let dealId: string | null = null
     if (contactId) {
-      // Get default pipeline and stage
-      const { data: pipeline, error: pipelineError } = await supabase
-        .from('pipelines')
-        .select('id, pipeline_stages(id, name)')
-        .eq('tenant_id', DEFAULT_TENANT_ID)
-        .eq('is_default', true)
-        .single()
+      try {
+        // Use routing system to determine pipeline and stage
+        const routingResult = await quickRouteDeal({
+          dealTitle: `${dealType === 'existing_patient' ? 'Existing Patient' : 'New Lead'}: ${contactName}`,
+          dealDescription: reasonForInquiry,
+          contactId,
+          orgId: effectiveTenantId,
+          treatmentTags,
+          source: 'webhook_form',
+        });
 
-      if (pipelineError || !pipeline) {
-        throw new Error('Default pipeline not found')
-      }
+        console.log(`[Form Webhook] Routed to pipeline: ${routingResult.pipelineId} (${routingResult.routingMethod})`);
 
-      const firstStage = pipeline.pipeline_stages?.[0]
-      if (!firstStage) {
-        throw new Error('No stages found in default pipeline')
-      }
-
-      // Estimate deal value based on budget and treatment type
-      let estimatedValue = 0
-      if (formData.budget) {
-        const budgetValues: Record<string, number> = {
-          'under_500': 25000, // £250 in pence
-          '500_1500': 100000, // £1,000 in pence
-          '1500_5000': 325000, // £3,250 in pence
-          '5000_15000': 1000000, // £10,000 in pence
-          '15000_plus': 2000000 // £20,000 in pence
+        // Estimate deal value based on budget and treatment type
+        let estimatedValue = 0
+        if (formData.budget) {
+          const budgetValues: Record<string, number> = {
+            'under_500': 25000, // £250 in pence
+            '500_1500': 100000, // £1,000 in pence
+            '1500_5000': 325000, // £3,250 in pence
+            '5000_15000': 1000000, // £10,000 in pence
+            '15000_plus': 2000000 // £20,000 in pence
+          }
+          estimatedValue = budgetValues[formData.budget] || 0
         }
-        estimatedValue = budgetValues[formData.budget] || 0
-      }
 
-      // Create the deal
-      const dealTitle = `${dealType === 'existing_patient' ? 'Existing Patient' : 'New Lead'}: ${contactName} - ${treatmentKeywords.join(', ') || 'General Inquiry'}`
-      
-      const { data: newDeal, error: newDealError } = await supabase
-        .from('deals')
-        .insert({
-          tenant_id: DEFAULT_TENANT_ID,
-          contact_id: contactId,
-          pipeline_id: pipeline.id,
-          stage_id: firstStage.id,
-          title: dealTitle,
-          deal_type: dealType,
-          value_estimate_cents: estimatedValue,
-          currency: 'GBP',
-          treatment_tags: treatmentKeywords,
-          source: source || 'Website Form',
-          lead_score: totalLeadScore,
-          conversion_probability: qualificationStatus === 'qualified' ? 75 : 35,
-          follow_up_required: true,
-          next_follow_up_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
-          patient_concerns: reasonForInquiry || null,
-          internal_notes: `Auto-created from form submission. Deal type: ${dealType}. Lead score: ${totalLeadScore}.`,
-          custom_fields: {
-            form_submission_id: formId,
-            original_form_data: formData,
-            auto_created: true,
-          },
-          last_activity_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single()
-
-      if (newDealError) {
-        console.error('Error creating deal from form:', newDealError)
-      } else {
-        dealId = newDeal?.id || null
-      }
-
-      // 3. Create initial activity/note for the form submission
-      if (dealId && reasonForInquiry) {
-        await supabase
-          .from('activities')
+        // Create the deal with routed pipeline
+        const dealTitle = `${dealType === 'existing_patient' ? 'Existing Patient' : 'New Lead'}: ${contactName}${treatmentTags.length > 0 ? ` - ${treatmentTags.join(', ')}` : ' - General Inquiry'}`
+        
+        const { data: newDeal, error: newDealError } = await supabase
+          .from('deals')
           .insert({
-            tenant_id: DEFAULT_TENANT_ID,
+            tenant_id: effectiveTenantId,
             contact_id: contactId,
-            deal_id: dealId,
-            activity_type: 'note',
-            title: 'Form Submission',
-            description: `Form submitted with inquiry: "${reasonForInquiry}"`,
-            metadata: {
-              form_data: formData,
-              lead_score: totalLeadScore,
-              qualification_status: qualificationStatus
+            pipeline_id: routingResult.pipelineId,
+            stage_id: routingResult.stageId,
+            title: dealTitle,
+            deal_type: dealType,
+            value_estimate_cents: estimatedValue,
+            currency: 'GBP',
+            treatment_tags: treatmentTags,
+            source: source || 'Website Form',
+            lead_score: totalLeadScore,
+            conversion_probability: qualificationStatus === 'qualified' ? 75 : 35,
+            follow_up_required: true,
+            next_follow_up_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
+            patient_concerns: reasonForInquiry || null,
+            internal_notes: `Auto-created from form submission. Deal type: ${dealType}. Lead score: ${totalLeadScore}. Routing method: ${routingResult.routingMethod}.`,
+            custom_fields: {
+              form_submission_id: formId,
+              original_form_data: formData,
+              auto_created: true,
+              routing_log_id: routingResult.routingLogId,
             },
-            created_at: new Date().toISOString(),
+            last_activity_at: new Date().toISOString(),
           })
+          .select('id')
+          .single()
+
+        if (newDealError) {
+          console.error('Error creating deal from form:', newDealError)
+        } else {
+          dealId = newDeal?.id || null
+        }
+
+        // 3. Create initial activity/note for the form submission
+        if (dealId && reasonForInquiry) {
+          await supabase
+            .from('activities')
+            .insert({
+              tenant_id: effectiveTenantId,
+              contact_id: contactId,
+              deal_id: dealId,
+              activity_type: 'note',
+              title: 'Form Submission',
+              description: `Form submitted with inquiry: "${reasonForInquiry}"${treatmentTags.length > 0 ? `\n\nTreatment interests: ${treatmentTags.join(', ')}` : ''}`,
+              metadata: {
+                form_data: formData,
+                lead_score: totalLeadScore,
+                qualification_status: qualificationStatus,
+                treatment_tags: treatmentTags,
+                routing_method: routingResult.routingMethod,
+              },
+              created_at: new Date().toISOString(),
+            })
+        }
+      } catch (routingError) {
+        console.error('[Form Webhook] Routing failed:', routingError);
+        throw new Error(`Deal routing failed: ${routingError instanceof Error ? routingError.message : String(routingError)}`);
       }
     }
 
@@ -246,7 +275,7 @@ export async function POST(req: Request) {
       dealId,
       leadScore: totalLeadScore,
       qualificationStatus,
-      treatmentKeywords,
+      treatmentTags, // Changed from treatmentKeywords
       dealType,
       smartMatched: !!existingContact,
     }, { status: 200 })

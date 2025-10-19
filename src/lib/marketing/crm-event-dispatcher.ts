@@ -9,6 +9,7 @@ export type CRMEventType =
   | 'contact_created'
   | 'deal_created'
   | 'deal_stage_changed'
+  | 'deal_routed' // ===== PHASE 13: NEW ROUTING EVENT =====
   | 'deal_won'
   | 'deal_lost'
   | 'deal_inactive'

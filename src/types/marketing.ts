@@ -356,7 +356,7 @@ export interface MarketingForm {
 
 export interface FormField {
   id: string
-  type: 'text' | 'email' | 'phone' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'date' | 'number'
+  type: 'text' | 'email' | 'phone' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'date' | 'number' | 'treatment_tags' // Added treatment_tags
   label: string
   placeholder?: string
   field_name: string // Maps to Contact column name
@@ -369,6 +369,9 @@ export interface FormField {
     message?: string
   }
   width?: 'full' | 'half' | 'third'
+  // NEW: For treatment_tags field type
+  multi_select?: boolean // Allow multiple tag selection
+  show_popular?: boolean // Show popular tags first
 }
 
 export interface MarketingFormSubmission {

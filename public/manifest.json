@@ -20,7 +20,8 @@
     }
   ],
   "categories": ["business", "productivity", "medical"],
-  "screenshots": []
+  "screenshots": [],
+  "prefer_related_applications": false
 }
 
 

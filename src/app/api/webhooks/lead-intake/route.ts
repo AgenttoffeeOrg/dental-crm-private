@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { z } from 'zod'
+import { extractTagsFromDealText } from '@/lib/treatment-routing/ai-extractor'
+import { quickRouteDeal } from '@/lib/treatment-routing'
 
 // Schema for incoming lead data
 const leadWebhookSchema = z.object({
@@ -13,6 +15,7 @@ const leadWebhookSchema = z.object({
     phone: z.string().optional(),
   }),
   message: z.string().optional(),
+  treatment_tags: z.array(z.string()).optional(), // Allow explicit tags
   metadata: z.record(z.unknown()).optional(),
 })
 
@@ -169,53 +172,99 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // ===== PHASE 9: TREATMENT TAG EXTRACTION & AUTO-ROUTING =====
     // Auto-create deal for high-score leads
-    if (leadScore >= 80 && dentalServiceId) {
-      const { data: dentalService } = await supabase
-        .from('dental_services')
-        .select('*')
-        .eq('id', dentalServiceId)
-        .single()
-
-      if (dentalService) {
-        const { data: pipeline } = await supabase
-          .from('pipelines')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .single()
-
-        if (pipeline) {
-          const { data: firstStage } = await supabase
-            .from('pipeline_stages')
-            .select('*')
-            .eq('pipeline_id', pipeline.id)
-            .order('position')
-            .limit(1)
-            .single()
-
-          if (firstStage) {
-            const { error: dealError } = await supabase
-              .from('deals')
-              .insert({
-                tenant_id: tenantId,
-                contact_id: contact.id,
-                pipeline_id: pipeline.id,
-                stage_id: firstStage.id,
-                title: `${dentalService.name} - ${contact.full_name}`,
-                value_estimate_cents: dentalService.average_value_cents || 0,
-                currency: 'GBP',
-                treatment_tags: [dentalService.name.toLowerCase().replace(/\s+/g, '_')],
-                source: validatedData.source,
-                dental_service_id: dentalServiceId,
-                lead_intake_id: leadIntake.id,
-                last_activity_at: new Date().toISOString()
-              })
-
-            if (dealError) {
-              console.error('Error creating deal:', dealError)
-            }
+    if (leadScore >= 80) {
+      try {
+        // Step 1: Extract or use explicit treatment tags
+        let treatmentTags: string[] = []
+        
+        if (validatedData.treatment_tags && validatedData.treatment_tags.length > 0) {
+          treatmentTags = validatedData.treatment_tags
+          console.log(`[Lead Intake] Using explicit treatment tags:`, treatmentTags)
+        } else if (validatedData.message) {
+          // AI-powered tag extraction from message
+          try {
+            const extractionResult = await extractTagsFromDealText(
+              validatedData.message,
+              tenantId
+            );
+            treatmentTags = extractionResult.extractedTags.map(t => t.tagName);
+            console.log(`[Lead Intake] AI extracted ${treatmentTags.length} tags:`, treatmentTags);
+          } catch (error) {
+            console.error('[Lead Intake] Tag extraction failed:', error);
+            // Continue with empty tags - will route to unsorted
           }
         }
+
+        // Step 2: Use universal routing to determine pipeline
+        const routingResult = await quickRouteDeal({
+          dealTitle: `Lead: ${contact.full_name}`,
+          dealDescription: validatedData.message || '',
+          contactId: contact.id,
+          orgId: tenantId,
+          treatmentTags,
+          source: 'lead_intake',
+        });
+
+        console.log(`[Lead Intake] Routed to pipeline: ${routingResult.pipelineId} (${routingResult.routingMethod})`);
+
+        // Step 3: Get service value if available
+        let estimatedValue = 0;
+        let serviceName = 'General Inquiry';
+        
+        if (dentalServiceId) {
+          const { data: dentalService } = await supabase
+            .from('dental_services')
+            .select('*')
+            .eq('id', dentalServiceId)
+            .single()
+
+          if (dentalService) {
+            estimatedValue = dentalService.average_value_cents || 0;
+            serviceName = dentalService.name;
+          }
+        }
+
+        // Step 4: Create deal with routed pipeline
+        const dealTitle = treatmentTags.length > 0 
+          ? `${treatmentTags.join(', ')} - ${contact.full_name}`
+          : `${serviceName} - ${contact.full_name}`;
+
+        const { data: newDeal, error: dealError } = await supabase
+          .from('deals')
+          .insert({
+            tenant_id: tenantId,
+            contact_id: contact.id,
+            pipeline_id: routingResult.pipelineId,
+            stage_id: routingResult.stageId,
+            title: dealTitle,
+            value_estimate_cents: estimatedValue,
+            currency: 'GBP',
+            treatment_tags: treatmentTags,
+            source: validatedData.source,
+            dental_service_id: dentalServiceId,
+            lead_intake_id: leadIntake.id,
+            lead_score: leadScore,
+            internal_notes: `Auto-created from lead intake. Lead score: ${leadScore}. Routing method: ${routingResult.routingMethod}.`,
+            custom_fields: {
+              lead_intake_id: leadIntake.id,
+              routing_log_id: routingResult.routingLogId,
+              auto_created: true,
+            },
+            last_activity_at: new Date().toISOString()
+          })
+          .select('id')
+          .single()
+
+        if (dealError) {
+          console.error('Error creating deal:', dealError)
+        } else {
+          console.log(`[Lead Intake] Created deal ${newDeal?.id} with ${treatmentTags.length} tags`)
+        }
+      } catch (routingError) {
+        console.error('[Lead Intake] Deal routing failed:', routingError)
+        // Don't fail the entire webhook if deal creation fails
       }
     }
 

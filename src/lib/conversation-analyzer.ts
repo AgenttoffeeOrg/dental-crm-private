@@ -74,6 +74,9 @@ export interface ConversationAnalysis {
   // Treatment categories detected
   treatmentCategories: string[]
   
+  // ===== PHASE 13: EXTRACTED TREATMENT TAGS =====
+  extractedTreatmentTags: string[] // Actual tag names that match tenant's configured tags
+  
   // Urgency level (0-100)
   urgencyScore: number
   urgencyIndicators: string[]
@@ -203,13 +206,15 @@ function calculateEngagementScore(activities: Activity[]): { score: number; days
 /**
  * Analyze all conversations for a contact
  */
-export function analyzeConversations(
+export async function analyzeConversations(
   activities: Activity[],
+  tenantId: string,
   aiArtifacts?: AIArtifact[]
-): ConversationAnalysis {
+): Promise<ConversationAnalysis> {
   if (activities.length === 0) {
     return {
       treatmentCategories: [],
+      extractedTreatmentTags: [],
       urgencyScore: 0,
       urgencyIndicators: [],
       sentimentScore: 0,
@@ -244,8 +249,12 @@ export function analyzeConversations(
     value: []
   }
   
+  // ===== PHASE 13: EXTRACT ALL CONVERSATION TEXT FOR TAG MATCHING =====
+  const allConversationText: string[] = []
+  
   for (const activity of activities) {
     const text = extractActivityText(activity, aiArtifacts)
+    allConversationText.push(text)
     const keywords = analyzeText(text)
     
     allKeywords.urgency.push(...keywords.urgencyKeywords)
@@ -256,6 +265,26 @@ export function analyzeConversations(
     allKeywords.positive.push(...keywords.positiveKeywords)
     allKeywords.negative.push(...keywords.negativeKeywords)
     allKeywords.value.push(...keywords.valueKeywords)
+  }
+  
+  // ===== PHASE 13: EXTRACT TREATMENT TAGS FROM CONVERSATIONS =====
+  let extractedTreatmentTags: string[] = []
+  try {
+    const { extractTreatmentTags } = await import('@/lib/treatment-routing/ai-extractor')
+    const combinedText = allConversationText.join('\n\n')
+    
+    if (combinedText.length > 0) {
+      const extraction = await extractTreatmentTags(
+        'Conversation Analysis',
+        combinedText,
+        tenantId
+      )
+      extractedTreatmentTags = extraction.extractedTags
+      console.log(`[Conversation Analyzer] Extracted ${extractedTreatmentTags.length} treatment tags:`, extractedTreatmentTags)
+    }
+  } catch (error) {
+    console.warn('[Conversation Analyzer] Failed to extract treatment tags:', error)
+    // Continue without tags if extraction fails
   }
   
   // Determine treatment categories
@@ -311,6 +340,7 @@ export function analyzeConversations(
   
   return {
     treatmentCategories,
+    extractedTreatmentTags, // ===== PHASE 13: RETURN EXTRACTED TAGS =====
     urgencyScore,
     urgencyIndicators: [...new Set(allKeywords.urgency)],
     sentimentScore,

@@ -31,6 +31,9 @@ import { MarketingAuditSettingsTab } from './marketing-audit-settings-tab'
 import { NotificationsPreferencesTab } from './notifications-preferences-tab'
 import { NotificationsPoliciesTab } from './notifications-policies-tab'
 import { LocationsSettingsTab } from './locations-settings-tab'
+import { TreatmentTagsSettings } from '../treatment-routing/treatment-tags-settings'
+import { PipelineMappingSettings } from '../treatment-routing/pipeline-mapping-settings'
+import { RoutingAnalytics } from '../treatment-routing/routing-analytics'
 import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -103,7 +106,25 @@ export function SettingsTabs() {
             value="categorization" 
             className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
           >
-            🏷️ Auto-Categorization
+            🏷️ Auto-Categorization (Legacy)
+          </TabsTrigger>
+          <TabsTrigger 
+            value="treatment-tags" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            🦷 Treatment Tags
+          </TabsTrigger>
+          <TabsTrigger 
+            value="pipeline-mapping" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            🔗 Pipeline Mapping
+          </TabsTrigger>
+          <TabsTrigger 
+            value="routing-analytics" 
+            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+          >
+            📊 Routing Analytics
           </TabsTrigger>
           <TabsTrigger 
             value="ai" 
@@ -234,10 +255,41 @@ export function SettingsTabs() {
       <TabsContent value="categorization" className="space-y-6">
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold">Auto-Categorization Rules</h3>
+            <h3 className="text-lg font-semibold">Auto-Categorization Rules (Legacy)</h3>
             <p className="text-sm text-gray-600">Configure automatic deal categorization based on treatments, keywords, and deal values</p>
+            <p className="text-xs text-orange-600 mt-2">⚠️ This is the legacy system. Please migrate to Treatment Tags for improved routing.</p>
           </div>
           <TreatmentConfig />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="treatment-tags" className="space-y-6">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold">Treatment Tags</h3>
+            <p className="text-sm text-gray-600">Manage treatment tags for intelligent, automatic deal routing across all entry points</p>
+          </div>
+          <TreatmentTagsSettings tenantId={tenantId} />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="pipeline-mapping" className="space-y-6">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold">Pipeline Mapping</h3>
+            <p className="text-sm text-gray-600">Map treatment tags to pipelines for automatic deal routing</p>
+          </div>
+          <PipelineMappingSettings tenantId={tenantId} />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="routing-analytics" className="space-y-6">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold">Routing Analytics</h3>
+            <p className="text-sm text-gray-600">Performance metrics and audit trail for treatment tag routing</p>
+          </div>
+          <RoutingAnalytics tenantId={tenantId} />
         </div>
       </TabsContent>
 

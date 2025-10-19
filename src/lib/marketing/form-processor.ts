@@ -1,10 +1,17 @@
 /**
  * FORM PROCESSOR - Marketing Forms → CRM Integration
  * Handles form submissions, creates contacts/deals, assigns owners
+ * 
+ * PHASE 9 ENHANCEMENT:
+ * - Integrated Universal Treatment Tag Routing System
+ * - Automatic AI-powered tag extraction from form data
+ * - Dynamic pipeline routing based on treatment tags
  */
 
 import { createClient } from '@/lib/supabase-client';
 import { secureRandomInt } from '@/lib/utils/security';
+import { quickRouteDeal } from '@/lib/treatment-routing';
+import { extractTagsFromDealText } from '@/lib/treatment-routing/ai-extractor';
 
 export interface FormSubmission {
   formId: string;
@@ -16,12 +23,15 @@ export interface FormSubmission {
 
 export interface DealCreationRules {
   enabled: boolean;
-  targetPipelineId: string;
-  defaultStageId: string;
+  targetPipelineId?: string; // Now optional - can be overridden by routing
+  defaultStageId?: string; // Now optional - can be overridden by routing
   dealValue?: number;
   autoAssignOwner: boolean;
   assignmentRule?: 'round_robin' | 'tag_based' | 'territory_based';
   assignmentConfig?: Record<string, any>;
+  // NEW: Routing options
+  enableAutoRouting?: boolean; // Default: true
+  forceManualPipeline?: boolean; // If true, ignores routing and uses targetPipelineId
 }
 
 /**
@@ -100,32 +110,151 @@ export async function processFormSubmission(
       ? await assignOwner(submission.tenantId, contactData, dealRules)
       : null;
 
+    // ===== PHASE 9: UNIVERSAL TREATMENT TAG ROUTING =====
+    
+    // Step 1: Extract treatment tags from form payload
+    let treatmentTags: string[] = [];
+    
+    // Check if form explicitly provides treatment tags
+    if (submission.payload.treatment_tags && Array.isArray(submission.payload.treatment_tags)) {
+      treatmentTags = submission.payload.treatment_tags;
+      console.log(`[Form Processor] Using explicit treatment tags from form:`, treatmentTags);
+    } else {
+      // AI-powered tag extraction from form content
+      const formText = [
+        submission.formName,
+        submission.payload.reason_for_inquiry,
+        submission.payload.treatment_type,
+        submission.payload.service_interest,
+        submission.payload.message,
+        submission.payload.notes,
+      ]
+        .filter(Boolean)
+        .join(' ');
+      
+      if (formText.trim()) {
+        try {
+          const extractionResult = await extractTagsFromDealText(
+            formText,
+            submission.tenantId
+          );
+          treatmentTags = extractionResult.extractedTags.map(t => t.tagName);
+          console.log(`[Form Processor] AI extracted ${treatmentTags.length} tags:`, treatmentTags);
+        } catch (error) {
+          console.error('[Form Processor] Tag extraction failed:', error);
+          // Continue without tags - will route to unsorted
+        }
+      }
+    }
+
+    // ===== PHASE 12: ENHANCED ROUTING LOGIC =====
+    // Step 2: Determine routing (pipeline + stage) with proper override handling
+    let finalPipelineId: string;
+    let finalStageId: string;
+    let routingMethod: string;
+    let routingLogId: string | undefined;
+    
+    if (dealRules.forceManualPipeline && dealRules.targetPipelineId && dealRules.defaultStageId) {
+      // PRIORITY 1: Manual override - Completely bypass routing engine
+      // Use case: User explicitly wants all form submissions to go to a specific pipeline
+      finalPipelineId = dealRules.targetPipelineId;
+      finalStageId = dealRules.defaultStageId;
+      routingMethod = 'manual_override';
+      console.log(`[Form Processor] Using manual pipeline override: ${finalPipelineId}`);
+    } else if (dealRules.enableAutoRouting !== false) {
+      // PRIORITY 2: Auto routing with optional target pipeline as suggestion
+      // Use case: Use intelligent routing, but respect user's pipeline preference if provided
+      try {
+        const routingResult = await quickRouteDeal({
+          dealTitle: `${contactData.full_name} - ${submission.formName}`,
+          dealDescription: submission.payload.reason_for_inquiry || submission.payload.message,
+          contactId,
+          orgId: submission.tenantId,
+          treatmentTags,
+          userOverridePipeline: dealRules.targetPipelineId, // Pass as override to routing engine
+          source: 'marketing_form',
+        });
+        
+        finalPipelineId = routingResult.pipelineId;
+        finalStageId = routingResult.stageId;
+        routingMethod = routingResult.routingMethod;
+        routingLogId = routingResult.routingLogId;
+        
+        console.log(`[Form Processor] Auto-routed to pipeline: ${finalPipelineId} (${routingMethod})`);
+        
+        // Log routing decision
+        if (routingLogId) {
+          console.log(`[Form Processor] Routing logged: ${routingLogId}`);
+        }
+      } catch (error) {
+        console.error('[Form Processor] Routing failed, using fallback:', error);
+        // Fallback to manual pipeline or unsorted
+        if (dealRules.targetPipelineId && dealRules.defaultStageId) {
+          finalPipelineId = dealRules.targetPipelineId;
+          finalStageId = dealRules.defaultStageId;
+          routingMethod = 'fallback_manual';
+        } else {
+          throw new Error('Routing failed and no fallback pipeline configured');
+        }
+      }
+    } else {
+      // PRIORITY 3: Routing disabled - Must have target pipeline specified
+      // Use case: Organization doesn't want automatic routing
+      if (!dealRules.targetPipelineId || !dealRules.defaultStageId) {
+        throw new Error('Auto-routing is disabled but no target pipeline specified');
+      }
+      finalPipelineId = dealRules.targetPipelineId;
+      finalStageId = dealRules.defaultStageId;
+      routingMethod = 'routing_disabled';
+      console.log(`[Form Processor] Using specified pipeline (routing disabled): ${finalPipelineId}`);
+    }
+
+    // Step 3: Create deal with routed pipeline, extracted tags, and full attribution data
     const { data: newDeal } = await supabase
       .from('deals')
       .insert({
         tenant_id: submission.tenantId,
         contact_id: contactId,
-        pipeline_id: dealRules.targetPipelineId,
-        stage_id: dealRules.defaultStageId,
+        pipeline_id: finalPipelineId,
+        stage_id: finalStageId,
         title: `${contactData.full_name} - ${submission.formName}`,
         value_estimate_cents: dealRules.dealValue ? dealRules.dealValue * 100 : null,
+        treatment_tags: treatmentTags, // Store extracted tags
+        // ===== PHASE 12: PRESERVE ALL ATTRIBUTION DATA =====
         marketing_source_type: 'form',
         marketing_source_id: submission.formId,
         marketing_source_name: submission.formName,
+        marketing_source_url: submission.sourceUrl, // Preserve source URL for attribution
         owner_user_id: assignedOwnerId,
+        last_activity_at: new Date().toISOString(),
+        // Custom fields for routing metadata
+        custom_fields: {
+          routing_log_id: routingLogId,
+          routing_method: routingMethod,
+          form_payload: submission.payload, // Preserve full form data for future analysis
+          submission_timestamp: new Date().toISOString(),
+        },
       })
       .select('id')
       .single();
 
     dealId = newDeal!.id;
-    console.log(`[Form Processor] Created deal ${dealId} for contact ${contactId}`);
+    console.log(`[Form Processor] Created deal ${dealId} for contact ${contactId} with ${treatmentTags.length} tags (${routingMethod})`);
+
+    // ===== PHASE 12: PRESERVE ATTRIBUTION =====
+    // Track marketing attribution (first-touch already tracked for contact)
+    if (submission.formId && submission.formName) {
+      const { trackLastTouch } = await import('./attribution');
+      await trackLastTouch(dealId, submission.formId, submission.formName);
+      console.log(`[Form Processor] Tracked last-touch attribution for deal ${dealId}`);
+    }
 
     // Create task for assigned owner
     if (assignedOwnerId) {
       await supabase.from('tasks').insert({
         tenant_id: submission.tenantId,
         title: `Follow up: ${submission.formName} lead`,
-        description: `New form submission from ${contactData.full_name}`,
+        description: `New form submission from ${contactData.full_name}${treatmentTags.length > 0 ? `\nTreatment interests: ${treatmentTags.join(', ')}` : ''}`,
         assigned_to: assignedOwnerId,
         related_to_type: 'deal',
         related_to_id: dealId,

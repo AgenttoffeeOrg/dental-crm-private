@@ -318,6 +318,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
   })
   const [stages, setStages] = useState<PipelineStage[]>([])
   const [deals, setDeals] = useState<DealWithRelations[]>([])
+  const [availableTags, setAvailableTags] = useState<string[]>([])
   
   // UI state
   const [loading, setLoading] = useState(true)
@@ -387,6 +388,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
   useEffect(() => {
     if (orgId && !tenantLoading) {
       loadPipelines()
+      loadAvailableTags()
     }
   }, [orgId, tenantLoading])
 
@@ -431,6 +433,32 @@ export function PipelineBoard({}: PipelineBoardProps) {
     } catch (error) {
       console.error('Error loading pipelines:', error)
       toast.error('Failed to load pipelines')
+    }
+  }
+
+  const loadAvailableTags = async () => {
+    if (!orgId) return
+    
+    try {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('treatment_tags')
+        .eq('tenant_id', orgId)
+        .not('treatment_tags', 'is', null)
+
+      if (error) throw error
+      
+      // Extract unique tags from all deals
+      const allTags = new Set<string>()
+      data?.forEach(deal => {
+        if (deal.treatment_tags && Array.isArray(deal.treatment_tags)) {
+          deal.treatment_tags.forEach(tag => allTags.add(tag))
+        }
+      })
+      
+      setAvailableTags(Array.from(allTags).sort())
+    } catch (error) {
+      console.error('Error loading available tags:', error)
     }
   }
 
@@ -1017,22 +1045,25 @@ export function PipelineBoard({}: PipelineBoardProps) {
                 </SelectContent>
               </Select>
 
-              {/* Treatment Filter */}
+              {/* Treatment Tags Filter - Dynamic */}
               <Select value={treatmentFilter} onValueChange={setTreatmentFilter}>
                 <SelectTrigger className={cn(
-                  "w-[120px] h-8 text-xs",
+                  "w-[140px] h-8 text-xs",
                   treatmentFilter !== 'all' && "border-purple-500 bg-purple-50"
                 )}>
-                  <SelectValue placeholder="Treatment" />
+                  <SelectValue placeholder="Treatment Tag" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Treatments</SelectItem>
-                  <SelectItem value="Dental Implants">🦷 Implants</SelectItem>
-                  <SelectItem value="Orthodontics">😁 Orthodontics</SelectItem>
-                  <SelectItem value="Cosmetic">✨ Cosmetic</SelectItem>
-                  <SelectItem value="Root Canal">🩺 Root Canal</SelectItem>
-                  <SelectItem value="Veneers">💎 Veneers</SelectItem>
-                  <SelectItem value="Whitening">⚪ Whitening</SelectItem>
+                  {availableTags.length === 0 ? (
+                    <SelectItem value="_no_tags" disabled>No tags available</SelectItem>
+                  ) : (
+                    availableTags.map(tag => (
+                      <SelectItem key={tag} value={tag}>
+                        🏷️ {tag}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
 

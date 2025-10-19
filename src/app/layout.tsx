@@ -1,15 +1,22 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "sonner";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { LoadingFallback } from "@/components/ui/loading-fallback";
+import { CacheControlSimple } from "@/components/dev/cache-control-simple";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Dental CRM - Practice Management Platform",
   description: "Enterprise-grade CRM for dental practices",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export const dynamic = 'force-dynamic'
@@ -30,6 +37,7 @@ export default function RootLayout({
           </AuthProvider>
         </ErrorBoundary>
         <Toaster position="top-right" richColors />
+        <CacheControlSimple />
       </body>
     </html>
   );

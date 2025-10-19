@@ -2,12 +2,14 @@
 // TREATMENT PROPOSED WEBHOOK
 // =====================================================
 // Receives webhook when treatment plan is proposed in PMS
-// Auto-creates deal in CRM
+// Auto-creates deal in CRM with Universal Treatment Tag Routing
 // =====================================================
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { PMSSyncEngine } from '@/lib/integrations/pms/sync-engine'
+import { quickRouteDeal } from '@/lib/treatment-routing'
+import { extractTagsFromDealText } from '@/lib/treatment-routing/ai-extractor'
 
 export async function POST(request: NextRequest) {
   try {
@@ -110,42 +112,123 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    // 5. Get default pipeline and stage
-    const { data: pipeline } = await supabase
-      .from('pipelines')
-      .select('id, pipeline_stages(id, name)')
-      .eq('tenant_id', tenant_id)
-      .eq('is_default', true)
-      .single()
-
-    if (!pipeline) {
-      return NextResponse.json(
-        { error: 'No default pipeline found' },
-        { status: 500 }
-      )
+    // ===== PHASE 11: UNIVERSAL TREATMENT TAG ROUTING FOR PMS =====
+    // 5. Extract treatment tags from PMS data
+    console.log(`[PMS ROUTING] Extracting treatment tags for: ${treatment_type}`)
+    
+    let treatmentTags: string[] = []
+    
+    // Strategy 1: Check if PMS provides explicit treatment tags
+    if (payload.treatment_tags && Array.isArray(payload.treatment_tags)) {
+      treatmentTags = payload.treatment_tags
+      console.log(`[PMS ROUTING] Using explicit treatment tags:`, treatmentTags)
+    } 
+    // Strategy 2: Convert procedure codes to treatment tags via PMS tag mappings
+    else if (procedure_codes && procedure_codes.length > 0) {
+      try {
+        // Look up procedure code → treatment tag mappings
+        const { data: pmsMappings } = await supabase
+          .from('pms_procedure_tag_mappings')
+          .select('treatment_tag_name')
+          .eq('tenant_id', tenant_id)
+          .in('procedure_code', procedure_codes)
+        
+        if (pmsMappings && pmsMappings.length > 0) {
+          treatmentTags = [...new Set(pmsMappings.map(m => m.treatment_tag_name))]
+          console.log(`[PMS ROUTING] Mapped procedure codes ${procedure_codes} to tags:`, treatmentTags)
+        }
+      } catch (error) {
+        console.warn('[PMS ROUTING] Failed to lookup procedure code mappings:', error)
+      }
+    }
+    
+    // Strategy 3: AI extraction from treatment type + description
+    if (treatmentTags.length === 0) {
+      try {
+        const treatmentText = [
+          treatment_type,
+          description,
+          procedure_codes?.join(' '),
+        ].filter(Boolean).join(' ')
+        
+        const extractionResult = await extractTagsFromDealText(treatmentText, tenant_id)
+        treatmentTags = extractionResult.extractedTags.map(t => t.tagName)
+        console.log(`[PMS ROUTING] AI extracted ${treatmentTags.length} tags from treatment:`, treatmentTags)
+      } catch (error) {
+        console.error('[PMS ROUTING] AI tag extraction failed:', error)
+        // Continue with empty tags - will route to unsorted
+      }
     }
 
-    // Find appropriate stage
-    const stages = pipeline.pipeline_stages as any[]
-    const proposalStage = stages.find(s => 
-      s.name.toLowerCase().includes('proposal') ||
-      s.name.toLowerCase().includes('treatment plan')
-    ) || stages[0]
+    // 6. Use universal routing engine to determine pipeline & stage
+    console.log(`[PMS ROUTING] Routing deal with tags:`, treatmentTags)
+    
+    let pipelineId: string
+    let stageId: string
+    let routingLogId: string | undefined
+    let routingMethod: string
+    
+    try {
+      const routingResult = await quickRouteDeal({
+        dealTitle: `${treatment_type} - Treatment Plan`,
+        dealDescription: description || '',
+        contactId: mapping.crm_contact_id,
+        orgId: tenant_id,
+        treatmentTags,
+        userOverridePipeline: undefined, // No manual override for PMS
+        source: 'pms_webhook',
+      })
+      
+      pipelineId = routingResult.pipelineId
+      stageId = routingResult.stageId
+      routingLogId = routingResult.routingLogId
+      routingMethod = routingResult.routingMethod
+      
+      console.log(`[PMS ROUTING] ✅ Routed to pipeline ${pipelineId} via ${routingMethod}`)
+    } catch (routingError) {
+      console.error('[PMS ROUTING] Routing failed, using fallback:', routingError)
+      
+      // Fallback: Get default pipeline
+      const { data: fallbackPipeline } = await supabase
+        .from('pipelines')
+        .select('id, pipeline_stages(id)')
+        .eq('tenant_id', tenant_id)
+        .eq('is_default', true)
+        .single()
+      
+      if (!fallbackPipeline) {
+        return NextResponse.json(
+          { error: 'Routing failed and no default pipeline found' },
+          { status: 500 }
+        )
+      }
+      
+      pipelineId = fallbackPipeline.id
+      stageId = (fallbackPipeline.pipeline_stages as any[])?.[0]?.id
+      routingMethod = 'fallback_error'
+    }
 
-    // 6. Create deal
+    // 7. Create deal with routed pipeline
     const { data: deal, error: dealError } = await supabase
       .from('deals')
       .insert({
         tenant_id,
         contact_id: mapping.crm_contact_id,
-        pipeline_id: pipeline.id,
-        stage_id: proposalStage.id,
+        pipeline_id: pipelineId,
+        stage_id: stageId,
         title: `${treatment_type} - Treatment Plan`,
         value_estimate_cents: estimatedCostCents,
         source: 'PMS',
         pms_treatment_id,
         treatment_type,
-        procedure_codes
+        procedure_codes,
+        treatment_tags: treatmentTags, // Store extracted tags
+        custom_fields: {
+          routing_log_id: routingLogId,
+          routing_method: routingMethod,
+          pms_integration_id: integration_id,
+          pms_provider_name: provider_name,
+        },
       })
       .select()
       .single()
@@ -158,13 +241,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 7. Link deal to treatment plan
+    // 8. Link deal to treatment plan
     await supabase
       .from('treatment_plans')
       .update({ crm_deal_id: deal.id })
       .eq('id', treatmentPlan.id)
 
-    // 8. Log sync operation
+    // 9. Log sync operation with routing details
     await supabase
       .from('pms_sync_logs')
       .insert({
@@ -175,14 +258,25 @@ export async function POST(request: NextRequest) {
         status: 'success',
         records_processed: 1,
         records_created: 1,
+        metadata: {
+          treatment_type,
+          procedure_codes,
+          treatment_tags: treatmentTags,
+          routing_method: routingMethod,
+          routed_pipeline_id: pipelineId,
+        },
         completed_at: new Date().toISOString()
       })
 
     return NextResponse.json({
       success: true,
-      message: 'Treatment plan synced and deal created',
+      message: 'Treatment plan synced and deal created with intelligent routing',
       deal_id: deal.id,
-      treatment_plan_id: treatmentPlan.id
+      treatment_plan_id: treatmentPlan.id,
+      treatment_tags: treatmentTags,
+      routing_method: routingMethod,
+      pipeline_id: pipelineId,
+      stage_id: stageId,
     })
 
   } catch (error: any) {

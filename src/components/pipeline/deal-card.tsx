@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { SimpleDealDialog } from '@/components/deals/simple-deal-dialog'
+import { DealTreatmentTags } from '@/components/deals/deal-treatment-tags'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { getActivityAge } from '@/lib/dates'
 import { Edit, Eye } from 'lucide-react'
 import type { DealWithRelations } from '@/types/database'
@@ -21,6 +23,7 @@ interface DealCardProps {
 
 export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardProps) {
   const [dealProfileOpen, setDealProfileOpen] = useState(false)
+  const { orgId } = useTenantContext()
 
   console.log('DealCard rendering with deal:', deal?.id, deal?.title)
 
@@ -158,23 +161,17 @@ export function DealCard({ deal, isDragging = false, onDealUpdate }: DealCardPro
               </div>
             )}
 
-            {/* Treatment tags */}
-            {deal.treatment_tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {deal.treatment_tags.slice(0, 3).map(tag => (
-                  <Badge
-                    key={tag}
-                    variant="outline"
-                    className="text-xs px-2 py-0"
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-                {deal.treatment_tags.length > 3 && (
-                  <Badge variant="outline" className="text-xs px-2 py-0">
-                    +{deal.treatment_tags.length - 3}
-                  </Badge>
-                )}
+            {/* Treatment tags - Enhanced with colors and icons */}
+            {deal.treatment_tags.length > 0 && orgId && (
+              <div>
+                <DealTreatmentTags
+                  dealId={deal.id}
+                  dealTags={deal.treatment_tags || []}
+                  orgId={orgId}
+                  compact={true}
+                  editable={false}
+                  showHistory={false}
+                />
               </div>
             )}
 

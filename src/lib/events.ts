@@ -8,6 +8,18 @@ interface EventMap {
   'DEAL.MOVED': { dealId: string; fromStageId: string; toStageId: string; userId?: string }
   'DEAL.CREATED': { dealId: string; contactId: string; userId?: string }
   'DEAL.UPDATED': { dealId: string; changes: Record<string, unknown>; userId?: string }
+  // ===== PHASE 13: TREATMENT TAG ROUTING EVENTS =====
+  'DEAL.ROUTED': { 
+    dealId: string
+    contactId: string
+    tenantId: string
+    pipelineId: string
+    stageId: string
+    treatmentTags: string[]
+    routingMethod: 'user_override' | 'tag_mapping' | 'ai_keyword' | 'unsorted_fallback' | 'manual_override' | 'routing_disabled' | 'fallback_manual' | 'fallback_error'
+    routingLogId?: string
+    source?: string // 'manual', 'form', 'pms_webhook', 'lead_intake', etc.
+  }
   'TASK.CREATED': { taskId: string; title: string; assigneeUserId?: string; autoCreated: boolean }
   'TASK.COMPLETED': { taskId: string; userId?: string }
   'TASK.ASSIGNED': { taskId: string; fromUserId?: string; toUserId: string }
@@ -122,6 +134,10 @@ export const events = {
   dealUpdated: (data: EventMap['DEAL.UPDATED']) => 
     eventService.emit('DEAL.UPDATED', data),
 
+  // ===== PHASE 13: TREATMENT TAG ROUTING EVENT =====
+  dealRouted: (data: EventMap['DEAL.ROUTED']) => 
+    eventService.emit('DEAL.ROUTED', data),
+
   // Task events
   taskCreated: (data: EventMap['TASK.CREATED']) => 
     eventService.emit('TASK.CREATED', data),
@@ -159,7 +175,7 @@ export function setupEventListeners() {
   // Log all events in development
   if (process.env.NODE_ENV === 'development') {
     const allEvents: (keyof EventMap)[] = [
-      'ACTIVITY.CREATED', 'DEAL.MOVED', 'DEAL.CREATED', 'DEAL.UPDATED',
+      'ACTIVITY.CREATED', 'DEAL.MOVED', 'DEAL.CREATED', 'DEAL.UPDATED', 'DEAL.ROUTED',
       'TASK.CREATED', 'TASK.COMPLETED', 'TASK.ASSIGNED',
       'CONTACT.CREATED', 'CONTACT.UPDATED',
       'FILE.UPLOADED', 'AI.PROCESSING_STARTED', 'AI.PROCESSING_COMPLETED', 'AI.PROCESSING_FAILED'
@@ -183,5 +199,11 @@ export function setupEventListeners() {
   // Example: Create audit entries for important events
   eventService.on('DEAL.MOVED', async ({ dealId, fromStageId, toStageId, userId }) => {
     console.log(`[Audit] Deal ${dealId} moved from ${fromStageId} to ${toStageId} by ${userId}`)
+  })
+
+  // ===== PHASE 13: DEAL ROUTING EVENT LISTENER =====
+  eventService.on('DEAL.ROUTED', async ({ dealId, pipelineId, treatmentTags, routingMethod }) => {
+    console.log(`[Auto] Deal ${dealId} routed to pipeline ${pipelineId} via ${routingMethod} with tags: ${treatmentTags.join(', ')}`)
+    // Automation workflows can listen to this event and trigger based on pipeline or tags
   })
 }

@@ -54,6 +54,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import type { DealWithRelations, Pipeline, PipelineStage, AppUser } from '@/types/database'
 import { DealDetailView } from './deal-detail-view-modal'
 import { CreateDealSlideOver } from './create-deal-slide-over'
+import { DealTreatmentTags } from './deal-treatment-tags'
 import { SavedViewsDropdown } from './saved-views-dropdown'
 import type { DealFilters } from '@/hooks/use-saved-deal-views'
 
@@ -75,6 +76,7 @@ export function DealsTable() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [stages, setStages] = useState<PipelineStage[]>([])
   const [teamMembers, setTeamMembers] = useState<AppUser[]>([])
+  const [availableTags, setAvailableTags] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set())
   const [selectedDealForView, setSelectedDealForView] = useState<string | null>(null)
@@ -88,6 +90,7 @@ export function DealsTable() {
   const [ownerFilter, setOwnerFilter] = useState<string>('all')
   const [agingFilter, setAgingFilter] = useState<string>('all')
   const [valueFilter, setValueFilter] = useState<string>('all')
+  const [tagFilter, setTagFilter] = useState<string[]>([])
 
   // Sort
   const [sortField, setSortField] = useState<'title' | 'value' | 'created_at' | 'updated_at' | 'stage'>('updated_at')
@@ -111,6 +114,7 @@ export function DealsTable() {
     if (appUser?.tenant_id) {
       loadPipelines()
       loadTeamMembers()
+      loadAvailableTags()
     }
   }, [appUser?.tenant_id])
 
@@ -127,6 +131,7 @@ export function DealsTable() {
     ownerFilter,
     agingFilter,
     valueFilter,
+    tagFilter,
     sortField,
     sortOrder,
     currentPage,
@@ -194,6 +199,30 @@ export function DealsTable() {
     }
   }
 
+  const loadAvailableTags = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('treatment_tags')
+        .eq('tenant_id', appUser?.tenant_id)
+        .not('treatment_tags', 'is', null)
+
+      if (error) throw error
+      
+      // Extract unique tags from all deals
+      const allTags = new Set<string>()
+      data?.forEach(deal => {
+        if (deal.treatment_tags && Array.isArray(deal.treatment_tags)) {
+          deal.treatment_tags.forEach(tag => allTags.add(tag))
+        }
+      })
+      
+      setAvailableTags(Array.from(allTags).sort())
+    } catch (error) {
+      console.error('Error loading available tags:', error)
+    }
+  }
+
   const loadDeals = async () => {
     try {
       setLoading(true)
@@ -242,6 +271,11 @@ export function DealsTable() {
         } else if (valueFilter === 'low') {
           query = query.lt('value_estimate_cents', 50000) // <£500
         }
+      }
+
+      // Tag filter - match deals that have ALL selected tags
+      if (tagFilter.length > 0) {
+        query = query.contains('treatment_tags', tagFilter)
       }
 
       // Sort
@@ -384,6 +418,7 @@ export function DealsTable() {
       'Created Date',
       'Last Updated',
       'Status',
+      'Treatment Tags'
     ]
 
     const rows = dealsToExport.map(deal => [
@@ -397,6 +432,7 @@ export function DealsTable() {
       format(new Date(deal.created_at), 'yyyy-MM-dd'),
       format(new Date(deal.updated_at), 'yyyy-MM-dd HH:mm'),
       deal.aging_status || 'fresh',
+      (deal.treatment_tags || []).join('; ')
     ])
 
     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
@@ -439,6 +475,7 @@ export function DealsTable() {
     ownerFilter !== 'all',
     agingFilter !== 'all',
     valueFilter !== 'all',
+    tagFilter.length > 0,
     debouncedSearchQuery !== '',
   ].filter(Boolean).length
 
@@ -450,6 +487,7 @@ export function DealsTable() {
     setOwnerFilter('all')
     setAgingFilter('all')
     setValueFilter('all')
+    setTagFilter([])
     setCurrentPage(1)
   }
 
@@ -614,6 +652,52 @@ export function DealsTable() {
             </SelectContent>
           </Select>
 
+          {/* Treatment Tags Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[160px] justify-between">
+                <span className="flex items-center gap-1 truncate">
+                  <Tag className="h-3 w-3" />
+                  {tagFilter.length === 0 ? 'All Tags' : `${tagFilter.length} Tag${tagFilter.length > 1 ? 's' : ''}`}
+                </span>
+                {tagFilter.length > 0 && (
+                  <X 
+                    className="h-3 w-3 ml-2 text-gray-500 hover:text-gray-700" 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setTagFilter([])
+                    }}
+                  />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[200px]">
+              {availableTags.length === 0 ? (
+                <div className="px-2 py-1.5 text-sm text-gray-500">No tags available</div>
+              ) : (
+                availableTags.map(tag => (
+                  <DropdownMenuItem
+                    key={tag}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setTagFilter(prev => 
+                        prev.includes(tag) 
+                          ? prev.filter(t => t !== tag)
+                          : [...prev, tag]
+                      )
+                    }}
+                  >
+                    <Checkbox 
+                      checked={tagFilter.includes(tag)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">{tag}</span>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Clear Filters */}
           {activeFiltersCount > 0 && (
             <Button
@@ -712,6 +796,12 @@ export function DealsTable() {
                     Stage
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <div className="flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      Tags
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                     <button
                       onClick={() => {
                         if (sortField === 'value') {
@@ -755,7 +845,7 @@ export function DealsTable() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
+                    <td colSpan={11} className="px-4 py-12 text-center text-gray-500">
                       <div className="flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                       </div>
@@ -763,7 +853,7 @@ export function DealsTable() {
                   </tr>
                 ) : deals.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
+                    <td colSpan={11} className="px-4 py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center gap-2">
                         <FolderOpen className="h-12 w-12 text-gray-300" />
                         <p className="text-sm font-medium">No deals found</p>
@@ -794,20 +884,6 @@ export function DealsTable() {
                           <span className="font-medium text-gray-900 hover:text-blue-600">
                             {deal.title}
                           </span>
-                          {deal.treatment_tags && deal.treatment_tags.length > 0 && (
-                            <div className="flex gap-1 mt-1">
-                              {deal.treatment_tags.slice(0, 2).map((tag, i) => (
-                                <Badge key={i} variant="outline" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                              {deal.treatment_tags.length > 2 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{deal.treatment_tags.length - 2}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -822,6 +898,20 @@ export function DealsTable() {
                         <Badge className="text-xs bg-blue-100 text-blue-800">
                           {deal.stage?.name || 'N/A'}
                         </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        {deal.treatment_tags && deal.treatment_tags.length > 0 && appUser?.tenant_id ? (
+                          <DealTreatmentTags
+                            dealId={deal.id}
+                            dealTags={deal.treatment_tags}
+                            orgId={appUser.tenant_id}
+                            compact={true}
+                            editable={false}
+                            showHistory={false}
+                          />
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">No tags</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className="font-semibold text-gray-900">

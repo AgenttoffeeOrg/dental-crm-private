@@ -386,15 +386,6 @@ export function ContactDetailView({
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium text-gray-900">All Deals</h3>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setCreateDealDialogOpen(true)}
-                    className="text-xs"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    New Deal
-                  </Button>
                 </div>
                 {deals.length > 0 ? (
                   <div className="space-y-2">
@@ -631,14 +622,6 @@ export function ContactDetailView({
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Deal Overview</h3>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setCreateDealDialogOpen(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Deal
-                  </Button>
                 </div>
 
                 {deals.length > 0 ? (

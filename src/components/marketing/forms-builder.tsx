@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, GripVertical, Trash2, Eye } from 'lucide-react'
+import { Plus, GripVertical, Trash2, Eye, Tag } from 'lucide-react'
+import { createClient } from '@/lib/supabase-client'
+import { useAuth } from '@/lib/auth'
 import type { FormField } from '@/types/marketing'
 
 interface FormBuilderProps {
@@ -26,6 +28,7 @@ const FIELD_TYPES = [
   { value: 'phone', label: 'Phone' },
   { value: 'textarea', label: 'Long Text' },
   { value: 'select', label: 'Dropdown' },
+  { value: 'treatment_tags', label: '🏷️ Treatment Tags', icon: '🏷️' }, // NEW
   { value: 'checkbox', label: 'Checkbox' },
   { value: 'date', label: 'Date' },
 ]
@@ -37,9 +40,43 @@ const CONTACT_FIELDS = [
   { value: 'city', label: 'City' },
   { value: 'postal_code', label: 'Postal Code' },
   { value: 'date_of_birth', label: 'Date of Birth' },
+  { value: 'treatment_tags', label: 'Treatment Tags' }, // NEW
 ]
 
 export function FormBuilder({ fields, onChange }: FormBuilderProps) {
+  const { appUser } = useAuth()
+  const supabase = createClient()
+  const [availableTags, setAvailableTags] = useState<string[]>([])
+  const [loadingTags, setLoadingTags] = useState(false)
+
+  // Load available treatment tags
+  useEffect(() => {
+    if (appUser?.tenant_id) {
+      loadTreatmentTags()
+    }
+  }, [appUser?.tenant_id])
+
+  const loadTreatmentTags = async () => {
+    if (!appUser?.tenant_id) return
+    
+    setLoadingTags(true)
+    try {
+      const { data, error } = await supabase
+        .from('treatment_tags')
+        .select('name')
+        .eq('tenant_id', appUser.tenant_id)
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) throw error
+      setAvailableTags(data?.map(t => t.name) || [])
+    } catch (error) {
+      console.error('Error loading treatment tags:', error)
+    } finally {
+      setLoadingTags(false)
+    }
+  }
+
   const addField = () => {
     const newField: FormField = {
       id: `field_${Date.now()}`,
@@ -49,6 +86,22 @@ export function FormBuilder({ fields, onChange }: FormBuilderProps) {
       field_name: 'full_name',
       required: false,
       width: 'full'
+    }
+    onChange([...fields, newField])
+  }
+
+  const addTreatmentTagsField = () => {
+    const newField: FormField = {
+      id: `field_${Date.now()}`,
+      type: 'treatment_tags',
+      label: 'What treatment are you interested in?',
+      placeholder: 'Select treatment types...',
+      field_name: 'treatment_tags',
+      required: false,
+      width: 'full',
+      multi_select: true,
+      show_popular: true,
+      options: availableTags
     }
     onChange([...fields, newField])
   }
@@ -67,10 +120,16 @@ export function FormBuilder({ fields, onChange }: FormBuilderProps) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Form Fields</h3>
-          <Button size="sm" onClick={addField}>
-            <Plus className="h-3.5 w-3.5 mr-2" />
-            Add Field
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={addTreatmentTagsField} title="Add Treatment Tags Field">
+              <Tag className="h-3.5 w-3.5 mr-2" />
+              Add Tags
+            </Button>
+            <Button size="sm" onClick={addField}>
+              <Plus className="h-3.5 w-3.5 mr-2" />
+              Add Field
+            </Button>
+          </div>
         </div>
 
         {fields.length === 0 ? (
@@ -138,6 +197,41 @@ export function FormBuilder({ fields, onChange }: FormBuilderProps) {
                         </Select>
                       </div>
 
+                      {/* Treatment Tags specific options */}
+                      {field.type === 'treatment_tags' && (
+                        <div className="space-y-2 p-3 bg-blue-50 rounded border border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-blue-900">Treatment Tags Settings</span>
+                            <Badge variant="outline" className="text-xs bg-white">
+                              {availableTags.length} tags available
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={field.multi_select !== false}
+                              onChange={(e) => updateField(field.id, { multi_select: e.target.checked })}
+                              className="h-4 w-4"
+                            />
+                            <label className="text-xs text-gray-700">Allow multiple selection</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={field.show_popular !== false}
+                              onChange={(e) => updateField(field.id, { show_popular: e.target.checked })}
+                              className="h-4 w-4"
+                            />
+                            <label className="text-xs text-gray-700">Show popular tags first</label>
+                          </div>
+                          {availableTags.length === 0 && (
+                            <p className="text-xs text-orange-600">
+                              ⚠️ No treatment tags configured. <a href="/settings/treatment-tags" className="underline">Add tags</a> to enable routing.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -194,6 +288,26 @@ export function FormBuilder({ fields, onChange }: FormBuilderProps) {
                     <select className="w-full border rounded px-3 py-2 text-sm">
                       <option>Select...</option>
                     </select>
+                  ) : field.type === 'treatment_tags' ? (
+                    <div className="space-y-2">
+                      <select 
+                        multiple={field.multi_select}
+                        className="w-full border rounded px-3 py-2 text-sm min-h-[120px]"
+                      >
+                        {availableTags.length > 0 ? (
+                          availableTags.slice(0, 5).map(tag => (
+                            <option key={tag} value={tag} className="py-1">
+                              🏷️ {tag}
+                            </option>
+                          ))
+                        ) : (
+                          <option disabled>No tags available</option>
+                        )}
+                      </select>
+                      {field.multi_select && (
+                        <p className="text-xs text-gray-500">Hold Ctrl/Cmd to select multiple</p>
+                      )}
+                    </div>
                   ) : field.type === 'checkbox' ? (
                     <div className="flex items-center gap-2">
                       <input type="checkbox" className="h-4 w-4" />

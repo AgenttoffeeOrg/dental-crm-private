@@ -2,10 +2,13 @@
 // PMS SYNC ENGINE
 // =====================================================
 // Bidirectional synchronization between CRM and PMS
+// With Universal Treatment Tag Routing Integration
 // =====================================================
 
 import { createClient } from '@/lib/supabase-client'
 import { PMSPatient, PMSTreatmentPlan, PMSPayment, SyncResult } from './types'
+import { quickRouteDeal } from '@/lib/treatment-routing'
+import { extractTagsFromDealText } from '@/lib/treatment-routing/ai-extractor'
 
 export class PMSSyncEngine {
   private tenantId: string
@@ -241,37 +244,116 @@ export class PMSSyncEngine {
       return { dealId: '', created: false }
     }
 
-    // Get default pipeline
-    const { data: pipeline } = await supabase
-      .from('pipelines')
-      .select('id, pipeline_stages(id, name)')
-      .eq('tenant_id', this.tenantId)
-      .eq('is_default', true)
-      .single()
-
-    if (!pipeline) {
-      throw new Error('No default pipeline found')
+    // ===== PHASE 11: UNIVERSAL ROUTING FOR PMS SYNC ENGINE =====
+    console.log(`[PMS SYNC ENGINE] Extracting treatment tags for: ${pmsTreatment.treatmentType}`)
+    
+    let treatmentTags: string[] = []
+    
+    // Strategy 1: Check for procedure code → tag mappings
+    if (pmsTreatment.procedureCodes && pmsTreatment.procedureCodes.length > 0) {
+      try {
+        const { data: pmsMappings } = await supabase
+          .from('pms_procedure_tag_mappings')
+          .select('treatment_tag_name')
+          .eq('tenant_id', this.tenantId)
+          .in('procedure_code', pmsTreatment.procedureCodes)
+        
+        if (pmsMappings && pmsMappings.length > 0) {
+          treatmentTags = [...new Set(pmsMappings.map(m => m.treatment_tag_name))]
+          console.log(`[PMS SYNC ENGINE] Mapped ${pmsTreatment.procedureCodes} to tags:`, treatmentTags)
+        }
+      } catch (error) {
+        console.warn('[PMS SYNC ENGINE] Failed to lookup procedure mappings:', error)
+      }
+    }
+    
+    // Strategy 2: AI extraction from treatment type + description
+    if (treatmentTags.length === 0) {
+      try {
+        const treatmentText = [
+          pmsTreatment.treatmentType,
+          pmsTreatment.description,
+          pmsTreatment.procedureCodes?.join(' '),
+        ].filter(Boolean).join(' ')
+        
+        const extractionResult = await extractTagsFromDealText(treatmentText, this.tenantId)
+        treatmentTags = extractionResult.extractedTags.map(t => t.tagName)
+        console.log(`[PMS SYNC ENGINE] AI extracted ${treatmentTags.length} tags:`, treatmentTags)
+      } catch (error) {
+        console.error('[PMS SYNC ENGINE] AI tag extraction failed:', error)
+        // Continue with empty tags - will route to unsorted
+      }
     }
 
-    // Find "Proposal" stage or first stage
-    const proposalStage = (pipeline.pipeline_stages as any[])?.find(s => 
-      s.name.toLowerCase().includes('proposal')
-    ) || (pipeline.pipeline_stages as any[])?.[0]
+    // Use universal routing engine
+    let pipelineId: string
+    let stageId: string
+    let routingMethod: string
+    let routingLogId: string | undefined
+    
+    try {
+      const routingResult = await quickRouteDeal({
+        dealTitle: `${pmsTreatment.treatmentType} - Treatment`,
+        dealDescription: pmsTreatment.description || '',
+        contactId,
+        orgId: this.tenantId,
+        treatmentTags,
+        userOverridePipeline: undefined,
+        source: 'pms_sync',
+      })
+      
+      pipelineId = routingResult.pipelineId
+      stageId = routingResult.stageId
+      routingMethod = routingResult.routingMethod
+      routingLogId = routingResult.routingLogId
+      
+      console.log(`[PMS SYNC ENGINE] ✅ Routed to pipeline ${pipelineId} via ${routingMethod}`)
+    } catch (routingError) {
+      console.error('[PMS SYNC ENGINE] Routing failed, using fallback:', routingError)
+      
+      // Fallback: Get default pipeline
+      const { data: pipeline } = await supabase
+        .from('pipelines')
+        .select('id, pipeline_stages(id, name)')
+        .eq('tenant_id', this.tenantId)
+        .eq('is_default', true)
+        .single()
 
-    // Create deal
+      if (!pipeline) {
+        throw new Error('No default pipeline found')
+      }
+
+      // Find "Proposal" stage or first stage
+      const proposalStage = (pipeline.pipeline_stages as any[])?.find(s => 
+        s.name.toLowerCase().includes('proposal')
+      ) || (pipeline.pipeline_stages as any[])?.[0]
+
+      pipelineId = pipeline.id
+      stageId = proposalStage.id
+      routingMethod = 'fallback_error'
+    }
+
+    // Create deal with routing
     const { data: deal } = await supabase
       .from('deals')
       .insert({
         tenant_id: this.tenantId,
         contact_id: contactId,
-        pipeline_id: pipeline.id,
-        stage_id: proposalStage.id,
+        pipeline_id: pipelineId,
+        stage_id: stageId,
         title: `${pmsTreatment.treatmentType} - Treatment`,
         value_estimate_cents: pmsTreatment.estimatedCost,
         source: 'PMS',
         pms_treatment_id: pmsTreatment.id,
         treatment_type: pmsTreatment.treatmentType,
-        procedure_codes: pmsTreatment.procedureCodes
+        procedure_codes: pmsTreatment.procedureCodes,
+        treatment_tags: treatmentTags,
+        custom_fields: {
+          routing_log_id: routingLogId,
+          routing_method: routingMethod,
+          pms_integration_id: this.integrationId,
+          pms_provider_name: pmsTreatment.providerName,
+        },
       })
       .select()
       .single()
