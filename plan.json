@@ -1,0 +1,540 @@
+{
+  "seedPack": {
+    "id": "deepak_demo_pack_v1",
+    "name": "Deepak's Demo Dataset",
+    "version": "1.0.0",
+    "createdDate": "2025-10-18",
+    "status": "awaiting_approval",
+    "targetRepo": "AgenttoffeeOrg/dental-crm-private"
+  },
+  "configuration": {
+    "required": {
+      "TARGET_USER_EMAIL": {
+        "type": "github_variable",
+        "description": "Email address of the demo user account",
+        "example": "deepakshegde@gmail.com"
+      },
+      "SEED_PACK_ID": {
+        "type": "github_variable",
+        "default": "deepak_demo_pack_v1",
+        "description": "Unique identifier for this seed pack"
+      }
+    },
+    "optional": {
+      "TARGET_USER_TEMP_PASSWORD": {
+        "type": "github_secret",
+        "description": "Temporary password for local auth (optional, invite flow preferred)"
+      }
+    }
+  },
+  "safety": {
+    "emailDomain": "example.com",
+    "phonePrefix": "+1-555-",
+    "noRealSends": true,
+    "tenantScoped": true,
+    "reversible": true,
+    "idempotent": true
+  },
+  "stack": {
+    "database": "PostgreSQL 15+ (Supabase)",
+    "orm": "none",
+    "auth": "Supabase Auth",
+    "storage": "Supabase Storage",
+    "multiTenant": true
+  },
+  "existingTables": [
+    "tenants",
+    "app_users",
+    "contacts",
+    "pipelines",
+    "pipeline_stages",
+    "deals",
+    "tasks",
+    "activities",
+    "files",
+    "marketing_campaigns",
+    "marketing_sends",
+    "marketing_events",
+    "marketing_forms",
+    "marketing_form_submissions",
+    "marketing_templates",
+    "marketing_journeys",
+    "marketing_segments",
+    "marketing_audiences",
+    "pms_integrations",
+    "pms_patient_mappings",
+    "treatment_plans",
+    "treatment_payments",
+    "lead_sources",
+    "lead_intakes",
+    "dental_services",
+    "custom_roles",
+    "role_permissions",
+    "user_profiles",
+    "audit_trail"
+  ],
+  "missingTables": [
+    {
+      "name": "practice_locations",
+      "purpose": "Physical office locations",
+      "priority": "critical"
+    },
+    {
+      "name": "providers",
+      "purpose": "Dentists and specialists (separate from staff)",
+      "priority": "critical"
+    },
+    {
+      "name": "provider_schedules",
+      "purpose": "Provider availability and working hours",
+      "priority": "critical"
+    },
+    {
+      "name": "appointments",
+      "purpose": "Scheduled patient appointments",
+      "priority": "critical"
+    },
+    {
+      "name": "appointment_types",
+      "purpose": "Appointment templates (checkup, cleaning, etc.)",
+      "priority": "critical"
+    },
+    {
+      "name": "insurance_payers",
+      "purpose": "Insurance companies",
+      "priority": "critical"
+    },
+    {
+      "name": "insurance_policies",
+      "purpose": "Patient insurance policies",
+      "priority": "critical"
+    },
+    {
+      "name": "insurance_claims",
+      "purpose": "Claims tracking and status",
+      "priority": "critical"
+    },
+    {
+      "name": "procedures",
+      "purpose": "Dental procedure codes (ADA/CDT)",
+      "priority": "critical"
+    },
+    {
+      "name": "invoices",
+      "purpose": "Billing invoices",
+      "priority": "critical"
+    },
+    {
+      "name": "payments",
+      "purpose": "Payment records",
+      "priority": "critical"
+    },
+    {
+      "name": "inventory_items",
+      "purpose": "Dental supplies tracking",
+      "priority": "optional"
+    }
+  ],
+  "entities": {
+    "organization": {
+      "count": 1,
+      "table": "tenants",
+      "fields": {
+        "name": "Deepak's Dental Practice",
+        "legal_name": "Deepak's Dental Practice LLC",
+        "timezone": "America/New_York",
+        "currency": "USD",
+        "seed_pack_id": "deepak_demo_pack_v1"
+      }
+    },
+    "locations": {
+      "count": 3,
+      "table": "practice_locations",
+      "distribution": [
+        {
+          "name": "Manhattan Downtown",
+          "address": "123 Main Street, New York, NY 10001",
+          "phone": "+1-555-0101",
+          "providers": 3,
+          "staff": 4
+        },
+        {
+          "name": "Brooklyn Heights",
+          "address": "456 Court Street, Brooklyn, NY 11201",
+          "phone": "+1-555-0102",
+          "providers": 2,
+          "staff": 2
+        },
+        {
+          "name": "Queens Astoria",
+          "address": "789 Steinway St, Astoria, NY 11103",
+          "phone": "+1-555-0103",
+          "providers": 2,
+          "staff": 2
+        }
+      ]
+    },
+    "users": {
+      "count": 12,
+      "table": "app_users",
+      "roles": {
+        "owner": 1,
+        "manager": 1,
+        "admin": 1,
+        "provider": 7,
+        "frontdesk": 2
+      }
+    },
+    "providers": {
+      "count": 7,
+      "table": "providers",
+      "specialties": {
+        "general_dentistry": 1,
+        "cosmetic_dentistry": 1,
+        "pediatric_dentistry": 1,
+        "dental_hygienist": 4
+      }
+    },
+    "patients": {
+      "count": 50,
+      "table": "contacts",
+      "locationSplit": [25, 15, 10],
+      "withInsurance": 30,
+      "sources": {
+        "referral": 20,
+        "google": 12,
+        "instagram": 8,
+        "website": 6,
+        "walkin": 4
+      }
+    },
+    "pipelines": {
+      "count": 4,
+      "table": "pipelines",
+      "items": [
+        {
+          "name": "New Patient Lead",
+          "stages": 4,
+          "deals": 35
+        },
+        {
+          "name": "Treatment Plan",
+          "stages": 5,
+          "deals": 50
+        },
+        {
+          "name": "Cosmetic Procedures",
+          "stages": 5,
+          "deals": 20
+        },
+        {
+          "name": "Recall & Maintenance",
+          "stages": 3,
+          "deals": 15
+        }
+      ]
+    },
+    "deals": {
+      "count": 120,
+      "table": "deals",
+      "valueRanges": {
+        "$50-$300": 40,
+        "$300-$1000": 35,
+        "$1000-$5000": 30,
+        "$5000-$15000": 15
+      },
+      "timeRange": {
+        "createdFrom": "60 days ago",
+        "createdTo": "now"
+      }
+    },
+    "appointmentTypes": {
+      "count": 10,
+      "table": "appointment_types",
+      "items": [
+        "Routine Checkup",
+        "Cleaning (Adult)",
+        "Cleaning (Child)",
+        "New Patient Exam",
+        "Emergency Visit",
+        "Filling",
+        "Root Canal",
+        "Crown Prep",
+        "Whitening",
+        "Orthodontic Consult"
+      ]
+    },
+    "appointments": {
+      "count": 105,
+      "table": "appointments",
+      "timeDistribution": {
+        "past": 60,
+        "today": 5,
+        "future": 40
+      },
+      "statusDistribution": {
+        "completed": 60,
+        "confirmed": 30,
+        "pending": 10,
+        "cancelled": 3,
+        "no_show": 2
+      }
+    },
+    "procedures": {
+      "count": 30,
+      "table": "procedures",
+      "system": "ADA/CDT codes",
+      "embedded": true
+    },
+    "insurancePayers": {
+      "count": 8,
+      "table": "insurance_payers",
+      "items": [
+        "Delta Dental",
+        "Cigna Dental",
+        "MetLife Dental",
+        "Aetna Dental",
+        "UnitedHealthcare Dental",
+        "Guardian Dental",
+        "Humana Dental",
+        "Principal Dental"
+      ]
+    },
+    "insurancePolicies": {
+      "count": 30,
+      "table": "insurance_policies",
+      "coverage": "60% of patients"
+    },
+    "insuranceClaims": {
+      "count": 20,
+      "table": "insurance_claims",
+      "statusDistribution": {
+        "submitted": 3,
+        "pending": 4,
+        "approved": 5,
+        "paid": 7,
+        "denied": 1
+      }
+    },
+    "invoices": {
+      "count": 25,
+      "table": "invoices",
+      "statusDistribution": {
+        "paid": 15,
+        "partial": 5,
+        "sent": 3,
+        "overdue": 2
+      }
+    },
+    "payments": {
+      "count": 35,
+      "table": "payments",
+      "methodDistribution": {
+        "credit_card": 18,
+        "cash": 9,
+        "insurance": 7,
+        "check": 1
+      }
+    },
+    "marketingCampaigns": {
+      "count": 2,
+      "table": "marketing_campaigns",
+      "items": [
+        {
+          "name": "Summer Smile Special",
+          "type": "email",
+          "sends": 45,
+          "opens": 28,
+          "clicks": 12
+        },
+        {
+          "name": "6-Month Recall Reminder",
+          "type": "email+sms",
+          "sends": 48,
+          "opens": 22,
+          "clicks": 8
+        }
+      ]
+    },
+    "marketingSends": {
+      "count": 65,
+      "table": "marketing_sends",
+      "simulated": true,
+      "noRealSends": true
+    },
+    "activities": {
+      "count": 80,
+      "table": "activities",
+      "typeDistribution": {
+        "call": 30,
+        "email": 25,
+        "note": 15,
+        "sms": 10
+      }
+    },
+    "tasks": {
+      "count": 40,
+      "table": "tasks",
+      "statusDistribution": {
+        "open": 20,
+        "in_progress": 10,
+        "done": 8,
+        "cancelled": 2
+      }
+    },
+    "forms": {
+      "count": 2,
+      "table": "marketing_forms",
+      "items": [
+        "New Patient Registration",
+        "Emergency Appointment Request"
+      ]
+    },
+    "formSubmissions": {
+      "count": 11,
+      "table": "marketing_form_submissions",
+      "conversionRate": "81%"
+    },
+    "files": {
+      "count": 10,
+      "table": "files",
+      "placeholder": true,
+      "types": [
+        "consent_forms",
+        "xray_images",
+        "insurance_cards"
+      ]
+    },
+    "messageTemplates": {
+      "count": 3,
+      "table": "marketing_templates",
+      "items": [
+        "Appointment Reminder (SMS)",
+        "Welcome Email",
+        "Treatment Plan Follow-up"
+      ]
+    }
+  },
+  "featureFlags": {
+    "scope": "tenant_only",
+    "neverGlobal": true,
+    "flags": {
+      "marketing_enabled": true,
+      "marketing_plan": "enterprise",
+      "pms_integration_enabled": true
+    }
+  },
+  "dependencies": {
+    "insertOrder": [
+      "auth.users",
+      "tenants",
+      "practice_locations",
+      "app_users",
+      "providers",
+      "provider_schedules",
+      "insurance_payers",
+      "procedures",
+      "appointment_types",
+      "pipelines",
+      "pipeline_stages",
+      "contacts",
+      "insurance_policies",
+      "deals",
+      "appointments",
+      "invoices",
+      "insurance_claims",
+      "payments",
+      "marketing_campaigns",
+      "marketing_sends",
+      "activities",
+      "tasks",
+      "marketing_forms",
+      "marketing_form_submissions",
+      "files"
+    ],
+    "deleteOrder": [
+      "files",
+      "marketing_form_submissions",
+      "marketing_forms",
+      "tasks",
+      "activities",
+      "marketing_sends",
+      "marketing_campaigns",
+      "payments",
+      "insurance_claims",
+      "invoices",
+      "appointments",
+      "deals",
+      "insurance_policies",
+      "contacts",
+      "pipeline_stages",
+      "pipelines",
+      "appointment_types",
+      "procedures",
+      "insurance_payers",
+      "provider_schedules",
+      "providers",
+      "app_users",
+      "practice_locations"
+    ]
+  },
+  "scripts": {
+    "seed": "scripts/demo/seed-deepak.ts",
+    "clear": "scripts/demo/clear-deepak.ts",
+    "verify": "scripts/demo/verify-deepak.ts",
+    "npm": {
+      "seed:deepak": "tsx scripts/demo/seed-deepak.ts",
+      "clear:deepak": "tsx scripts/demo/clear-deepak.ts",
+      "reset:deepak": "npm run clear:deepak && npm run seed:deepak",
+      "verify:deepak": "tsx scripts/demo/verify-deepak.ts"
+    }
+  },
+  "github": {
+    "workflow": ".github/workflows/demo-verify.yml",
+    "trigger": "workflow_dispatch",
+    "outputs": "Entity counts summary"
+  },
+  "validation": {
+    "idempotency": "All inserts use ON CONFLICT with seed_pack_id",
+    "transactions": "Logical groups wrapped in transactions",
+    "rollback": "Full deletion via seed_pack_id filter",
+    "verification": "Count queries by entity and seed pack"
+  },
+  "timeline": {
+    "dataRange": {
+      "past": "60 days",
+      "future": "14 days"
+    },
+    "appointments": {
+      "completed": "Past 60 days",
+      "upcoming": "Next 14 days"
+    },
+    "deals": {
+      "created": "Past 60 days",
+      "closeDates": "Past 30 days to future 60 days"
+    },
+    "campaigns": {
+      "sent": "14-30 days ago"
+    }
+  },
+  "totals": {
+    "entities": 21,
+    "tables": 35,
+    "records": 750,
+    "locations": 3,
+    "users": 12,
+    "patients": 50,
+    "deals": 120,
+    "appointments": 105,
+    "invoices": 25,
+    "payments": 35,
+    "claims": 20
+  },
+  "status": {
+    "phase1": "complete",
+    "phase2": "awaiting_approval",
+    "readyToImplement": false,
+    "approvalRequired": "Type APPROVE SEED to proceed"
+  }
+}
+

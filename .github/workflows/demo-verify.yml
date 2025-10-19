@@ -1,0 +1,35 @@
+name: Verify Demo Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed_pack_id:
+        description: 'Seed Pack ID to verify'
+        required: false
+        default: 'deepak_demo_pack_v1'
+
+jobs:
+  verify:
+    name: Verify Demo Seed Data
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Verify demo data
+        env:
+          SEED_PACK_ID: ${{ inputs.seed_pack_id || vars.SEED_PACK_ID }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run verify:deepak
+

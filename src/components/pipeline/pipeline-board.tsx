@@ -275,7 +275,7 @@ function DealListRow({
 
         {/* Value */}
         <div className="col-span-1 font-semibold text-green-700 text-sm">
-          {formatCurrencyValue(deal.value_estimate_cents)}
+          {formatCurrency(deal.value_estimate_cents)}
         </div>
 
         {/* Last Activity */}
@@ -903,7 +903,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
                   {format.pluralize(filteredDeals.length, 'Deal')}
                 </Badge>
                 <Badge variant="outline" className="font-semibold px-3 py-1.5 bg-green-50 text-green-700 border-green-200">
-                  {formatCurrencyValue(filteredDeals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))}
+                  {formatCurrency(filteredDeals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))}
                 </Badge>
               </div>
             </div>
