@@ -619,16 +619,22 @@ export function PipelineMappingSettings({ tenantId }: { tenantId: string }) {
       setRoutingSettings(settingsData)
     } catch (error) {
       const errorInfo = handleDatabaseError(error, 'LoadPipelineMappings')
-      console.error('Error loading data:', error)
+      console.error('[Pipeline Mappings] Load error:', error)
+      console.error('[Pipeline Mappings] Error details:', JSON.stringify(error, null, 2))
       
       if (errorInfo.isTableMissing) {
-        toast.info('Treatment routing system is not yet set up. Database migrations need to be run.')
+        console.info('[Pipeline Mappings] Tables not yet created - showing empty state')
         setTags([])
         setPipelines([])
         setStages([])
         setMappings([])
       } else {
         toast.error(errorInfo.userMessage)
+        // Set empty states to prevent UI errors
+        setTags([])
+        setPipelines([])
+        setStages([])
+        setMappings([])
       }
     } finally {
       setLoading(false)
