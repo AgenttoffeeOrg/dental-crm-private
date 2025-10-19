@@ -7,11 +7,13 @@
 
 ## 📋 WHAT YOU'LL DO
 
-Run 3 SQL migration files in your Supabase dashboard to create the treatment routing system tables.
+Run 3-4 SQL migration files in your Supabase dashboard to create the treatment routing system tables.
 
 **Time Required:** 5-10 minutes  
 **Difficulty:** Easy (copy & paste)  
 **Risk:** Zero (these migrations use `IF NOT EXISTS` so they're 100% safe)
+
+**Note:** You may need to run an additional pre-migration file (`46a`) if your database has a specific schema issue. The migration will tell you if needed.
 
 ---
 
@@ -71,9 +73,70 @@ Success. No rows returned
 5. **Wait:** 5-10 seconds
 
 ### Expected result:
+
+**Option A:** Success ✅
 ```
 Success. No rows returned
 ```
+
+**Option B:** Type mismatch error 🔧
+If you see an error about `permission_key` being UUID instead of TEXT:
+```
+ℹ permission_key column is UUID but should be TEXT
+⚠ MANUAL FIX REQUIRED: Cannot auto-migrate UUID to TEXT due to dependencies
+```
+
+**If you get Option B, proceed to STEP 3A below. Otherwise, skip to STEP 4.**
+
+---
+
+## ✅ STEP 3A: FIX permission_key TYPE (IF NEEDED)
+
+**Only run this if Step 3 gave you a type mismatch error!**
+
+### 📄 File: `46a_fix_permission_key_type.sql`
+
+**What it does:**
+- Fixes `permission_key` column type from UUID to TEXT
+- Handles policy dependencies safely
+- Creates backup for safety
+
+### How to run:
+
+1. **Click:** "+ New query" button
+2. **Open file:** `/Users/deepak/auth-app/dental-crm/supabase/sql/46a_fix_permission_key_type.sql`
+3. **Select all, copy, paste**
+4. **Click:** "Run" button
+5. **Wait:** 10-15 seconds (this one takes a bit longer)
+
+### Expected result:
+```
+═══════════════════════════════════════════════════
+FIX: role_permissions.permission_key UUID → TEXT
+═══════════════════════════════════════════════════
+
+✓ Detected: permission_key is UUID (needs to be TEXT)
+ℹ Table has X rows
+
+→ Step 1: Creating backup...
+✓ Backup created: role_permissions_backup_uuid
+
+→ Step 2: Dropping dependent RLS policies...
+✓ Policies dropped (will be recreated by application)
+
+... (more steps)
+
+═══════════════════════════════════════════════════
+✓ SUCCESS! permission_key is now TEXT
+═══════════════════════════════════════════════════
+```
+
+### After 46a succeeds:
+
+**Go back and run Step 3 again!**
+1. **Click:** "+ New query" button
+2. **Copy and run:** `46_treatment_routing_permissions.sql` again
+3. **This time it should succeed** ✅
 
 ---
 
