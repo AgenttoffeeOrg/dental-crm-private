@@ -46,9 +46,10 @@ BEGIN
   RAISE NOTICE '';
   
   -- Get tenant ID for deepakshegde@gmail.com
-  SELECT id INTO v_tenant_id
-  FROM tenants
-  WHERE owner_email = 'deepakshegde@gmail.com'
+  SELECT au.tenant_id INTO v_tenant_id
+  FROM auth.users u
+  JOIN app_users au ON au.id = u.id
+  WHERE u.email = 'deepakshegde@gmail.com'
   LIMIT 1;
   
   IF v_tenant_id IS NULL THEN
@@ -482,7 +483,11 @@ COMMIT;
 -- Check treatment tags
 -- SELECT name, color, icon, array_length(keywords, 1) as keyword_count
 -- FROM treatment_tags
--- WHERE tenant_id = (SELECT id FROM tenants WHERE owner_email = 'deepakshegde@gmail.com')
+-- WHERE tenant_id = (
+--   SELECT au.tenant_id FROM auth.users u 
+--   JOIN app_users au ON au.id = u.id 
+--   WHERE u.email = 'deepakshegde@gmail.com'
+-- )
 -- ORDER BY name;
 
 -- Check pipeline mappings
@@ -493,7 +498,11 @@ COMMIT;
 -- FROM treatment_tag_pipeline_mappings ttpm
 -- JOIN treatment_tags tt ON tt.id = ttpm.treatment_tag_id
 -- JOIN pipelines p ON p.id = ttpm.pipeline_id
--- WHERE ttpm.tenant_id = (SELECT id FROM tenants WHERE owner_email = 'deepakshegde@gmail.com')
+-- WHERE ttpm.tenant_id = (
+--   SELECT au.tenant_id FROM auth.users u 
+--   JOIN app_users au ON au.id = u.id 
+--   WHERE u.email = 'deepakshegde@gmail.com'
+-- )
 -- ORDER BY ttpm.priority, tt.name;
 
 -- Check routing settings
@@ -503,7 +512,11 @@ COMMIT;
 --   confidence_threshold,
 --   allow_manual_override
 -- FROM treatment_routing_settings
--- WHERE tenant_id = (SELECT id FROM tenants WHERE owner_email = 'deepakshegde@gmail.com');
+-- WHERE tenant_id = (
+--   SELECT au.tenant_id FROM auth.users u 
+--   JOIN app_users au ON au.id = u.id 
+--   WHERE u.email = 'deepakshegde@gmail.com'
+-- );
 
 -- =====================================================
 
