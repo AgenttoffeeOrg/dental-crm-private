@@ -95,76 +95,42 @@ BEGIN
     -- If it's UUID but should be TEXT, we need to fix it
     IF v_column_type = 'uuid' THEN
       RAISE NOTICE 'ℹ permission_key column is UUID but should be TEXT';
+      RAISE NOTICE '⚠ MANUAL FIX REQUIRED: Cannot auto-migrate UUID to TEXT due to dependencies';
+      RAISE NOTICE '→ Please run this SQL manually BEFORE running this migration:';
+      RAISE NOTICE '';
+      RAISE NOTICE '-- Step 1: Backup data';
+      RAISE NOTICE 'CREATE TABLE role_permissions_backup_uuid AS SELECT * FROM role_permissions;';
+      RAISE NOTICE '';
+      RAISE NOTICE '-- Step 2: Drop dependent policies (will be recreated)';
+      RAISE NOTICE 'DROP POLICY IF EXISTS join_requests_select_admin ON organization_join_requests CASCADE;';
+      RAISE NOTICE 'DROP POLICY IF EXISTS join_requests_update_admin ON organization_join_requests CASCADE;';
+      RAISE NOTICE '';
+      RAISE NOTICE '-- Step 3: Rename old column';
+      RAISE NOTICE 'ALTER TABLE role_permissions RENAME COLUMN permission_key TO permission_key_old;';
+      RAISE NOTICE '';
+      RAISE NOTICE '-- Step 4: Add new TEXT column';
+      RAISE NOTICE 'ALTER TABLE role_permissions ADD COLUMN permission_key TEXT;';
+      RAISE NOTICE '';
+      RAISE NOTICE '-- Step 5: Clear table (will be repopulated by migration)';
+      RAISE NOTICE 'TRUNCATE role_permissions;';
+      RAISE NOTICE '';
+      RAISE NOTICE '-- Step 6: Drop old column';
+      RAISE NOTICE 'ALTER TABLE role_permissions DROP COLUMN permission_key_old;';
+      RAISE NOTICE '';
+      RAISE NOTICE '-- Step 7: Make column NOT NULL';
+      RAISE NOTICE 'ALTER TABLE role_permissions ALTER COLUMN permission_key SET NOT NULL;';
+      RAISE NOTICE '';
+      RAISE NOTICE '-- Step 8: Add constraints';
+      RAISE NOTICE 'ALTER TABLE role_permissions ADD CONSTRAINT role_permissions_permission_key_fkey';
+      RAISE NOTICE '  FOREIGN KEY (permission_key) REFERENCES permission_definitions(key) ON DELETE CASCADE;';
+      RAISE NOTICE 'ALTER TABLE role_permissions ADD CONSTRAINT role_permissions_role_id_permission_key_key';
+      RAISE NOTICE '  UNIQUE(role_id, permission_key);';
+      RAISE NOTICE 'CREATE INDEX role_permissions_permission_key_idx ON role_permissions(permission_key);';
+      RAISE NOTICE '';
+      RAISE NOTICE '-- Step 9: Then run this migration again';
+      RAISE NOTICE '';
       
-      -- Check if table has any data
-      EXECUTE 'SELECT EXISTS(SELECT 1 FROM role_permissions LIMIT 1)' INTO v_has_data;
-      
-      IF v_has_data THEN
-        RAISE NOTICE '⚠ Table has data - will migrate to correct structure';
-        
-        -- Create backup of existing data
-        CREATE TEMP TABLE role_permissions_backup AS 
-        SELECT * FROM role_permissions;
-        
-        -- Drop the constraint and column
-        ALTER TABLE role_permissions DROP CONSTRAINT IF EXISTS role_permissions_permission_key_fkey;
-        ALTER TABLE role_permissions DROP CONSTRAINT IF EXISTS role_permissions_role_id_permission_key_key;
-        DROP INDEX IF EXISTS role_permissions_permission_key_idx;
-        ALTER TABLE role_permissions DROP COLUMN permission_key;
-        
-        -- Add column with correct type
-        ALTER TABLE role_permissions 
-          ADD COLUMN permission_key TEXT NOT NULL DEFAULT 'temp';
-        
-        -- For existing rows, we can't migrate UUID to TEXT automatically
-        -- So we'll clear the table (since we're about to repopulate it anyway)
-        TRUNCATE role_permissions;
-        
-        -- Recreate constraints
-        ALTER TABLE role_permissions
-          ADD CONSTRAINT role_permissions_permission_key_fkey 
-          FOREIGN KEY (permission_key) 
-          REFERENCES permission_definitions(key) 
-          ON DELETE CASCADE;
-        
-        ALTER TABLE role_permissions
-          ADD CONSTRAINT role_permissions_role_id_permission_key_key 
-          UNIQUE(role_id, permission_key);
-        
-        CREATE INDEX role_permissions_permission_key_idx 
-          ON role_permissions(permission_key);
-        
-        -- Remove default
-        ALTER TABLE role_permissions ALTER COLUMN permission_key DROP DEFAULT;
-        
-        RAISE NOTICE '✓ Fixed: Changed permission_key from UUID to TEXT';
-        RAISE NOTICE '  → Existing permissions will be repopulated by this migration';
-        
-      ELSE
-        -- Table is empty, easy fix
-        ALTER TABLE role_permissions DROP CONSTRAINT IF EXISTS role_permissions_permission_key_fkey;
-        ALTER TABLE role_permissions DROP CONSTRAINT IF EXISTS role_permissions_role_id_permission_key_key;
-        DROP INDEX IF EXISTS role_permissions_permission_key_idx;
-        ALTER TABLE role_permissions DROP COLUMN permission_key;
-        
-        ALTER TABLE role_permissions 
-          ADD COLUMN permission_key TEXT NOT NULL;
-        
-        ALTER TABLE role_permissions
-          ADD CONSTRAINT role_permissions_permission_key_fkey 
-          FOREIGN KEY (permission_key) 
-          REFERENCES permission_definitions(key) 
-          ON DELETE CASCADE;
-        
-        ALTER TABLE role_permissions
-          ADD CONSTRAINT role_permissions_role_id_permission_key_key 
-          UNIQUE(role_id, permission_key);
-        
-        CREATE INDEX role_permissions_permission_key_idx 
-          ON role_permissions(permission_key);
-        
-        RAISE NOTICE '✓ Fixed: Changed permission_key from UUID to TEXT (table was empty)';
-      END IF;
+      RAISE EXCEPTION 'Migration halted: role_permissions.permission_key is UUID but should be TEXT. Please follow the manual steps above.';
       
     ELSIF v_column_type = 'text' OR v_column_type = 'character varying' THEN
       RAISE NOTICE '✓ role_permissions.permission_key has correct type (TEXT)';
