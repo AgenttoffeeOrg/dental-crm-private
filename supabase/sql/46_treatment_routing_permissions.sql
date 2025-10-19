@@ -34,6 +34,75 @@
 BEGIN;
 
 -- =====================================================
+-- 0. VERIFY & FIX TABLE STRUCTURE
+-- =====================================================
+-- Ensure role_permissions table has correct structure
+-- (Handle potential schema variations from older migrations)
+
+DO $$
+BEGIN
+  -- Check if role_permissions table exists
+  IF EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'role_permissions'
+  ) THEN
+    
+    -- Check if permission_key column exists (correct name)
+    IF NOT EXISTS (
+      SELECT FROM information_schema.columns 
+      WHERE table_schema = 'public'
+      AND table_name = 'role_permissions' 
+      AND column_name = 'permission_key'
+    ) THEN
+      
+      -- Check if it's called permission_id or permission_definition_id instead
+      IF EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_schema = 'public'
+        AND table_name = 'role_permissions' 
+        AND column_name = 'permission_id'
+      ) THEN
+        -- Rename permission_id to permission_key
+        ALTER TABLE role_permissions 
+          RENAME COLUMN permission_id TO permission_key;
+        RAISE NOTICE '✓ Fixed: Renamed permission_id to permission_key';
+      ELSIF EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_schema = 'public'
+        AND table_name = 'role_permissions' 
+        AND column_name = 'permission_definition_id'
+      ) THEN
+        -- Rename permission_definition_id to permission_key
+        ALTER TABLE role_permissions 
+          RENAME COLUMN permission_definition_id TO permission_key;
+        RAISE NOTICE '✓ Fixed: Renamed permission_definition_id to permission_key';
+      ELSE
+        RAISE EXCEPTION 'role_permissions table exists but has no permission column. Please check table structure.';
+      END IF;
+    ELSE
+      RAISE NOTICE '✓ role_permissions table structure is correct';
+    END IF;
+    
+  ELSE
+    -- Table doesn't exist - create it with correct structure
+    CREATE TABLE role_permissions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      role_id UUID NOT NULL REFERENCES custom_roles(id) ON DELETE CASCADE,
+      permission_key TEXT NOT NULL REFERENCES permission_definitions(key) ON DELETE CASCADE,
+      granted BOOLEAN DEFAULT true,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      UNIQUE(role_id, permission_key)
+    );
+    
+    CREATE INDEX role_permissions_role_id_idx ON role_permissions(role_id);
+    CREATE INDEX role_permissions_permission_key_idx ON role_permissions(permission_key);
+    
+    RAISE NOTICE '✓ Created role_permissions table';
+  END IF;
+END $$;
+
+-- =====================================================
 -- 1. INSERT NEW PERMISSION DEFINITIONS
 -- =====================================================
 
