@@ -133,7 +133,7 @@ export function CreateDealSlideOver({
       .from('pipeline_stages')
       .select('*')
       .eq('pipeline_id', pipelineId)
-      .order('order_index')
+      .order('position')
     
     setStages(stagesData || [])
 

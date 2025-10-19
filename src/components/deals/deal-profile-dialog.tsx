@@ -202,7 +202,7 @@ export function DealProfileDialog({
         .from('pipeline_stages')
         .select('*')
         .eq('pipeline_id', pipelineId)
-        .order('order_index')
+        .order('position')
 
       if (stagesError) {
         console.error('Error loading stages:', stagesError)
