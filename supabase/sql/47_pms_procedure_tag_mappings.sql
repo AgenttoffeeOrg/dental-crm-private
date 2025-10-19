@@ -123,7 +123,24 @@ CREATE POLICY delete_pms_proc_mappings ON pms_procedure_tag_mappings
   );
 
 -- =====================================================
--- 4. TRIGGER: AUTO-UPDATE TIMESTAMP
+-- 4. HELPER FUNCTION: UPDATE TIMESTAMP
+-- =====================================================
+-- Create the update_timestamp function if it doesn't exist
+
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION update_timestamp IS 'Automatically updates updated_at timestamp on row updates';
+
+-- =====================================================
+-- 5. TRIGGER: AUTO-UPDATE TIMESTAMP
 -- =====================================================
 
 CREATE TRIGGER update_pms_proc_mappings_timestamp
@@ -132,7 +149,7 @@ CREATE TRIGGER update_pms_proc_mappings_timestamp
   EXECUTE FUNCTION update_timestamp();
 
 -- =====================================================
--- 5. HELPER FUNCTION: BULK IMPORT PMS MAPPINGS
+-- 6. HELPER FUNCTION: BULK IMPORT PMS MAPPINGS
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION bulk_import_pms_procedure_mappings(
@@ -217,7 +234,7 @@ $$;
 COMMENT ON FUNCTION bulk_import_pms_procedure_mappings IS 'Bulk import procedure code to tag mappings from JSON array';
 
 -- =====================================================
--- 6. SEED DATA: COMMON DENTAL PROCEDURE CODES
+-- 7. SEED DATA: COMMON DENTAL PROCEDURE CODES
 -- =====================================================
 -- Common ADA procedure codes that practices can customize
 
