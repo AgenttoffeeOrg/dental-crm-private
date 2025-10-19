@@ -34,7 +34,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS treatment_tags (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  location_id UUID REFERENCES practice_locations(id) ON DELETE CASCADE,
+  location_id UUID, -- References practice_locations(id) - FK added later if table exists
   
   -- Tag Details
   name TEXT NOT NULL, -- "Dental Implant", "Invisalign", "Emergency Care"
@@ -105,7 +105,7 @@ COMMENT ON COLUMN treatment_tags.scope IS 'Organization-wide tags available to a
 CREATE TABLE IF NOT EXISTS treatment_tag_pipeline_mappings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  location_id UUID REFERENCES practice_locations(id) ON DELETE CASCADE,
+  location_id UUID, -- References practice_locations(id) - FK added later if table exists
   
   -- Mapping Details
   treatment_tag_id UUID NOT NULL REFERENCES treatment_tags(id) ON DELETE CASCADE,
@@ -552,6 +552,59 @@ ALTER TABLE treatment_tag_pipeline_mappings
     -- This will be validated in application logic due to complexity
     true
   );
+
+-- =====================================================
+-- OPTIONAL: ADD FOREIGN KEYS TO practice_locations
+-- Only if the table exists (multi-location feature)
+-- =====================================================
+
+DO $$
+BEGIN
+  -- Check if practice_locations table exists
+  IF EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'practice_locations'
+  ) THEN
+    
+    -- Add foreign key to treatment_tags if it doesn't exist
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.table_constraints 
+      WHERE constraint_name = 'treatment_tags_location_id_fkey'
+      AND table_name = 'treatment_tags'
+    ) THEN
+      ALTER TABLE treatment_tags
+        ADD CONSTRAINT treatment_tags_location_id_fkey 
+        FOREIGN KEY (location_id) 
+        REFERENCES practice_locations(id) 
+        ON DELETE CASCADE;
+      
+      RAISE NOTICE '✓ Added foreign key: treatment_tags → practice_locations';
+    END IF;
+    
+    -- Add foreign key to treatment_tag_pipeline_mappings if it doesn't exist
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.table_constraints 
+      WHERE constraint_name = 'treatment_tag_pipeline_mappings_location_id_fkey'
+      AND table_name = 'treatment_tag_pipeline_mappings'
+    ) THEN
+      ALTER TABLE treatment_tag_pipeline_mappings
+        ADD CONSTRAINT treatment_tag_pipeline_mappings_location_id_fkey 
+        FOREIGN KEY (location_id) 
+        REFERENCES practice_locations(id) 
+        ON DELETE CASCADE;
+      
+      RAISE NOTICE '✓ Added foreign key: treatment_tag_pipeline_mappings → practice_locations';
+    END IF;
+    
+    RAISE NOTICE '✓ Multi-location support: ENABLED';
+    
+  ELSE
+    RAISE NOTICE 'ℹ Multi-location support: DISABLED (practice_locations table not found)';
+    RAISE NOTICE '  → location_id columns will remain NULL';
+    RAISE NOTICE '  → Foreign keys will be added when practice_locations is created';
+  END IF;
+END $$;
 
 COMMIT;
 
