@@ -35,17 +35,64 @@ DO $$
 DECLARE
   v_column_type TEXT;
   v_has_data BOOLEAN;
+  v_column_exists BOOLEAN;
+  v_alt_column_name TEXT;
 BEGIN
-  -- Check current column type
+  RAISE NOTICE '═══════════════════════════════════════════════════';
+  RAISE NOTICE 'FIX: role_permissions.permission_key UUID → TEXT';
+  RAISE NOTICE '═══════════════════════════════════════════════════';
+  RAISE NOTICE '';
+  
+  -- Check if permission_key column exists
+  SELECT EXISTS(
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public'
+    AND table_name = 'role_permissions' 
+    AND column_name = 'permission_key'
+  ) INTO v_column_exists;
+  
+  IF NOT v_column_exists THEN
+    RAISE NOTICE 'ℹ permission_key column does not exist';
+    RAISE NOTICE '→ Checking for alternative column names...';
+    
+    -- Check for permission_id
+    IF EXISTS(
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public'
+      AND table_name = 'role_permissions' 
+      AND column_name = 'permission_id'
+    ) THEN
+      v_alt_column_name := 'permission_id';
+      RAISE NOTICE '✓ Found: permission_id (will rename to permission_key)';
+    -- Check for permission_definition_id
+    ELSIF EXISTS(
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public'
+      AND table_name = 'role_permissions' 
+      AND column_name = 'permission_definition_id'
+    ) THEN
+      v_alt_column_name := 'permission_definition_id';
+      RAISE NOTICE '✓ Found: permission_definition_id (will rename to permission_key)';
+    ELSE
+      RAISE EXCEPTION 'role_permissions table exists but has no permission column (permission_key, permission_id, or permission_definition_id). Please check table structure.';
+    END IF;
+    
+    -- Rename the column
+    RAISE NOTICE '';
+    RAISE NOTICE '→ Renaming % to permission_key...', v_alt_column_name;
+    EXECUTE format('ALTER TABLE role_permissions RENAME COLUMN %I TO permission_key', v_alt_column_name);
+    RAISE NOTICE '✓ Column renamed';
+  END IF;
+  
+  -- Now get the column type
   SELECT data_type INTO v_column_type
   FROM information_schema.columns 
   WHERE table_schema = 'public'
   AND table_name = 'role_permissions' 
   AND column_name = 'permission_key';
   
-  RAISE NOTICE '═══════════════════════════════════════════════════';
-  RAISE NOTICE 'FIX: role_permissions.permission_key UUID → TEXT';
-  RAISE NOTICE '═══════════════════════════════════════════════════';
+  RAISE NOTICE '';
+  RAISE NOTICE 'Current permission_key type: %', v_column_type;
   RAISE NOTICE '';
   
   IF v_column_type = 'uuid' THEN
@@ -153,8 +200,38 @@ BEGIN
     RAISE NOTICE 'You can proceed directly to migration 46.';
     RAISE NOTICE '';
     
+  ELSIF v_column_type IS NULL THEN
+    RAISE EXCEPTION 'Could not determine permission_key column type. This should not happen - please check that the column exists.';
+    
   ELSE
-    RAISE EXCEPTION 'Unexpected permission_key type: %. Manual intervention required.', v_column_type;
+    RAISE NOTICE '⚠ Unexpected permission_key type: %', v_column_type;
+    RAISE NOTICE 'Attempting to convert to TEXT anyway...';
+    
+    -- Try to convert any other type to TEXT
+    ALTER TABLE role_permissions DROP CONSTRAINT IF EXISTS role_permissions_permission_key_fkey;
+    ALTER TABLE role_permissions DROP CONSTRAINT IF EXISTS role_permissions_role_id_permission_key_key;
+    DROP INDEX IF EXISTS role_permissions_permission_key_idx;
+    
+    ALTER TABLE role_permissions RENAME COLUMN permission_key TO permission_key_old;
+    ALTER TABLE role_permissions ADD COLUMN permission_key TEXT;
+    TRUNCATE role_permissions;
+    ALTER TABLE role_permissions DROP COLUMN permission_key_old;
+    ALTER TABLE role_permissions ALTER COLUMN permission_key SET NOT NULL;
+    
+    ALTER TABLE role_permissions
+      ADD CONSTRAINT role_permissions_permission_key_fkey 
+      FOREIGN KEY (permission_key) 
+      REFERENCES permission_definitions(key) 
+      ON DELETE CASCADE;
+    
+    ALTER TABLE role_permissions
+      ADD CONSTRAINT role_permissions_role_id_permission_key_key 
+      UNIQUE(role_id, permission_key);
+    
+    CREATE INDEX role_permissions_permission_key_idx 
+      ON role_permissions(permission_key);
+    
+    RAISE NOTICE '✓ Converted % to TEXT', v_column_type;
   END IF;
   
 END $$;
