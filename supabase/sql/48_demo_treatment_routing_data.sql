@@ -105,9 +105,11 @@ BEGIN
     color,
     icon,
     keywords,
+    category,
     is_active,
-    is_system,
-    created_by
+    is_system_tag,
+    scope,
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     'Dental Implants',
@@ -115,11 +117,13 @@ BEGIN
     '#8B4513', -- Brown
     '🦷',
     ARRAY['implant', 'dental implant', 'tooth replacement', 'implant surgery', 'osseointegration', 'implant crown', 'implant bridge', 'all-on-4', 'full arch'],
+    'high_value',
     true,
     false,
+    'organization',
     v_user_id
   )
-  ON CONFLICT (tenant_id, name) DO NOTHING
+  ON CONFLICT (tenant_id, location_id, name) DO NOTHING
   RETURNING id INTO v_tag_id_implants;
   
   IF v_tag_id_implants IS NOT NULL THEN
@@ -137,9 +141,11 @@ BEGIN
     color,
     icon,
     keywords,
+    category,
     is_active,
-    is_system,
-    created_by
+    is_system_tag,
+    scope,
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     'Orthodontics',
@@ -147,11 +153,13 @@ BEGIN
     '#4169E1', -- Royal Blue
     '😁',
     ARRAY['braces', 'invisalign', 'clear aligners', 'orthodontic', 'teeth alignment', 'straightening', 'malocclusion', 'retainer'],
+    'high_value',
     true,
     false,
+    'organization',
     v_user_id
   )
-  ON CONFLICT (tenant_id, name) DO NOTHING
+  ON CONFLICT (tenant_id, location_id, name) DO NOTHING
   RETURNING id INTO v_tag_id_ortho;
   
   IF v_tag_id_ortho IS NOT NULL THEN
@@ -169,9 +177,11 @@ BEGIN
     color,
     icon,
     keywords,
+    category,
     is_active,
-    is_system,
-    created_by
+    is_system_tag,
+    scope,
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     'Cosmetic Dentistry',
@@ -179,11 +189,13 @@ BEGIN
     '#FF69B4', -- Hot Pink
     '✨',
     ARRAY['veneers', 'teeth whitening', 'cosmetic', 'smile makeover', 'bonding', 'aesthetic', 'bleaching', 'porcelain veneers'],
+    'cosmetic',
     true,
     false,
+    'organization',
     v_user_id
   )
-  ON CONFLICT (tenant_id, name) DO NOTHING
+  ON CONFLICT (tenant_id, location_id, name) DO NOTHING
   RETURNING id INTO v_tag_id_cosmetic;
   
   IF v_tag_id_cosmetic IS NOT NULL THEN
@@ -201,9 +213,11 @@ BEGIN
     color,
     icon,
     keywords,
+    category,
     is_active,
-    is_system,
-    created_by
+    is_system_tag,
+    scope,
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     'Root Canal Therapy',
@@ -211,11 +225,13 @@ BEGIN
     '#DC143C', -- Crimson
     '🏥',
     ARRAY['root canal', 'endodontic', 'rct', 'pulp therapy', 'infected tooth', 'tooth pain', 'abscess'],
+    'general',
     true,
     false,
+    'organization',
     v_user_id
   )
-  ON CONFLICT (tenant_id, name) DO NOTHING
+  ON CONFLICT (tenant_id, location_id, name) DO NOTHING
   RETURNING id INTO v_tag_id_root_canal;
   
   IF v_tag_id_root_canal IS NOT NULL THEN
@@ -233,9 +249,11 @@ BEGIN
     color,
     icon,
     keywords,
+    category,
     is_active,
-    is_system,
-    created_by
+    is_system_tag,
+    scope,
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     'Preventive Care',
@@ -243,11 +261,13 @@ BEGIN
     '#32CD32', -- Lime Green
     '🧼',
     ARRAY['cleaning', 'prophylaxis', 'exam', 'checkup', 'fluoride', 'dental hygiene', 'maintenance', 'prevention'],
+    'general',
     true,
     false,
+    'organization',
     v_user_id
   )
-  ON CONFLICT (tenant_id, name) DO NOTHING
+  ON CONFLICT (tenant_id, location_id, name) DO NOTHING
   RETURNING id INTO v_tag_id_cleaning;
   
   IF v_tag_id_cleaning IS NOT NULL THEN
@@ -265,9 +285,11 @@ BEGIN
     color,
     icon,
     keywords,
+    category,
     is_active,
-    is_system,
-    created_by
+    is_system_tag,
+    scope,
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     'Emergency Treatment',
@@ -275,11 +297,13 @@ BEGIN
     '#FF4500', -- Orange Red
     '🚨',
     ARRAY['emergency', 'urgent', 'pain', 'trauma', 'broken tooth', 'knocked out', 'severe pain', 'dental emergency'],
+    'emergency',
     true,
     false,
+    'organization',
     v_user_id
   )
-  ON CONFLICT (tenant_id, name) DO NOTHING
+  ON CONFLICT (tenant_id, location_id, name) DO NOTHING
   RETURNING id INTO v_tag_id_emergency;
   
   IF v_tag_id_emergency IS NOT NULL THEN
@@ -302,7 +326,7 @@ BEGIN
     treatment_tag_id,
     pipeline_id,
     priority,
-    created_by
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     v_tag_id_implants,
@@ -319,7 +343,7 @@ BEGIN
     treatment_tag_id,
     pipeline_id,
     priority,
-    created_by
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     v_tag_id_ortho,
@@ -336,7 +360,7 @@ BEGIN
     treatment_tag_id,
     pipeline_id,
     priority,
-    created_by
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     v_tag_id_cosmetic,
@@ -353,7 +377,7 @@ BEGIN
     treatment_tag_id,
     pipeline_id,
     priority,
-    created_by
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     v_tag_id_root_canal,
@@ -370,7 +394,7 @@ BEGIN
     treatment_tag_id,
     pipeline_id,
     priority,
-    created_by
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     v_tag_id_cleaning,
@@ -387,7 +411,7 @@ BEGIN
     treatment_tag_id,
     pipeline_id,
     priority,
-    created_by
+    created_by_user_id
   ) VALUES (
     v_tenant_id,
     v_tag_id_emergency,
@@ -405,31 +429,31 @@ BEGIN
   -- =====================================================
   RAISE NOTICE '→ Step 3: Configuring routing settings...';
   
-  INSERT INTO treatment_routing_settings (
+  INSERT INTO tenant_routing_settings (
     tenant_id,
-    enable_auto_routing,
-    enable_ai_extraction,
-    default_unsorted_pipeline_id,
-    confidence_threshold,
-    allow_manual_override,
-    updated_by
+    routing_enabled,
+    ai_routing_enabled,
+    unsorted_pipeline_id,
+    ai_confidence_threshold,
+    allow_user_override,
+    updated_by_user_id
   ) VALUES (
     v_tenant_id,
-    true, -- Enable auto-routing
-    true, -- Enable AI extraction
+    true, -- Enable routing
+    true, -- Enable AI routing
     v_pipeline_unsorted, -- Unsorted pipeline
-    0.7, -- 70% confidence threshold
+    70, -- 70% confidence threshold
     true, -- Allow manual override
     v_user_id
   )
   ON CONFLICT (tenant_id) 
   DO UPDATE SET
-    enable_auto_routing = true,
-    enable_ai_extraction = true,
-    default_unsorted_pipeline_id = v_pipeline_unsorted,
-    confidence_threshold = 0.7,
-    allow_manual_override = true,
-    updated_by = v_user_id,
+    routing_enabled = true,
+    ai_routing_enabled = true,
+    unsorted_pipeline_id = v_pipeline_unsorted,
+    ai_confidence_threshold = 70,
+    allow_user_override = true,
+    updated_by_user_id = v_user_id,
     updated_at = NOW();
   
   RAISE NOTICE '  ✓ Configured routing settings';
