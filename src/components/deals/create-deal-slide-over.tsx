@@ -44,6 +44,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { createClient } from '@/lib/supabase-client'
+import { handleDatabaseError, checkTableExists } from '@/lib/treatment-routing/migration-checker'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth'
 import { quickRouteDeal, extractTreatmentTags } from '@/lib/treatment-routing'
@@ -183,6 +184,15 @@ export function CreateDealSlideOver({
     try {
       setLoadingTags(true)
 
+      // Check if table exists first
+      const tableExists = await checkTableExists('treatment_tags')
+      if (!tableExists) {
+        console.warn('[CreateDeal] Treatment routing tables not yet created. Skipping tag load.')
+        setAvailableTags([])
+        setLoadingTags(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('treatment_tags')
         .select('id, name, color, icon, keywords')
@@ -194,8 +204,14 @@ export function CreateDealSlideOver({
 
       setAvailableTags(data || [])
     } catch (error) {
+      const errorInfo = handleDatabaseError(error, 'LoadTreatmentTags')
       console.error('Error loading treatment tags:', error)
-      toast.error('Failed to load treatment tags')
+      
+      if (!errorInfo.isTableMissing) {
+        // Only show error if it's not a missing table issue
+        toast.error('Could not load treatment tags. Deal creation will still work.')
+      }
+      setAvailableTags([])
     } finally {
       setLoadingTags(false)
     }

@@ -32,6 +32,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { handleDatabaseError, checkTableExists } from '@/lib/treatment-routing/migration-checker'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -252,6 +253,27 @@ export function RoutingAnalytics({ tenantId }: { tenantId: string }) {
     try {
       setLoading(true)
 
+      // Check if table exists first
+      const tableExists = await checkTableExists('treatment_routing_logs')
+      if (!tableExists) {
+        console.warn('[RoutingAnalytics] Treatment routing tables not yet created. Migrations need to be run.')
+        setLogs([])
+        setStats({
+          total_routed: 0,
+          user_override_count: 0,
+          tag_mapping_count: 0,
+          ai_keyword_count: 0,
+          unsorted_fallback_count: 0,
+          avg_confidence: 0,
+          avg_duration_ms: 0
+        })
+        setMethodBreakdown([])
+        setAccuracyData([])
+        setTagPerformance([])
+        setLoading(false)
+        return
+      }
+
       const startDate = subDays(new Date(), parseInt(dateRange))
 
       // Load routing stats
@@ -358,8 +380,14 @@ export function RoutingAnalytics({ tenantId }: { tenantId: string }) {
       setTagPerformance(tagPerfData)
 
     } catch (error) {
+      const errorInfo = handleDatabaseError(error, 'LoadRoutingAnalytics')
       console.error('Error loading routing analytics:', error)
-      toast.error('Failed to load routing analytics')
+      
+      if (errorInfo.isTableMissing) {
+        toast.info('Treatment routing system is not yet set up. Database migrations need to be run.')
+      } else {
+        toast.error(errorInfo.userMessage)
+      }
     } finally {
       setLoading(false)
     }

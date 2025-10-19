@@ -34,6 +34,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { handleDatabaseError, checkTableExists } from '@/lib/treatment-routing/migration-checker'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -342,8 +343,14 @@ function TagDialog({ open, onOpenChange, tag, tenantId, locations, onSaved }: Ta
       onSaved()
       onOpenChange(false)
     } catch (error) {
+      const errorInfo = handleDatabaseError(error, 'SaveTag')
       console.error('Error saving tag:', error)
-      toast.error('Failed to save tag')
+      
+      if (errorInfo.isTableMissing) {
+        toast.error('Treatment routing system is not yet set up. Please contact your administrator.')
+      } else {
+        toast.error(errorInfo.userMessage)
+      }
     } finally {
       setSaving(false)
     }
@@ -691,6 +698,15 @@ export function TreatmentTagsSettings({ tenantId }: { tenantId: string }) {
     try {
       setLoading(true)
 
+      // Check if table exists first
+      const tableExists = await checkTableExists('treatment_tags')
+      if (!tableExists) {
+        console.warn('[TreatmentTags] Database tables not yet created. Migrations need to be run.')
+        setTags([])
+        setLoading(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('treatment_tags')
         .select('*')
@@ -701,8 +717,15 @@ export function TreatmentTagsSettings({ tenantId }: { tenantId: string }) {
 
       setTags(data || [])
     } catch (error) {
+      const errorInfo = handleDatabaseError(error, 'LoadTags')
       console.error('Error loading tags:', error)
-      toast.error('Failed to load treatment tags')
+      
+      if (errorInfo.isTableMissing) {
+        toast.info('Treatment routing system is not yet set up. Database migrations need to be run.')
+        setTags([])
+      } else {
+        toast.error(errorInfo.userMessage)
+      }
     } finally {
       setLoading(false)
     }
@@ -721,6 +744,8 @@ export function TreatmentTagsSettings({ tenantId }: { tenantId: string }) {
       setLocations(data || [])
     } catch (error) {
       console.error('Error loading locations:', error)
+      // Don't show error toast for locations as it's not critical
+      setLocations([])
     }
   }
 

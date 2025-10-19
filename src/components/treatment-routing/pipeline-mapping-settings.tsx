@@ -34,6 +34,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { handleDatabaseError, checkTableExists } from '@/lib/treatment-routing/migration-checker'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -617,8 +618,18 @@ export function PipelineMappingSettings({ tenantId }: { tenantId: string }) {
       setMappings(mappingsData || [])
       setRoutingSettings(settingsData)
     } catch (error) {
+      const errorInfo = handleDatabaseError(error, 'LoadPipelineMappings')
       console.error('Error loading data:', error)
-      toast.error('Failed to load pipeline mappings')
+      
+      if (errorInfo.isTableMissing) {
+        toast.info('Treatment routing system is not yet set up. Database migrations need to be run.')
+        setTags([])
+        setPipelines([])
+        setStages([])
+        setMappings([])
+      } else {
+        toast.error(errorInfo.userMessage)
+      }
     } finally {
       setLoading(false)
     }
