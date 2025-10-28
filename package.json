@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "NEXT_DISABLE_SWC_WASM=1 next build",
     "start": "next start -p ${PORT:-3000}",
     "db:validate": "supabase db lint",
