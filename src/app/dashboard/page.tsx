@@ -42,10 +42,15 @@ import { ExportMenu } from '@/components/dashboard/export-menu'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useDataFreshness } from '@/hooks/use-data-freshness'
 import { useDashboardRealtime } from '@/lib/realtime-service'
+import { useOrgGuard, OrgRequiredModal } from '@/components/guards'
 
 export default function DashboardRedesigned() {
   const router = useRouter()
   const { appUser, loading: authLoading } = useAuth()
+  
+  // Organization Guard
+  const { requireOrg, showOrgModal, setShowOrgModal } = useOrgGuard()
+  const [currentAction, setCurrentAction] = useState('')
   
   // UI State
   const [showSetupPanel, setShowSetupPanel] = useState(false)
@@ -73,13 +78,28 @@ export default function DashboardRedesigned() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   
   const timeAgo = useDataFreshness(lastUpdated)
+  
+  // Guarded action wrapper with custom action name
+  const guardedAction = (actionName: string, fn: () => void) => {
+    setCurrentAction(actionName)
+    return requireOrg(fn)
+  }
 
   // Real-time & Shortcuts
   useDashboardRealtime(appUser?.tenant_id, () => loadData(), true)
   useKeyboardShortcuts({
-    onCreateContact: () => setShowCreateContact(true),
-    onCreateDeal: () => setShowCreateDeal(true),
-    onCreateTask: () => setShowCreateTask(true),
+    onCreateContact: () => {
+      setCurrentAction('create this contact')
+      requireOrg(() => setShowCreateContact(true))()
+    },
+    onCreateDeal: () => {
+      setCurrentAction('create this deal')
+      requireOrg(() => setShowCreateDeal(true))()
+    },
+    onCreateTask: () => {
+      setCurrentAction('create this task')
+      requireOrg(() => setShowCreateTask(true))()
+    },
     onRefresh: () => loadData(),
     onShowHelp: () => setShowShortcutsHelp(true),
     onNavigate: (path) => router.push(path),
@@ -163,30 +183,63 @@ export default function DashboardRedesigned() {
   return (
     <DashboardLayout>
       <EmailVerificationBanner />
-      <SetupBanner onSetupClick={() => setShowSetupPanel(true)} />
+      <SetupBanner onOpenWizard={() => setShowSetupPanel(true)} />
       <ProfileSetupPanel
         isOpen={showSetupPanel}
         onClose={() => setShowSetupPanel(false)}
         onComplete={loadData}
       />
 
-      {/* CLEAN, MODERN LAYOUT */}
-      <div className="h-full overflow-y-auto bg-white">
-        <div className="max-w-7xl mx-auto px-6 py-8 space-y-8 pb-32">
+      {/* CLEAN, MODERN LAYOUT - COMPACT & EFFICIENT */}
+      <div className="h-full overflow-y-auto bg-gray-50">
+        <div className="max-w-[1800px] mx-auto px-4 py-4 space-y-4 pb-24">
           
-          {/* HEADER - Minimal & Clean */}
+          {/* HEADER - Compact & Clean */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-semibold text-gray-900">
-                Welcome back, {appUser?.full_name?.split(' ')[0]}
+              <h1 className="text-2xl font-bold text-gray-900">
+                Welcome back, {appUser?.full_name?.split(' ')[0]} 👋
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-0.5">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                 {lastUpdated && ` • Updated ${timeAgo}`}
               </p>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => {
+                  setCurrentAction('create this contact')
+                  requireOrg(() => setShowCreateContact(true))()
+                }}
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                New Contact
+              </Button>
+              <Button
+                onClick={() => {
+                  setCurrentAction('create this deal')
+                  requireOrg(() => setShowCreateDeal(true))()
+                }}
+                size="sm"
+                variant="outline"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                New Deal
+              </Button>
+              <Button
+                onClick={() => {
+                  setCurrentAction('create this task')
+                  requireOrg(() => setShowCreateTask(true))()
+                }}
+                size="sm"
+                variant="outline"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                New Task
+              </Button>
               <ExportMenu
                 data={{
                   stats: { ...stats, ...metrics },
@@ -204,90 +257,112 @@ export default function DashboardRedesigned() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowShortcutsHelp(true)}
-                className="gap-2"
               >
                 <HelpCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Help</span>
               </Button>
             </div>
           </div>
 
-          {/* QUICK ACTIONS - Prominent */}
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={() => setShowCreateContact(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 shadow-sm"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Contact
-            </Button>
-            <Button
-              onClick={() => setShowCreateDeal(true)}
-              variant="outline"
-              className="shadow-sm"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Deal
-            </Button>
-            <Button
-              onClick={() => setShowCreateTask(true)}
-              variant="outline"
-              className="shadow-sm"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Task
-            </Button>
-          </div>
-
-          {/* KPI CARDS - Refined with MetricCard */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* KPI CARDS - Compact & Efficient */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Revenue */}
-            <MetricCard
-              title="Total Revenue"
-              value={format.currency(stats.totalRevenue / 100)}
-              icon={DollarSign}
-              trend={revenueTrend.change > 0 ? 'up' : revenueTrend.change < 0 ? 'down' : 'neutral'}
-              change={revenueTrend.change !== 0 ? {
-                value: `${revenueTrend.change > 0 ? '+' : ''}${revenueTrend.change.toFixed(1)}%`,
-                color: revenueTrend.color,
-                icon: revenueTrend.change > 0 ? '↗' : '↘'
-              } : undefined}
-            />
+            <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Total Revenue</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {format.currency(stats.totalRevenue / 100)}
+                    </p>
+                    {revenueTrend.change !== 0 && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <revenueTrend.icon className={`h-3 w-3 ${revenueTrend.color}`} />
+                        <span className={`text-xs font-medium ${revenueTrend.color}`}>
+                          {revenueTrend.change > 0 ? '+' : ''}{revenueTrend.change.toFixed(1)}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-green-600" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Contacts */}
-            <MetricCard
-              title="Total Contacts"
-              value={format.number(stats.totalContacts)}
-              icon={Users}
-              onClick={() => router.push('/contacts')}
-            />
+            <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/contacts')}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Total Contacts</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {format.number(stats.totalContacts)}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Users className="h-5 w-5 text-blue-600" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Deals */}
-            <MetricCard
-              title="Active Deals"
-              value={format.number(stats.totalDeals)}
-              icon={Target}
-              onClick={() => router.push('/deals')}
-            />
+            <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/deals')}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Active Deals</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {format.number(stats.totalDeals)}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                      <Target className="h-5 w-5 text-purple-600" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Tasks */}
-            <MetricCard
-              title="Pending Tasks"
-              value={format.number(stats.activeTasks)}
-              icon={CheckCircle}
-              badge={stats.activeTasks > 10 ? {
-                label: 'High',
-                variant: 'warning'
-              } : undefined}
-              onClick={() => router.push('/tasks')}
-            />
+            <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/tasks')}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Pending Tasks</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                      {format.number(stats.activeTasks)}
+                    </p>
+                    {stats.activeTasks > 10 && (
+                      <Badge variant="secondary" className="mt-1 text-xs bg-orange-100 text-orange-700 border-orange-200">
+                        High
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-emerald-600" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* PRIORITIES - Clean & Focused */}
-          <TodaysPriorities tenantId={appUser?.tenant_id || ''} onRefresh={loadData} />
+          {/* MAIN CONTENT - Side by Side Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* LEFT: PRIORITIES - Compact */}
+            <TodaysPriorities tenantId={appUser?.tenant_id || ''} onRefresh={loadData} />
 
-          {/* AI INSIGHTS - Collapsible */}
-          <AIInsightsWidget tenantId={appUser?.tenant_id || ''} />
+            {/* RIGHT: AI INSIGHTS */}
+            <AIInsightsWidget tenantId={appUser?.tenant_id || ''} />
+          </div>
 
           {/* ANALYTICS - Collapsible by Default */}
           <Card className="border-0 shadow-sm">
@@ -341,6 +416,14 @@ export default function DashboardRedesigned() {
       <KeyboardShortcutsModal
         open={showShortcutsHelp}
         onClose={() => setShowShortcutsHelp(false)}
+      />
+      
+      {/* Organization Required Modal */}
+      <OrgRequiredModal
+        isOpen={showOrgModal}
+        onClose={() => setShowOrgModal(false)}
+        actionName={currentAction}
+        onSuccess={() => router.refresh()}
       />
     </DashboardLayout>
   )

@@ -1,464 +1,446 @@
 'use client'
 
-import React from 'react'
+/**
+ * =====================================================
+ * SETTINGS - 2-LEVEL NAVIGATION SYSTEM
+ * =====================================================
+ * 
+ * Restructured from 36 horizontal tabs to:
+ * - Level 1: 7 vertical sidebar sections
+ * - Level 2: Horizontal tabs within each section
+ * 
+ * Total: 27 accessible tabs (9 disabled/merged)
+ * 
+ * DISABLED COMPONENTS:
+ * - categorization (legacy)
+ * - routing-analytics (merged into treatment-tags)
+ * - notifications-preferences (merged into notifications)
+ * - notifications-policies (merged into notifications)
+ * 
+ * =====================================================
+ */
+
+import React, { useState, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { TreatmentConfig } from './treatment-config'
-import { PipelinePreferencesTab } from './pipeline-preferences-tab'
-import { TeamMembersTab } from './team-members-tab'
+import { Menu, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
+// Layout Components
+import { SettingsSidebar } from './settings-sidebar'
+import { SettingsSearch } from './settings-search'
+
+// Account Section Components
 import { UserProfileEditor } from './user-profile-editor'
+import { OrganizationProfileEditor } from './organization-profile-editor'
+import { LocationsSettingsTab } from './locations-settings-tab'
+import { BillingSubscriptionTab } from './billing-subscription-tab'
+
+// Team Section Components
+import { TeamMembersTab } from './team-members-tab'
 import { CustomRolesTab } from './custom-roles-tab'
+import { TeamInvitesTab } from './team-invites-tab'
+// import { OnboardingFieldsAdmin } from './onboarding-fields-admin' // Removed earlier
+
+// Workflow Section Components
+import { PipelinePreferencesTab } from './pipeline-preferences-tab'
 import { ComprehensiveDealSettings } from './comprehensive-deal-settings'
-import { AIAssistantSettingsTab } from './ai-assistant-settings-tab'
-import { AIAnalyticsTab } from './ai-analytics-tab'
-import { CommunicationsIntegrationsTab } from './communications-integrations-tab'
-import { AuditTrailViewer } from './audit-trail-viewer'
-import { BrandingSettingsTab } from './branding-settings-tab'
+import { EnhancedTreatmentTags } from '../treatment-routing/enhanced-treatment-tags'
+import { PipelineMappingSettings } from '../treatment-routing/pipeline-mapping-settings'
+import { CustomFieldsTab } from './custom-fields-tab'
+import { TagsAndSourcesTab } from './tags-and-sources-tab'
+
+// Communications Section Components
 import { EmailConfigTab } from './email-config-tab'
 import { SMSConfigTab } from './sms-config-tab'
 import { WhatsAppConfigTab } from './whatsapp-config-tab'
-import { NotificationsTab } from './notifications-tab'
-import { DataPrivacyTab } from './data-privacy-tab'
-import { APIDeveloperTab } from './api-developer-tab'
-import { SecuritySettingsTab } from './security-settings-tab'
-import { BillingSubscriptionTab } from './billing-subscription-tab'
+import { UnifiedNotificationsTab } from './unified-notifications-tab'
 import { CalendarIntegrationTab } from './calendar-integration-tab'
-import { CustomFieldsTab } from './custom-fields-tab'
-import { TagsManagementTab } from './tags-management-tab'
-import { LeadSourcesTab } from './lead-sources-tab'
-import { FormsSettingsTab } from './forms-settings-tab'
+
+// AI & Automation Section Components
+import { AIAssistantSettingsTab } from './ai-assistant-settings-tab'
+import { AIAnalyticsTab } from './ai-analytics-tab'
+import { UnifiedMarketingTab } from './unified-marketing-tab'
+
+// Integrations Section Components
+import { CommunicationsIntegrationsTab } from './communications-integrations-tab'
+import { APIDeveloperTab } from './api-developer-tab'
+import { BrandingSettingsTab } from './branding-settings-tab'
+
+// System Section Components
+import { UnifiedSecurityPrivacyTab } from './unified-security-privacy-tab'
 import { AnalyticsSettingsTab } from './analytics-settings-tab'
-import { MarketingAuditSettingsTab } from './marketing-audit-settings-tab'
-import { NotificationsPreferencesTab } from './notifications-preferences-tab'
-import { NotificationsPoliciesTab } from './notifications-policies-tab'
-import { LocationsSettingsTab } from './locations-settings-tab'
-import { TreatmentTagsSettings } from '../treatment-routing/treatment-tags-settings'
-import { PipelineMappingSettings } from '../treatment-routing/pipeline-mapping-settings'
-import { RoutingAnalytics } from '../treatment-routing/routing-analytics'
+import { AuditTrailViewer } from './audit-trail-viewer'
+
+// Hooks
 import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Rocket } from 'lucide-react'
-import { SettingsSearch } from './settings-search'
+
+// Section configuration
+const SECTION_TABS = {
+  account: [
+    { id: 'profile', label: 'My Profile' },
+    { id: 'organization', label: 'Organization' },
+    { id: 'locations', label: 'Locations' },
+    { id: 'billing', label: 'Billing' },
+  ],
+  team: [
+    { id: 'members', label: 'Team Members' },
+    { id: 'roles', label: 'Roles & Permissions' },
+    { id: 'invites', label: 'Team Invites' },
+    // { id: 'onboarding-config', label: 'Onboarding Config' }, // Removed - component doesn't exist
+  ],
+  workflow: [
+    { id: 'pipelines', label: 'Pipelines' },
+    { id: 'deals', label: 'Deals' },
+    { id: 'treatment-tags', label: 'Treatment Tags' },
+    { id: 'pipeline-mapping', label: 'Pipeline Mapping' },
+    { id: 'custom-fields', label: 'Custom Fields' },
+    { id: 'tags-sources', label: 'Tags & Sources' },
+  ],
+  communications: [
+    { id: 'email', label: 'Email' },
+    { id: 'sms', label: 'SMS' },
+    { id: 'whatsapp', label: 'WhatsApp' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'calendar', label: 'Calendar' },
+  ],
+  ai: [
+    { id: 'ai-assistant', label: 'AI Assistant' },
+    { id: 'ai-analytics', label: 'AI Analytics' },
+    { id: 'marketing', label: 'Marketing & Forms' },
+  ],
+  integrations: [
+    { id: 'connected-apps', label: 'Connected Apps' },
+    { id: 'api', label: 'API & Developers' },
+    { id: 'branding', label: 'Branding' },
+  ],
+  system: [
+    { id: 'security-privacy', label: 'Security & Privacy' },
+    { id: 'analytics', label: 'Analytics' },
+    { id: 'audit', label: 'Audit Trail' },
+  ],
+}
 
 export function SettingsTabs() {
   const { tenantId } = useTenant()
   const { userId: currentUserId } = useCurrentUser()
-
-  // Get initial tab from URL to persist on reload
-  const getInitialTab = () => {
-    if (typeof window === 'undefined') return 'profile'
+  
+  // Mobile sidebar state
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  
+  // Get initial state from URL
+  const getInitialState = () => {
+    if (typeof window === 'undefined') {
+      return { section: 'account', tab: 'profile' }
+    }
+    
     const params = new URLSearchParams(window.location.search)
-    return params.get('tab') || 'profile'
+    const section = params.get('section') || 'account'
+    const tab = params.get('tab') || SECTION_TABS[section as keyof typeof SECTION_TABS]?.[0]?.id || 'profile'
+    
+    return { section, tab }
   }
-
-  const [currentTab, setCurrentTab] = React.useState(getInitialTab())
-
-  // Update URL when tab changes
-  const handleTabChange = (value: string) => {
-    setCurrentTab(value)
+  
+  const [activeSection, setActiveSection] = useState(getInitialState().section)
+  const [activeTabs, setActiveTabs] = useState<Record<string, string>>({
+    account: getInitialState().section === 'account' ? getInitialState().tab : 'profile',
+    team: 'members',
+    workflow: 'pipelines',
+    communications: 'email',
+    ai: 'ai-assistant',
+    integrations: 'connected-apps',
+    system: 'security-privacy',
+  })
+  
+  // Update URL when section/tab changes
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
-      url.searchParams.set('tab', value)
+      url.searchParams.set('section', activeSection)
+      url.searchParams.set('tab', activeTabs[activeSection])
       window.history.replaceState({}, '', url.toString())
     }
+  }, [activeSection, activeTabs])
+  
+  // Handle section change
+  const handleSectionChange = (sectionId: string) => {
+    setActiveSection(sectionId)
+    setIsMobileSidebarOpen(false)
   }
-
+  
+  // Handle tab change within section
+  const handleTabChange = (tabId: string) => {
+    setActiveTabs({
+      ...activeTabs,
+      [activeSection]: tabId
+    })
+  }
+  
+  // Handle search navigation
+  const handleSearchNavigate = (section: string, tab: string) => {
+    setActiveSection(section)
+    setActiveTabs({
+      ...activeTabs,
+      [section]: tab
+    })
+  }
+  
+  // Get current tab for active section
+  const currentTab = activeTabs[activeSection]
+  
   return (
-    <div className="space-y-6">
-      {/* Settings Search Bar */}
-      <SettingsSearch onNavigate={handleTabChange} currentTab={currentTab} />
+    <div className="flex h-screen bg-gray-50">
+      {/* Vertical Sidebar */}
+      <SettingsSidebar
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+        isMobileOpen={isMobileSidebarOpen}
+        onMobileClose={() => setIsMobileSidebarOpen(false)}
+      />
       
-      <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
-        {/* Scrollable Tabs with emojis for visual clarity */}
-        <div className="border-b border-gray-200 overflow-x-auto -mx-6 px-6">
-          <TabsList className="inline-flex h-auto bg-transparent border-none p-0 space-x-1">
-          <TabsTrigger 
-            value="profile" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile Header */}
+        <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+          <h1 className="text-lg font-semibold">Settings</h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           >
-            👤 My Profile
-          </TabsTrigger>
-          <TabsTrigger 
-            value="team" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            👥 Team
-          </TabsTrigger>
-          <TabsTrigger 
-            value="roles" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            🛡️ Roles
-          </TabsTrigger>
-          <TabsTrigger 
-            value="preferences" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            🔄 Pipeline Settings
-          </TabsTrigger>
-          <TabsTrigger 
-            value="deals" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            💼 Deal Settings
-          </TabsTrigger>
-          <TabsTrigger 
-            value="categorization" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            🏷️ Auto-Categorization (Legacy)
-          </TabsTrigger>
-          <TabsTrigger 
-            value="treatment-tags" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            🦷 Treatment Tags
-          </TabsTrigger>
-          <TabsTrigger 
-            value="pipeline-mapping" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            🔗 Pipeline Mapping
-          </TabsTrigger>
-          <TabsTrigger 
-            value="routing-analytics" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            📊 Routing Analytics
-          </TabsTrigger>
-          <TabsTrigger 
-            value="ai" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            🤖 AI Assistant
-          </TabsTrigger>
-          <TabsTrigger 
-            value="ai-analytics" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            📊 AI Analytics
-          </TabsTrigger>
-          <TabsTrigger 
-            value="integrations" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            📡 Integrations
-          </TabsTrigger>
-          <TabsTrigger 
-            value="audit" 
-            className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-          >
-            📜 Audit Trail
-          </TabsTrigger>
-          <TabsTrigger value="branding" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            🎨 Branding
-          </TabsTrigger>
-          <TabsTrigger value="email-config" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            📧 Email
-          </TabsTrigger>
-          <TabsTrigger value="sms-config" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            💬 SMS
-          </TabsTrigger>
-          <TabsTrigger value="whatsapp-config" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            📱 WhatsApp
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            🔔 Notifications
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            💳 Billing
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            📅 Calendar
-          </TabsTrigger>
-          <TabsTrigger value="custom-fields" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            🔧 Custom Fields
-          </TabsTrigger>
-          <TabsTrigger value="tags" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            🏷️ Tags
-          </TabsTrigger>
-          <TabsTrigger value="lead-sources" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            📊 Lead Sources
-          </TabsTrigger>
-          <TabsTrigger value="security" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            🔒 Security
-          </TabsTrigger>
-          <TabsTrigger value="api" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            💻 API
-          </TabsTrigger>
-          <TabsTrigger value="privacy" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            🛡️ Privacy
-          </TabsTrigger>
-          <TabsTrigger value="marketing" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            🚀 Marketing
-          </TabsTrigger>
-          <TabsTrigger value="forms-settings" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            📝 Forms
-          </TabsTrigger>
-          <TabsTrigger value="analytics-settings" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            📊 Analytics
-          </TabsTrigger>
-          <TabsTrigger value="marketing-audit-settings" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            🔍 Marketing Audit
-          </TabsTrigger>
-          <TabsTrigger value="notifications-preferences" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            🔔 Notifications
-          </TabsTrigger>
-          <TabsTrigger value="notifications-policies" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            👥 Notification Policies
-          </TabsTrigger>
-          <TabsTrigger value="locations" className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap">
-            📍 Locations
-          </TabsTrigger>
-        </TabsList>
+            {isMobileSidebarOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+        
+        {/* Settings Search */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <SettingsSearch
+            onNavigate={handleSearchNavigate}
+            currentSection={activeSection}
+            currentTab={currentTab}
+          />
+        </div>
+        
+        {/* Content with Horizontal Tabs */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
+              {/* Horizontal Tabs */}
+              <div className="border-b border-gray-200 overflow-x-auto">
+                <TabsList className="inline-flex h-auto bg-transparent border-none p-0 space-x-1">
+                  {SECTION_TABS[activeSection as keyof typeof SECTION_TABS]?.map((tab) => (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
+                    >
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+              
+              {/* Tab Contents */}
+              {renderTabContents(activeSection, currentTab, tenantId, currentUserId)}
+            </Tabs>
+          </div>
+        </div>
       </div>
+    </div>
+  )
+}
 
-      {/* Tab Content - Simple and clear */}
+// Render tab contents based on section and tab
+function renderTabContents(
+  section: string,
+  tab: string,
+  tenantId: string | null,
+  currentUserId: string | null
+) {
+  switch (section) {
+    case 'account':
+      return renderAccountTabs(tab, currentUserId, tenantId)
+    case 'team':
+      return renderTeamTabs(tab, tenantId)
+    case 'workflow':
+      return renderWorkflowTabs(tab, tenantId)
+    case 'communications':
+      return renderCommunicationsTabs(tab)
+    case 'ai':
+      return renderAITabs(tab, tenantId)
+    case 'integrations':
+      return renderIntegrationsTabs(tab)
+    case 'system':
+      return renderSystemTabs(tab, tenantId)
+    default:
+      return null
+  }
+}
+
+// Account Section Tabs
+function renderAccountTabs(tab: string, currentUserId: string | null, tenantId: string | null) {
+  return (
+    <>
       <TabsContent value="profile" className="space-y-6">
         <UserProfileEditor userId={currentUserId} tenantId={tenantId} />
       </TabsContent>
-
-      <TabsContent value="team" className="space-y-6">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">Team Management</h3>
-            <p className="text-sm text-gray-600">Invite and manage your team members</p>
-          </div>
-          <TeamMembersTab />
-        </div>
+      
+      <TabsContent value="organization" className="space-y-6">
+        <OrganizationProfileEditor />
       </TabsContent>
-
-      <TabsContent value="roles" className="space-y-6">
-        <CustomRolesTab tenantId={tenantId} />
-      </TabsContent>
-
-      <TabsContent value="preferences" className="space-y-6">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">Pipeline Display Settings</h3>
-            <p className="text-sm text-gray-600">Customize how you view pipelines and deals</p>
-          </div>
-          <PipelinePreferencesTab />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="deals" className="space-y-6">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">Deal Configuration</h3>
-            <p className="text-sm text-gray-600">Set global rules for deals (required fields, validation, etc.)</p>
-          </div>
-          <ComprehensiveDealSettings tenantId={tenantId} />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="categorization" className="space-y-6">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">Auto-Categorization Rules (Legacy)</h3>
-            <p className="text-sm text-gray-600">Configure automatic deal categorization based on treatments, keywords, and deal values</p>
-            <p className="text-xs text-orange-600 mt-2">⚠️ This is the legacy system. Please migrate to Treatment Tags for improved routing.</p>
-          </div>
-          <TreatmentConfig />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="treatment-tags" className="space-y-6">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">Treatment Tags</h3>
-            <p className="text-sm text-gray-600">Manage treatment tags for intelligent, automatic deal routing across all entry points</p>
-          </div>
-          <TreatmentTagsSettings tenantId={tenantId} />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="pipeline-mapping" className="space-y-6">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">Pipeline Mapping</h3>
-            <p className="text-sm text-gray-600">Map treatment tags to pipelines for automatic deal routing</p>
-          </div>
-          <PipelineMappingSettings tenantId={tenantId} />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="routing-analytics" className="space-y-6">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">Routing Analytics</h3>
-            <p className="text-sm text-gray-600">Performance metrics and audit trail for treatment tag routing</p>
-          </div>
-          <RoutingAnalytics tenantId={tenantId} />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="ai" className="space-y-6">
-        <AIAssistantSettingsTab tenantId={tenantId} />
-      </TabsContent>
-
-      <TabsContent value="ai-analytics" className="space-y-6">
-        <AIAnalyticsTab tenantId={tenantId} />
-      </TabsContent>
-
-      <TabsContent value="integrations" className="space-y-6">
-        <CommunicationsIntegrationsTab />
-      </TabsContent>
-
-      <TabsContent value="audit" className="space-y-6">
-        <AuditTrailViewer tenantId={tenantId} isAdmin={true} />
-      </TabsContent>
-
-      <TabsContent value="branding" className="space-y-6">
-        <BrandingSettingsTab />
-      </TabsContent>
-
-      <TabsContent value="email-config" className="space-y-6">
-        <EmailConfigTab />
-      </TabsContent>
-
-      <TabsContent value="sms-config" className="space-y-6">
-        <SMSConfigTab />
-      </TabsContent>
-
-      <TabsContent value="whatsapp-config" className="space-y-6">
-        <WhatsAppConfigTab />
-      </TabsContent>
-
-      <TabsContent value="notifications" className="space-y-6">
-        <NotificationsTab />
-      </TabsContent>
-
-      <TabsContent value="billing" className="space-y-6">
-        <BillingSubscriptionTab />
-      </TabsContent>
-
-      <TabsContent value="calendar" className="space-y-6">
-        <CalendarIntegrationTab />
-      </TabsContent>
-
-      <TabsContent value="custom-fields" className="space-y-6">
-        <CustomFieldsTab />
-      </TabsContent>
-
-      <TabsContent value="tags" className="space-y-6">
-        <TagsManagementTab />
-      </TabsContent>
-
-      <TabsContent value="lead-sources" className="space-y-6">
-        <LeadSourcesTab />
-      </TabsContent>
-
-      <TabsContent value="security" className="space-y-6">
-        <SecuritySettingsTab />
-      </TabsContent>
-
-      <TabsContent value="api" className="space-y-6">
-        <APIDeveloperTab />
-      </TabsContent>
-
-      <TabsContent value="privacy" className="space-y-6">
-        <DataPrivacyTab />
-      </TabsContent>
-
-      <TabsContent value="marketing" className="space-y-6">
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold">Marketing Premium Settings</h3>
-            <p className="text-sm text-gray-600">
-              Configure feature flags, plan tiers, email settings, and premium marketing features
-            </p>
-          </div>
-          
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
-            <div className="flex items-start gap-4">
-              <div className="h-12 w-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Rocket className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-gray-900 mb-2">Marketing Settings</h4>
-                <p className="text-sm text-gray-700 mb-4">
-                  Access the dedicated Marketing Settings page to manage:
-                </p>
-                <ul className="text-sm text-gray-600 space-y-1 mb-4">
-                  <li>• <strong>Feature Flags:</strong> Toggle 10 premium features with black switches</li>
-                  <li>• <strong>Plan Tiers:</strong> Starter, Pro ($29/mo), Enterprise ($99/mo)</li>
-                  <li>• <strong>Email Configuration:</strong> DKIM/SPF, send domains, test emails</li>
-                  <li>• <strong>SMS & WhatsApp:</strong> Twilio integration setup</li>
-                  <li>• <strong>Integrations:</strong> Google Analytics, Facebook Pixel</li>
-                  <li>• <strong>Compliance:</strong> GDPR controls, email footers</li>
-                </ul>
-                <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  <Link href="/settings/marketing">
-                    <Rocket className="h-4 w-4 mr-2" />
-                    Open Marketing Settings
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <h5 className="font-medium text-gray-900 mb-2">🎯 Quick Access</h5>
-              <p className="text-sm text-gray-600 mb-3">
-                Jump directly to specific settings:
-              </p>
-              <div className="space-y-2">
-                <Link href="/settings/marketing?tab=features" className="text-sm text-blue-600 hover:text-blue-700 block">
-                  → Feature Flags & Toggle Switches
-                </Link>
-                <Link href="/settings/marketing?tab=email" className="text-sm text-blue-600 hover:text-blue-700 block">
-                  → Email Configuration
-                </Link>
-                <Link href="/settings/marketing?tab=sms" className="text-sm text-blue-600 hover:text-blue-700 block">
-                  → SMS & WhatsApp Setup
-                </Link>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <h5 className="font-medium text-gray-900 mb-2">💰 Monetization</h5>
-              <p className="text-sm text-gray-600 mb-3">
-                Premium features available:
-              </p>
-              <div className="space-y-1 text-sm text-gray-700">
-                <div>• Email Warmup ($50/mo)</div>
-                <div>• Click Heatmaps ($15/mo)</div>
-                <div>• AI Send Time ($60/mo)</div>
-                <div>• Dynamic Content ($20/mo)</div>
-                <div className="text-xs text-gray-500 mt-2">+ 6 more features</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </TabsContent>
-
-      <TabsContent value="forms-settings" className="space-y-6">
-        <FormsSettingsTab />
-      </TabsContent>
-
-      <TabsContent value="analytics-settings" className="space-y-6">
-        <AnalyticsSettingsTab />
-      </TabsContent>
-
-      <TabsContent value="marketing-audit-settings" className="space-y-6">
-        <MarketingAuditSettingsTab />
-      </TabsContent>
-
-      <TabsContent value="notifications-preferences" className="space-y-6">
-        <NotificationsPreferencesTab />
-      </TabsContent>
-
-      <TabsContent value="notifications-policies" className="space-y-6">
-        <NotificationsPoliciesTab />
-      </TabsContent>
-
+      
       <TabsContent value="locations" className="space-y-6">
         <LocationsSettingsTab tenantId={tenantId} />
       </TabsContent>
-    </Tabs>
-    </div>
+      
+      <TabsContent value="billing" className="space-y-6">
+        <BillingSubscriptionTab />
+      </TabsContent>
+    </>
+  )
+}
+
+// Team Section Tabs
+function renderTeamTabs(tab: string, tenantId: string | null) {
+  return (
+    <>
+      <TabsContent value="members" className="space-y-6">
+        <TeamMembersTab />
+      </TabsContent>
+      
+      <TabsContent value="roles" className="space-y-6">
+        <CustomRolesTab tenantId={tenantId} />
+      </TabsContent>
+      
+      <TabsContent value="invites" className="space-y-6">
+        <TeamInvitesTab />
+      </TabsContent>
+      
+      {/* Removed - OnboardingFieldsAdmin component doesn't exist
+      <TabsContent value="onboarding-config" className="space-y-6">
+        <OnboardingFieldsAdmin />
+      </TabsContent>
+      */}
+    </>
+  )
+}
+
+// Workflow Section Tabs
+function renderWorkflowTabs(tab: string, tenantId: string | null) {
+  return (
+    <>
+      <TabsContent value="pipelines" className="space-y-6">
+        <PipelinePreferencesTab />
+      </TabsContent>
+      
+      <TabsContent value="deals" className="space-y-6">
+        <ComprehensiveDealSettings tenantId={tenantId} />
+      </TabsContent>
+      
+      <TabsContent value="treatment-tags" className="space-y-6">
+        <EnhancedTreatmentTags tenantId={tenantId || ''} />
+      </TabsContent>
+      
+      <TabsContent value="pipeline-mapping" className="space-y-6">
+        <PipelineMappingSettings tenantId={tenantId || ''} />
+      </TabsContent>
+      
+      <TabsContent value="custom-fields" className="space-y-6">
+        <CustomFieldsTab />
+      </TabsContent>
+      
+      <TabsContent value="tags-sources" className="space-y-6">
+        <TagsAndSourcesTab />
+      </TabsContent>
+    </>
+  )
+}
+
+// Communications Section Tabs
+function renderCommunicationsTabs(tab: string) {
+  return (
+    <>
+      <TabsContent value="email" className="space-y-6">
+        <EmailConfigTab />
+      </TabsContent>
+      
+      <TabsContent value="sms" className="space-y-6">
+        <SMSConfigTab />
+      </TabsContent>
+      
+      <TabsContent value="whatsapp" className="space-y-6">
+        <WhatsAppConfigTab />
+      </TabsContent>
+      
+      <TabsContent value="notifications" className="space-y-6">
+        <UnifiedNotificationsTab />
+      </TabsContent>
+      
+      <TabsContent value="calendar" className="space-y-6">
+        <CalendarIntegrationTab />
+      </TabsContent>
+    </>
+  )
+}
+
+// AI & Automation Section Tabs
+function renderAITabs(tab: string, tenantId: string | null) {
+  return (
+    <>
+      <TabsContent value="ai-assistant" className="space-y-6">
+        <AIAssistantSettingsTab tenantId={tenantId} />
+      </TabsContent>
+      
+      <TabsContent value="ai-analytics" className="space-y-6">
+        <AIAnalyticsTab tenantId={tenantId} />
+      </TabsContent>
+      
+      <TabsContent value="marketing" className="space-y-6">
+        <UnifiedMarketingTab />
+      </TabsContent>
+    </>
+  )
+}
+
+// Integrations Section Tabs
+function renderIntegrationsTabs(tab: string) {
+  return (
+    <>
+      <TabsContent value="connected-apps" className="space-y-6">
+        <CommunicationsIntegrationsTab />
+      </TabsContent>
+      
+      <TabsContent value="api" className="space-y-6">
+        <APIDeveloperTab />
+      </TabsContent>
+      
+      <TabsContent value="branding" className="space-y-6">
+        <BrandingSettingsTab />
+      </TabsContent>
+    </>
+  )
+}
+
+// System Section Tabs
+function renderSystemTabs(tab: string, tenantId: string | null) {
+  return (
+    <>
+      <TabsContent value="security-privacy" className="space-y-6">
+        <UnifiedSecurityPrivacyTab />
+      </TabsContent>
+      
+      <TabsContent value="analytics" className="space-y-6">
+        <AnalyticsSettingsTab />
+      </TabsContent>
+      
+      <TabsContent value="audit" className="space-y-6">
+        <AuditTrailViewer tenantId={tenantId} isAdmin={true} />
+      </TabsContent>
+    </>
   )
 }
 

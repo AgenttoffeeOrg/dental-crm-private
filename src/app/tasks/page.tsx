@@ -7,7 +7,14 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Plus, 
   Search, 
   Play, 
@@ -51,9 +58,11 @@ const TASK_TYPE_ICONS = {
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([])
+  const [locations, setLocations] = useState<any[]>([]) // NEW: Locations for filtering
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<FilterTab>('today')
   const [searchQuery, setSearchQuery] = useState('')
+  const [locationFilter, setLocationFilter] = useState<string>('all') // NEW: Location filter
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [queueOpen, setQueueOpen] = useState(false)
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
@@ -63,6 +72,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     loadTasks()
+    loadLocations() // NEW: Load locations for filtering
   }, [])
 
   // Keyboard Shortcuts
@@ -122,6 +132,38 @@ export default function TasksPage() {
     }
   }
 
+  // NEW: Load accessible locations for filtering
+  const loadLocations = async () => {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) return
+
+      // Get user's app_user record for tenant_id
+      const { data: appUser } = await supabase
+        .from('app_users')
+        .select('active_tenant_id')
+        .eq('id', user.id)
+        .single()
+
+      if (!appUser?.active_tenant_id) return
+
+      const { data, error } = await supabase.rpc('get_user_accessible_locations', {
+        p_user_id: user.id,
+        p_tenant_id: appUser.active_tenant_id,
+      })
+
+      if (error) {
+        console.error('Error loading locations:', error)
+        return
+      }
+      setLocations(data || [])
+    } catch (error) {
+      console.error('Error loading locations:', error)
+    }
+  }
+
   const handleCompleteTask = async (taskId: string) => {
     try {
       const supabase = createClient()
@@ -169,6 +211,11 @@ export default function TasksPage() {
         t.description?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : filterTasks(tasks, activeFilter)
+
+  // NEW: Apply location filter
+  const locationFilteredTasks = locationFilter !== 'all'
+    ? filteredTasks.filter(t => t.location_id === locationFilter)
+    : filteredTasks
 
   const getTaskCounts = () => {
     return {

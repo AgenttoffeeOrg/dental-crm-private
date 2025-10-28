@@ -73,40 +73,66 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
   }, [dealId, orgId, tenantLoading])
 
   const fetchDealData = async () => {
-    if (!orgId) return
+    if (!orgId) {
+      console.warn('[DealDetail] No orgId available, skipping fetch')
+      return
+    }
     
     try {
       setLoading(true)
 
-      // Fetch deal with all related data - NOW WITH TENANT FILTER! 🔒
+      console.log('[DealDetail] Fetching deal:', { dealId, orgId })
+
+      // Fetch deal with all related data using explicit foreign key references
+      // Fixed: Specify exact foreign key columns to avoid ambiguity
       const { data: dealData, error: dealError } = await supabase
         .from('deals')
         .select(`
           *,
-          contact:contacts(*),
-          stage:pipeline_stages(*),
-          owner:app_users(*)
+          contact:contacts!contact_id(*),
+          stage:pipeline_stages!stage_id(*),
+          owner:app_users!owner_user_id(*)
         `)
-        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
+        .eq('tenant_id', orgId)
         .eq('id', dealId)
         .single()
 
-      if (dealError) throw dealError
+      if (dealError) {
+        console.error('[DealDetail] Error fetching deal:', dealError)
+        throw dealError
+      }
+
+      if (!dealData) {
+        console.error('[DealDetail] No deal found for ID:', dealId)
+        toast.error('Deal not found')
+        return
+      }
+
+      console.log('[DealDetail] Deal loaded successfully:', dealData.title)
 
       // Fetch pipeline stages for stage selector
       const { data: stagesData, error: stagesError } = await supabase
         .from('pipeline_stages')
         .select('*')
-        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
+        .eq('tenant_id', orgId)
         .order('position')
 
-      if (stagesError) throw stagesError
+      if (stagesError) {
+        console.error('[DealDetail] Error fetching stages:', stagesError)
+        // Don't throw - stages are not critical
+      }
 
       setDeal(dealData as DealWithRelations)
       setStages(stagesData || [])
-    } catch (error) {
-      console.error('Error fetching deal data:', error)
-      toast.error('Failed to load deal details')
+    } catch (error: any) {
+      // Better error handling for empty error objects
+      if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+        console.error('[DealDetail] Error fetching deal data:', error)
+        toast.error(`Failed to load deal: ${error.message || 'Unknown error'}`)
+      } else {
+        console.error('[DealDetail] Empty error or RLS blocked query')
+        toast.error('Deal not found or access denied')
+      }
     } finally {
       setLoading(false)
     }
@@ -233,59 +259,43 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
-      {/* Header Bar - HubSpot Style */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/pipeline">
-              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Pipeline
-              </Button>
-            </Link>
-            <div className="h-6 w-px bg-gray-300" />
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">{deal.title}</h1>
-              <div className="flex items-center gap-3 mt-1">
-                <Badge className={`text-xs font-medium ${getStageColor(deal.stage?.name || '')}`}>
-                  {deal.stage?.name}
-                </Badge>
-                <span className="text-sm text-gray-500">
-                  Last activity {getActivityAge(deal.last_activity_at)}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <MoreHorizontal className="h-4 w-4" />
+    <>
+      {/* Breadcrumb / Back Navigation - Compact */}
+      <div className="bg-white border-b border-gray-200 px-4 py-2">
+        <div className="flex items-center gap-3">
+          <Link href="/pipeline">
+            <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900 h-7">
+              <ArrowLeft className="h-3 w-3 mr-1.5" />
+              Back to Pipeline
             </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Actions
-            </Button>
+          </Link>
+          <div className="h-3 w-px bg-gray-300" />
+          <div>
+            <h1 className="text-sm font-semibold text-gray-900">{deal.title}</h1>
           </div>
+          <Badge className={`text-[10px] h-5 font-medium ml-auto ${getStageColor(deal.stage?.name || '')}`}>
+            {deal.stage?.name}
+          </Badge>
         </div>
       </div>
 
-      {/* Main Content - HubSpot Two-Column Layout */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main Content - Two-Column Layout */}
+      <div className="flex flex-1 overflow-hidden min-h-0 bg-gray-50">
         {/* Left Sidebar - Deal Properties */}
-        <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
-          <div className="p-6 space-y-6">
+        <div className="w-72 bg-white border-r border-gray-200 overflow-y-auto">
+          <div className="p-4 space-y-4">
             {/* Deal Information Section */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Target className="h-4 w-4" />
+              <h3 className="text-xs font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Target className="h-3.5 w-3.5" />
                 Deal Information
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Deal Stage */}
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Deal Stage</label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-medium text-gray-600 uppercase tracking-wide">Deal Stage</label>
                   <Select value={deal.stage_id} onValueChange={handleStageChange}>
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger className="h-8 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -306,21 +316,21 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
                 </div>
 
                 {/* Deal Amount */}
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Amount</label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-medium text-gray-600 uppercase tracking-wide">Amount</label>
                   {editingField === 'value_estimate_cents' ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <Input
                         type="number"
                         value={editValues.value_estimate_cents / 100}
                         onChange={(e) => setEditValues({ value_estimate_cents: parseFloat(e.target.value) * 100 })}
-                        className="h-9 flex-1"
+                        className="h-8 flex-1 text-sm"
                         placeholder="0.00"
                       />
-                      <Button size="sm" onClick={() => handleFieldSave('value_estimate_cents')}>
+                      <Button size="sm" onClick={() => handleFieldSave('value_estimate_cents')} className="h-8 px-2">
                         <Save className="h-3 w-3" />
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={handleFieldCancel}>
+                      <Button size="sm" variant="ghost" onClick={handleFieldCancel} className="h-8 px-2">
                         <X className="h-3 w-3" />
                       </Button>
                     </div>
@@ -341,11 +351,11 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
                 </div>
 
                 {/* Deal Owner */}
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Deal Owner</label>
-                  <div className="flex items-center gap-2 p-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-xs">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-medium text-gray-600 uppercase tracking-wide">Deal Owner</label>
+                  <div className="flex items-center gap-2 p-1.5">
+                    <Avatar className="h-5 w-5">
+                      <AvatarFallback className="text-[10px]">
                         {deal.owner?.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
                       </AvatarFallback>
                     </Avatar>
@@ -354,11 +364,11 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
                 </div>
 
                 {/* Deal Source */}
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Lead Source</label>
-                  <div className="p-2">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-medium text-gray-600 uppercase tracking-wide">Lead Source</label>
+                  <div className="p-1.5">
                     {deal.source ? (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-[10px] h-5">
                         {deal.source.replace('_', ' ')}
                       </Badge>
                     ) : (
@@ -368,17 +378,17 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
                 </div>
 
                 {/* Create Date */}
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Create Date</label>
-                  <div className="p-2">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-medium text-gray-600 uppercase tracking-wide">Create Date</label>
+                  <div className="p-1.5">
                     <span className="text-sm">{formatDate(deal.created_at)}</span>
                   </div>
                 </div>
 
                 {/* Close Date */}
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Close Date</label>
-                  <div className="p-2">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-medium text-gray-600 uppercase tracking-wide">Close Date</label>
+                  <div className="p-1.5">
                     <span className="text-sm text-gray-500">Not set</span>
                   </div>
                 </div>
@@ -387,54 +397,52 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
 
             {/* Contact Information Section */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <User className="h-4 w-4" />
+              <h3 className="text-xs font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <User className="h-3.5 w-3.5" />
                 Contact
               </h3>
-              <div className="space-y-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-blue-100 text-blue-700 font-medium">
-                        {getContactInitials(deal.contact.full_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{deal.contact.full_name}</h4>
-                      <div className="space-y-1 mt-1">
-                        {deal.contact.primary_email && (
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault()
-                              window.location.href = `mailto:${deal.contact.primary_email}`
-                            }}
-                            className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                          >
-                            <Mail className="h-3 w-3" />
-                            {deal.contact.primary_email}
-                          </button>
-                        )}
-                        {deal.contact.primary_phone && (
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault()
-                              window.location.href = `tel:${deal.contact.primary_phone}`
-                            }}
-                            className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                          >
-                            <Phone className="h-3 w-3" />
-                            {deal.contact.primary_phone}
-                          </button>
-                        )}
-                      </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-blue-100 text-blue-700 font-medium text-xs">
+                      {getContactInitials(deal.contact.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm text-gray-900 truncate">{deal.contact.full_name}</h4>
+                    <div className="space-y-0.5 mt-0.5">
+                      {deal.contact.primary_email && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            window.location.href = `mailto:${deal.contact.primary_email}`
+                          }}
+                          className="flex items-center gap-1.5 text-[11px] text-blue-600 hover:text-blue-800 hover:underline truncate w-full"
+                        >
+                          <Mail className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{deal.contact.primary_email}</span>
+                        </button>
+                      )}
+                      {deal.contact.primary_phone && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            window.location.href = `tel:${deal.contact.primary_phone}`
+                          }}
+                          className="flex items-center gap-1.5 text-[11px] text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          <Phone className="h-3 w-3" />
+                          {deal.contact.primary_phone}
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <Link href={`/contacts/${deal.contact.id}`}>
-                    <Button variant="outline" size="sm" className="w-full mt-3">
-                      View Contact Profile
-                    </Button>
-                  </Link>
                 </div>
+                <Link href={`/contacts/${deal.contact.id}`}>
+                  <Button variant="outline" size="sm" className="w-full mt-2 h-7 text-xs">
+                    View Profile
+                  </Button>
+                </Link>
               </div>
             </div>
 
@@ -456,78 +464,76 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
 
         {/* Right Side - Deal Summary + Activity Timeline */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Deal AI Summary Section */}
-          <div className="bg-white border-b border-gray-200 p-6">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-2">
-                <Brain className="h-5 w-5 text-purple-600" />
+          {/* Deal AI Summary Section - Compact */}
+          <div className="bg-white border-b border-gray-200 p-4">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-1">
+                <Brain className="h-4 w-4 text-purple-600" />
                 Deal Intelligence
               </h2>
-              <p className="text-sm text-gray-600">AI-powered insights based on all activities and interactions</p>
+              <p className="text-xs text-gray-600">AI-powered insights</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
               {/* Closing Probability */}
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-900">Closing Probability</span>
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-200">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <TrendingUp className="h-3.5 w-3.5 text-green-600" />
+                  <span className="text-xs font-medium text-green-900">Probability</span>
                 </div>
-                <div className="text-2xl font-bold text-green-700">75%</div>
-                <div className="text-xs text-green-600 mt-1">High likelihood to close</div>
+                <div className="text-xl font-bold text-green-700">75%</div>
+                <div className="text-[10px] text-green-600 mt-0.5">High likelihood</div>
               </div>
 
               {/* Deal Health */}
-              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Activity className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-900">Deal Health</span>
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-3 border border-blue-200">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Activity className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-medium text-blue-900">Health</span>
                 </div>
-                <div className="text-2xl font-bold text-blue-700">Good</div>
-                <div className="text-xs text-blue-600 mt-1">Regular engagement</div>
+                <div className="text-xl font-bold text-blue-700">Good</div>
+                <div className="text-[10px] text-blue-600 mt-0.5">Regular engagement</div>
               </div>
 
               {/* Next Action */}
-              <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-4 w-4 text-orange-600" />
-                  <span className="text-sm font-medium text-orange-900">Next Action</span>
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-3 border border-orange-200">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Clock className="h-3.5 w-3.5 text-orange-600" />
+                  <span className="text-xs font-medium text-orange-900">Next Action</span>
                 </div>
                 <div className="text-sm font-semibold text-orange-700">Follow-up call</div>
-                <div className="text-xs text-orange-600 mt-1">Due in 2 days</div>
+                <div className="text-[10px] text-orange-600 mt-0.5">Due in 2 days</div>
               </div>
             </div>
 
-            {/* AI Summary */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-purple-600" />
+            {/* AI Summary - Compact */}
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-purple-600" />
                 AI Summary
               </h3>
-              <p className="text-sm text-gray-700 leading-relaxed">
-                This deal shows strong potential with consistent patient engagement and positive sentiment. 
-                The patient has expressed high interest in {deal.treatment_tags.length > 0 ? deal.treatment_tags[0] : 'treatment'} 
-                and has been responsive to communications. Recent activities indicate they are in the decision-making phase. 
-                Recommended next steps include addressing any cost concerns and scheduling a follow-up consultation.
+              <p className="text-xs text-gray-700 leading-relaxed">
+                Strong potential with consistent engagement. Patient is in decision-making phase for {deal.treatment_tags.length > 0 ? deal.treatment_tags[0] : 'treatment'}.
+                Recommended: Address cost concerns and schedule follow-up.
               </p>
-              <div className="flex items-center gap-4 mt-3 text-xs text-gray-600">
-                <span>🎯 Stage: {deal.stage?.name}</span>
-                <span>💰 Value: {deal.value_estimate_cents > 0 ? formatCurrency(deal.value_estimate_cents) : 'Not set'}</span>
-                <span>📅 Created: {formatDate(deal.created_at)}</span>
+              <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-600">
+                <span>🎯 {deal.stage?.name}</span>
+                <span>💰 {deal.value_estimate_cents > 0 ? formatCurrency(deal.value_estimate_cents) : 'Not set'}</span>
+                <span>📅 {formatDate(deal.created_at)}</span>
               </div>
             </div>
           </div>
 
-          {/* Activity Timeline Header */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Activity className="h-5 w-5" />
+          {/* Activity Timeline Header - Compact */}
+          <div className="bg-white border-b border-gray-200 px-4 py-3">
+            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <Activity className="h-4 w-4" />
               Activity Timeline
             </h2>
           </div>
           
           {/* Activity Timeline Content */}
-          <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+          <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
             <ActivityTimeline 
               dealId={dealId} 
               contactId={deal.contact.id}
@@ -537,6 +543,6 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

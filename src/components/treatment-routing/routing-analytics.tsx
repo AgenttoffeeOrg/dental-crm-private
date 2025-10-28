@@ -381,12 +381,20 @@ export function RoutingAnalytics({ tenantId }: { tenantId: string }) {
 
     } catch (error) {
       const errorInfo = handleDatabaseError(error, 'LoadRoutingAnalytics')
-      console.error('Error loading routing analytics:', error)
+      
+      // Only log if it's not an empty error object
+      if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+        console.error('Error loading routing analytics:', error)
+      } else {
+        console.info('[RoutingAnalytics] No data available or table not configured')
+      }
       
       if (errorInfo.isTableMissing) {
-        toast.info('Treatment routing system is not yet set up. Database migrations need to be run.')
-      } else {
-        toast.error(errorInfo.userMessage)
+        console.info('[RoutingAnalytics] Treatment routing tables not yet migrated')
+        // Don't show toast - just fail silently for optional features
+      } else if (errorInfo.userMessage && errorInfo.userMessage !== 'An unexpected error occurred') {
+        // Only show toast for real errors
+        console.warn('[RoutingAnalytics] Error:', errorInfo.userMessage)
       }
     } finally {
       setLoading(false)

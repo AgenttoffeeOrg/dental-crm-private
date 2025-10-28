@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
 import { createClient } from '@/lib/supabase-client'
@@ -45,7 +45,7 @@ import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PipelineColumn } from './pipeline-column'
 import { DealCardMinimal as DealCard } from './deal-card-minimal'
-import { DealDetailView } from '../deals/deal-detail-view-modal'
+// Removed: DealDetailView modal - now using /deals/[id] for consistency
 import { CreateDealSlideOver } from '../deals/create-deal-slide-over'
 import { PipelineSettingsDialog } from './pipeline-settings-dialog'
 import { CreatePipelineDialog } from './create-pipeline-dialog'
@@ -304,7 +304,6 @@ function DealListRow({
 
 export function PipelineBoard({}: PipelineBoardProps) {
   // Pipeline state - Initialize from URL to persist on reload!
-  const searchParams = useSearchParams()
   const router = useRouter()
   const { orgId, userId: currentUserId, isLoading: tenantLoading } = useTenantContext()
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
@@ -318,6 +317,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
   })
   const [stages, setStages] = useState<PipelineStage[]>([])
   const [deals, setDeals] = useState<DealWithRelations[]>([])
+  const [locations, setLocations] = useState<any[]>([]) // NEW: Locations for filtering
   const [availableTags, setAvailableTags] = useState<string[]>([])
   
   // UI state
@@ -331,6 +331,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [treatmentFilter, setTreatmentFilter] = useState<string>('all')
   const [marketingSourceFilter, setMarketingSourceFilter] = useState<string>('all') // NEW: Marketing filter
+  const [locationFilter, setLocationFilter] = useState<string>('all') // NEW: Location filter
   const [sortBy, setSortBy] = useState<'date' | 'value' | 'name' | 'stage'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   
@@ -342,52 +343,23 @@ export function PipelineBoard({}: PipelineBoardProps) {
   const [editingPipelineName, setEditingPipelineName] = useState(false)
   const [tempPipelineName, setTempPipelineName] = useState('')
   
-  // Deal modal state - controlled from URL
-  const [selectedDealId, setSelectedDealId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      return params.get('deal')
-    }
-    return null
-  })
-  
   const supabase = createClient()
 
-  // Handle deal URL parameter on mount and changes
-  useEffect(() => {
-    const dealId = searchParams?.get('deal')
-    setSelectedDealId(dealId)
-  }, [searchParams])
-
-  // Helper functions to update URL
+  // Navigate to deal detail page (consistent with deals table)
   const openDealModal = (dealId: string) => {
-    setSelectedDealId(dealId)
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      url.searchParams.set('deal', dealId)
-      window.history.pushState({}, '', url.toString())
-    }
+    router.push(`/deals/${dealId}`)
   }
 
+  // No longer needed - keeping for compatibility but not used
   const closeDealModal = () => {
-    setSelectedDealId(null)
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      url.searchParams.delete('deal')
-      window.history.pushState({}, '', url.toString())
-    }
-    // Refresh data
-    if (selectedPipelineId === '_all_deals') {
-      fetchAllDeals()
-    } else {
-      fetchPipelineData()
-    }
+    // Not used anymore - deals open in dedicated page
   }
 
   // Load pipelines on mount
   useEffect(() => {
     if (orgId && !tenantLoading) {
       loadPipelines()
+      loadLocations() // NEW: Load locations for filtering
       loadAvailableTags()
     }
   }, [orgId, tenantLoading])
@@ -459,6 +431,26 @@ export function PipelineBoard({}: PipelineBoardProps) {
       setAvailableTags(Array.from(allTags).sort())
     } catch (error) {
       console.error('Error loading available tags:', error)
+    }
+  }
+
+  // NEW: Load accessible locations for filtering
+  const loadLocations = async () => {
+    if (!orgId || !currentUserId) return
+    
+    try {
+      const { data, error } = await supabase.rpc('get_user_accessible_locations', {
+        p_user_id: currentUserId,
+        p_tenant_id: orgId,
+      })
+
+      if (error) {
+        console.error('Error loading locations:', error)
+        return
+      }
+      setLocations(data || [])
+    } catch (error) {
+      console.error('Error loading locations:', error)
     }
   }
 
@@ -692,7 +684,12 @@ export function PipelineBoard({}: PipelineBoardProps) {
       )
     }
     
-    // 5. Sort
+    // 6. Location filter (NEW)
+    if (locationFilter !== 'all') {
+      filtered = filtered.filter(deal => deal.location_id === locationFilter)
+    }
+    
+    // 7. Sort
     filtered.sort((a, b) => {
       let aValue: any, bValue: any
       
@@ -722,7 +719,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
     })
     
     return filtered
-  }, [deals, ownerFilter, localSearchQuery, sourceFilter, treatmentFilter, marketingSourceFilter, sortBy, sortOrder, currentUserId])
+  }, [deals, ownerFilter, localSearchQuery, sourceFilter, treatmentFilter, marketingSourceFilter, locationFilter, sortBy, sortOrder, currentUserId])
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -1103,6 +1100,27 @@ export function PipelineBoard({}: PipelineBoardProps) {
                 </SelectContent>
               </Select>
 
+              {/* NEW: Location Filter */}
+              {locations.length > 1 && (
+                <Select value={locationFilter} onValueChange={setLocationFilter}>
+                  <SelectTrigger className={cn(
+                    "w-[150px] h-8 text-xs",
+                    locationFilter !== 'all' && "border-indigo-500 bg-indigo-50"
+                  )}>
+                    <SelectValue placeholder="Location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    <SelectSeparator />
+                    {locations.map(loc => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               {/* Sort - Only in List View */}
               {viewMode === 'list' && (
                 <Select 
@@ -1406,16 +1424,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
         tenantId={orgId}
       />
 
-      {/* Deal Detail Modal - Controlled by URL */}
-      {selectedDealId && (
-        <DealDetailView
-          dealId={selectedDealId}
-          onClose={closeDealModal}
-          onContactClick={(contactId) => {
-            router.push(`/contacts/${contactId}`)
-          }}
-        />
-      )}
+      {/* Deal Detail Modal REMOVED - Now using /deals/[id] for consistency */}
     </div>
   )
 }

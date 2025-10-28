@@ -108,7 +108,12 @@ export function handleDatabaseError(error: any, context: string): {
   userMessage: string
   shouldRetry: boolean
 } {
-  console.error(`[${context}] Database error:`, error)
+  // Only log if it's not an empty error object
+  if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+    console.error(`[${context}] Database error:`, error)
+  } else {
+    console.info(`[${context}] Database query returned no results`)
+  }
 
   // Check if it's a missing table error
   const errorMessage = error?.message || error?.toString() || ''

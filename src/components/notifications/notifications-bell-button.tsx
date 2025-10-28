@@ -138,11 +138,35 @@ export function NotificationsBellButton({
       const { data, error } = await supabase
         .rpc('get_unread_notification_count', { p_user_id: appUser.id })
       
-      if (error) throw error
+      if (error) {
+        // If function doesn't exist, fall back to direct query
+        if (error.code === '42883' || error.message?.includes('function') || error.message?.includes('does not exist')) {
+          console.info('[Notifications] RPC function not available, using fallback query')
+          
+          const { data: notifData, error: notifError } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', appUser.id)
+            .eq('is_read', false)
+          
+          if (notifError) {
+            console.warn('[Notifications] Fallback query failed:', notifError)
+            setUnreadCount(0)
+            return
+          }
+          
+          setUnreadCount(notifData || 0)
+          return
+        }
+        
+        throw error
+      }
       
       setUnreadCount(data || 0)
     } catch (error) {
-      console.error('[Notifications] Error loading unread count:', error)
+      // Silently handle errors - notifications are non-critical
+      console.info('[Notifications] Unable to load unread count, setting to 0')
+      setUnreadCount(0)
     } finally {
       setLoading(false)
     }

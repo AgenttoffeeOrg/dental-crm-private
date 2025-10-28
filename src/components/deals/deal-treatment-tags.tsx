@@ -102,26 +102,44 @@ export function DealTreatmentTags({
 
   const loadRoutingHistory = async () => {
     try {
+      // Fetch routing history with explicit foreign key reference
+      // Fixed: Use correct column name 'routed_by_user_id' from treatment_routing_logs table
       const { data, error } = await supabase
         .from('treatment_routing_logs')
         .select(`
           id,
           routing_method,
-          confidence,
-          explanation,
+          confidence_score,
+          routing_reason,
           matched_tag_ids,
-          created_at,
-          user:app_users(full_name)
+          routed_at,
+          user:app_users!routed_by_user_id(full_name)
         `)
         .eq('tenant_id', orgId)
         .eq('deal_id', dealId)
-        .order('created_at', { ascending: false})
+        .order('routed_at', { ascending: false})
         .limit(3)
 
-      if (error) throw error
+      if (error) {
+        // Silently handle if table doesn't exist - this is an optional feature
+        if (error.code === '42P01' || error.code === 'PGRST116') {
+          console.info('[TreatmentTags] Routing history table not available')
+        } else {
+          console.error('Error loading routing history:', error)
+        }
+        setRoutingHistory([])
+        return
+      }
+
       setRoutingHistory((data as any) || [])
-    } catch (error) {
-      console.error('Error loading routing history:', error)
+    } catch (error: any) {
+      // Gracefully handle any errors without breaking the UI
+      if (error?.code === '42P01' || error?.code === 'PGRST116') {
+        console.info('[TreatmentTags] Routing history feature not available')
+      } else {
+        console.error('Error loading routing history:', error)
+      }
+      setRoutingHistory([])
     }
   }
 

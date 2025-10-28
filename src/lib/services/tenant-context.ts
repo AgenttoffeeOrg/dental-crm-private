@@ -58,11 +58,11 @@ export const getTenantContext = cache(async (): Promise<UserTenantContext | null
   // Get user's primary tenant from app_users
   const { data: appUser, error: appUserError } = await supabase
     .from('app_users')
-    .select('tenant_id')
+    .select('active_tenant_id')
     .eq('id', user.id)
     .single()
   
-  if (appUserError || !appUser) {
+  if (appUserError || !appUser || !appUser.active_tenant_id) {
     return null
   }
   
@@ -70,7 +70,7 @@ export const getTenantContext = cache(async (): Promise<UserTenantContext | null
   const { data: primaryTenant, error: tenantError } = await supabase
     .from('tenants')
     .select('id, name, website_url, website_host, is_multi_location, dental_group_id, location_name')
-    .eq('id', appUser.tenant_id)
+    .eq('id', appUser.active_tenant_id)
     .single()
   
   if (tenantError || !primaryTenant) {
@@ -260,6 +260,7 @@ export async function switchActiveLocation(
 
 /**
  * Get locations for dropdown/switcher UI
+ * Returns actual locations from the locations table, not tenants
  */
 export async function getLocationsForSwitcher(): Promise<Array<{
   id: string
@@ -267,17 +268,45 @@ export async function getLocationsForSwitcher(): Promise<Array<{
   locationName: string | null
   isPrimary: boolean
 }>> {
-  const context = await getTenantContext()
+  const supabase = await createServerSupabaseClient()
   
-  if (!context) {
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
     return []
   }
   
-  return context.accessibleTenants.map(tenant => ({
-    id: tenant.id,
-    name: tenant.name,
-    locationName: tenant.location_name,
-    isPrimary: tenant.id === context.primaryTenant.id,
+  // Get user's active tenant and location
+  const { data: appUser } = await supabase
+    .from('app_users')
+    .select('active_tenant_id, active_location_id')
+    .eq('id', user.id)
+    .single()
+  
+  if (!appUser?.active_tenant_id) {
+    return []
+  }
+  
+  // Get all locations accessible to this user in the active tenant
+  const { data: locations, error } = await supabase.rpc(
+    'get_user_accessible_locations',
+    {
+      p_user_id: user.id,
+      p_tenant_id: appUser.active_tenant_id
+    }
+  )
+  
+  if (error || !locations) {
+    console.error('Error fetching accessible locations:', error)
+    return []
+  }
+  
+  return locations.map((loc: any) => ({
+    id: loc.id,
+    name: loc.name,
+    locationName: loc.name,
+    isPrimary: loc.id === appUser.active_location_id,
   }))
 }
 

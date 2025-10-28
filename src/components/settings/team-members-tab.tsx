@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { UserPlus, Mail, Shield, MoreVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { InviteUserDialog } from './invite-user-dialog'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 
 // Placeholder data - will be replaced with real data from Supabase
 const PLACEHOLDER_USERS = [
@@ -23,6 +24,7 @@ const PLACEHOLDER_USERS = [
 ]
 
 export function TeamMembersTab() {
+  const { orgId } = useTenantContext()
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
 
   const handleInviteUser = () => {
@@ -206,7 +208,7 @@ export function TeamMembersTab() {
       <InviteUserDialog
         open={inviteDialogOpen}
         onOpenChange={setInviteDialogOpen}
-        tenantId={tenantId}
+        tenantId={orgId}
         onInvited={handleInvited}
       />
     </div>

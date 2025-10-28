@@ -67,17 +67,19 @@ export function ActivityTimeline({
     try {
       setLoading(true)
 
+      // Fetch activities with explicit foreign key references
+      // Fixed: Use correct column name 'agent_user_id' from activities table
       let query = supabase
         .from('activities')
         .select(`
           *,
-          agent:app_users(*),
+          agent:app_users!agent_user_id(*),
           activity_files(
             file_id,
             files(*)
           )
         `)
-        .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
+        .eq('tenant_id', orgId)
         .order('occurred_at', { ascending: false })
 
       // Context-aware filtering

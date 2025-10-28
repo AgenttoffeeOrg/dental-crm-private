@@ -8,8 +8,12 @@ interface Shortcut {
   handler: () => void
 }
 
-export function useKeyboardShortcuts(shortcuts: Shortcut[]) {
+export function useKeyboardShortcuts(shortcuts: Shortcut[] = []) {
   useEffect(() => {
+    if (!shortcuts || shortcuts.length === 0) {
+      return
+    }
+    
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement
       

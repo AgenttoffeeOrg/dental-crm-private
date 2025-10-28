@@ -29,8 +29,7 @@ import { toast } from 'sonner'
 
 const pipelineSchema = z.object({
   name: z.string().min(1, 'Pipeline name is required'),
-  description: z.string().optional(),
-  is_default: z.boolean().default(false),
+  // description and is_default fields removed - columns don't exist in schema
 })
 
 type PipelineFormData = z.infer<typeof pipelineSchema>
@@ -65,8 +64,6 @@ export function CreatePipelineDialog({
     resolver: zodResolver(pipelineSchema),
     defaultValues: {
       name: '',
-      description: '',
-      is_default: false,
     },
   })
 
@@ -75,15 +72,11 @@ export function CreatePipelineDialog({
     if (open && template) {
       form.reset({
         name: template.name,
-        description: template.description,
-        is_default: false,
       })
       setStages(template.suggested_stages)
     } else if (open && !template) {
       form.reset({
         name: '',
-        description: '',
-        is_default: false,
       })
       setStages([
         'New Inquiry',
@@ -149,26 +142,11 @@ export function CreatePipelineDialog({
     setLoading(true)
     
     try {
-      // If making this the default, unset other defaults first
-      if (data.is_default) {
-        const { error: updateError } = await supabase
-          .from('pipelines')
-          .update({ is_default: false })
-          .eq('tenant_id', orgId) // ✅ SECURITY: Filter by org
-        
-        if (updateError) {
-          console.warn('Could not unset other defaults (is_default column may not exist yet):', updateError)
-        }
-      }
-
-      // Try to create pipeline with all fields
-      // If is_default or description columns don't exist, they'll be ignored
+      // Create pipeline (only with columns that exist in schema)
       const { data: pipelineData, error: pipelineError } = await supabase
         .from('pipelines')
         .insert({
           name: data.name,
-          description: data.description || null,
-          is_default: data.is_default,
           tenant_id: orgId, // ✅ SECURITY: Use authenticated user's org
         })
         .select()
@@ -281,28 +259,7 @@ export function CreatePipelineDialog({
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                {...form.register('description')}
-                placeholder="Describe what this pipeline is used for..."
-                rows={3}
-                disabled={loading}
-              />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="is_default"
-                checked={form.watch('is_default')}
-                onCheckedChange={(checked) => form.setValue('is_default', checked)}
-                disabled={loading}
-              />
-              <Label htmlFor="is_default" className="cursor-pointer">
-                Set as default pipeline for new deals
-              </Label>
-            </div>
+            {/* Description and is_default fields removed - columns don't exist in schema */}
             
             <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
               <p className="text-sm text-blue-900">

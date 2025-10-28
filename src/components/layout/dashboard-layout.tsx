@@ -41,7 +41,11 @@ import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
 import { createClient } from '@/lib/supabase-client'
 import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
+import { useKeyboardShortcuts } from '@/lib/hooks/use-keyboard-shortcuts'
 import { LocationSwitcher } from '@/components/multi-location/location-switcher'
+import { OrgSwitcher } from './org-switcher'
+// import { VerificationBanners } from '@/components/verification/verification-banners' // Temporarily disabled - has missing dependencies
+import { MultiOrgOnboarding } from '@/components/onboarding/multi-org-onboarding'
 
 const getNavigation = (featureFlags: any) => [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -64,10 +68,20 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notifDrawerOpen, setNotifDrawerOpen] = useState(false)
   const [tenantContext, setTenantContext] = useState<any>(null)
+  const [locationContext, setLocationContext] = useState<any>(null)
+  const [mounted, setMounted] = useState(false)
   const featureFlags = useFeatureFlags()
   const navigation = getNavigation(featureFlags)
 
-  // Fetch tenant context for location switcher
+  // Prevent hydration mismatches by only rendering after mount
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Initialize global keyboard shortcuts
+  useKeyboardShortcuts()
+
+  // Fetch tenant context
   useEffect(() => {
     const fetchTenantContext = async () => {
       try {
@@ -86,6 +100,25 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [appUser])
 
+  // Fetch location context
+  useEffect(() => {
+    const fetchLocationContext = async () => {
+      try {
+        const response = await fetch('/api/locations/context')
+        if (response.ok) {
+          const data = await response.json()
+          setLocationContext(data)
+        }
+      } catch (error) {
+        console.error('Error fetching location context:', error)
+      }
+    }
+
+    if (appUser) {
+      fetchLocationContext()
+    }
+  }, [appUser])
+
   // Debug logging - minimal
   if (process.env.NODE_ENV === 'development') {
     console.log('[DASHBOARD_LAYOUT] Auth state:', { loading, hasUser: !!user, hasAppUser: !!appUser })
@@ -97,8 +130,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     window.location.href = '/sign-in'
   }
 
-  // Show loading state while auth is checking
-  if (loading) {
+  // Prevent hydration mismatch by showing loading state until mounted
+  if (!mounted || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -247,7 +280,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-gray-50">
           {/* MOBILE HEADER - Shows on small screens */}
           <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold text-gray-900">
               DentalCRM
             </h1>
             <Button
@@ -271,7 +304,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight">
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
               DentalCRM
             </h1>
             <p className="text-xs text-gray-500 mt-1">Enterprise Edition</p>
@@ -345,6 +378,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Verification Banners - Show before top bar */}
+        {/* <VerificationBanners /> */} {/* Temporarily disabled - missing dependencies */}
+        
         {/* TOP BAR - Search & Actions */}
         <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm lg:block hidden">
           <div className="px-4 lg:px-6">
@@ -359,12 +395,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
               {/* User Actions - FAR RIGHT */}
               <div className="flex items-center gap-3 ml-4">
+              {/* Organization Switcher - Multi-Org Users */}
+              <OrgSwitcher />
+              
               {/* Location Switcher - Multi-Location Organizations */}
-              {tenantContext?.isMultiLocation && tenantContext?.primaryTenant && (
+              {locationContext?.isMultiLocation && (
                 <LocationSwitcher
-                  currentLocationId={tenantContext.primaryTenant.id}
-                  currentLocationName={tenantContext.primaryTenant.location_name || tenantContext.primaryTenant.name}
-                  isMultiLocation={tenantContext.isMultiLocation}
+                  currentLocationId={locationContext.activeLocation?.id || locationContext.accessibleLocations?.[0]?.id}
+                  currentLocationName={locationContext.activeLocation?.name || locationContext.accessibleLocations?.[0]?.name || 'Select Location'}
+                  isMultiLocation={locationContext.isMultiLocation}
                 />
               )}
               
@@ -388,14 +427,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <div className="flex items-center justify-start gap-2 p-2">
+                  <DropdownMenuItem 
+                    className="flex items-center justify-start gap-2 p-2 cursor-pointer"
+                    onClick={() => { window.location.href = '/settings?section=account&tab=profile' }}
+                  >
                     <div className="flex flex-col space-y-1 leading-none">
                       <p className="font-medium">{appUser?.full_name}</p>
                       <p className="text-sm text-muted-foreground capitalize">
                         {appUser?.role}
                       </p>
                     </div>
-                  </div>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => { window.location.href = '/notifications' }}>
                     <Bell className="mr-2 h-4 w-4" />
@@ -428,6 +470,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         isOpen={notifDrawerOpen}
         onClose={() => setNotifDrawerOpen(false)}
       />
+      
+      {/* Multi-Org Onboarding */}
+      <MultiOrgOnboarding />
     </div>
   )
 }

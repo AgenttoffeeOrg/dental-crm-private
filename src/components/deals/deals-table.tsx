@@ -52,7 +52,7 @@ import { format } from '@/lib/formatting'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { DealWithRelations, Pipeline, PipelineStage, AppUser } from '@/types/database'
-import { DealDetailView } from './deal-detail-view-modal'
+// Removed: DealDetailView modal - now using proper navigation to /deals/[id]
 import { CreateDealSlideOver } from './create-deal-slide-over'
 import { DealTreatmentTags } from './deal-treatment-tags'
 import { SavedViewsDropdown } from './saved-views-dropdown'
@@ -76,10 +76,11 @@ export function DealsTable() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [stages, setStages] = useState<PipelineStage[]>([])
   const [teamMembers, setTeamMembers] = useState<AppUser[]>([])
+  const [locations, setLocations] = useState<any[]>([]) // NEW: Locations for filtering
   const [availableTags, setAvailableTags] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set())
-  const [selectedDealForView, setSelectedDealForView] = useState<string | null>(null)
+  // Removed: selectedDealForView - now using router.push() for navigation
   const [showCreateDeal, setShowCreateDeal] = useState(false)
 
   // Filters
@@ -88,6 +89,7 @@ export function DealsTable() {
   const [pipelineFilter, setPipelineFilter] = useState<string>('all')
   const [stageFilter, setStageFilter] = useState<string>('all')
   const [ownerFilter, setOwnerFilter] = useState<string>('all')
+  const [locationFilter, setLocationFilter] = useState<string>('all') // NEW: Location filter
   const [agingFilter, setAgingFilter] = useState<string>('all')
   const [valueFilter, setValueFilter] = useState<string>('all')
   const [tagFilter, setTagFilter] = useState<string[]>([])
@@ -111,24 +113,26 @@ export function DealsTable() {
 
   // Load initial data
   useEffect(() => {
-    if (appUser?.tenant_id) {
+    if (appUser?.active_tenant_id) {
       loadPipelines()
       loadTeamMembers()
+      loadLocations() // NEW: Load locations for filtering
       loadAvailableTags()
     }
-  }, [appUser?.tenant_id])
+  }, [appUser?.active_tenant_id])
 
   // Load deals when filters change
   useEffect(() => {
-    if (appUser?.tenant_id) {
+    if (appUser?.active_tenant_id) {
       loadDeals()
     }
   }, [
-    appUser?.tenant_id,
+    appUser?.active_tenant_id,
     debouncedSearchQuery,
     pipelineFilter,
     stageFilter,
     ownerFilter,
+    locationFilter, // NEW: Re-load when location filter changes
     agingFilter,
     valueFilter,
     tagFilter,
@@ -163,7 +167,7 @@ export function DealsTable() {
       const { data, error } = await supabase
         .from('pipelines')
         .select('*')
-        .eq('tenant_id', appUser?.tenant_id)
+        .eq('tenant_id', appUser?.active_tenant_id)
         .order('name')
 
       if (error) throw error
@@ -173,7 +177,7 @@ export function DealsTable() {
       const { data: stagesData, error: stagesError } = await supabase
         .from('pipeline_stages')
         .select('*')
-        .eq('tenant_id', appUser?.tenant_id)
+        .eq('tenant_id', appUser?.active_tenant_id)
         .order('position')
 
       if (stagesError) throw stagesError
@@ -189,7 +193,7 @@ export function DealsTable() {
       const { data, error } = await supabase
         .from('app_users')
         .select('*')
-        .eq('tenant_id', appUser?.tenant_id)
+        .eq('tenant_id', appUser?.active_tenant_id)
         .order('full_name')
 
       if (error) throw error
@@ -199,12 +203,30 @@ export function DealsTable() {
     }
   }
 
+  // NEW: Load accessible locations for filtering
+  const loadLocations = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_user_accessible_locations', {
+        p_user_id: appUser?.id,
+        p_tenant_id: appUser?.active_tenant_id,
+      })
+
+      if (error) {
+        console.error('Error loading locations:', error)
+        return
+      }
+      setLocations(data || [])
+    } catch (error) {
+      console.error('Error loading locations:', error)
+    }
+  }
+
   const loadAvailableTags = async () => {
     try {
       const { data, error } = await supabase
         .from('deals')
         .select('treatment_tags')
-        .eq('tenant_id', appUser?.tenant_id)
+        .eq('tenant_id', appUser?.active_tenant_id)
         .not('treatment_tags', 'is', null)
 
       if (error) throw error
@@ -227,21 +249,17 @@ export function DealsTable() {
     try {
       setLoading(true)
 
-      // Build query
+      // Build query - simplified to avoid RLS issues on joined tables
       let query = supabase
         .from('deals')
-        .select(`
-          *,
-          contact:contacts(id, full_name, primary_email, primary_phone),
-          pipeline:pipelines(id, name),
-          stage:pipeline_stages(id, name, position),
-          owner:app_users(id, full_name)
-        `, { count: 'exact' })
-        .eq('tenant_id', appUser?.tenant_id)
+        .select('*', { count: 'exact' })
+        .eq('tenant_id', appUser?.active_tenant_id)
+        .is('deleted_at', null) // Only active deals
 
       // Apply filters
       if (debouncedSearchQuery) {
-        query = query.or(`title.ilike.%${debouncedSearchQuery}%,contact.full_name.ilike.%${debouncedSearchQuery}%`)
+        // Search in title only (contact search will be client-side after loading)
+        query = query.ilike('title', `%${debouncedSearchQuery}%`)
       }
 
       if (pipelineFilter !== 'all') {
@@ -260,6 +278,11 @@ export function DealsTable() {
         } else {
           query = query.eq('owner_user_id', ownerFilter)
         }
+      }
+
+      // NEW: Location filter
+      if (locationFilter !== 'all') {
+        query = query.eq('location_id', locationFilter)
       }
 
       // Value filter
@@ -294,9 +317,53 @@ export function DealsTable() {
 
       const { data, error, count } = await query
 
-      if (error) throw error
+      // Enhanced error logging to see what Supabase actually returns
+      console.log('[DEALS] Query result:', { 
+        dataCount: data?.length, 
+        error: error, 
+        count: count,
+        errorDetails: error ? JSON.stringify(error, null, 2) : 'none',
+        tenantId: appUser?.active_tenant_id,
+        userId: appUser?.id
+      })
 
-      // Enhance deals with aging data
+      if (error) {
+        console.error('[DEALS] Query error:', error)
+        throw error
+      }
+
+      // Log successful load for debugging
+      console.info(`[DEALS] Loaded ${data?.length || 0} deals for tenant ${appUser?.active_tenant_id}`)
+
+      // Load related data separately to avoid RLS join issues
+      const contactIds = [...new Set(data?.map(d => d.contact_id).filter(Boolean))]
+      const pipelineIds = [...new Set(data?.map(d => d.pipeline_id).filter(Boolean))]
+      const stageIds = [...new Set(data?.map(d => d.stage_id).filter(Boolean))]
+      const ownerIds = [...new Set(data?.map(d => d.owner_user_id).filter(Boolean))]
+
+      // Fetch related data in parallel
+      const [contactsData, pipelinesData, stagesData, ownersData] = await Promise.all([
+        contactIds.length > 0 
+          ? supabase.from('contacts').select('id, full_name, primary_email, primary_phone').in('id', contactIds).then(r => r.data || [])
+          : Promise.resolve([]),
+        pipelineIds.length > 0
+          ? supabase.from('pipelines').select('id, name').in('id', pipelineIds).then(r => r.data || [])
+          : Promise.resolve([]),
+        stageIds.length > 0
+          ? supabase.from('pipeline_stages').select('id, name, position').in('id', stageIds).then(r => r.data || [])
+          : Promise.resolve([]),
+        ownerIds.length > 0
+          ? supabase.from('app_users').select('id, full_name').in('id', ownerIds).then(r => r.data || [])
+          : Promise.resolve([]),
+      ])
+
+      // Create lookup maps
+      const contactMap = new Map(contactsData.map(c => [c.id, c]))
+      const pipelineMap = new Map(pipelinesData.map(p => [p.id, p]))
+      const stageMap = new Map(stagesData.map(s => [s.id, s]))
+      const ownerMap = new Map(ownersData.map(o => [o.id, o]))
+
+      // Enhance deals with aging data and related records
       const enhancedDeals: EnhancedDeal[] = (data || []).map(deal => {
         const createdDate = new Date(deal.created_at)
         const updatedDate = new Date(deal.updated_at)
@@ -310,6 +377,12 @@ export function DealsTable() {
 
         return {
           ...deal,
+          // Add related records from lookup maps
+          contact: deal.contact_id ? contactMap.get(deal.contact_id) : null,
+          pipeline: deal.pipeline_id ? pipelineMap.get(deal.pipeline_id) : null,
+          stage: deal.stage_id ? stageMap.get(deal.stage_id) : null,
+          owner: deal.owner_user_id ? ownerMap.get(deal.owner_user_id) : null,
+          // Add computed fields
           days_in_stage,
           days_since_created,
           aging_status,
@@ -326,11 +399,32 @@ export function DealsTable() {
         }
       }
 
+      // Apply client-side contact search if we have a search query
+      if (debouncedSearchQuery) {
+        const lowerQuery = debouncedSearchQuery.toLowerCase()
+        filteredDeals = filteredDeals.filter(d => 
+          d.title?.toLowerCase().includes(lowerQuery) ||
+          d.contact?.full_name?.toLowerCase().includes(lowerQuery) ||
+          d.contact?.primary_email?.toLowerCase().includes(lowerQuery)
+        )
+      }
+
       setDeals(filteredDeals)
       setTotalCount(count || 0)
     } catch (error) {
-      console.error('Error loading deals:', error)
-      toast.error('Failed to load deals')
+      // Check if the error is an empty object or null
+      const isEmptyError = !error || (typeof error === 'object' && Object.keys(error).length === 0)
+      
+      if (isEmptyError) {
+        // This usually means no data or RLS filtered everything out
+        console.info('[DEALS] No deals found or access denied by RLS for the active tenant/location.')
+        setDeals([])
+        setTotalCount(0)
+      } else {
+        // Log actual errors with content
+        console.error('[DEALS] Error loading deals:', error)
+        toast.error('Failed to load deals')
+      }
     } finally {
       setLoading(false)
     }
@@ -473,6 +567,7 @@ export function DealsTable() {
     pipelineFilter !== 'all',
     stageFilter !== 'all',
     ownerFilter !== 'all',
+    locationFilter !== 'all', // NEW: Include location filter
     agingFilter !== 'all',
     valueFilter !== 'all',
     tagFilter.length > 0,
@@ -485,6 +580,7 @@ export function DealsTable() {
     setPipelineFilter('all')
     setStageFilter('all')
     setOwnerFilter('all')
+    setLocationFilter('all') // NEW: Clear location filter
     setAgingFilter('all')
     setValueFilter('all')
     setTagFilter([])
@@ -626,6 +722,23 @@ export function DealsTable() {
               ))}
             </SelectContent>
           </Select>
+
+          {/* NEW: Location Filter */}
+          {locations.length > 1 && (
+            <Select value={locationFilter} onValueChange={setLocationFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {locations.map(loc => (
+                  <SelectItem key={loc.id} value={loc.id}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Aging Filter */}
           <Select value={agingFilter} onValueChange={setAgingFilter}>
@@ -871,7 +984,7 @@ export function DealsTable() {
                       key={deal.id}
                       id={`deal-row-${deal.id}`}
                       className="hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => setSelectedDealForView(deal.id)}
+                      onClick={() => router.push(`/deals/${deal.id}`)}
                     >
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -900,11 +1013,11 @@ export function DealsTable() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        {deal.treatment_tags && deal.treatment_tags.length > 0 && appUser?.tenant_id ? (
+                        {deal.treatment_tags && deal.treatment_tags.length > 0 && appUser?.active_tenant_id ? (
                           <DealTreatmentTags
                             dealId={deal.id}
                             dealTags={deal.treatment_tags}
-                            orgId={appUser.tenant_id}
+                            orgId={appUser.active_tenant_id}
                             compact={true}
                             editable={false}
                             showHistory={false}
@@ -941,7 +1054,7 @@ export function DealsTable() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setSelectedDealForView(deal.id)}>
+                            <DropdownMenuItem onClick={() => router.push(`/deals/${deal.id}`)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
@@ -1064,15 +1177,7 @@ export function DealsTable() {
         </div>
       </div>
 
-      {/* Deal Detail Modal */}
-      {selectedDealForView && (
-        <DealDetailView
-          dealId={selectedDealForView}
-          open={!!selectedDealForView}
-          onClose={() => setSelectedDealForView(null)}
-          onDealUpdated={loadDeals}
-        />
-      )}
+      {/* Removed: Deal Detail Modal - now using router.push() to navigate to /deals/[id] */}
 
       {/* Create Deal Slide-Over */}
       <CreateDealSlideOver

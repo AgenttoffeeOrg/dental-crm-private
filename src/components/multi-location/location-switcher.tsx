@@ -92,7 +92,7 @@ export function LocationSwitcher({
       const response = await fetch('/api/locations/switch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant_id: locationId }),
+        body: JSON.stringify({ location_id: locationId }),
       })
 
       if (response.ok) {

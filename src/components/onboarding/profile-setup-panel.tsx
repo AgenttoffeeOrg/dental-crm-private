@@ -285,10 +285,10 @@ export function ProfileSetupPanel({ isOpen, onClose, onComplete }: ProfileSetupP
       <div className="fixed inset-y-0 right-0 w-full sm:max-w-2xl bg-white shadow-2xl z-50 animate-in slide-in-from-right duration-300 flex flex-col">
         <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+          <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center">
                   <Sparkles className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -307,7 +307,7 @@ export function ProfileSetupPanel({ isOpen, onClose, onComplete }: ProfileSetupP
             {/* Progress Bar */}
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-500 ease-out"
+                className="h-full bg-blue-600 transition-all duration-500 ease-out"
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>
@@ -355,7 +355,7 @@ export function ProfileSetupPanel({ isOpen, onClose, onComplete }: ProfileSetupP
               // Email Verification Step
               <div className="space-y-6 animate-in slide-in-from-bottom duration-300">
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Mail className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">Verify Your Email</h3>
@@ -698,7 +698,7 @@ export function ProfileSetupPanel({ isOpen, onClose, onComplete }: ProfileSetupP
               <Button
                 onClick={handleNext}
                 disabled={loading}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                className="bg-blue-600 hover:bg-blue-700 transition-colors"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />

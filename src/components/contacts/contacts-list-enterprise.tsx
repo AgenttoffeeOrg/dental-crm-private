@@ -83,6 +83,7 @@ export function ContactsListEnterprise() {
   // State
   const [contacts, setContacts] = useState<EnhancedContact[]>([])
   const [teamMembers, setTeamMembers] = useState<AppUser[]>([])
+  const [locations, setLocations] = useState<any[]>([]) // NEW: Locations for filtering
   const [loading, setLoading] = useState(true)
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set())
   const [showCreateContact, setShowCreateContact] = useState(false)
@@ -93,6 +94,7 @@ export function ContactsListEnterprise() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [locationFilter, setLocationFilter] = useState<string>('all') // NEW: Location filter
   const [tagFilter, setTagFilter] = useState<string>('all')
 
   // Sort
@@ -114,21 +116,23 @@ export function ContactsListEnterprise() {
 
   // Load team members
   useEffect(() => {
-    if (appUser?.tenant_id) {
+    if (appUser?.active_tenant_id) {
       loadTeamMembers()
+      loadLocations() // NEW: Load locations for filtering
     }
-  }, [appUser?.tenant_id])
+  }, [appUser?.active_tenant_id])
 
   // Load contacts when filters change
   useEffect(() => {
-    if (appUser?.tenant_id) {
+    if (appUser?.active_tenant_id) {
       loadContacts()
     }
   }, [
-    appUser?.tenant_id,
+    appUser?.active_tenant_id,
     debouncedSearchQuery,
     typeFilter,
     sourceFilter,
+    locationFilter, // NEW: Re-load when location filter changes
     tagFilter,
     sortField,
     sortOrder,
@@ -141,13 +145,31 @@ export function ContactsListEnterprise() {
       const { data, error } = await supabase
         .from('app_users')
         .select('*')
-        .eq('tenant_id', appUser?.tenant_id)
+        .eq('tenant_id', appUser?.active_tenant_id)
         .order('full_name')
 
       if (error) throw error
       setTeamMembers(data || [])
     } catch (error) {
       console.error('Error loading team members:', error)
+    }
+  }
+
+  // NEW: Load accessible locations for filtering
+  const loadLocations = async () => {
+    try {
+      const { data, error} = await supabase.rpc('get_user_accessible_locations', {
+        p_user_id: appUser?.id,
+        p_tenant_id: appUser?.active_tenant_id,
+      })
+
+      if (error) {
+        console.error('Error loading locations:', error)
+        return
+      }
+      setLocations(data || [])
+    } catch (error) {
+      console.error('Error loading locations:', error)
     }
   }
 
@@ -159,7 +181,8 @@ export function ContactsListEnterprise() {
       let query = supabase
         .from('contacts')
         .select('*', { count: 'exact' })
-        .eq('tenant_id', appUser?.tenant_id)
+        .eq('tenant_id', appUser?.active_tenant_id)
+        .is('deleted_at', null) // Only active contacts
 
       // Apply filters
       if (debouncedSearchQuery) {
@@ -172,6 +195,11 @@ export function ContactsListEnterprise() {
 
       if (sourceFilter !== 'all') {
         query = query.eq('source', sourceFilter)
+      }
+
+      // NEW: Location filter
+      if (locationFilter !== 'all') {
+        query = query.eq('location_id', locationFilter)
       }
 
       if (tagFilter !== 'all') {
@@ -198,7 +226,7 @@ export function ContactsListEnterprise() {
           .from('deals')
           .select('contact_id, value_estimate_cents')
           .in('contact_id', contactIds)
-          .eq('tenant_id', appUser?.tenant_id)
+          .eq('tenant_id', appUser?.active_tenant_id)
 
         const dealMap = new Map<string, { count: number; value: number }>()
         dealStats?.forEach(deal => {
@@ -378,6 +406,7 @@ export function ContactsListEnterprise() {
   const activeFiltersCount = [
     typeFilter !== 'all',
     sourceFilter !== 'all',
+    locationFilter !== 'all', // NEW: Include location filter
     tagFilter !== 'all',
     debouncedSearchQuery !== '',
   ].filter(Boolean).length
@@ -387,6 +416,7 @@ export function ContactsListEnterprise() {
     setSearchQuery('')
     setTypeFilter('all')
     setSourceFilter('all')
+    setLocationFilter('all') // NEW: Clear location filter
     setTagFilter('all')
     setCurrentPage(1)
   }
@@ -520,6 +550,23 @@ export function ContactsListEnterprise() {
             <SelectItem value="walk_in">Walk-in</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* NEW: Location Filter */}
+        {locations.length > 1 && (
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Locations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              {locations.map(loc => (
+                <SelectItem key={loc.id} value={loc.id}>
+                  {loc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {/* Clear Filters */}
         {activeFiltersCount > 0 && (

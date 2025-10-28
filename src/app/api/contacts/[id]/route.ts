@@ -16,6 +16,10 @@ import { ContactUpdateSchema, ContactIdSchema, safeValidateContact } from '@/sch
 /**
  * GET /api/contacts/[id]
  * Get a single contact by ID
+ * 
+ * SECURITY:
+ * - Uses active_tenant_id for organization context
+ * - Verifies location access before returning contact
  */
 export async function GET(
   request: NextRequest,
@@ -33,7 +37,7 @@ export async function GET(
       )
     }
 
-    // Check authentication
+    // ✅ SECURITY: Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json(
@@ -42,26 +46,27 @@ export async function GET(
       )
     }
 
-    // Get app user
-    const { data: appUser } = await supabase
+    // ✅ CONTEXT: Get active tenant and location from user
+    const { data: appUser, error: appUserError } = await supabase
       .from('app_users')
-      .select('tenant_id')
+      .select('active_tenant_id, active_location_id')
       .eq('id', user.id)
       .single()
 
-    if (!appUser) {
+    if (appUserError || !appUser || !appUser.active_tenant_id) {
+      console.error('[API] Error fetching app user:', appUserError)
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User context not found' },
         { status: 404 }
       )
     }
 
-    // Fetch contact
+    // Fetch contact with tenant filter
     const { data: contact, error } = await supabase
       .from('contacts')
       .select('*')
       .eq('id', params.id)
-      .eq('tenant_id', appUser.tenant_id)
+      .eq('tenant_id', appUser.active_tenant_id)
       .single()
 
     if (error || !contact) {
@@ -69,6 +74,43 @@ export async function GET(
         { error: 'Contact not found' },
         { status: 404 }
       )
+    }
+
+    // ✅ LOCATION ACCESS: Verify user has access to contact's location
+    if (contact.location_id) {
+      const { data: membership } = await supabase
+        .from('user_tenant_memberships')
+        .select('all_locations')
+        .eq('user_id', user.id)
+        .eq('tenant_id', appUser.active_tenant_id)
+        .eq('status', 'active')
+        .single()
+
+      if (!membership) {
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        )
+      }
+
+      // If user doesn't have all_locations, verify they have access to this specific location
+      if (!membership.all_locations) {
+        const { data: hasAccess } = await supabase.rpc(
+          'user_has_location_access_rls',
+          {
+            p_user_id: user.id,
+            p_tenant_id: appUser.active_tenant_id,
+            p_location_id: contact.location_id
+          }
+        )
+
+        if (!hasAccess) {
+          return NextResponse.json(
+            { error: 'Contact not found' }, // Don't reveal it exists
+            { status: 404 }
+          )
+        }
+      }
     }
 
     return NextResponse.json({ contact })
@@ -85,6 +127,10 @@ export async function GET(
 /**
  * PATCH /api/contacts/[id]
  * Update a contact (partial update)
+ * 
+ * SECURITY:
+ * - Uses active_tenant_id for organization context
+ * - Verifies location access before updating
  */
 export async function PATCH(
   request: NextRequest,
@@ -102,7 +148,7 @@ export async function PATCH(
       )
     }
 
-    // Check authentication
+    // ✅ SECURITY: Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json(
@@ -111,16 +157,17 @@ export async function PATCH(
       )
     }
 
-    // Get app user
-    const { data: appUser } = await supabase
+    // ✅ CONTEXT: Get active tenant and location from user
+    const { data: appUser, error: appUserError } = await supabase
       .from('app_users')
-      .select('tenant_id')
+      .select('active_tenant_id, active_location_id')
       .eq('id', user.id)
       .single()
 
-    if (!appUser) {
+    if (appUserError || !appUser || !appUser.active_tenant_id) {
+      console.error('[API] Error fetching app user:', appUserError)
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User context not found' },
         { status: 404 }
       )
     }
@@ -142,9 +189,9 @@ export async function PATCH(
     // Check if contact exists and belongs to tenant
     const { data: existing } = await supabase
       .from('contacts')
-      .select('id')
+      .select('id, location_id')
       .eq('id', params.id)
-      .eq('tenant_id', appUser.tenant_id)
+      .eq('tenant_id', appUser.active_tenant_id)
       .single()
 
     if (!existing) {
@@ -152,6 +199,42 @@ export async function PATCH(
         { error: 'Contact not found' },
         { status: 404 }
       )
+    }
+
+    // ✅ LOCATION ACCESS: Verify user has access to contact's location
+    if (existing.location_id) {
+      const { data: membership } = await supabase
+        .from('user_tenant_memberships')
+        .select('all_locations')
+        .eq('user_id', user.id)
+        .eq('tenant_id', appUser.active_tenant_id)
+        .eq('status', 'active')
+        .single()
+
+      if (!membership) {
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        )
+      }
+
+      if (!membership.all_locations) {
+        const { data: hasAccess } = await supabase.rpc(
+          'user_has_location_access_rls',
+          {
+            p_user_id: user.id,
+            p_tenant_id: appUser.active_tenant_id,
+            p_location_id: existing.location_id
+          }
+        )
+
+        if (!hasAccess) {
+          return NextResponse.json(
+            { error: 'Contact not found' },
+            { status: 404 }
+          )
+        }
+      }
     }
 
     // Update contact
@@ -163,7 +246,7 @@ export async function PATCH(
         updated_by: user.id,
       })
       .eq('id', params.id)
-      .eq('tenant_id', appUser.tenant_id)
+      .eq('tenant_id', appUser.active_tenant_id)
       .select()
       .single()
 
@@ -189,6 +272,11 @@ export async function PATCH(
 /**
  * DELETE /api/contacts/[id]
  * Delete a contact
+ * 
+ * SECURITY:
+ * - Uses active_tenant_id for organization context
+ * - Verifies location access before deleting
+ * - Requires admin permissions
  */
 export async function DELETE(
   request: NextRequest,
@@ -206,7 +294,7 @@ export async function DELETE(
       )
     }
 
-    // Check authentication
+    // ✅ SECURITY: Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json(
@@ -215,16 +303,17 @@ export async function DELETE(
       )
     }
 
-    // Get app user
-    const { data: appUser } = await supabase
+    // ✅ CONTEXT: Get active tenant and user role
+    const { data: appUser, error: appUserError } = await supabase
       .from('app_users')
-      .select('tenant_id, role')
+      .select('active_tenant_id, active_location_id, role')
       .eq('id', user.id)
       .single()
 
-    if (!appUser) {
+    if (appUserError || !appUser || !appUser.active_tenant_id) {
+      console.error('[API] Error fetching app user:', appUserError)
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User context not found' },
         { status: 404 }
       )
     }
@@ -240,9 +329,9 @@ export async function DELETE(
     // Check if contact exists
     const { data: existing } = await supabase
       .from('contacts')
-      .select('id')
+      .select('id, location_id')
       .eq('id', params.id)
-      .eq('tenant_id', appUser.tenant_id)
+      .eq('tenant_id', appUser.active_tenant_id)
       .single()
 
     if (!existing) {
@@ -252,12 +341,48 @@ export async function DELETE(
       )
     }
 
+    // ✅ LOCATION ACCESS: Verify user has access to contact's location
+    if (existing.location_id) {
+      const { data: membership } = await supabase
+        .from('user_tenant_memberships')
+        .select('all_locations')
+        .eq('user_id', user.id)
+        .eq('tenant_id', appUser.active_tenant_id)
+        .eq('status', 'active')
+        .single()
+
+      if (!membership) {
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        )
+      }
+
+      if (!membership.all_locations) {
+        const { data: hasAccess } = await supabase.rpc(
+          'user_has_location_access_rls',
+          {
+            p_user_id: user.id,
+            p_tenant_id: appUser.active_tenant_id,
+            p_location_id: existing.location_id
+          }
+        )
+
+        if (!hasAccess) {
+          return NextResponse.json(
+            { error: 'Contact not found' },
+            { status: 404 }
+          )
+        }
+      }
+    }
+
     // Delete contact
     const { error } = await supabase
       .from('contacts')
       .delete()
       .eq('id', params.id)
-      .eq('tenant_id', appUser.tenant_id)
+      .eq('tenant_id', appUser.active_tenant_id)
 
     if (error) {
       console.error('[API] Error deleting contact:', error)

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +9,7 @@ import { ActivityFeedEnterprise } from '@/components/activities/activity-feed-en
 import { ContactProfileDialog } from './contact-profile-dialog'
 import { CreateDealDialog } from '@/components/pipeline/create-deal-dialog'
 import { CreateActivityDialog } from '@/components/deals/create-activity-dialog'
-import { DealDetailView } from '@/components/deals/deal-detail-view-modal'
+// Removed modal import - we'll navigate to deal page instead
 import { AIAssistantChat } from '@/components/ai/ai-assistant-chat'
 import { DealTasks } from '@/components/deals/deal-tasks'
 import { EmailComposerPanel } from '@/components/communications/email-composer-panel'
@@ -52,6 +53,7 @@ interface ContactDetailViewProps {
 export function ContactDetailView({ 
   contactId
 }: ContactDetailViewProps) {
+  const router = useRouter()
   const { tenantId } = useTenant()
   const [contact, setContact] = useState<Contact | null>(null)
   const [deals, setDeals] = useState<DealWithRelations[]>([])
@@ -59,7 +61,7 @@ export function ContactDetailView({
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [createDealDialogOpen, setCreateDealDialogOpen] = useState(false)
   const [createActivityDialogOpen, setCreateActivityDialogOpen] = useState(false)
-  const [selectedDealId, setSelectedDealId] = useState<string | null>(null)
+  // Removed selectedDealId state - we navigate instead of showing modal
   const [showActivityTimeline, setShowActivityTimeline] = useState(false)
   const [showAI, setShowAI] = useState(false)
   const [activeTab, setActiveTab] = useState<string>('overview')
@@ -397,7 +399,7 @@ export function ContactDetailView({
                       return (
                         <div
                           key={deal.id}
-                          onClick={() => setSelectedDealId(deal.id)}
+                          onClick={() => router.push(`/deals/${deal.id}`)}
                           className={`p-3 rounded-lg border cursor-pointer group transition-all hover:shadow-sm ${
                             isActive ? 'bg-blue-50 border-blue-200 hover:border-blue-300 hover:bg-blue-100' :
                             isWon ? 'bg-green-50 border-green-200 hover:border-green-300' :
@@ -634,7 +636,7 @@ export function ContactDetailView({
                       return (
                         <div
                           key={deal.id}
-                          onClick={() => setSelectedDealId(deal.id)}
+                          onClick={() => router.push(`/deals/${deal.id}`)}
                           className={`p-4 rounded-lg border cursor-pointer group transition-all hover:shadow-md ${
                             isActive ? 'bg-blue-50 border-blue-200 hover:border-blue-300' :
                             isWon ? 'bg-green-50 border-green-200 hover:border-green-300' :
@@ -862,23 +864,7 @@ export function ContactDetailView({
         </>
       )}
 
-      {/* Deal Detail Modal */}
-      {selectedDealId && (
-        <DealDetailView
-          dealId={selectedDealId}
-          onClose={() => setSelectedDealId(null)}
-          onContactClick={(contactId) => {
-            // If clicking on the same contact, just close the deal modal
-            if (contactId === contactId) {
-              setSelectedDealId(null)
-            } else {
-              // Navigate to different contact (this would need router navigation in real app)
-              setSelectedDealId(null)
-              toast.info('Contact navigation would happen here')
-            }
-          }}
-        />
-      )}
+      {/* NO MORE DEAL DETAIL MODAL - Navigate to /deals/[id] instead */}
 
       {/* AI Assistant - Toggleable Slider from Right */}
       {aiAssistantOpen && (

@@ -164,53 +164,48 @@ export function TodaysPriorities({ tenantId, onRefresh }: TodaysPrioritiesProps)
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
+      <CardContent className="p-3">
+        <div className="space-y-2">
           {priorities.map((item) => {
             const Icon = getIcon(item.type)
             return (
               <div
                 key={`${item.type}-${item.id}`}
-                className="group relative flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm transition-all"
+                className="group relative flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 bg-white hover:border-indigo-300 hover:shadow-sm transition-all"
               >
-                {/* Icon */}
-                <div className={`rounded-full p-2 shrink-0 ${getUrgencyColor(item.urgency)}`}>
-                  <Icon className="h-4 w-4" />
+                {/* Icon - Smaller */}
+                <div className={`rounded-full p-1.5 shrink-0 ${getUrgencyColor(item.urgency)}`}>
+                  <Icon className="h-3.5 w-3.5" />
                 </div>
                 
-                {/* Content */}
+                {/* Content - Compact */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate text-sm">
-                        {item.title}
-                      </p>
-                      <p className="text-xs text-gray-600 truncate">
-                        {item.subtitle}
-                      </p>
-                    </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium text-gray-900 truncate text-sm">
+                      {item.title}
+                    </p>
                     <Badge 
                       variant={getUrgencyVariant(item.urgency)} 
-                      className="shrink-0 text-xs"
+                      className="shrink-0 text-[10px] px-1.5 py-0.5 h-auto"
                     >
                       {item.urgency}
                     </Badge>
                   </div>
-                  
-                  <p className="text-xs text-gray-500 mb-2">
-                    {item.reason}
+                  <p className="text-[11px] text-gray-600 truncate mt-0.5">
+                    {item.subtitle}
                   </p>
-                  
-                  <Link href={item.actionUrl}>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-7 text-xs"
-                    >
-                      {item.actionLabel}
-                    </Button>
-                  </Link>
                 </div>
+                
+                {/* Action - Inline */}
+                <Link href={item.actionUrl}>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-7 text-xs px-2 shrink-0"
+                  >
+                    View
+                  </Button>
+                </Link>
               </div>
             )
           })}
