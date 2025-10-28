@@ -1,543 +1,391 @@
-# 🚀 RAILWAY DEPLOYMENT GUIDE
+# 🚀 Railway Deployment Guide - Dental CRM
 
-**Date:** October 19, 2025  
-**Phase:** 17 - Deployment & Monitoring  
-**Status:** READY FOR DEPLOYMENT (Awaiting User Approval)  
+## 📋 Prerequisites
 
----
-
-## ⚠️ IMPORTANT: DO NOT DEPLOY YET
-
-**This guide prepares everything for Railway deployment but DOES NOT execute it.**  
-**User must give explicit approval before pushing to Railway.**
+Before deploying to Railway, ensure you have:
+- ✅ Railway account (https://railway.app)
+- ✅ Railway CLI installed (`npm install -g @railway/cli`)
+- ✅ Git repository clean and committed
+- ✅ Supabase project (already configured)
+- ✅ All environment variables ready
 
 ---
 
-## 📋 PRE-DEPLOYMENT CHECKLIST
-
-Before deploying to Railway, ensure ALL of the following are complete:
-
-### Code Readiness
-- [ ] All code committed to local Git repository
-- [ ] All linter errors resolved
-- [ ] All tests passing (unit + integration)
-- [ ] Pre-deployment checklist 100% complete
-- [ ] No breaking changes verified
-
-### Database Readiness
-- [ ] Database migrations tested on localhost
-- [ ] Database migrations tested on staging
-- [ ] Rollback scripts prepared and tested
-- [ ] Backup of production database taken
-
-### Feature Flags
-- [ ] All feature flags set to OFF by default
-- [ ] Feature flag system tested
-- [ ] Gradual rollout plan documented
-
-### Documentation
-- [ ] All user guides complete
-- [ ] All developer guides complete
-- [ ] Troubleshooting guide ready
-- [ ] Deployment runbook prepared
-
-### Monitoring
-- [ ] Monitoring dashboards configured
-- [ ] Alerts set up for errors
-- [ ] Performance baselines established
-- [ ] Logging configured
-
----
-
-## 🔧 DEPLOYMENT STEPS (To be executed after approval)
-
-### Step 1: Push to GitHub
+## 🎯 Step 1: Install Railway CLI (if not installed)
 
 ```bash
-# 1. Check current status
-git status
-
-# 2. Stage all changes
-git add .
-
-# 3. Commit with descriptive message
-git commit -m "feat: Universal Treatment Tag Routing System (Phases 0-16 complete)
-
-- Added treatment tags management UI
-- Implemented pipeline mapping system
-- Created routing engine with 4 methods
-- Added routing analytics dashboard
-- Integrated with forms, PMS, marketing
-- Added AI tag extraction
-- Implemented bulk operations
-- Comprehensive documentation
-- Full test suite
-- Feature flags (ALL OFF by default)
-
-BREAKING CHANGES: None
-REQUIRES: Database migrations (45, 46, 47)
-STATUS: Ready for production deployment"
-
-# 4. Push to private GitHub repo
-git push origin main
-
-# 5. Verify push succeeded
-git log -1
+npm install -g @railway/cli
 ```
 
-### Step 2: Deploy Database Migrations
-
+**Verify installation:**
 ```bash
-# 1. Test migrations on staging first
-./deploy-migrations.sh staging
-
-# 2. Verify staging database
-psql -h STAGING_DB_HOST -U postgres -d DATABASE_NAME -c "SELECT COUNT(*) FROM treatment_tags;"
-
-# 3. If staging successful, deploy to production
-./deploy-migrations.sh production
-
-# 4. Verify production database
-psql -h PRODUCTION_DB_HOST -U postgres -d DATABASE_NAME -c "SELECT COUNT(*) FROM treatment_tags;"
-
-# 5. Confirm all tables created
-psql -h PRODUCTION_DB_HOST -U postgres -d DATABASE_NAME -c "
-  SELECT table_name 
-  FROM information_schema.tables 
-  WHERE table_name LIKE 'treatment_%' 
-    OR table_name = 'pms_procedure_tag_mappings';
-"
-
-# Expected output:
-# - treatment_tags
-# - treatment_tag_pipeline_mappings
-# - treatment_routing_logs
-# - treatment_routing_settings
-# - pms_procedure_tag_mappings
+railway --version
 ```
 
-### Step 3: Configure Railway Environment Variables
+---
 
-**In Railway Dashboard:**
-
-1. Go to your project → Settings → Variables
-2. Add/verify the following:
+## 🔐 Step 2: Login to Railway
 
 ```bash
-# Feature Flags (ALL OFF initially)
-NEXT_PUBLIC_ENABLE_TREATMENT_ROUTING=false
-NEXT_PUBLIC_ENABLE_ROUTING_UI=false
-NEXT_PUBLIC_ENABLE_ROUTING_ANALYTICS=false
-ENABLE_AUTO_TAG_EXTRACTION=false
-ENABLE_BULK_REROUTING=false
-ENABLE_FORM_ROUTING=false
-ENABLE_PMS_ROUTING=false
-ENABLE_WEBHOOK_ROUTING=false
-ENABLE_AI_SUGGESTIONS=false
-ENABLE_ROUTING_EVENTS=false
+cd /Users/deepak/auth-app/dental-crm
+railway login
+```
 
-# Database (already configured)
-SUPABASE_URL=your-supabase-url
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_KEY=your-service-key
-DATABASE_URL=your-database-url
+This will open a browser window for authentication.
+
+---
+
+## 📦 Step 3: Initialize Railway Project
+
+### Option A: Link to Existing Railway Project
+```bash
+railway link
+```
+Select your existing project from the list.
+
+### Option B: Create New Railway Project
+```bash
+railway init
+```
+Follow the prompts to create a new project.
+
+---
+
+## ⚙️ Step 4: Configure Environment Variables
+
+You need to set these environment variables in Railway:
+
+### Required Variables:
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-supabase-service-role-key>
+
+# App Configuration
+NEXT_PUBLIC_APP_URL=<your-railway-url>
+NODE_ENV=production
+```
+
+### Set Variables via CLI:
+```bash
+# Supabase URL
+railway variables set NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+
+# Supabase Anon Key
+railway variables set NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key-here"
+
+# Supabase Service Role Key
+railway variables set SUPABASE_SERVICE_ROLE_KEY="your-service-role-key-here"
 
 # Node Environment
-NODE_ENV=production
-NEXT_TELEMETRY_DISABLED=1
-
-# Other existing variables
-# ... (keep all existing variables)
+railway variables set NODE_ENV="production"
 ```
 
-### Step 4: Deploy Code to Railway
+### Set Variables via Railway Dashboard (Recommended for sensitive data):
+1. Go to Railway Dashboard: https://railway.app/dashboard
+2. Select your project
+3. Go to **Variables** tab
+4. Add each environment variable
 
+---
+
+## 📝 Step 5: Create Railway Configuration Files
+
+### Create `railway.json` (if needed):
+```json
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "npm run build"
+  },
+  "deploy": {
+    "startCommand": "npm start",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}
+```
+
+### Create `nixpacks.toml` (for custom Nixpacks configuration):
+```toml
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm start"
+```
+
+---
+
+## 🚀 Step 6: Deploy to Railway
+
+### Method 1: Using Railway CLI
 ```bash
-# Railway will auto-deploy from GitHub main branch
-# Or manually trigger deployment:
+# Make sure all changes are committed
+git add .
+git commit -m "chore: prepare for Railway deployment"
 
-# Option A: Railway CLI
+# Deploy to Railway
 railway up
-
-# Option B: Railway Dashboard
-# Go to Deployments → Deploy → main branch
-
-# Wait for deployment to complete
-# Monitor deployment logs for errors
 ```
 
-### Step 5: Verify Deployment
-
+### Method 2: Using Git Push (if Railway is connected to GitHub)
 ```bash
-# 1. Check deployment status
-railway status
+# Push to your main branch
+git push origin main
+```
 
-# 2. View deployment logs
+Railway will automatically detect the push and start deploying.
+
+---
+
+## 🔍 Step 7: Monitor Deployment
+
+### View Deployment Logs:
+```bash
+railway logs
+```
+
+### Or via Dashboard:
+1. Go to Railway Dashboard
+2. Select your project
+3. Click on **Deployments** tab
+4. View real-time logs
+
+---
+
+## ✅ Step 8: Verify Deployment
+
+### 1. Check Deployment Status
+```bash
+railway status
+```
+
+### 2. Get Your Railway URL
+```bash
+railway domain
+```
+
+### 3. Open Your App
+```bash
+railway open
+```
+
+Or visit the URL shown in your Railway dashboard.
+
+---
+
+## 🧪 Step 9: Post-Deployment Verification
+
+### Check these endpoints:
+1. **Main Page:** `https://your-app.railway.app`
+2. **Dashboard:** `https://your-app.railway.app/dashboard`
+3. **API Health:** `https://your-app.railway.app/api/tenant/context`
+
+### Test Core Features:
+- [ ] Login works
+- [ ] Dashboard loads
+- [ ] Organization switcher works
+- [ ] Location switcher appears
+- [ ] Deals page loads with data
+- [ ] Deal detail page loads (`/deals/[id]`)
+- [ ] Contacts page loads
+- [ ] Pipeline view loads
+- [ ] Tasks page loads
+- [ ] Settings page loads
+- [ ] Team Invites tab loads without errors
+
+---
+
+## 🔧 Troubleshooting
+
+### Build Fails:
+```bash
+# Check build logs
+railway logs --build
+
+# Common fixes:
+# 1. Verify Node version (should be 18+)
+# 2. Check package.json scripts
+# 3. Ensure all dependencies are in package.json
+```
+
+### Environment Variables Not Working:
+```bash
+# List all variables
+railway variables
+
+# Update a variable
+railway variables set VARIABLE_NAME="new-value"
+
+# Delete and re-add if needed
+railway variables delete VARIABLE_NAME
+railway variables set VARIABLE_NAME="new-value"
+```
+
+### App Crashes on Start:
+```bash
+# Check runtime logs
 railway logs
 
-# 3. Test production URL
-curl https://your-app.railway.app/api/health
-
-# 4. Verify database connection
-curl https://your-app.railway.app/api/tenant/context
-
-# 5. Check for JavaScript errors in browser console
-# Open https://your-app.railway.app in browser
-# Open DevTools → Console
-# Look for any errors
+# Common issues:
+# 1. Missing environment variables
+# 2. Database connection issues (check Supabase URL/keys)
+# 3. Port configuration (Railway auto-assigns PORT)
 ```
 
-### Step 6: Smoke Test Production
-
-**Critical Paths to Test:**
-
-1. **Login**
-   - Visit production URL
-   - Log in with test account
-   - Verify dashboard loads
-
-2. **Deal Creation (Legacy)**
-   - Create a deal manually
-   - Select pipeline manually
-   - Verify it saves correctly
-   - **Should work exactly as before**
-
-3. **Pipeline Board**
-   - View pipeline board
-   - Drag deal to different stage
-   - Verify it moves correctly
-
-4. **Contact Management**
-   - View contacts
-   - Create new contact
-   - Verify it saves
-
-5. **Analytics**
-   - Load analytics dashboards
-   - Verify all charts display
-   - No errors in console
-
-### Step 7: Enable Feature Flags (Gradual Rollout)
-
-**ONLY after smoke tests pass:**
-
-#### Phase 1: Internal Testing (Day 1)
-
-Enable for ONE test tenant only:
-
-```sql
--- In production database
-INSERT INTO feature_flags (
-  tenant_id,
-  feature_category,
-  enabled,
-  show_ui,
-  show_analytics,
-  enabled_at,
-  enabled_by
-) VALUES (
-  'YOUR-TEST-TENANT-UUID',
-  'treatment_routing',
-  true,  -- Master switch
-  true,  -- Show UI
-  true,  -- Show analytics
-  NOW(),
-  'admin-user-uuid'
-);
-```
-
-**Monitor for 24 hours:**
-- Check for errors in logs
-- Verify routing works correctly
-- Gather feedback from test user
-- Monitor performance metrics
-
-#### Phase 2: Beta Testing (Day 2-7)
-
-If Phase 1 successful, enable for 5 beta customers:
-
-```sql
--- Add 5 beta tenants
-INSERT INTO feature_flags (
-  tenant_id, feature_category, enabled, show_ui, show_analytics
-) VALUES
-  ('beta-tenant-1-uuid', 'treatment_routing', true, true, true),
-  ('beta-tenant-2-uuid', 'treatment_routing', true, true, true),
-  ('beta-tenant-3-uuid', 'treatment_routing', true, true, true),
-  ('beta-tenant-4-uuid', 'treatment_routing', true, true, true),
-  ('beta-tenant-5-uuid', 'treatment_routing', true, true, true);
-```
-
-**Monitor for 1 week:**
-- Daily check of routing logs
-- Gather user feedback
-- Fix any issues discovered
-- Iterate on UX improvements
-
-#### Phase 3: Limited Release (Week 2-4)
-
-If Phase 2 successful, enable for 10% of customers:
-
-```sql
--- Enable for 10% of tenants (randomized)
-UPDATE feature_flags
-SET 
-  enabled = true,
-  show_ui = true,
-  show_analytics = true,
-  auto_extraction = true,
-  form_routing = true
-WHERE tenant_id IN (
-  SELECT id 
-  FROM tenants 
-  WHERE random() < 0.1  -- 10% sample
-    AND is_active = true
-);
-```
-
-**Monitor for 2-4 weeks:**
-- Weekly routing accuracy reports
-- User satisfaction surveys
-- Performance monitoring
-- Bug fixes and improvements
-
-#### Phase 4: General Availability (After successful rollout)
-
-If all phases successful, enable for everyone:
-
-```sql
--- Enable for all active tenants
-INSERT INTO feature_flags (tenant_id, feature_category, enabled, show_ui, show_analytics)
-SELECT 
-  id,
-  'treatment_routing',
-  true,
-  true,
-  true
-FROM tenants
-WHERE is_active = true
-ON CONFLICT (tenant_id, feature_category) 
-DO UPDATE SET 
-  enabled = true,
-  show_ui = true,
-  show_analytics = true;
-```
+### Database Issues:
+- Verify Supabase URL is correct
+- Check Supabase service role key is valid
+- Ensure all migrations are applied in Supabase
 
 ---
 
-## 📊 MONITORING & ALERTS
+## 📊 Railway Dashboard Features
 
-### Key Metrics to Monitor
+### Access Your Dashboard:
+https://railway.app/dashboard
 
-**Application Health:**
-- Response times (p50, p95, p99)
-- Error rates (4xx, 5xx)
-- CPU usage
-- Memory usage
-- Database connection pool
-
-**Routing System:**
-- Routing success rate (target: >95%)
-- Average routing time (target: <100ms)
-- Unsorted pipeline percentage (target: <10%)
-- Tag extraction accuracy
-- User overrides rate
-
-**User Experience:**
-- Page load times
-- Deal creation time
-- Pipeline board render time
-- Search performance
-
-### Alert Thresholds
-
-```yaml
-# Railway monitoring alerts
-alerts:
-  - name: "High Error Rate"
-    condition: "error_rate > 5%"
-    duration: "5 minutes"
-    action: "Send Slack notification"
-  
-  - name: "Slow Response Time"
-    condition: "p95_response_time > 3000ms"
-    duration: "10 minutes"
-    action: "Send Slack notification"
-  
-  - name: "High CPU Usage"
-    condition: "cpu_usage > 80%"
-    duration: "5 minutes"
-    action: "Send Slack notification"
-  
-  - name: "Database Connection Issues"
-    condition: "db_connection_errors > 0"
-    duration: "1 minute"
-    action: "Send Slack notification + Email"
-  
-  - name: "Routing Failures"
-    condition: "routing_error_rate > 10%"
-    duration: "5 minutes"
-    action: "Send Slack notification"
-```
-
-### Monitoring Dashboards
-
-**1. Application Dashboard:**
-- Request volume
-- Response times
-- Error rates
-- Active users
-
-**2. Routing System Dashboard:**
-- Routing methods breakdown
-- Success rate over time
-- Top tags used
-- Pipeline distribution
-
-**3. Database Dashboard:**
-- Query performance
-- Connection pool usage
-- Slow queries
-- Table sizes
+### Key Features:
+1. **Deployments** - View deployment history and logs
+2. **Variables** - Manage environment variables
+3. **Metrics** - Monitor CPU, memory, network usage
+4. **Domains** - Configure custom domains
+5. **Settings** - Adjust deployment settings
 
 ---
 
-## 🔄 ROLLBACK PLAN
+## 🌐 Custom Domain Setup (Optional)
 
-If critical issues discovered after deployment:
+### Add Custom Domain:
+1. Go to Railway Dashboard
+2. Select your project
+3. Go to **Settings** > **Domains**
+4. Click **Add Domain**
+5. Enter your domain (e.g., `app.yourdomain.com`)
+6. Add CNAME record in your DNS provider:
+   ```
+   CNAME app railway-production.up.railway.app
+   ```
 
-### Immediate Rollback (< 5 minutes)
+---
 
-**Option 1: Disable Feature Flags**
-```sql
--- Turn off for all tenants
-UPDATE feature_flags
-SET enabled = false
-WHERE feature_category = 'treatment_routing';
-```
+## 🔄 Continuous Deployment
 
-**Option 2: Environment Variable**
+### Auto-Deploy on Git Push:
+Railway automatically deploys when you push to your connected branch.
+
 ```bash
-# In Railway Dashboard
-NEXT_PUBLIC_ENABLE_TREATMENT_ROUTING=false
-
-# Redeploy (automatic)
-```
-
-### Full Rollback (< 30 minutes)
-
-**1. Revert Code**
-```bash
-# Rollback to previous commit
-git revert HEAD
+# Make changes
+git add .
+git commit -m "feat: add new feature"
 git push origin main
 
-# Railway auto-deploys reverted code
+# Railway will automatically:
+# 1. Detect the push
+# 2. Run build
+# 3. Deploy new version
+# 4. Switch traffic to new deployment
 ```
 
-**2. Rollback Database**
+### Rollback to Previous Deployment:
+1. Go to Railway Dashboard
+2. Click **Deployments**
+3. Find the deployment you want to restore
+4. Click **Redeploy**
+
+---
+
+## 📈 Monitoring & Scaling
+
+### View Metrics:
 ```bash
-# Run rollback scripts
-./deploy-migrations.sh production rollback
-
-# Verify rollback
-psql -h PRODUCTION_DB_HOST -U postgres -d DATABASE_NAME -c "
-  SELECT table_name 
-  FROM information_schema.tables 
-  WHERE table_name LIKE 'treatment_%';
-"
-# Should return empty or pre-migration state
+railway status
 ```
 
-**3. Restore from Backup (if needed)**
+### Scale Your App:
+1. Go to Railway Dashboard
+2. Select your project
+3. Go to **Settings** > **Resources**
+4. Adjust memory/CPU limits
+
+---
+
+## 🆘 Quick Commands Reference
+
 ```bash
-# Restore from backup created before migration
-pg_restore -h PRODUCTION_DB_HOST -U postgres -d DATABASE_NAME backups/TIMESTAMP/data_backup.sql
+# Login
+railway login
+
+# Link project
+railway link
+
+# Set environment variable
+railway variables set NAME="value"
+
+# Deploy
+railway up
+
+# View logs
+railway logs
+
+# Get app URL
+railway domain
+
+# Open app in browser
+railway open
+
+# Check status
+railway status
+
+# SSH into running app
+railway shell
 ```
 
 ---
 
-## 📞 INCIDENT RESPONSE
+## ✅ Deployment Checklist
 
-### Severity Levels
-
-**P0 (Critical) - Production Down**
-- Response time: Immediate
-- All hands on deck
-- User-facing downtime
-
-**P1 (Major) - Feature Broken**
-- Response time: < 1 hour
-- Major functionality impaired
-- Workaround available
-
-**P2 (Minor) - Bug**
-- Response time: < 4 hours
-- Limited impact
-- Scheduled fix
-
-### Contact Information
-
-**On-Call Engineer:** [Your phone]  
-**Backup:** [Backup contact]  
-**Slack Channel:** #incidents  
-**Email:** incidents@yourcompany.com  
+Before deploying, verify:
+- [x] All code is committed to Git
+- [x] `.env.local` is in `.gitignore` (never commit secrets!)
+- [x] All environment variables are set in Railway
+- [x] Supabase database is accessible from Railway
+- [x] All database migrations are applied in Supabase
+- [ ] Railway project is created/linked
+- [ ] Build completes successfully
+- [ ] App starts without errors
+- [ ] All features work on Railway URL
 
 ---
 
-## ✅ POST-DEPLOYMENT CHECKLIST
+## 📚 Additional Resources
 
-After deployment completes:
-
-- [ ] Smoke tests passed
-- [ ] No errors in production logs
-- [ ] Performance metrics within normal range
-- [ ] Feature flags confirmed OFF
-- [ ] Monitoring dashboards updated
-- [ ] Team notified of deployment
-- [ ] Documentation updated with production URLs
-- [ ] Rollback plan verified and ready
-- [ ] User announcement prepared (for when features enabled)
+- **Railway Docs:** https://docs.railway.app
+- **Next.js on Railway:** https://docs.railway.app/guides/nextjs
+- **Supabase Docs:** https://supabase.com/docs
 
 ---
 
-## 📝 DEPLOYMENT LOG
+## 🎉 Success!
 
-| Date | Action | Status | Notes |
-|------|--------|--------|-------|
-| YYYY-MM-DD | Code pushed to GitHub | ☐ Pending | |
-| YYYY-MM-DD | DB migration (staging) | ☐ Pending | |
-| YYYY-MM-DD | DB migration (production) | ☐ Pending | |
-| YYYY-MM-DD | Railway deployment | ☐ Pending | |
-| YYYY-MM-DD | Smoke tests | ☐ Pending | |
-| YYYY-MM-DD | Phase 1 (internal) enabled | ☐ Pending | |
-| YYYY-MM-DD | Phase 2 (beta) enabled | ☐ Pending | |
-| YYYY-MM-DD | Phase 3 (10%) enabled | ☐ Pending | |
-| YYYY-MM-DD | Phase 4 (100%) enabled | ☐ Pending | |
+Once deployed, your app will be available at:
+```
+https://your-project.railway.app
+```
+
+Share this URL with your team or stakeholders!
 
 ---
 
-## 🎊 SUCCESS CRITERIA
-
-Deployment considered successful when:
-
-✅ All smoke tests pass  
-✅ Zero critical errors in first 24 hours  
-✅ Performance metrics within baseline ±10%  
-✅ Routing accuracy >90% for beta users  
-✅ User feedback positive (NPS >8)  
-✅ Zero data loss or corruption  
-✅ Zero breaking changes to existing features  
-
----
-
-**⚠️ REMINDER: DO NOT DEPLOY TO RAILWAY WITHOUT USER APPROVAL ⚠️**
-
-**Once approved, follow this guide step-by-step with utmost precision.**
-
----
-
-*Last Updated: October 19, 2025*  
-*Version: 1.0.0*  
-*© 2025 Dental CRM. All rights reserved.*
-
+**Need Help?**
+- Railway Support: https://railway.app/help
+- Community Discord: https://discord.gg/railway
