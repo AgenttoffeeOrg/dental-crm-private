@@ -515,3 +515,13 @@ export async function getTagByName(
   }
 }
 
+// =====================================================
+// LEGACY COMPATIBILITY EXPORTS
+// =====================================================
+
+/**
+ * Legacy alias for extractTreatmentTags
+ * @deprecated Use extractTreatmentTags instead
+ */
+export const extractTagsFromDealText = extractTreatmentTags
+

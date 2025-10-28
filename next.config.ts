@@ -11,9 +11,17 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true, // Disable TypeScript errors during build
   },
   
+  // Output configuration
+  output: 'standalone',
+  
+  // Skip static generation for error pages
+  skipTrailingSlashRedirect: true,
+  skipMiddlewareUrlNormalize: true,
+  
   // Experimental features
   experimental: {
     ppr: false, // Disable partial prerendering
+    optimizePackageImports: ['@/components', '@/lib'],
   },
 
   // Image optimization

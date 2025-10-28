@@ -1,6 +1,10 @@
 import Link from 'next/link'
 import { Home } from 'lucide-react'
 
+// Force dynamic rendering to avoid static generation
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-indigo-50">
