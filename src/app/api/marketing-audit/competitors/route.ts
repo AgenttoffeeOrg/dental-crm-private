@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(request.url);
-    const auditId = searchParams.get('auditId');
+    let auditId = searchParams.get('auditId');
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -1,8 +1,8 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   // Build configuration
   eslint: {
     ignoreDuringBuilds: true, // Disable linting during build
@@ -11,18 +11,9 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true, // Disable TypeScript errors during build
   },
   
-  // Output configuration
-  output: 'standalone',
-  
   // Skip static generation for error pages
   skipTrailingSlashRedirect: true,
   skipMiddlewareUrlNormalize: true,
-  
-  // Experimental features
-  experimental: {
-    ppr: false, // Disable partial prerendering
-    optimizePackageImports: ['@/components', '@/lib'],
-  },
 
   // Image optimization
   images: {
@@ -94,4 +85,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
