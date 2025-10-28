@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
-import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase-client'

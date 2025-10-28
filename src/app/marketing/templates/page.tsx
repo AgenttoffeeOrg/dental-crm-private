@@ -3,7 +3,6 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Button } from '@/components/ui/button'
 import { Plus, Layout as LayoutIcon } from 'lucide-react'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import Link from 'next/link'
 import { TemplateLibrary } from '@/components/marketing/template-library'
 
@@ -12,9 +11,7 @@ export default function TemplatesPage() {
     <DashboardLayout>
       <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-purple-50/30">
         <div className="p-8 max-w-[1600px] mx-auto">
-          <Breadcrumbs items={[{ label: "Marketing", href: "/marketing" }, { label: "Templates" }]} />
-          
-          <div className="flex items-center justify-between mb-6 mt-6">
+          <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                 <LayoutIcon className="h-8 w-8 text-purple-600" />

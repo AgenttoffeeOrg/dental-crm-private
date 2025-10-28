@@ -3,7 +3,6 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { AnalyticsDashboard } from '@/components/marketing/analytics-dashboard'
 import { BarChart3 } from 'lucide-react'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 
 export default function ReportsPage() {
   return (

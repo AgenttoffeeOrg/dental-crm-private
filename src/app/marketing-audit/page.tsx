@@ -9,8 +9,6 @@
 
 import { AuditDashboard } from '@/components/marketing-audit/dashboard/audit-dashboard';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { Breadcrumbs } from '@/components/ui/breadcrumbs';
-import { PageHeader } from '@/components/ui/page-header';
 import { LineChart } from 'lucide-react';
 
 export default function MarketingAuditPage() {
@@ -20,12 +18,13 @@ export default function MarketingAuditPage() {
     <DashboardLayout>
       <div className="h-full overflow-y-auto">
         <div className="p-6">
-          <Breadcrumbs items={[{ label: 'Marketing Audit' }]} />
-          <PageHeader
-            title="Marketing Audit & Benchmarking"
-            description="Analyze your practice's marketing performance and benchmark against competitors"
-            icon={LineChart}
-          />
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <LineChart className="h-8 w-8 text-indigo-600" />
+              Marketing Audit & Benchmarking
+            </h1>
+            <p className="text-gray-600 mt-1">Analyze your practice's marketing performance and benchmark against competitors</p>
+          </div>
           <AuditDashboard />
         </div>
       </div>

@@ -5,14 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Plus, Rocket } from 'lucide-react'
 import Link from 'next/link'
 import { CampaignsDashboard } from '@/components/marketing/campaigns-dashboard'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 
 export default function CampaignsPage() {
   return (
     <DashboardLayout>
       <div className="h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-blue-50/30">
         <div className="p-8 max-w-[1600px] mx-auto">
-          <Breadcrumbs items={[{ label: 'Marketing', href: '/marketing' }, { label: 'Campaigns' }]} />
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">

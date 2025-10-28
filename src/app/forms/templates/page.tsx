@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
-import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -59,18 +57,13 @@ export default function FormTemplatesPage() {
     <DashboardLayout>
       <div className="h-full overflow-y-auto">
         <div className="p-6 space-y-6">
-          <Breadcrumbs
-            items={[
-              { label: 'Forms', href: '/forms' },
-              { label: 'Templates' },
-            ]}
-          />
-
-          <PageHeader
-            title="Form Templates"
-            description="Start with a professional template and customize to your needs"
-            icon={FileText}
-          />
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <FileText className="h-8 w-8 text-blue-600" />
+              Form Templates
+            </h1>
+            <p className="text-gray-600 mt-1">Start with a professional template and customize to your needs</p>
+          </div>
 
           {/* Search & Filter */}
           <div className="flex gap-4">
