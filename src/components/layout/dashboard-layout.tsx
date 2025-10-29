@@ -432,9 +432,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               {/* Notifications Bell */}
               <NotificationsBellButton onOpen={() => setNotifDrawerOpen(true)} />
               
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full pointer-events-auto">
                     <Avatar className="h-9 w-9">
                       <AvatarFallback className="bg-blue-600 text-white">
                         {appUser?.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
@@ -442,7 +442,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuContent className="w-56 z-[200]" align="end" forceMount>
                   <DropdownMenuItem 
                     className="flex items-center justify-start gap-2 p-2 cursor-pointer"
                     onClick={() => { window.location.href = '/settings?section=account&tab=profile' }}
