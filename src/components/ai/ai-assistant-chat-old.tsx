@@ -212,7 +212,7 @@ export function AIAssistantChat({
       <div className="fixed bottom-4 right-4 z-50">
         <Button
           onClick={() => setIsMinimized(false)}
-          className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-r from-blue-600 to-brand-navy-700 hover:from-blue-700 hover:to-brand-navy-800"
         >
           <Bot className="h-6 w-6" />
         </Button>

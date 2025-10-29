@@ -71,11 +71,11 @@ export function DealCardMinimal({ deal, isDragging = false, onDealClick }: DealC
   // Calculate days in stage
   const daysInStage = differenceInDays(new Date(), new Date(deal.updated_at))
   
-  // Aging status
-  let agingColor = 'bg-green-100 text-green-800'
-  if (daysInStage > 30) agingColor = 'bg-red-100 text-red-800'
-  else if (daysInStage > 14) agingColor = 'bg-orange-100 text-orange-800'
-  else if (daysInStage > 7) agingColor = 'bg-yellow-100 text-yellow-800'
+  // Aging status - Muted, professional colors
+  let agingColor = 'bg-gray-100 text-gray-600 border border-gray-200'
+  if (daysInStage > 30) agingColor = 'bg-red-50 text-red-600 border border-red-100'
+  else if (daysInStage > 14) agingColor = 'bg-orange-50 text-orange-600 border border-orange-100'
+  else if (daysInStage > 7) agingColor = 'bg-amber-50 text-amber-600 border border-amber-100'
 
   return (
     <div

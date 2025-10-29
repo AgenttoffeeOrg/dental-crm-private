@@ -903,7 +903,7 @@ export function ContactDetailView({
       {!aiAssistantOpen && (
         <Button
           onClick={() => setAiAssistantOpen(true)}
-          className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-2xl bg-gradient-to-br from-purple-600 via-purple-500 to-blue-600 hover:from-purple-700 hover:via-purple-600 hover:to-blue-700 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] z-50 group border-2 border-white transition-all duration-300"
+          className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-2xl bg-gradient-to-br from-brand-navy-600 via-brand-navy-700 to-blue-700 hover:from-brand-navy-700 hover:via-brand-navy-800 hover:to-blue-800 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] z-50 group border-2 border-white transition-all duration-300"
           size="icon"
         >
           <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse"></div>

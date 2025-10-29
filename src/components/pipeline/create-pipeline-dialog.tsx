@@ -23,7 +23,8 @@ import {
   Plus,
   X,
   Save,
-  TrendingUp
+  TrendingUp,
+  Sparkles
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -38,7 +39,7 @@ interface PipelineTemplate {
   name: string
   description: string
   suggested_stages: string[]
-  color: string
+  icon: string
 }
 
 interface CreatePipelineDialogProps {
@@ -46,18 +47,21 @@ interface CreatePipelineDialogProps {
   onOpenChange: (open: boolean) => void
   onPipelineCreated: () => void
   template?: PipelineTemplate | null
+  templates?: PipelineTemplate[]
 }
 
 export function CreatePipelineDialog({ 
   open, 
   onOpenChange, 
   onPipelineCreated,
-  template
+  template,
+  templates = []
 }: CreatePipelineDialogProps) {
   const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [loading, setLoading] = useState(false)
   const [stages, setStages] = useState<string[]>([])
   const [newStage, setNewStage] = useState('')
+  const [selectedTemplate, setSelectedTemplate] = useState<PipelineTemplate | null>(template || null)
   const supabase = createClient()
 
   const form = useForm<PipelineFormData>({
@@ -67,28 +71,26 @@ export function CreatePipelineDialog({
     },
   })
 
-  // Load template data when dialog opens
+  // Load template data when dialog opens or template changes
   useEffect(() => {
-    if (open && template) {
+    if (open && selectedTemplate) {
       form.reset({
-        name: template.name,
+        name: selectedTemplate.name,
       })
-      setStages(template.suggested_stages)
-    } else if (open && !template) {
+      setStages(selectedTemplate.suggested_stages)
+    } else if (open && !selectedTemplate) {
       form.reset({
         name: '',
       })
       setStages([
-        'New Inquiry',
-        'Contacted',
-        'Consultation Booked',
-        'Treatment Planned',
-        'Treatment Accepted',
-        'Completed',
-        'Lost'
+        'New Lead',
+        'Consultation',
+        'Proposal Sent',
+        'Negotiation',
+        'Closed Won'
       ])
     }
-  }, [open, template])
+  }, [open, selectedTemplate])
 
   const addStage = () => {
     if (newStage.trim() && !stages.includes(newStage.trim())) {
@@ -230,13 +232,67 @@ export function CreatePipelineDialog({
             <div>
               <div>Create New Pipeline</div>
               <p className="text-sm font-normal text-gray-500 mt-1">
-                {template ? `Using ${template.name} template` : 'Create a custom pipeline from scratch'}
+                {selectedTemplate ? `Using ${selectedTemplate.name} template` : 'Create a custom pipeline from scratch'}
               </p>
             </div>
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
+          {/* Template Selector - Only show if templates are provided and none selected yet */}
+          {templates.length > 0 && !template && (
+            <div className="space-y-4 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                <h3 className="text-base font-semibold text-purple-900">Choose a Template (Optional)</h3>
+              </div>
+              <p className="text-sm text-purple-700">Select a pre-built template or start from scratch</p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                {/* Custom/Blank Option */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTemplate(null)}
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    !selectedTemplate 
+                      ? 'border-blue-600 bg-blue-50 shadow-md' 
+                      : 'border-gray-300 bg-white hover:border-blue-400'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="text-3xl">✏️</div>
+                    <div>
+                      <div className="font-semibold text-sm text-gray-900">Custom Pipeline</div>
+                      <div className="text-xs text-gray-600">Start from scratch</div>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Template Options */}
+                {templates.map((tmpl) => (
+                  <button
+                    key={tmpl.name}
+                    type="button"
+                    onClick={() => setSelectedTemplate(tmpl)}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      selectedTemplate?.name === tmpl.name 
+                        ? 'border-purple-600 bg-purple-50 shadow-md' 
+                        : 'border-gray-300 bg-white hover:border-purple-400'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl">{tmpl.icon}</div>
+                      <div>
+                        <div className="font-semibold text-sm text-gray-900">{tmpl.name}</div>
+                        <div className="text-xs text-gray-600 line-clamp-1">{tmpl.description}</div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Pipeline Details */}
           <div className="space-y-4 p-6 bg-gray-50 rounded-lg border">
             <h3 className="text-base font-semibold">Pipeline Details</h3>

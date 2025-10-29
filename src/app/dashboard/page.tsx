@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { LABELS } from '@/lib/constants/labels'
 import { 
   Plus, 
   DollarSign, 
@@ -227,7 +228,7 @@ export default function DashboardRedesigned() {
                 variant="outline"
               >
                 <Plus className="h-3.5 w-3.5 mr-1.5" />
-                New Deal
+                New {LABELS.DEAL.singular}
               </Button>
               <Button
                 onClick={() => {
@@ -316,7 +317,7 @@ export default function DashboardRedesigned() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Active Deals</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Active {LABELS.DEAL.plural}</p>
                     <p className="text-2xl font-bold text-gray-900 mt-1">
                       {format.number(stats.totalDeals)}
                     </p>

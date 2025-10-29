@@ -1,0 +1,573 @@
+
+> dental-crm@1.0.0 build
+> NEXT_DISABLE_SWC_WASM=1 next build
+
+  ▲ Next.js 14.2.18
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/179) ...
+[Analytics Export API] Error: B [Error]: Dynamic server usage: Route /api/analytics/export couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at V (/Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21777)
+    at Object.get (/Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29137)
+    at C (/Users/deepak/auth-app/dental-crm/.next/server/app/api/analytics/export/route.js:1:5009)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:122:103 {
+  description: "Route /api/analytics/export couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[EXPORT] Unexpected error: n [Error]: Dynamic server usage: Route /api/export/contacts couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at d (/Users/deepak/auth-app/dental-crm/.next/server/chunks/5478.js:1:1692)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/draft-email/route.js:63:2072)
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/app/api/export/contacts/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/export/contacts couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error fetching plans: B [Error]: Dynamic server usage: Route /api/billing/plans couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at V (/Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21777)
+    at Object.get (/Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29137)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/billing/plans/route.js:1:1062)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:122:103 {
+  description: "Route /api/billing/plans couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error fetching subscription: n [Error]: Dynamic server usage: Route /api/billing/subscription couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at d (/Users/deepak/auth-app/dental-crm/.next/server/chunks/5478.js:1:1692)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/chat/route.js:108:2072)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/billing/subscription/route.js:1:1076)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/billing/subscription couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[Integration Metrics] Error: B [Error]: Dynamic server usage: Route /api/integrations/metrics couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at V (/Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21777)
+    at Object.get (/Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29137)
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/app/api/integrations/metrics/route.js:1:1075)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:122:103 {
+  description: "Route /api/integrations/metrics couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[EXPORT] Unexpected error: n [Error]: Dynamic server usage: Route /api/export/deals couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at f (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai/transcribe-call/route.js:23:3618)
+    at a (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai/transcribe-call/route.js:23:8152)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/export/deals/route.js:1:1063)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/export/deals couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[API] Unexpected error: n [Error]: Dynamic server usage: Route /api/invites/list couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at p (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/action/route.js:47:2265)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/action/route.js:67:1836)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/invites/list/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/invites/list couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[API] Error getting location context: n [Error]: Dynamic server usage: Route /api/locations/context couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at p (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/action/route.js:47:2265)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/action/route.js:67:1836)
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/app/api/locations/context/route.js:1:1064)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/locations/context couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error fetching accessible locations: n [Error]: Dynamic server usage: Route /api/locations/accessible couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at p (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai/summarize-call/route.js:26:4584)
+    at o (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai/summarize-call/route.js:26:9118)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/chunks/4555.js:12:614)
+    at p (/Users/deepak/auth-app/dental-crm/.next/server/app/api/locations/accessible/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31) {
+  description: "Route /api/locations/accessible couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+   Generating static pages (44/179) 
+[Alerts API] Error: n [Error]: Dynamic server usage: Route /api/marketing-audit/alerts couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at f (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai/transcribe-call/route.js:23:3618)
+    at a (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai/transcribe-call/route.js:23:8152)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/marketing-audit/alerts/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/marketing-audit/alerts couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[History API] Error: n [Error]: Dynamic server usage: Route /api/marketing-audit/history couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at p (/Users/deepak/auth-app/dental-crm/.next/server/app/api/analytics/nl-to-sql/route.js:47:3108)
+    at n (/Users/deepak/auth-app/dental-crm/.next/server/app/api/analytics/nl-to-sql/route.js:47:7642)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/marketing-audit/history/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/marketing-audit/history couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[API] Error in GET /api/onboarding/admin/steps: n [Error]: Dynamic server usage: Route /api/onboarding/admin/steps couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at p (/Users/deepak/auth-app/dental-crm/.next/server/app/api/analytics/nl-to-sql/route.js:47:3108)
+    at n (/Users/deepak/auth-app/dental-crm/.next/server/app/api/analytics/nl-to-sql/route.js:47:7642)
+    at d (/Users/deepak/auth-app/dental-crm/.next/server/app/api/onboarding/admin/steps/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/onboarding/admin/steps couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[OAuth Callback API] Error: n [Error]: Dynamic server usage: Route /api/marketing-audit/oauth/google/callback couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at f (/Users/deepak/auth-app/dental-crm/.next/server/app/api/analytics/multi-org/route.js:1:3739)
+    at n (/Users/deepak/auth-app/dental-crm/.next/server/app/api/analytics/multi-org/route.js:1:8273)
+    at d (/Users/deepak/auth-app/dental-crm/.next/server/app/api/marketing-audit/oauth/google/callback/route.js:1:1076)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/marketing-audit/oauth/google/callback couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[API] Error in GET /api/onboarding/config: n [Error]: Dynamic server usage: Route /api/onboarding/config couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at p (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai/summarize-call/route.js:26:4584)
+    at o (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai/summarize-call/route.js:26:9118)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/onboarding/config/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/onboarding/config couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[Competitors API] Error: n [Error]: Dynamic server usage: Route /api/marketing-audit/competitors couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at p (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/action/route.js:47:2265)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/action/route.js:67:1836)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/marketing-audit/competitors/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/marketing-audit/competitors couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[API] Error in GET /api/onboarding/resume: n [Error]: Dynamic server usage: Route /api/onboarding/resume couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at p (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/action/route.js:47:2265)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/action/route.js:67:1836)
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/app/api/onboarding/resume/route.js:1:1063)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/onboarding/resume couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[Latest Audit API] Error: n [Error]: Dynamic server usage: Route /api/marketing-audit/latest couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at d (/Users/deepak/auth-app/dental-crm/.next/server/chunks/5478.js:1:1692)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/chat/route.js:108:2072)
+    at d (/Users/deepak/auth-app/dental-crm/.next/server/app/api/marketing-audit/latest/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/marketing-audit/latest couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[API] Error in GET /api/onboarding/status: n [Error]: Dynamic server usage: Route /api/onboarding/status couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at f (/Users/deepak/auth-app/dental-crm/.next/server/app/api/analytics/multi-org/route.js:1:3739)
+    at n (/Users/deepak/auth-app/dental-crm/.next/server/app/api/analytics/multi-org/route.js:1:8273)
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/app/api/onboarding/status/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/onboarding/status couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[API] Unexpected error: n [Error]: Dynamic server usage: Route /api/org/memberships couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at d (/Users/deepak/auth-app/dental-crm/.next/server/chunks/5478.js:1:1692)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/chat/route.js:108:2072)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/org/memberships/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/org/memberships couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[API] Unexpected error fetching organization profile: n [Error]: Dynamic server usage: Route /api/org/profile couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at p (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/action/route.js:47:2265)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/action/route.js:67:1836)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/org/profile/route.js:1:1075)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24) {
+  description: "Route /api/org/profile couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+[SEARCH] Error performing universal search: B [Error]: Dynamic server usage: Route /api/search/universal couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at V (/Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21777)
+    at Object.get (/Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29137)
+    at c (/Users/deepak/auth-app/dental-crm/.next/server/app/api/search/universal/route.js:1:1075)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:122:103 {
+  description: "Route /api/search/universal couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error getting tenant context: n [Error]: Dynamic server usage: Route /api/tenant/context couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/chunks/8948.js:1:56266)
+    at d (/Users/deepak/auth-app/dental-crm/.next/server/chunks/5478.js:1:1692)
+    at s (/Users/deepak/auth-app/dental-crm/.next/server/app/api/ai-assistant/chat/route.js:108:2072)
+    at /Users/deepak/auth-app/dental-crm/.next/server/chunks/4555.js:1:6221
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:184943
+    at u (/Users/deepak/auth-app/dental-crm/.next/server/app/api/tenant/context/route.js:1:1065)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46) {
+  description: "Route /api/tenant/context couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+   Generating static pages (89/179) 
+Error in database-status: ReferenceError: getFirstTenantId is not defined
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/app/api/test/database-status/route.js:1:1091)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:122:103
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+Error in direct-database-check: ReferenceError: getFirstTenantId is not defined
+    at l (/Users/deepak/auth-app/dental-crm/.next/server/app/api/test/direct-database-check/route.js:1:1091)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:37016
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at /Users/deepak/auth-app/dental-crm/node_modules/next/dist/server/lib/trace/tracer.js:122:103
+    at NoopContextManager.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Users/deepak/auth-app/dental-crm/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+🧪 Testing database connectivity...
+Auth test: { hasUser: false, authError: 'Auth session missing!' }
+Query test: { contactCount: 5, queryError: undefined }
+   Generating static pages (134/179) 
+Insert test: {
+  inserted: false,
+  insertError: 'insert or update on table "contacts" violates foreign key constraint "contacts_tenant_id_fkey"'
+}
+ ✓ Generating static pages (179/179)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                        Size     First Load JS
+┌ ƒ /                                                              152 B          87.8 kB
+├ ƒ /_not-found                                                    152 B          87.8 kB
+├ ƒ /analytics                                                     273 kB          606 kB
+├ ƒ /analytics/metrics                                             5.86 kB         127 kB
+├ ƒ /api/admin/demo-reset                                          0 B                0 B
+├ ƒ /api/ai-assistant/action                                       0 B                0 B
+├ ƒ /api/ai-assistant/chat                                         0 B                0 B
+├ ƒ /api/ai-assistant/draft-email                                  0 B                0 B
+├ ƒ /api/ai/summarize-call                                         0 B                0 B
+├ ƒ /api/ai/transcribe-call                                        0 B                0 B
+├ ƒ /api/analytics/export                                          0 B                0 B
+├ ƒ /api/analytics/multi-org                                       0 B                0 B
+├ ƒ /api/analytics/nl-to-sql                                       0 B                0 B
+├ ƒ /api/analytics/web-vitals                                      0 B                0 B
+├ ƒ /api/billing/plans                                             0 B                0 B
+├ ƒ /api/billing/subscription                                      0 B                0 B
+├ ƒ /api/categorize-deals                                          0 B                0 B
+├ ƒ /api/communications/initiate-call                              0 B                0 B
+├ ƒ /api/communications/send-email                                 0 B                0 B
+├ ƒ /api/communications/send-sms                                   0 B                0 B
+├ ƒ /api/communications/send-sms-v2                                0 B                0 B
+├ ƒ /api/communications/send-whatsapp                              0 B                0 B
+├ ƒ /api/communications/send-whatsapp-v2                           0 B                0 B
+├ ƒ /api/contacts                                                  0 B                0 B
+├ ƒ /api/contacts/[id]                                             0 B                0 B
+├ ƒ /api/cron/scheduled-audits                                     0 B                0 B
+├ ƒ /api/emails/test                                               0 B                0 B
+├ ƒ /api/emails/welcome                                            0 B                0 B
+├ ƒ /api/export/contacts                                           0 B                0 B
+├ ƒ /api/export/deals                                              0 B                0 B
+├ ƒ /api/health                                                    0 B                0 B
+├ ƒ /api/import/contacts                                           0 B                0 B
+├ ƒ /api/integrations/health                                       0 B                0 B
+├ ƒ /api/integrations/metrics                                      0 B                0 B
+├ ƒ /api/integrations/pms/webhooks/patient-sync                    0 B                0 B
+├ ƒ /api/integrations/pms/webhooks/payment-received                0 B                0 B
+├ ƒ /api/integrations/pms/webhooks/treatment-accepted              0 B                0 B
+├ ƒ /api/integrations/pms/webhooks/treatment-declined              0 B                0 B
+├ ƒ /api/integrations/pms/webhooks/treatment-proposed              0 B                0 B
+├ ƒ /api/invites/[id]/resend                                       0 B                0 B
+├ ƒ /api/invites/[id]/revoke                                       0 B                0 B
+├ ƒ /api/invites/accept                                            0 B                0 B
+├ ƒ /api/invites/check-pending                                     0 B                0 B
+├ ƒ /api/invites/create                                            0 B                0 B
+├ ƒ /api/invites/list                                              0 B                0 B
+├ ƒ /api/join-requests                                             0 B                0 B
+├ ƒ /api/join-requests/[id]/approve                                0 B                0 B
+├ ƒ /api/join-requests/[id]/reject                                 0 B                0 B
+├ ƒ /api/locations/access                                          0 B                0 B
+├ ƒ /api/locations/accessible                                      0 B                0 B
+├ ƒ /api/locations/context                                         0 B                0 B
+├ ƒ /api/locations/switch                                          0 B                0 B
+├ ƒ /api/marketing-audit/[id]                                      0 B                0 B
+├ ƒ /api/marketing-audit/[id]/csv                                  0 B                0 B
+├ ƒ /api/marketing-audit/[id]/export/pdf                           0 B                0 B
+├ ƒ /api/marketing-audit/[id]/metrics                              0 B                0 B
+├ ƒ /api/marketing-audit/[id]/pdf-preview                          0 B                0 B
+├ ƒ /api/marketing-audit/[id]/recommendations                      0 B                0 B
+├ ƒ /api/marketing-audit/[id]/recommendations/[recId]/create-task  0 B                0 B
+├ ƒ /api/marketing-audit/[id]/recommendations/[recId]/dismiss      0 B                0 B
+├ ƒ /api/marketing-audit/[id]/share                                0 B                0 B
+├ ƒ /api/marketing-audit/alerts                                    0 B                0 B
+├ ƒ /api/marketing-audit/alerts/[id]/acknowledge                   0 B                0 B
+├ ƒ /api/marketing-audit/competitors                               0 B                0 B
+├ ƒ /api/marketing-audit/history                                   0 B                0 B
+├ ƒ /api/marketing-audit/latest                                    0 B                0 B
+├ ƒ /api/marketing-audit/oauth/google/callback                     0 B                0 B
+├ ƒ /api/marketing-audit/oauth/google/initiate                     0 B                0 B
+├ ƒ /api/marketing-audit/run                                       0 B                0 B
+├ ƒ /api/marketing/forms/submit                                    0 B                0 B
+├ ƒ /api/marketing/track-click                                     0 B                0 B
+├ ƒ /api/onboarding/admin/field-config                             0 B                0 B
+├ ƒ /api/onboarding/admin/steps                                    0 B                0 B
+├ ƒ /api/onboarding/complete                                       0 B                0 B
+├ ƒ /api/onboarding/config                                         0 B                0 B
+├ ƒ /api/onboarding/resume                                         0 B                0 B
+├ ƒ /api/onboarding/save-progress                                  0 B                0 B
+├ ƒ /api/onboarding/skip-step                                      0 B                0 B
+├ ƒ /api/onboarding/status                                         0 B                0 B
+├ ƒ /api/onboarding/validate-step                                  0 B                0 B
+├ ƒ /api/org/memberships                                           0 B                0 B
+├ ƒ /api/org/preferences                                           0 B                0 B
+├ ƒ /api/org/profile                                               0 B                0 B
+├ ƒ /api/org/switch                                                0 B                0 B
+├ ƒ /api/organizations/discover                                    0 B                0 B
+├ ƒ /api/orgs/create                                               0 B                0 B
+├ ƒ /api/payments/create-intent                                    0 B                0 B
+├ ƒ /api/pipelines/preferences                                     0 B                0 B
+├ ƒ /api/process-audio                                             0 B                0 B
+├ ƒ /api/process-audio-direct                                      0 B                0 B
+├ ƒ /api/process-call-activity                                     0 B                0 B
+├ ƒ /api/search/universal                                          0 B                0 B
+├ ƒ /api/settings/branding                                         0 B                0 B
+├ ƒ /api/settings/company                                          0 B                0 B
+├ ƒ /api/settings/email                                            0 B                0 B
+├ ƒ /api/settings/sms                                              0 B                0 B
+├ ƒ /api/settings/whatsapp                                         0 B                0 B
+├ ƒ /api/setup/disable-rls                                         0 B                0 B
+├ ƒ /api/setup/enterprise                                          0 B                0 B
+├ ƒ /api/setup/migrate-pipelines                                   0 B                0 B
+├ ƒ /api/setup/schema                                              0 B                0 B
+├ ƒ /api/setup/storage                                             0 B                0 B
+├ ƒ /api/tenant/context                                            0 B                0 B
+├ ○ /api/test/activities                                           0 B                0 B
+├ ○ /api/test/activities-overview                                  0 B                0 B
+├ ƒ /api/test/add-deals-to-existing                                0 B                0 B
+├ ○ /api/test/ai-artifacts                                         0 B                0 B
+├ ƒ /api/test/apply-comprehensive-contact-migration                0 B                0 B
+├ ƒ /api/test/chatgpt                                              0 B                0 B
+├ ƒ /api/test/comprehensive-contact-migration                      0 B                0 B
+├ ƒ /api/test/create-30-patients                                   0 B                0 B
+├ ƒ /api/test/create-call                                          0 B                0 B
+├ ƒ /api/test/create-complete-practice-data                        0 B                0 B
+├ ƒ /api/test/create-correct-schema-patients                       0 B                0 B
+├ ƒ /api/test/create-deal-calls                                    0 B                0 B
+├ ƒ /api/test/create-deals                                         0 B                0 B
+├ ƒ /api/test/create-deals-correct-schema                          0 B                0 B
+├ ƒ /api/test/create-deals-for-patients                            0 B                0 B
+├ ƒ /api/test/create-full-practice                                 0 B                0 B
+├ ƒ /api/test/create-realistic-data                                0 B                0 B
+├ ƒ /api/test/create-realistic-practice                            0 B                0 B
+├ ƒ /api/test/create-working-data                                  0 B                0 B
+├ ƒ /api/test/database                                             0 B                0 B
+├ ƒ /api/test/database-status                                      0 B                0 B
+├ ƒ /api/test/debug-deal-creation                                  0 B                0 B
+├ ƒ /api/test/direct-database-check                                0 B                0 B
+├ ƒ /api/test/force-create-patients                                0 B                0 B
+├ ○ /api/test/quick-contact-test                                   0 B                0 B
+├ ƒ /api/test/test-comprehensive-contact                           0 B                0 B
+├ ƒ /api/test/test-comprehensive-profile                           0 B                0 B
+├ ƒ /api/test/test-contact-creation                                0 B                0 B
+├ ƒ /api/test/test-crud-operations                                 0 B                0 B
+├ ƒ /api/test/test-minimal-deal                                    0 B                0 B
+├ ƒ /api/test/test-safe-contact                                    0 B                0 B
+├ ƒ /api/test/test-single-patient                                  0 B                0 B
+├ ƒ /api/test/upload                                               0 B                0 B
+├ ƒ /api/test/upload-flow                                          0 B                0 B
+├ ○ /api/test/users                                                0 B                0 B
+├ ƒ /api/treatment-routing/bulk-reroute                            0 B                0 B
+├ ƒ /api/upload/audio                                              0 B                0 B
+├ ƒ /api/user/column-preferences                                   0 B                0 B
+├ ƒ /api/users/invite                                              0 B                0 B
+├ ƒ /api/webhooks                                                  0 B                0 B
+├ ƒ /api/webhooks/email                                            0 B                0 B
+├ ƒ /api/webhooks/form-submission                                  0 B                0 B
+├ ƒ /api/webhooks/google-ads-leads                                 0 B                0 B
+├ ƒ /api/webhooks/lead-intake                                      0 B                0 B
+├ ƒ /api/webhooks/meta-lead-ads                                    0 B                0 B
+├ ƒ /api/webhooks/sms                                              0 B                0 B
+├ ƒ /api/webhooks/tiktok-lead-gen                                  0 B                0 B
+├ ƒ /api/webhooks/universal                                        0 B                0 B
+├ ƒ /api/webhooks/voice                                            0 B                0 B
+├ ƒ /api/webhooks/voicestack                                       0 B                0 B
+├ ƒ /api/webhooks/whatsapp                                         0 B                0 B
+├ ƒ /auth/callback                                                 0 B                0 B
+├ ƒ /automations                                                   5.98 kB         241 kB
+├ ƒ /automations/[id]                                              4.09 kB         295 kB
+├ ƒ /automations/create                                            4.08 kB         295 kB
+├ ƒ /calendar                                                      5.92 kB         241 kB
+├ ƒ /contacts                                                      9.62 kB         249 kB
+├ ƒ /contacts/[id]                                                 37.7 kB         313 kB
+├ ƒ /contacts/new                                                  525 B          88.2 kB
+├ ƒ /dashboard                                                     5.34 kB         276 kB
+├ ƒ /dashboard-new                                                 7.46 kB         273 kB
+├ ƒ /deals                                                         501 B           239 kB
+├ ƒ /deals/[id]                                                    16 kB           279 kB
+├ ƒ /f/[slug]                                                      1.15 kB         186 kB
+├ ƒ /forms                                                         14.4 kB         249 kB
+├ ƒ /forms/[id]/analytics                                          3.15 kB         238 kB
+├ ƒ /forms/embed/[id]                                              774 B           186 kB
+├ ƒ /forms/templates                                               5.49 kB         240 kB
+├ ƒ /integrations                                                  6.78 kB         242 kB
+├ ƒ /invite/[token]                                                4.78 kB         158 kB
+├ ƒ /login                                                         8.91 kB         169 kB
+├ ƒ /marketing                                                     5.36 kB         240 kB
+├ ƒ /marketing-audit                                               2.93 kB         242 kB
+├ ƒ /marketing-audit/shared/[token]                                3.59 kB         152 kB
+├ ƒ /marketing/audiences                                           4.97 kB         240 kB
+├ ƒ /marketing/campaigns                                           4.16 kB         239 kB
+├ ƒ /marketing/campaigns/create                                    5.08 kB         240 kB
+├ ƒ /marketing/forms-landing                                       605 B           236 kB
+├ ƒ /marketing/journeys                                            1.73 kB         237 kB
+├ ƒ /marketing/journeys/[id]                                       3.72 kB         294 kB
+├ ƒ /marketing/journeys/create                                     3.15 kB         294 kB
+├ ƒ /marketing/reports                                             3.48 kB         238 kB
+├ ƒ /marketing/social-media                                        3.38 kB         238 kB
+├ ƒ /marketing/social-media/create                                 4.61 kB         240 kB
+├ ƒ /marketing/templates                                           3.59 kB         239 kB
+├ ƒ /marketing/templates/create                                    4.49 kB         239 kB
+├ ƒ /notifications                                                 4.91 kB         240 kB
+├ ƒ /offline                                                       1.13 kB        88.8 kB
+├ ƒ /onboarding                                                    155 kB          353 kB
+├ ƒ /pipeline                                                      463 B           239 kB
+├ ƒ /reset-password                                                4.44 kB         164 kB
+├ ƒ /settings                                                      76.8 kB         421 kB
+├ ƒ /settings/marketing                                            10.1 kB         245 kB
+├ ƒ /settings/organizations                                        4.05 kB         161 kB
+├ ƒ /settings/organizations/create                                 6.58 kB         185 kB
+├ ƒ /setup                                                         3.15 kB         108 kB
+├ ƒ /sign-in                                                       6.48 kB         166 kB
+├ ƒ /sign-up                                                       11.6 kB         196 kB
+├ ƒ /tasks                                                         13.2 kB         253 kB
+├ ƒ /tasks/new                                                     524 B          88.2 kB
+└ ƒ /users/[id]                                                    1.82 kB         237 kB
++ First Load JS shared by all                                      87.7 kB
+  ├ chunks/2117-a3562bd04187d64f.js                                31.7 kB
+  ├ chunks/fd9d1056-5b9bb17823986364.js                            53.6 kB
+  └ other shared chunks (total)                                    2.33 kB
+
+
+ƒ Middleware                                                       26.4 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

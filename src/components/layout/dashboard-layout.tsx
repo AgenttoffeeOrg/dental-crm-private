@@ -10,6 +10,7 @@ import { NotificationsBellButton } from '@/components/notifications/notification
 import { NotificationsDrawer } from '@/components/notifications/notifications-drawer'
 import { WhatsNewPanel } from '@/components/ui/whats-new-panel'
 import { CalendarIconButton } from '@/components/calendar/calendar-icon-button'
+import { LABELS } from '@/lib/constants/labels'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,13 +50,13 @@ import { MultiOrgOnboarding } from '@/components/onboarding/multi-org-onboarding
 
 const getNavigation = (featureFlags: any) => [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Deals', href: '/deals', icon: DollarSign },
+  { name: LABELS.DEAL.plural, href: '/deals', icon: DollarSign },
   { name: 'Pipeline', href: '/pipeline', icon: Workflow },
-  { name: 'Contacts', href: '/contacts', icon: Users },
-  { name: 'Tasks', href: '/tasks', icon: CheckSquare },
+  { name: LABELS.CONTACT.plural, href: '/contacts', icon: Users },
+  { name: LABELS.TASK.plural, href: '/tasks', icon: CheckSquare },
   { name: 'Marketing', href: '/marketing', icon: Mail },
-  { name: 'Automations', href: '/automations', icon: GitBranch, badge: 'NEW', badgeColor: 'bg-purple-500 text-white' },
-  { name: 'Marketing Audit', href: '/marketing-audit', icon: LineChart, badge: 'New', badgeColor: 'bg-purple-500 text-white' },
+  { name: 'Automations', href: '/automations', icon: GitBranch, badge: 'NEW', badgeColor: 'bg-blue-600 text-white' },
+  { name: 'Marketing Audit', href: '/marketing-audit', icon: LineChart, badge: 'New', badgeColor: 'bg-blue-600 text-white' },
   { name: 'Forms', href: '/forms', icon: FileText },
   { name: 'Integrations', href: '/integrations', icon: Zap },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
@@ -296,25 +297,25 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           {/* LEFT SIDEBAR - ENTERPRISE NAVIGATION */}
           {/* Desktop: Always visible | Mobile: Slide-in overlay */}
           <div className={`
-            w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0
+            w-64 bg-[#282C3F] border-r border-[#3A3F54] flex flex-col flex-shrink-0
             lg:relative lg:translate-x-0
             fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out
             ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           `}>
         {/* Logo */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-6 border-b border-[#3A3F54] flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            <h1 className="text-2xl font-bold text-white tracking-tight">
               DentalCRM
             </h1>
-            <p className="text-xs text-gray-500 mt-1">Enterprise Edition</p>
+            <p className="text-xs text-gray-400 mt-1">Enterprise Edition</p>
           </div>
           {/* Close button - mobile only */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setMobileMenuOpen(false)}
-            className="lg:hidden p-2"
+            className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-[#3A3F54]"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -333,17 +334,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 className={`
                   flex items-center justify-between px-4 py-3 text-sm font-semibold rounded-lg transition-all group
                   ${isActive
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                    ? 'bg-[#3A3F54] text-white'
+                    : 'text-gray-300 hover:bg-[#3A3F54] hover:text-white'
                   }
                 `}
               >
                 <div className="flex items-center">
-                  <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`} />
+                  <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'}`} />
                   {item.name}
                 </div>
                 {(item as any).badge && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${(item as any).badgeColor || 'bg-purple-500 text-white'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${(item as any).badgeColor || 'bg-blue-600 text-white'}`}>
                     {(item as any).badge}
                   </span>
                 )}
@@ -353,16 +354,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Footer - User Info */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+        <div className="p-4 border-t border-[#3A3F54]">
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#3A3F54] cursor-pointer transition-colors">
             <Avatar className="h-9 w-9">
               <AvatarFallback className="bg-blue-600 text-white text-sm font-semibold">
                 {appUser.full_name.split(' ').map(n => n[0]).join('')}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{appUser.full_name}</p>
-              <p className="text-xs text-gray-500 capitalize">{appUser.role}</p>
+              <p className="text-sm font-semibold text-white truncate">{appUser.full_name}</p>
+              <p className="text-xs text-gray-400 capitalize">{appUser.role}</p>
             </div>
           </div>
         </div>
