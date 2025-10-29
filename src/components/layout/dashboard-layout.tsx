@@ -65,10 +65,10 @@ const getNavigation = (featureFlags: any) => [
 
 // Account Auto-Repair Component
 function AccountAutoRepair({ user }: { user: any }) {
-  const [repairAttempted, setRepairAttempted] = React.useState(false)
-  const [repairError, setRepairError] = React.useState<string | null>(null)
+  const [repairAttempted, setRepairAttempted] = useState(false)
+  const [repairError, setRepairError] = useState<string | null>(null)
   
-  React.useEffect(() => {
+  useEffect(() => {
     if (repairAttempted) return // Don't retry if already attempted
     
     const autoRepairAccount = async () => {
