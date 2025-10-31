@@ -11,11 +11,16 @@ export async function GET() {
   try {
     const tenantContext = await getTenantContext()
 
+    // Return null/empty context instead of 404 for users without tenants
+    // This is expected behavior for users who haven't created an org yet
     if (!tenantContext) {
-      return NextResponse.json(
-        { error: 'No tenant context found' },
-        { status: 404 }
-      )
+      return NextResponse.json({
+        primaryTenant: null,
+        accessibleTenants: [],
+        isMultiLocation: false,
+        locationCount: 0,
+        dentalGroup: null
+      })
     }
 
     return NextResponse.json(tenantContext)

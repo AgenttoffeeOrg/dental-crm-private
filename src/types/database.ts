@@ -9,7 +9,7 @@ export interface Tenant {
 
 export interface AppUser {
   id: string;
-  tenant_id: string;
+  tenant_id: string | null; // Nullable - users can exist without tenants (membership-based architecture)
   full_name: string;
   email?: string;
   status?: string;

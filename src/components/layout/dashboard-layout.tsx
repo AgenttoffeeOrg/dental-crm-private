@@ -91,41 +91,16 @@ function AccountAutoRepair({ user }: { user: any }) {
           return
         }
         
-        // Check if tenant exists for this user
-        let tenantId: string | null = null
-        const { data: tenants } = await supabase
-          .from('tenants')
-          .select('id')
-          .eq('owner_id', user.id)
-          .limit(1)
-        
-        if (tenants && tenants.length > 0) {
-          tenantId = tenants[0].id
-          console.log('[DASHBOARD] Found existing tenant:', tenantId)
-        } else {
-          // Create new tenant
-          const { data: newTenant, error: tenantError} = await supabase
-            .from('tenants')
-            .insert({
-              name: user.email?.split('@')[0] || 'My Practice',
-              owner_id: user.id
-            })
-            .select()
-            .single()
-          
-          if (tenantError) throw tenantError
-          tenantId = newTenant.id
-          console.log('[DASHBOARD] Created new tenant:', tenantId)
-        }
-        
-        // Create app_user record
+        // Create app_user record WITHOUT tenant_id
+        // User will create organization later when needed (via OrgRequiredModal)
+        // This aligns with the new architecture where users can exist without tenants
         const { error: appUserError } = await supabase
           .from('app_users')
           .insert({
             id: user.id,
-            tenant_id: tenantId,
             full_name: user.email?.split('@')[0] || 'User',
             role: 'owner'
+            // tenant_id is NOT set - user will create org when needed
           })
         
         if (appUserError) throw appUserError
@@ -219,9 +194,24 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         if (response.ok) {
           const data = await response.json()
           setTenantContext(data)
+        } else {
+          // Even if response not ok, set empty context to prevent loading state
+          setTenantContext({
+            primaryTenant: null,
+            accessibleTenants: [],
+            isMultiLocation: false,
+            locationCount: 0
+          })
         }
       } catch (error) {
         console.error('Error fetching tenant context:', error)
+        // Set empty context on error to prevent loading state
+        setTenantContext({
+          primaryTenant: null,
+          accessibleTenants: [],
+          isMultiLocation: false,
+          locationCount: 0
+        })
       }
     }
 
@@ -238,9 +228,24 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         if (response.ok) {
           const data = await response.json()
           setLocationContext(data)
+        } else {
+          // Even if response not ok, set empty context to prevent loading state
+          setLocationContext({
+            activeLocation: null,
+            accessibleLocations: [],
+            isMultiLocation: false,
+            locationCount: 0
+          })
         }
       } catch (error) {
         console.error('Error fetching location context:', error)
+        // Set empty context on error to prevent loading state
+        setLocationContext({
+          activeLocation: null,
+          accessibleLocations: [],
+          isMultiLocation: false,
+          locationCount: 0
+        })
       }
     }
 
@@ -255,9 +260,24 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    window.location.href = '/sign-in'
+    try {
+      console.log('[DASHBOARD] Signing out...')
+      const supabase = createClient()
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        console.error('[DASHBOARD] Sign out error:', error)
+        // Still redirect even if there's an error
+      }
+      
+      console.log('[DASHBOARD] Sign out successful, redirecting...')
+      // Use window.location.replace to force navigation
+      window.location.replace('/sign-in')
+    } catch (error) {
+      console.error('[DASHBOARD] Sign out exception:', error)
+      // Force redirect even on error
+      window.location.replace('/sign-in')
+    }
   }
 
   // Prevent hydration mismatch by showing loading state until mounted
@@ -370,17 +390,19 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
         {/* Footer - User Info */}
         <div className="p-4 border-t border-[#3A3F54]">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#3A3F54] cursor-pointer transition-colors">
-            <Avatar className="h-9 w-9">
-              <AvatarFallback className="bg-blue-600 text-white text-sm font-semibold">
-                {appUser.full_name.split(' ').map(n => n[0]).join('')}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{appUser.full_name}</p>
-              <p className="text-xs text-gray-400 capitalize">{appUser.role}</p>
+          {appUser && (
+            <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#3A3F54] cursor-pointer transition-colors">
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="bg-blue-600 text-white text-sm font-semibold">
+                  {appUser.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{appUser.full_name}</p>
+                <p className="text-xs text-gray-400 capitalize">{(appUser as any).role || 'user'}</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -432,17 +454,21 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               {/* Notifications Bell */}
               <NotificationsBellButton onOpen={() => setNotifDrawerOpen(true)} />
               
-              <DropdownMenu modal={false}>
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full pointer-events-auto">
-                    <Avatar className="h-9 w-9">
-                      <AvatarFallback className="bg-blue-600 text-white">
+                  <button
+                    type="button"
+                    className="relative h-9 w-9 rounded-full overflow-hidden flex items-center justify-center bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors cursor-pointer"
+                    aria-label="User menu"
+                  >
+                    <Avatar className="h-full w-full">
+                      <AvatarFallback className="bg-blue-600 text-white text-sm font-semibold">
                         {appUser?.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                  </Button>
+                  </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 z-[200]" align="end" forceMount>
+                <DropdownMenuContent className="w-56 z-[9999]" align="end">
                   <DropdownMenuItem 
                     className="flex items-center justify-start gap-2 p-2 cursor-pointer"
                     onClick={() => { window.location.href = '/settings?section=account&tab=profile' }}
@@ -450,7 +476,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     <div className="flex flex-col space-y-1 leading-none">
                       <p className="font-medium">{appUser?.full_name}</p>
                       <p className="text-sm text-muted-foreground capitalize">
-                        {appUser?.role}
+                        {(appUser as any)?.role || 'user'}
                       </p>
                     </div>
                   </DropdownMenuItem>
@@ -464,7 +490,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault()
+                      handleSignOut()
+                    }}
+                    className="cursor-pointer focus:bg-red-50 focus:text-red-600"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign out
                   </DropdownMenuItem>

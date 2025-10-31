@@ -20,10 +20,21 @@ import { CohortAnalysis } from '@/components/analytics/cohort-analysis'
 import { PredictiveAnalytics } from '@/components/analytics/predictive-analytics'
 import { useAuth } from '@/lib/auth'
 import { LoadingState } from '@/components/ui/loading-state'
+import { NoOrgEmptyState } from '@/components/guards'
 
 export default function AnalyticsPage() {
   const { appUser, loading } = useAuth()
+  const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
   const [activeTab, setActiveTab] = useState('executive')
+
+  // Show empty state if user has no tenant
+  if (!hasTenant && !loading) {
+    return (
+      <DashboardLayout>
+        <NoOrgEmptyState title="Analytics" />
+      </DashboardLayout>
+    )
+  }
 
   // Show loading state while auth is loading
   if (loading) {
@@ -35,7 +46,7 @@ export default function AnalyticsPage() {
   }
 
   // Use the tenant_id from the logged in user
-  const tenantId = appUser?.tenant_id || orgId
+  const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
 
   return (
     <DashboardLayout>

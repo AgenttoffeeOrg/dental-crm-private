@@ -70,13 +70,15 @@ interface SettingsSidebarProps {
   onSectionChange: (sectionId: string) => void
   isMobileOpen?: boolean
   onMobileClose?: () => void
+  hasTenant?: boolean
 }
 
 export function SettingsSidebar({
   activeSection,
   onSectionChange,
   isMobileOpen = false,
-  onMobileClose
+  onMobileClose,
+  hasTenant = true
 }: SettingsSidebarProps) {
   const handleSectionClick = (sectionId: string) => {
     onSectionChange(sectionId)
@@ -117,16 +119,19 @@ export function SettingsSidebar({
           {settingsSections.map((section) => {
             const Icon = section.icon
             const isActive = activeSection === section.id
+            const isDisabled = !hasTenant && section.id !== 'account'
 
             return (
               <button
                 key={section.id}
-                onClick={() => handleSectionClick(section.id)}
+                onClick={() => !isDisabled && handleSectionClick(section.id)}
+                disabled={isDisabled}
                 className={cn(
                   'w-full flex items-start gap-3 px-3 py-3 rounded-lg text-left transition-all duration-150',
-                  'hover:bg-gray-50 active:scale-[0.98]',
+                  !isDisabled && 'hover:bg-gray-50 active:scale-[0.98]',
                   isActive && 'bg-blue-50 border-l-4 border-blue-600 pl-[10px]',
-                  !isActive && 'border-l-4 border-transparent'
+                  !isActive && 'border-l-4 border-transparent',
+                  isDisabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
                 <Icon

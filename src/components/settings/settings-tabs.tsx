@@ -74,6 +74,8 @@ import { AuditTrailViewer } from './audit-trail-viewer'
 
 // Hooks
 import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
+import { useAuth } from '@/lib/auth'
+import { NoOrgEmptyState } from '@/components/guards'
 
 // Section configuration
 const SECTION_TABS = {
@@ -124,6 +126,8 @@ const SECTION_TABS = {
 export function SettingsTabs() {
   const { tenantId } = useTenant()
   const { userId: currentUserId } = useCurrentUser()
+  const { appUser } = useAuth()
+  const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
   
   // Mobile sidebar state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
@@ -138,6 +142,11 @@ export function SettingsTabs() {
     const section = params.get('section') || 'account'
     const tab = params.get('tab') || SECTION_TABS[section as keyof typeof SECTION_TABS]?.[0]?.id || 'profile'
     
+    // If no tenant and trying to access non-profile tab, force profile
+    if (!hasTenant && (section !== 'account' || tab !== 'profile')) {
+      return { section: 'account', tab: 'profile' }
+    }
+    
     return { section, tab }
   }
   
@@ -151,6 +160,28 @@ export function SettingsTabs() {
     integrations: 'connected-apps',
     system: 'security-privacy',
   })
+
+  // Handle section change with org check
+  const handleSectionChange = (sectionId: string) => {
+    // If no tenant, only allow account section
+    if (!hasTenant && sectionId !== 'account') {
+      return // Block navigation
+    }
+    setActiveSection(sectionId)
+    setIsMobileSidebarOpen(false)
+  }
+  
+  // Handle tab change with org check
+  const handleTabChange = (tabId: string) => {
+    // If no tenant and not on profile tab, block
+    if (!hasTenant && activeSection === 'account' && tabId !== 'profile') {
+      return // Block navigation
+    }
+    setActiveTabs({
+      ...activeTabs,
+      [activeSection]: tabId
+    })
+  }
   
   // Update URL when section/tab changes
   useEffect(() => {
@@ -162,19 +193,13 @@ export function SettingsTabs() {
     }
   }, [activeSection, activeTabs])
   
-  // Handle section change
-  const handleSectionChange = (sectionId: string) => {
-    setActiveSection(sectionId)
-    setIsMobileSidebarOpen(false)
-  }
-  
-  // Handle tab change within section
-  const handleTabChange = (tabId: string) => {
-    setActiveTabs({
-      ...activeTabs,
-      [activeSection]: tabId
-    })
-  }
+  // Force profile tab if no tenant
+  useEffect(() => {
+    if (!hasTenant && (activeSection !== 'account' || activeTabs.account !== 'profile')) {
+      setActiveSection('account')
+      setActiveTabs({ ...activeTabs, account: 'profile' })
+    }
+  }, [hasTenant])
   
   // Handle search navigation
   const handleSearchNavigate = (section: string, tab: string) => {
@@ -196,6 +221,7 @@ export function SettingsTabs() {
         onSectionChange={handleSectionChange}
         isMobileOpen={isMobileSidebarOpen}
         onMobileClose={() => setIsMobileSidebarOpen(false)}
+        hasTenant={hasTenant}
       />
       
       {/* Main Content Area */}
@@ -232,15 +258,23 @@ export function SettingsTabs() {
               {/* Horizontal Tabs */}
               <div className="border-b border-gray-200 overflow-x-auto">
                 <TabsList className="inline-flex h-auto bg-transparent border-none p-0 space-x-1">
-                  {SECTION_TABS[activeSection as keyof typeof SECTION_TABS]?.map((tab) => (
-                    <TabsTrigger
-                      key={tab.id}
-                      value={tab.id}
-                      className="data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap"
-                    >
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
+                  {SECTION_TABS[activeSection as keyof typeof SECTION_TABS]?.map((tab) => {
+                    // Disable non-profile tabs if no tenant
+                    const isDisabled = !hasTenant && activeSection === 'account' && tab.id !== 'profile'
+                    return (
+                      <TabsTrigger
+                        key={tab.id}
+                        value={tab.id}
+                        disabled={isDisabled}
+                        className={cn(
+                          "data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none border-b-2 border-transparent px-4 py-3 text-sm whitespace-nowrap",
+                          isDisabled && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        {tab.label}
+                      </TabsTrigger>
+                    )
+                  })}
                 </TabsList>
               </div>
               

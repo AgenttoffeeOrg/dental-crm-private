@@ -311,22 +311,32 @@ export async function POST(request: NextRequest) {
     }
     
     // =====================================================================================================
-    // 10. AUDIT LOG
+    // 10. AUDIT LOG (Non-blocking - failure doesn't affect invite creation)
     // =====================================================================================================
-    await supabase.from('audits').insert({
-      user_id: user.id,
-      tenant_id: appUser.active_tenant_id,
-      action: 'invite.created',
-      resource_type: 'invite',
-      resource_id: invite.id,
-      metadata: {
-        invited_email: body.email,
-        assigned_role: body.role,
-        invite_code: inviteCode,
-        expires_at: invite.expires_at
-      },
-      severity: 'info'
-    }).catch(err => console.error('[AUDIT] Failed to log invite creation:', err))
+    try {
+      const { error: auditError } = await supabase.from('audits').insert({
+        user_id: user.id,
+        tenant_id: appUser.active_tenant_id,
+        action: 'invite.created',
+        resource_type: 'invite',
+        resource_id: invite.id,
+        metadata: {
+          invited_email: body.email,
+          assigned_role: body.role,
+          invite_code: inviteCode,
+          expires_at: invite.expires_at
+        },
+        severity: 'info'
+      })
+      
+      if (auditError) {
+        console.error('[AUDIT] Failed to log invite creation:', auditError)
+        // Non-fatal - continue with success response
+      }
+    } catch (auditException: any) {
+      console.error('[AUDIT] Exception logging invite creation:', auditException)
+      // Non-fatal - continue with success response
+    }
     
     // =====================================================================================================
     // 11. SUCCESS RESPONSE

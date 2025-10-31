@@ -38,12 +38,24 @@ import { CalendarAgendaView } from '@/components/calendar/calendar-agenda-view'
 import { activityAggregator, CalendarActivity } from '@/lib/calendar/activity-aggregator'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
+import { NoOrgEmptyState } from '@/components/guards'
 
 type ViewMode = 'day' | 'week' | 'month' | 'agenda'
 
 export default function CalendarPage() {
   const supabase = createClient()
   const { appUser, loading: authLoading } = useAuth()
+  const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
+  
+  // Show empty state if user has no tenant
+  if (!hasTenant && !authLoading) {
+    return (
+      <DashboardLayout>
+        <NoOrgEmptyState title="Calendar" />
+      </DashboardLayout>
+    )
+  }
+
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [activities, setActivities] = useState<CalendarActivity[]>([])
@@ -53,18 +65,20 @@ export default function CalendarPage() {
   const [bookingUrl, setBookingUrl] = useState<string>('')
 
   useEffect(() => {
-    if (appUser?.tenant_id && !authLoading) {
+    const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
+    if (tenantId && !authLoading) {
       loadData()
       loadBookingUrl()
     }
-  }, [currentDate, viewMode, appUser?.tenant_id, authLoading])
+  }, [currentDate, viewMode, appUser?.active_tenant_id, appUser?.tenant_id, authLoading])
 
   const loadData = async () => {
-    if (!appUser?.tenant_id) return
+    const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
+    if (!tenantId) return
     
     setLoading(true)
     try {
-      const orgId = appUser.tenant_id
+      const orgId = tenantId
 
       // Calculate date range based on view
       let startDate: Date, endDate: Date

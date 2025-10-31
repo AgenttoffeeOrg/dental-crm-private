@@ -66,7 +66,8 @@ export function useTenantContext(): TenantContext {
   const { appUser, loading, error } = useAuth()
 
   return useMemo(() => ({
-    orgId: appUser?.tenant_id || null,
+    // ✅ Check active_tenant_id first (for multi-org support), fall back to tenant_id
+    orgId: appUser?.active_tenant_id || appUser?.tenant_id || null,
     userId: appUser?.id || null,
     role: appUser?.role || null,
     locations: appUser?.locations || [],

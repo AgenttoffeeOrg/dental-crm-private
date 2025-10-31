@@ -391,6 +391,10 @@ export function PipelineBoard({}: PipelineBoardProps) {
       loadPipelines()
       loadLocations() // NEW: Load locations for filtering
       loadAvailableTags()
+    } else if (!tenantLoading) {
+      // ✅ If auth is done (whether or not there's an org), stop loading
+      // If no org, the parent page will show NoOrgEmptyState
+      setLoading(false)
     }
   }, [orgId, tenantLoading])
   
@@ -424,6 +428,9 @@ export function PipelineBoard({}: PipelineBoardProps) {
       } else {
         fetchPipelineData()
       }
+    } else if (!tenantLoading && !orgId) {
+      // ✅ If auth is done but no org, stop loading (parent will show NoOrgEmptyState)
+      setLoading(false)
     }
   }, [selectedPipelineId, orgId, tenantLoading])
 
@@ -745,6 +752,11 @@ export function PipelineBoard({}: PipelineBoardProps) {
   }
 
   const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId)
+
+  // ✅ Don't render loading if there's no org (parent page will show NoOrgEmptyState)
+  if (!orgId && !tenantLoading) {
+    return null
+  }
 
   if (loading && pipelines.length === 0) {
     return (

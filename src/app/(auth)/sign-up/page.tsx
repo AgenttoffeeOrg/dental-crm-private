@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { ArrowRight, Loader2, Building2, User, Mail, Lock, Sparkles, Check, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { ArrowRight, Loader2, Mail, Lock, Sparkles, Check, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 
 function SignUpForm() {
@@ -18,30 +17,15 @@ function SignUpForm() {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [step, setStep] = useState(1)
-  const [accountType, setAccountType] = useState<'practice' | 'individual'>('practice')
   const [errors, setErrors] = useState<Record<string, string>>({})
   
   const [formData, setFormData] = useState({
-    practiceName: '',
-    specialty: 'general',
     fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
     agreedToTerms: false
   })
-
-  const specialties = [
-    { value: 'general', label: 'General Dentistry' },
-    { value: 'cosmetic', label: 'Cosmetic Dentistry' },
-    { value: 'orthodontics', label: 'Orthodontics' },
-    { value: 'pediatric', label: 'Pediatric Dentistry' },
-    { value: 'endodontics', label: 'Endodontics' },
-    { value: 'periodontics', label: 'Periodontics' },
-    { value: 'oral_surgery', label: 'Oral Surgery' },
-    { value: 'prosthodontics', label: 'Prosthodontics' }
-  ]
 
   // Pre-fill email from URL params and show appropriate message
   useEffect(() => {
@@ -51,8 +35,6 @@ function SignUpForm() {
     // Pre-fill email if provided
     if (email) {
       setFormData(prev => ({ ...prev, email: decodeURIComponent(email) }))
-      // Auto-advance to step 2 if email is pre-filled
-      setStep(2)
     }
     
     // Show appropriate message based on redirect reason
@@ -68,18 +50,7 @@ function SignUpForm() {
     }
   }, [searchParams])
 
-  const validateStep1 = () => {
-    const newErrors: Record<string, string> = {}
-    
-    if (accountType === 'practice' && !formData.practiceName.trim()) {
-      newErrors.practiceName = 'Practice name is required'
-    }
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const validateStep2 = () => {
+  const validateForm = () => {
     const newErrors: Record<string, string> = {}
     
     if (!formData.fullName.trim()) {
@@ -116,16 +87,10 @@ function SignUpForm() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleContinue = () => {
-    if (validateStep1()) {
-      setStep(2)
-    }
-  }
-
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateStep2()) {
+    if (!validateForm()) {
       return
     }
 
@@ -141,8 +106,7 @@ function SignUpForm() {
         password: formData.password,
         options: {
           data: {
-            full_name: formData.fullName.trim(),
-            account_type: accountType
+            full_name: formData.fullName.trim()
           }
         }
       })
@@ -174,25 +138,10 @@ function SignUpForm() {
 
       // Note: Email confirmation is handled separately and doesn't block dashboard access
 
-      // Step 2: Create tenant
-      const tenantName = accountType === 'practice' 
-        ? formData.practiceName.trim()
-        : `${formData.fullName.trim()}'s Practice`
-
-      const { data: tenant, error: tenantError } = await supabase
-        .from('tenants')
-        .insert({
-          name: tenantName,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        })
-        .select()
-        .single()
-
-      if (tenantError) {
-        throw new Error(`Failed to create practice: ${tenantError.message}`)
-      }
-
-      // Step 3: Create app user (or update if exists)
+      // Step 2: Create app user (or update if exists)
+      // Users can sign up without a tenant - they'll be prompted to create an organization
+      // when they try to perform actions that require one
+      
       // First check if app user already exists
       const { data: existingAppUser } = await supabase
         .from('app_users')
@@ -201,56 +150,48 @@ function SignUpForm() {
         .single()
 
       if (existingAppUser) {
-        // User already exists - update their information
+        // User already exists - update their information (keep existing tenant_id if they have one)
         console.log('[SIGNUP] App user already exists, updating...')
         const { error: updateError } = await supabase
           .from('app_users')
           .update({
-            tenant_id: tenant.id,
             full_name: formData.fullName.trim(),
-            role: 'owner'
+            role: existingAppUser.role || 'owner' // Preserve existing role
           })
           .eq('id', authData.user.id)
 
         if (updateError) {
           console.error('[SIGNUP] Failed to update app user:', updateError)
-          // Cleanup: delete tenant if update fails
-          await supabase.from('tenants').delete().eq('id', tenant.id)
           throw new Error(`Failed to update user profile: ${updateError.message}`)
         }
       } else {
-        // Create new app user
+        // Create new app user WITHOUT tenant_id initially
         const { error: appUserError } = await supabase
           .from('app_users')
           .insert({
             id: authData.user.id,
-            tenant_id: tenant.id,
             full_name: formData.fullName.trim(),
             role: 'owner'
+            // tenant_id is NOT set initially - will be set below for practice sign-ups
           })
 
         if (appUserError) {
           console.error('[SIGNUP] Failed to create app user:', appUserError)
-          // Cleanup: delete tenant if app user creation fails
-          await supabase.from('tenants').delete().eq('id', tenant.id)
+          
+          // Handle the specific case where tenant_id constraint fails
+          // This means the database migration hasn't been run yet
+          if (appUserError.message?.includes('tenant_id') && 
+              (appUserError.message?.includes('not-null') || appUserError.message?.includes('null value'))) {
+            // This is a database configuration issue - migration needs to be run
+            // User will need to delete their orphaned auth account manually or via SQL
+            throw new Error(
+              'Database configuration issue detected. The database migration needs to be applied. ' +
+              'Your account was partially created. Please contact support or use the cleanup script to delete the orphaned account.'
+            )
+          }
+          
           throw new Error(`Failed to create user profile: ${appUserError.message}`)
         }
-      }
-
-      // Step 4: Create default pipeline (non-blocking)
-      try {
-        const pipelineData: any = {
-          tenant_id: tenant.id,
-          name: 'Main Pipeline'
-        }
-        
-        // Add description if column exists (optional for backward compatibility)
-        pipelineData.description = 'Your main sales pipeline'
-        
-        await supabase.from('pipelines').insert(pipelineData)
-      } catch (pipelineError) {
-        console.warn('Failed to create default pipeline:', pipelineError)
-        // Don't fail signup for this - it's optional
       }
 
       // Success!
@@ -260,16 +201,10 @@ function SignUpForm() {
       // Enterprise workflow: Always redirect to dashboard, regardless of email verification
       const emailVerified = !!authData.session
       
-      if (emailVerified) {
-        toast.success('🎉 Welcome to Dental CRM!', {
-          description: `Hi ${formData.fullName.trim()}, your account is ready to use!`
-        })
-      } else {
-        toast.success('🎉 Account created!', {
-          description: `Hi ${formData.fullName.trim()}, you're logged in! Complete your profile to get started.`,
-          duration: 6000
-        })
-      }
+      toast.success('🎉 Account created!', {
+        description: `Hi ${formData.fullName.trim()}, you're all set! Create an organization or join one to get started.`,
+        duration: 5000
+      })
       
       // Always redirect to dashboard - enterprise workflow
       setTimeout(() => {
@@ -293,12 +228,12 @@ function SignUpForm() {
       } else if (error.message.includes('already registered')) {
         errorTitle = 'Account exists'
         errorDescription = 'An account with this email already exists. Please sign in instead'
-      } else if (error.message.includes('tenant')) {
-        errorTitle = 'Setup error'
-        errorDescription = 'Failed to create your practice profile. Please try again'
+      } else if (error.message.includes('profile') || error.message.includes('user')) {
+        errorTitle = 'Account setup error'
+        errorDescription = 'Failed to complete account setup. Please try again'
       } else if (error.message.includes('database') || error.message.includes('unique constraint')) {
         errorTitle = 'Database error'
-        errorDescription = 'This email or practice name is already in use. Please try a different one'
+        errorDescription = 'This email is already in use. Please try a different one'
       }
       
       toast.error(errorTitle, {
@@ -328,109 +263,15 @@ function SignUpForm() {
               <Sparkles className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {step === 1 ? 'Start your free trial' : 'Create your account'}
+              Create your account
             </h1>
             <p className="text-gray-600">
-              {step === 1 
-                ? 'Join thousands of practices using Dental CRM'
-                : 'Almost there! Just a few more details to get you started'
-              }
+              Join thousands of practices using Dental CRM
             </p>
           </div>
 
-          {/* Progress Indicator */}
-          <div className="flex items-center justify-center gap-2 mb-8">
-            <div className={`h-2 w-16 rounded-full ${step >= 1 ? 'bg-indigo-600' : 'bg-gray-200'}`} />
-            <div className={`h-2 w-16 rounded-full ${step >= 2 ? 'bg-indigo-600' : 'bg-gray-200'}`} />
-          </div>
-
-          {/* Step 1: Account Type & Practice Info */}
-          {step === 1 && (
-            <div className="space-y-6 animate-in slide-in-from-bottom duration-300">
-              {/* Account Type Selection */}
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setAccountType('practice')}
-                  className={`p-6 rounded-xl border-2 transition-all ${
-                    accountType === 'practice'
-                      ? 'border-indigo-600 bg-indigo-50 shadow-md'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <Building2 className={`h-8 w-8 mx-auto mb-3 ${accountType === 'practice' ? 'text-indigo-600' : 'text-gray-400'}`} />
-                  <p className="font-semibold text-gray-900">Practice</p>
-                  <p className="text-xs text-gray-500 mt-1">For dental practices with a team</p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAccountType('individual')}
-                  className={`p-6 rounded-xl border-2 transition-all ${
-                    accountType === 'individual'
-                      ? 'border-indigo-600 bg-indigo-50 shadow-md'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <User className={`h-8 w-8 mx-auto mb-3 ${accountType === 'individual' ? 'text-indigo-600' : 'text-gray-400'}`} />
-                  <p className="font-semibold text-gray-900">Individual</p>
-                  <p className="text-xs text-gray-500 mt-1">For solo practitioners</p>
-                </button>
-              </div>
-
-              {accountType === 'practice' && (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="practiceName" className="text-sm font-medium text-gray-900">
-                      Practice Name *
-                    </Label>
-                    <Input
-                      id="practiceName"
-                      placeholder="e.g., Bright Smile Dental"
-                      value={formData.practiceName}
-                      onChange={(e) => setFormData({ ...formData, practiceName: e.target.value })}
-                      className={`mt-1.5 h-12 ${errors.practiceName ? 'border-red-500' : ''}`}
-                    />
-                    {errors.practiceName && (
-                      <p className="text-sm text-red-600 mt-1 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.practiceName}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="specialty" className="text-sm font-medium text-gray-900">
-                      Primary Specialty
-                    </Label>
-                    <Select value={formData.specialty} onValueChange={(value) => setFormData({ ...formData, specialty: value })}>
-                      <SelectTrigger className="mt-1.5 h-12">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {specialties.map(s => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-
-              <Button
-                type="button"
-                onClick={handleContinue}
-                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
-              >
-                Continue
-                <ArrowRight className="h-5 w-5 ml-2" />
-              </Button>
-            </div>
-          )}
-
-          {/* Step 2: Personal Info & Password */}
-          {step === 2 && (
-            <form onSubmit={handleSignUp} className="space-y-5 animate-in slide-in-from-bottom duration-300">
+          {/* Sign Up Form */}
+          <form onSubmit={handleSignUp} className="space-y-5 animate-in slide-in-from-bottom duration-300">
               <div>
                 <Label htmlFor="fullName" className="text-sm font-medium text-gray-900">
                   Your Full Name *
@@ -585,36 +426,24 @@ function SignUpForm() {
                 </p>
               )}
 
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep(1)}
-                  className="flex-1 h-12"
-                  disabled={loading}
-                >
-                  Back
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] disabled:hover:scale-100"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Creating account...
-                    </>
-                  ) : (
-                    <>
-                      Create account
-                      <ArrowRight className="h-5 w-5 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </div>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] disabled:hover:scale-100"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Creating account...
+                  </>
+                ) : (
+                  <>
+                    Create account
+                    <ArrowRight className="h-5 w-5 ml-2" />
+                  </>
+                )}
+              </Button>
             </form>
-          )}
 
           {/* Sign In Link */}
           <div className="mt-8 text-center">

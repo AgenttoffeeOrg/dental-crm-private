@@ -10,9 +10,21 @@
 import { AuditDashboard } from '@/components/marketing-audit/dashboard/audit-dashboard';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { LineChart } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
+import { NoOrgEmptyState } from '@/components/guards';
 
 export default function MarketingAuditPage() {
-  // Feature is always available - removed feature flag check for production
+  const { appUser, loading: authLoading } = useAuth();
+  const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id);
+  
+  // Show empty state if user has no tenant
+  if (!hasTenant && !authLoading) {
+    return (
+      <DashboardLayout>
+        <NoOrgEmptyState title="Marketing Audit" />
+      </DashboardLayout>
+    );
+  }
   
   return (
     <DashboardLayout>

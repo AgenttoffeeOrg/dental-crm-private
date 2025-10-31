@@ -37,6 +37,7 @@ import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/lib/auth'
 import { format } from '@/lib/formatting'
 import { LoadingState } from '@/components/ui/loading-state'
+import { NoOrgEmptyState } from '@/components/guards'
 
 interface MarketingStats {
   totalContacts: number
@@ -51,7 +52,18 @@ interface MarketingStats {
 }
 
 export default function MarketingDashboard() {
-  const { tenant, loading: authLoading } = useAuth()
+  const { appUser, loading: authLoading } = useAuth()
+  const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
+  
+  // Show empty state if user has no tenant
+  if (!hasTenant && !authLoading) {
+    return (
+      <DashboardLayout>
+        <NoOrgEmptyState title="Marketing" />
+      </DashboardLayout>
+    )
+  }
+
   const [stats, setStats] = useState<MarketingStats>({
     totalContacts: 0,
     activeCampaigns: 0,
@@ -67,22 +79,24 @@ export default function MarketingDashboard() {
   const [activeChannel, setActiveChannel] = useState<'all' | 'email' | 'sms' | 'whatsapp'>('all')
 
   useEffect(() => {
-    if (tenant?.id && !authLoading) {
+    const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
+    if (tenantId && !authLoading) {
       loadStats()
     } else if (!authLoading) {
       setLoading(false)
     }
-  }, [tenant?.id, authLoading])
+  }, [appUser?.active_tenant_id, appUser?.tenant_id, authLoading])
 
   const loadStats = async () => {
-    if (!tenant?.id) {
+    const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
+    if (!tenantId) {
       setLoading(false)
       return
     }
     
     try {
       const supabase = createClient()
-      const orgId = tenant.id // ✅ SECURITY: Use authenticated tenant only
+      const orgId = tenantId // ✅ SECURITY: Use authenticated tenant only
 
       // Get total contacts with marketing consent
       const { count: contactCount } = await supabase
@@ -135,7 +149,7 @@ export default function MarketingDashboard() {
       const { data: recentCampaigns } = await supabase
         .from('marketing_campaigns')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId)
         .order('created_at', { ascending: false })
         .limit(5)
 
@@ -143,7 +157,7 @@ export default function MarketingDashboard() {
       const { data: upcomingCampaigns } = await supabase
         .from('marketing_campaigns')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', orgId)
         .eq('status', 'scheduled')
         .order('scheduled_send_time', { ascending: true })
         .limit(5)

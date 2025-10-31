@@ -36,6 +36,7 @@ import Link from 'next/link'
 import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
 import { CreateAutomationSlideOver } from '@/components/automations/create-automation-slide-over'
 import { useAuth } from '@/lib/auth'
+import { NoOrgEmptyState } from '@/components/guards'
 
 interface Automation {
   id: string
@@ -59,6 +60,17 @@ interface CategoryStats {
 
 export default function AutomationsPage() {
   const { appUser, loading: authLoading } = useAuth()
+  const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
+  
+  // Show empty state if user has no tenant
+  if (!hasTenant && !authLoading) {
+    return (
+      <DashboardLayout>
+        <NoOrgEmptyState title="Automations" />
+      </DashboardLayout>
+    )
+  }
+
   const [activeTab, setActiveTab] = useState<'deal' | 'pipeline' | 'task' | 'marketing'>('deal')
   const [automations, setAutomations] = useState<Automation[]>([])
   const [stats, setStats] = useState<CategoryStats[]>([])
@@ -68,21 +80,23 @@ export default function AutomationsPage() {
   const { featureFlags } = useFeatureFlags()
 
   useEffect(() => {
-    if (appUser?.tenant_id && !authLoading) {
+    const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
+    if (tenantId && !authLoading) {
       fetchAutomations()
       fetchStats()
     }
-  }, [appUser?.tenant_id, authLoading])
+  }, [appUser?.active_tenant_id, appUser?.tenant_id, authLoading])
 
   const fetchAutomations = async () => {
-    if (!appUser?.tenant_id) return
+    const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
+    if (!tenantId) return
     
     try {
       setLoading(true)
       const { data, error } = await supabase
         .from('automations')
         .select('*')
-        .eq('tenant_id', appUser.tenant_id) // ✅ SECURITY: Filter by org
+        .eq('tenant_id', tenantId) // ✅ SECURITY: Filter by org
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -96,12 +110,13 @@ export default function AutomationsPage() {
   }
 
   const fetchStats = async () => {
-    if (!appUser?.tenant_id) return
+    const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
+    if (!tenantId) return
     
     try {
       const { data, error } = await supabase
         .rpc('get_automation_stats_by_category', {
-          p_tenant_id: appUser.tenant_id // ✅ SECURITY: Use authenticated user's org
+          p_tenant_id: tenantId // ✅ SECURITY: Use authenticated user's org
         })
 
       if (error) throw error

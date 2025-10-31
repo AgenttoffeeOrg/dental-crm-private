@@ -29,11 +29,16 @@ export async function GET() {
       .eq('id', user.id)
       .single()
     
+    // Return empty context instead of 404 for users without tenants
+    // This is expected behavior for users who haven't created an org yet
     if (appUserError || !appUser?.active_tenant_id) {
-      return NextResponse.json(
-        { error: 'No active tenant context' },
-        { status: 404 }
-      )
+      return NextResponse.json({
+        activeLocation: null,
+        accessibleLocations: [],
+        isMultiLocation: false,
+        locationCount: 0,
+        activeTenantId: null
+      })
     }
     
     // Get accessible locations

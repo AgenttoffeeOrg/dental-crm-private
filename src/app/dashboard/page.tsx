@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LABELS } from '@/lib/constants/labels'
 import { 
@@ -19,7 +20,8 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
-  Sparkles
+  Sparkles,
+  Building2
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { formatCurrency } from '@/lib/utils/formatters'
@@ -75,10 +77,13 @@ export default function DashboardRedesigned() {
     monthlyGrowth: 0,
     averageDealValue: 0
   })
-  const [loading, setLoading] = useState(true)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   
   const timeAgo = useDataFreshness(lastUpdated)
+  
+  // Check if user has a tenant
+  const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
   
   // Guarded action wrapper with custom action name
   const guardedAction = (actionName: string, fn: () => void) => {
@@ -87,7 +92,7 @@ export default function DashboardRedesigned() {
   }
 
   // Real-time & Shortcuts
-  useDashboardRealtime(appUser?.tenant_id, () => loadData(), true)
+  useDashboardRealtime(appUser?.active_tenant_id || appUser?.tenant_id, () => loadData(), true)
   useKeyboardShortcuts({
     onCreateContact: () => {
       setCurrentAction('create this contact')
@@ -108,14 +113,23 @@ export default function DashboardRedesigned() {
   })
 
   useEffect(() => {
-    if (appUser?.tenant_id) loadData()
+    // Only load data if user has a tenant
+    if (appUser?.active_tenant_id || appUser?.tenant_id) {
+      loadData()
+    } else {
+      // User has no tenant - set loading to false to show empty state
+      setLoading(false)
+    }
   }, [appUser])
 
   const loadData = async () => {
-    if (!appUser?.tenant_id) return
+    const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
+    if (!tenantId) {
+      setLoading(false)
+      return
+    }
     
     const supabase = createClient()
-    const tenantId = appUser.tenant_id
 
     try {
       setLoading(true)
@@ -161,10 +175,59 @@ export default function DashboardRedesigned() {
     }
   }
 
-  if (authLoading || loading) {
+  if (authLoading || (loading && hasTenant)) {
     return (
       <DashboardLayout>
         <LoadingState message="Loading your dashboard..." size="lg" />
+      </DashboardLayout>
+    )
+  }
+
+  // Show empty state if user has no tenant
+  if (!hasTenant && !authLoading) {
+    return (
+      <DashboardLayout>
+        <div className="h-full overflow-y-auto bg-gray-50">
+          <div className="max-w-2xl mx-auto px-4 py-12">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Building2 className="h-8 w-8 text-indigo-600" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Welcome to Dental CRM! 👋
+              </h1>
+              <p className="text-gray-600 mb-6">
+                Get started by creating your organization. This will let you manage contacts, deals, and more.
+              </p>
+              <Button
+                onClick={() => {
+                  setCurrentAction('create your organization')
+                  requireOrg(() => {
+                    // This will trigger OrgRequiredModal
+                    router.push('/settings/organizations/create')
+                  })()
+                }}
+                size="lg"
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Create Organization
+              </Button>
+              <p className="text-sm text-gray-500 mt-4">
+                You can explore the app, but you'll need an organization to create data.
+              </p>
+            </div>
+          </div>
+        </div>
+        <OrgRequiredModal
+          isOpen={showOrgModal}
+          onClose={() => setShowOrgModal(false)}
+          actionName={currentAction || 'access this feature'}
+          onSuccess={() => {
+            // Refresh after org creation
+            window.location.reload()
+          }}
+        />
       </DashboardLayout>
     )
   }
@@ -189,6 +252,15 @@ export default function DashboardRedesigned() {
         isOpen={showSetupPanel}
         onClose={() => setShowSetupPanel(false)}
         onComplete={loadData}
+      />
+      <OrgRequiredModal
+        isOpen={showOrgModal}
+        onClose={() => setShowOrgModal(false)}
+        actionName={currentAction || 'access this feature'}
+        onSuccess={() => {
+          // Refresh after org creation
+          window.location.reload()
+        }}
       />
 
       {/* CLEAN, MODERN LAYOUT - COMPACT & EFFICIENT */}
@@ -359,10 +431,13 @@ export default function DashboardRedesigned() {
           {/* MAIN CONTENT - Side by Side Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* LEFT: PRIORITIES - Compact */}
-            <TodaysPriorities tenantId={appUser?.tenant_id || ''} onRefresh={loadData} />
-
-            {/* RIGHT: AI INSIGHTS */}
-            <AIInsightsWidget tenantId={appUser?.tenant_id || ''} />
+            {hasTenant && (
+              <>
+                <TodaysPriorities tenantId={appUser?.active_tenant_id || appUser?.tenant_id || ''} onRefresh={loadData} />
+                {/* RIGHT: AI INSIGHTS */}
+                <AIInsightsWidget tenantId={appUser?.active_tenant_id || appUser?.tenant_id || ''} />
+              </>
+            )}
           </div>
 
           {/* ANALYTICS - Collapsible by Default */}
