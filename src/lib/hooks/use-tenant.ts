@@ -35,14 +35,17 @@ export function useTenant() {
       return
     }
 
-    if (!appUser?.tenant_id) {
+    // ✅ Check active_tenant_id first (for multi-org support), fall back to tenant_id
+    const effectiveTenantId = appUser?.active_tenant_id || appUser?.tenant_id
+
+    if (!effectiveTenantId) {
       setLoading(false)
       setTenant(null)
       return
     }
 
-    loadTenant(appUser.tenant_id)
-  }, [appUser?.tenant_id, authLoading])
+    loadTenant(effectiveTenantId)
+  }, [appUser?.active_tenant_id, appUser?.tenant_id, authLoading])
 
   const loadTenant = async (tenantId: string) => {
     try {

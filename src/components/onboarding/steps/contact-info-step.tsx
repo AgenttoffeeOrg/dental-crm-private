@@ -23,11 +23,11 @@ export function ContactInfoStep() {
   const stepData = formData[currentStepId] || {}
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Phone Numbers */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
-          <Phone className="h-4 w-4 text-gray-600" />
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">
+          <Phone className="h-3.5 w-3.5 text-gray-600" />
           Phone Numbers
         </div>
 
@@ -65,9 +65,9 @@ export function ContactInfoStep() {
       </div>
 
       {/* Email Addresses */}
-      <div className="space-y-4 pt-4 border-t border-gray-200">
-        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
-          <Mail className="h-4 w-4 text-gray-600" />
+      <div className="space-y-3 pt-3 border-t border-gray-200">
+        <div className="flex items-center gap-2 text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">
+          <Mail className="h-3.5 w-3.5 text-gray-600" />
           Email Addresses
         </div>
 
@@ -105,9 +105,9 @@ export function ContactInfoStep() {
       </div>
 
       {/* Website */}
-      <div className="pt-4 border-t border-gray-200">
-        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
-          <Globe className="h-4 w-4 text-gray-600" />
+      <div className="pt-3 border-t border-gray-200">
+        <div className="flex items-center gap-2 text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">
+          <Globe className="h-3.5 w-3.5 text-gray-600" />
           Online Presence
         </div>
 

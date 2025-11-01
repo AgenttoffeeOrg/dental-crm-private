@@ -123,21 +123,21 @@ export function WizardFooter({ onClose }: WizardFooterProps) {
           size="lg"
           onClick={isLastStep ? () => setShowCompleteDialog(true) : handleNext}
           disabled={processing || saving}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
         >
           {processing || saving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              {saving ? 'Saving...' : 'Processing...'}
+              <span className="font-medium">{saving ? 'Saving...' : 'Processing...'}</span>
             </>
           ) : isLastStep ? (
             <>
-              Complete Setup
+              <span className="font-medium">Complete Setup</span>
               <CheckCircle className="h-4 w-4" />
             </>
           ) : (
             <>
-              Next
+              <span className="font-medium">Continue</span>
               <ChevronRight className="h-4 w-4" />
             </>
           )}
@@ -146,9 +146,10 @@ export function WizardFooter({ onClose }: WizardFooterProps) {
 
       {/* Unsaved Changes Warning */}
       {hasUnsavedChanges && (
-        <div className="mt-3 text-center">
-          <p className="text-xs text-amber-600">
-            ⚠️ You have unsaved changes. Click Next to save and continue.
+        <div className="mt-3 flex items-center justify-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
+          <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+          <p className="text-xs text-amber-700 font-medium">
+            You have unsaved changes • Click Continue to save
           </p>
         </div>
       )}

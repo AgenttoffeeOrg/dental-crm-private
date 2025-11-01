@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
       .from('app_users')
       .select(`
         tenant_id,
+        active_tenant_id,
         onboarding_flow_type,
         onboarding_current_step,
         onboarding_completed,
@@ -60,36 +61,61 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get tenant account type
-    const { data: tenant } = await supabase
-      .from('tenants')
-      .select('account_type')
-      .eq('id', appUser.tenant_id)
-      .single()
+    // Get tenant_id (use active_tenant_id first, fallback to tenant_id)
+    const tenantId = appUser.active_tenant_id || appUser.tenant_id
+    let accountType: 'organization' | 'solo' = 'solo'
 
-    const accountType = appUser.onboarding_flow_type || tenant?.account_type || 'organization'
+    if (tenantId) {
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('account_type')
+        .eq('id', tenantId)
+        .single()
 
-    // Get completed steps from onboarding_progress
-    const { data: progressData, error: progressError } = await supabase
-      .from('onboarding_progress')
-      .select('step_name, completed')
-      .eq('user_id', user.id)
-      .eq('completed', true)
-
-    if (progressError) {
-      console.error('[API] Error fetching progress:', progressError)
+      if (tenant) {
+        accountType = (tenant.account_type as 'organization' | 'solo') || 'organization'
+      }
     }
 
-    const completedSteps = progressData?.map(p => p.step_name) || []
+    accountType = appUser.onboarding_flow_type || accountType || 'solo'
 
-    // Get total steps for this account type
-    const { data: stepDefinitions } = await supabase
-      .from('onboarding_step_definitions')
-      .select('id, display_order')
-      .contains('account_types', [accountType])
-      .order('display_order', { ascending: true })
+    // ✅ Use simplified 4-step configuration
+    const stepOrder = ['email_verification', 'profile_setup', 'organization_setup', 'location_setup']
+    const availableSteps = stepOrder.filter((stepId) => {
+      if (stepId === 'organization_setup' || stepId === 'location_setup') {
+        return !!tenantId
+      }
+      return true
+    })
 
-    const totalSteps = stepDefinitions?.length || 0
+    // Get completed steps - check both onboarding_progress (if tenant exists) and app_users
+    let completedSteps: string[] = []
+    
+    if (tenantId) {
+      // User has tenant - check onboarding_progress table
+      const { data: progressData, error: progressError } = await supabase
+        .from('onboarding_progress')
+        .select('step_name, completed')
+        .eq('user_id', user.id)
+        .eq('completed', true)
+
+      if (progressError) {
+        console.error('[API] Error fetching progress:', progressError)
+      } else {
+        completedSteps = progressData?.map(p => p.step_name) || []
+      }
+    } else {
+      // User doesn't have tenant - infer completion from onboarding_current_step
+      // If they've moved past a step, assume it's completed
+      if (appUser.onboarding_current_step) {
+        const currentIndex = availableSteps.findIndex(s => s === appUser.onboarding_current_step)
+        if (currentIndex > 0) {
+          completedSteps = availableSteps.slice(0, currentIndex)
+        }
+      }
+    }
+
+    const totalSteps = availableSteps.length
     const completedCount = completedSteps.length
 
     // Calculate progress percentage
@@ -99,12 +125,14 @@ export async function GET(request: NextRequest) {
 
     // Determine current step number
     let currentStepNumber = 1
-    if (appUser.onboarding_current_step && stepDefinitions) {
-      const currentStepIndex = stepDefinitions.findIndex(
-        s => s.id === appUser.onboarding_current_step
+    if (appUser.onboarding_current_step) {
+      const currentStepIndex = availableSteps.findIndex(
+        s => s === appUser.onboarding_current_step
       )
       currentStepNumber = currentStepIndex >= 0 ? currentStepIndex + 1 : 1
     }
+
+    const allSteps = availableSteps
 
     // Build response
     const response = {
@@ -120,7 +148,7 @@ export async function GET(request: NextRequest) {
       profileCompleted: appUser.profile_completed || false,
       onboardingStartedAt: appUser.onboarding_started_at,
       onboardingCompletedAt: appUser.onboarding_completed_at,
-      allSteps: stepDefinitions?.map(s => s.id) || []
+      allSteps: allSteps || []
     }
 
     return NextResponse.json(response)

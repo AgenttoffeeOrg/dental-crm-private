@@ -30,7 +30,7 @@ import { FirstLocationStep } from './steps/first-location-step'
  */
 
 export function WizardStepContainer() {
-  const { currentStepData, validationErrors, accountType } = useWizard()
+  const { currentStep, currentStepData, validationErrors, accountType } = useWizard()
 
   console.log('[STEP_CONTAINER] Rendering with:', {
     currentStepData,
@@ -56,14 +56,29 @@ export function WizardStepContainer() {
     console.log('[STEP_CONTAINER] Getting component for stepId:', currentStepData.stepId)
     
     switch (currentStepData.stepId) {
+      // STEP 1: Email Verification
       case 'email_verification':
         return <EmailVerificationStep />
       
-      // Profile steps (user-specific)
+      // STEP 2: Profile Setup (simplified)
+      case 'profile_setup':
       case 'profile_personal':
       case 'personal_info':
         return <PersonalInfoStep />
       
+      // STEP 3: Organization Setup (simplified)
+      case 'organization_setup':
+      case 'org_company':
+      case 'company_info':
+        return <CompanyInfoStep />
+      
+      // STEP 4: Location Setup (simplified)
+      case 'location_setup':
+      case 'location_first':
+      case 'first_location':
+        return <FirstLocationStep />
+      
+      // Legacy/Additional Profile Steps (optional)
       case 'profile_work':
       case 'work_preferences':
         return <WorkPreferencesStep />
@@ -76,11 +91,7 @@ export function WizardStepContainer() {
       case 'security_settings':
         return <SecuritySettingsStep />
       
-      // Organization steps
-      case 'org_company':
-      case 'company_info':
-        return <CompanyInfoStep />
-      
+      // Legacy Organization Steps (optional)
       case 'org_legal':
       case 'legal_details':
         return <LegalDetailsStep />
@@ -93,11 +104,6 @@ export function WizardStepContainer() {
       case 'business_settings':
         return <BusinessSettingsStep />
       
-      // Location step
-      case 'location_first':
-      case 'first_location':
-        return <FirstLocationStep />
-      
       default:
         return (
           <div className="p-8 text-center text-gray-500">
@@ -109,27 +115,34 @@ export function WizardStepContainer() {
 
   return (
     <>
-      {/* Step Header */}
-      <CardHeader className="border-b bg-gray-50">
+      {/* Step Header - Compact Professional Design */}
+      <CardHeader className="border-b bg-gray-50/50 px-6 py-5">
         <div className="flex items-start gap-4">
           {/* Icon */}
-          <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-            <Icon className="h-6 w-6 text-blue-600" />
+          <div className="flex-shrink-0 relative">
+            <div className="w-12 h-12 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
+              <Icon className="h-6 w-6 text-white" />
+            </div>
+            <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center">
+              <span className="text-[10px] font-bold text-white">
+                {currentStep}
+              </span>
+            </div>
           </div>
 
           {/* Title & Description */}
-          <div className="flex-1">
-            <CardTitle className="text-2xl text-gray-900 mb-2">
+          <div className="flex-1 pt-0.5">
+            <CardTitle className="text-xl font-bold text-gray-900 mb-1.5">
               {currentStepData.stepName}
             </CardTitle>
-            <CardDescription className="text-base text-gray-600">
+            <CardDescription className="text-sm text-gray-600 leading-relaxed">
               {currentStepData.stepDescription}
             </CardDescription>
 
             {/* Optional Badge */}
             {currentStepData.isSkippable && (
               <div className="mt-2">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
                   Optional
                 </span>
               </div>
@@ -140,12 +153,12 @@ export function WizardStepContainer() {
 
       {/* Validation Errors */}
       {validationErrors.length > 0 && (
-        <div className="px-6 pt-6">
-          <Alert variant="destructive">
+        <div className="px-6 pt-4">
+          <Alert variant="destructive" className="border-red-200 bg-red-50">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <div className="font-medium mb-1">Please fix the following errors:</div>
-              <ul className="list-disc list-inside space-y-1 text-sm">
+              <div className="font-semibold mb-1.5 text-red-900 text-sm">Please fix the following errors:</div>
+              <ul className="list-disc list-inside space-y-1 text-sm text-red-800">
                 {validationErrors.map((error, idx) => (
                   <li key={idx}>{error.message}</li>
                 ))}
@@ -156,7 +169,7 @@ export function WizardStepContainer() {
       )}
 
       {/* Step Content */}
-      <CardContent className="p-6">
+      <CardContent className="px-6 py-6">
         {getStepComponent()}
       </CardContent>
     </>

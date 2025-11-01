@@ -44,18 +44,25 @@ export function SetupBanner({ onOpenWizard }: SetupBannerProps) {
         return
       }
 
-      // Get onboarding status
+      // Get onboarding status from API
       const response = await fetch('/api/onboarding/status')
       if (response.ok) {
         const statusData = await response.json()
-        setSetupProgress(statusData.progressPercentage || 0)
+        const progress = statusData.progressPercentage || 0
+        setSetupProgress(progress)
         setCurrentStep(statusData.currentStep || 'email_verification')
 
         // Show banner if onboarding is not complete and not dismissed
         const dismissed = localStorage.getItem('setup-banner-dismissed')
         if (!statusData.onboardingCompleted && !dismissed) {
           setIsVisible(true)
+        } else if (statusData.onboardingCompleted) {
+          // Onboarding completed - hide banner
+          setOnboardingCompleted(true)
+          setIsVisible(false)
         }
+      } else {
+        console.error('Failed to fetch onboarding status:', response.status)
       }
     } catch (error) {
       console.error('Error checking setup status:', error)

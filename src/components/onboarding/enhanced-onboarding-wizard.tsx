@@ -8,6 +8,7 @@ import { WizardStepContainer } from './wizard-step-container'
 import { WizardFooter } from './wizard-footer'
 import { Card } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
+import { useWizardAutoSave } from '@/hooks/use-wizard-hooks'
 
 /**
  * EnhancedOnboardingWizard
@@ -28,6 +29,9 @@ function WizardContent({ onClose }: EnhancedOnboardingWizardProps) {
     currentStepData,
     accountType
   } = useWizard()
+
+  // ✅ Enable auto-save functionality (debounced, saves after 2 seconds of inactivity)
+  useWizardAutoSave(2000)
 
   if (loading) {
     return (
@@ -57,25 +61,25 @@ function WizardContent({ onClose }: EnhancedOnboardingWizardProps) {
 
       {/* Main Content - Scrollable */}
       <div className="flex-1 overflow-y-auto">
-        <div className="container mx-auto px-6 py-6 max-w-4xl">
+        <div className="container mx-auto px-8 py-6 max-w-4xl">
           {/* Progress Bar */}
           <div className="mb-6">
             <WizardProgressBar />
           </div>
 
-          {/* Step Container */}
-          <Card className="shadow-xl border-0 mb-6">
+          {/* Step Container - Compact Professional Card */}
+          <Card className="mb-6 border border-gray-200 shadow-lg bg-white">
             <WizardStepContainer />
           </Card>
 
           {/* Footer */}
           <WizardFooter onClose={onClose} />
 
-          {/* Account Type Badge */}
+          {/* Footer Info */}
           <div className="mt-4 text-center">
-            <span className="text-xs text-gray-500">
-              {accountType === 'organization' ? 'Organization Setup' : 'Solo User Setup'}
-            </span>
+            <p className="text-xs text-gray-500">
+              Progress is automatically saved • You can resume anytime from your dashboard
+            </p>
           </div>
         </div>
       </div>

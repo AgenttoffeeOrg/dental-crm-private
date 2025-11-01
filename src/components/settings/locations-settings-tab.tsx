@@ -14,7 +14,7 @@
  * - Primary location designation
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -79,13 +79,12 @@ export function LocationsSettingsTab({ tenantId }: { tenantId?: string }) {
     isPrimary: false,
   })
   
-  useEffect(() => {
-    if (tenantId) {
-      loadLocations()
+  const loadLocations = useCallback(async () => {
+    if (!tenantId) {
+      setLoading(false)
+      return
     }
-  }, [tenantId])
-  
-  const loadLocations = async () => {
+    
     try {
       const supabase = createClient()
       
@@ -104,7 +103,11 @@ export function LocationsSettingsTab({ tenantId }: { tenantId?: string }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantId])
+  
+  useEffect(() => {
+    loadLocations()
+  }, [loadLocations])
   
   const handleCreateLocation = async () => {
     if (!newLocation.name || !newLocation.address?.city) {

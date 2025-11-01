@@ -45,21 +45,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if step is skippable
-    const { data: stepDef, error: stepError } = await supabase
-      .from('onboarding_step_definitions')
-      .select('is_skippable')
-      .eq('id', stepId)
-      .single()
-
-    if (stepError || !stepDef) {
-      return NextResponse.json(
-        { error: 'Step not found' },
-        { status: 404 }
-      )
-    }
-
-    if (!stepDef.is_skippable) {
+    // ✅ SIMPLIFIED 4-STEP VALIDATION
+    // Required steps: email_verification, profile_setup (cannot be skipped)
+    // Optional steps: organization_setup, location_setup (can be skipped)
+    const requiredSteps = ['email_verification', 'profile_setup']
+    
+    if (requiredSteps.includes(stepId)) {
       return NextResponse.json(
         { error: 'This step cannot be skipped as it contains required fields' },
         { status: 400 }
@@ -69,7 +60,7 @@ export async function POST(request: NextRequest) {
     // Get user data
     const { data: appUser } = await supabase
       .from('app_users')
-      .select('tenant_id, onboarding_flow_type, onboarding_skipped_steps')
+      .select('tenant_id, active_tenant_id, onboarding_flow_type, onboarding_skipped_steps')
       .eq('id', user.id)
       .single()
 
@@ -80,29 +71,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Mark step as skipped AND completed in onboarding_progress
-    // Skipped steps count as "completed" to allow wizard completion
-    const { error: progressError } = await supabase
-      .from('onboarding_progress')
-      .upsert({
-        user_id: user.id,
-        tenant_id: appUser.tenant_id,
-        step_name: stepId,
-        skipped: true,
-        completed: true,  // ← Mark as completed so wizard can finish
-        completed_at: new Date().toISOString(),
-        skipped_at: new Date().toISOString(),
-        data: { skip_reason: reason || 'User chose to skip' }
-      }, {
-        onConflict: 'user_id,step_name'
-      })
+    const tenantId = appUser.active_tenant_id || appUser.tenant_id
 
-    if (progressError) {
-      console.error('[API] Error marking step as skipped:', progressError)
-      return NextResponse.json(
-        { error: 'Failed to skip step' },
-        { status: 500 }
-      )
+    // Mark step as skipped AND completed
+    // If user has tenant, save to onboarding_progress
+    if (tenantId) {
+      const { error: progressError } = await supabase
+        .from('onboarding_progress')
+        .upsert({
+          user_id: user.id,
+          tenant_id: tenantId,
+          step_name: stepId,
+          skipped: true,
+          completed: true,  // ← Mark as completed so wizard can finish
+          completed_at: new Date().toISOString(),
+          skipped_at: new Date().toISOString(),
+          data: { skip_reason: reason || 'User chose to skip' }
+        }, {
+          onConflict: 'user_id,step_name'
+        })
+
+      if (progressError) {
+        console.error('[API] Error marking step as skipped:', progressError)
+        return NextResponse.json(
+          { error: 'Failed to skip step', details: progressError.message },
+          { status: 500 }
+        )
+      }
     }
 
     // Add to skipped steps array in app_users
@@ -116,33 +111,25 @@ export async function POST(request: NextRequest) {
         .eq('id', user.id)
     }
 
-    // Get next step
-    const { data: tenant } = await supabase
-      .from('tenants')
-      .select('account_type')
-      .eq('id', appUser.tenant_id)
-      .single()
-
-    const accountType = appUser.onboarding_flow_type || tenant?.account_type || 'organization'
-
-    const { data: allSteps } = await supabase
-      .from('onboarding_step_definitions')
-      .select('id')
-      .contains('account_types', [accountType])
-      .order('display_order', { ascending: true })
+    // ✅ Calculate next step based on simplified 4-step flow
+    const stepOrder = ['email_verification', 'profile_setup', 'organization_setup', 'location_setup']
+    const availableSteps = stepOrder.filter((s) => {
+      if (s === 'organization_setup' || s === 'location_setup') {
+        return !!tenantId
+      }
+      return true
+    })
 
     let nextStep = null
-    if (allSteps) {
-      const currentIndex = allSteps.findIndex(s => s.id === stepId)
-      if (currentIndex >= 0 && currentIndex < allSteps.length - 1) {
-        nextStep = allSteps[currentIndex + 1].id
-        
-        // Update current step
-        await supabase
-          .from('app_users')
-          .update({ onboarding_current_step: nextStep })
-          .eq('id', user.id)
-      }
+    const currentIndex = availableSteps.findIndex(s => s === stepId)
+    if (currentIndex >= 0 && currentIndex < availableSteps.length - 1) {
+      nextStep = availableSteps[currentIndex + 1]
+      
+      // Update current step
+      await supabase
+        .from('app_users')
+        .update({ onboarding_current_step: nextStep })
+        .eq('id', user.id)
     }
 
     return NextResponse.json({

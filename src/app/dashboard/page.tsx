@@ -33,7 +33,7 @@ import { LoadingState } from '@/components/ui/loading-state'
 
 // Components
 import { SetupBanner } from '@/components/onboarding/setup-banner'
-import { ProfileSetupPanel } from '@/components/onboarding/profile-setup-panel'
+import { EnhancedOnboardingWizard } from '@/components/onboarding/enhanced-onboarding-wizard'
 import { EmailVerificationBanner } from '@/components/onboarding/email-verification-banner'
 import { CreateContactSlideOver } from '@/components/contacts/create-contact-slide-over'
 import { CreateTaskSlideOver } from '@/components/tasks/create-task-slide-over'
@@ -248,11 +248,25 @@ export default function DashboardRedesigned() {
     <DashboardLayout>
       <EmailVerificationBanner />
       <SetupBanner onOpenWizard={() => setShowSetupPanel(true)} />
-      <ProfileSetupPanel
-        isOpen={showSetupPanel}
-        onClose={() => setShowSetupPanel(false)}
-        onComplete={loadData}
-      />
+      {showSetupPanel && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setShowSetupPanel(false)}
+          />
+          
+          {/* Side Sliding Modal */}
+          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-5xl bg-white shadow-2xl overflow-hidden animate-slide-in-right">
+            <EnhancedOnboardingWizard 
+              onClose={() => {
+                setShowSetupPanel(false)
+                loadData() // Refresh dashboard data after wizard closes
+              }} 
+            />
+          </div>
+        </>
+      )}
       <OrgRequiredModal
         isOpen={showOrgModal}
         onClose={() => setShowOrgModal(false)}

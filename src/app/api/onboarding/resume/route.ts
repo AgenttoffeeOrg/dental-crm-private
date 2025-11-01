@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
       .from('app_users')
       .select(`
         tenant_id,
+        active_tenant_id,
         onboarding_flow_type,
         onboarding_current_step,
         onboarding_completed,
@@ -73,55 +74,66 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Get all progress data
-    const { data: progressData } = await supabase
-      .from('onboarding_progress')
-      .select('step_name, completed, skipped, field_data')
-      .eq('user_id', user.id)
+    const tenantId = appUser.active_tenant_id || appUser.tenant_id
 
-    // Organize data
+    // Get all progress data (if user has tenant)
     const savedData: Record<string, any> = {}
     const completedSteps: string[] = []
     const skippedSteps: string[] = []
 
-    progressData?.forEach(progress => {
-      if (progress.field_data) {
-        savedData[progress.step_name] = progress.field_data
+    if (tenantId) {
+      const { data: progressData } = await supabase
+        .from('onboarding_progress')
+        .select('step_name, completed, skipped, field_data')
+        .eq('user_id', user.id)
+
+      progressData?.forEach(progress => {
+        if (progress.field_data) {
+          savedData[progress.step_name] = progress.field_data
+        }
+        if (progress.completed) {
+          completedSteps.push(progress.step_name)
+        }
+        if (progress.skipped) {
+          skippedSteps.push(progress.step_name)
+        }
+      })
+    } else {
+      // User doesn't have tenant - load saved data from app_users fields
+      // For now, we can infer completion from onboarding_current_step
+      const stepOrder = ['email_verification', 'profile_setup']
+      if (appUser.onboarding_current_step) {
+        const currentIndex = stepOrder.findIndex(s => s === appUser.onboarding_current_step)
+        if (currentIndex > 0) {
+          completedSteps.push(...stepOrder.slice(0, currentIndex))
+        }
       }
-      if (progress.completed) {
-        completedSteps.push(progress.step_name)
+    }
+
+    // Add skipped steps from app_users
+    if (appUser.onboarding_skipped_steps) {
+      skippedSteps.push(...appUser.onboarding_skipped_steps)
+    }
+
+    // ✅ Determine resume step using simplified 4-step flow
+    const stepOrder = ['email_verification', 'profile_setup', 'organization_setup', 'location_setup']
+    const availableSteps = stepOrder.filter((stepId) => {
+      if (stepId === 'organization_setup' || stepId === 'location_setup') {
+        return !!tenantId
       }
-      if (progress.skipped) {
-        skippedSteps.push(progress.step_name)
-      }
+      return true
     })
 
-    // Determine which step to resume from
     let resumeFromStep = appUser.onboarding_current_step || 'email_verification'
 
     // If current step is already completed, find next uncompleted step
-    if (completedSteps.includes(resumeFromStep)) {
-      const { data: tenant } = await supabase
-        .from('tenants')
-        .select('account_type')
-        .eq('id', appUser.tenant_id)
-        .single()
-
-      const accountType = appUser.onboarding_flow_type || tenant?.account_type || 'organization'
-
-      const { data: allSteps } = await supabase
-        .from('onboarding_step_definitions')
-        .select('id')
-        .contains('account_types', [accountType])
-        .order('display_order', { ascending: true })
-
-      // Find first uncompleted step
-      const nextUncompleted = allSteps?.find(
-        step => !completedSteps.includes(step.id) && !skippedSteps.includes(step.id)
+    if (completedSteps.includes(resumeFromStep) || skippedSteps.includes(resumeFromStep)) {
+      const nextUncompleted = availableSteps.find(
+        step => !completedSteps.includes(step) && !skippedSteps.includes(step)
       )
 
       if (nextUncompleted) {
-        resumeFromStep = nextUncompleted.id
+        resumeFromStep = nextUncompleted
       }
     }
 

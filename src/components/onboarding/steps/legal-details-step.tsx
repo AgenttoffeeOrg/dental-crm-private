@@ -24,10 +24,10 @@ export function LegalDetailsStep() {
   const stepData = formData[currentStepId] || {}
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Info Alert */}
       <Alert className="border-blue-200 bg-blue-50">
-        <FileText className="h-5 w-5 text-blue-600" />
+        <FileText className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-800">
           <div className="text-sm">
             Legal information is optional but helpful for contracts, invoicing, and compliance.
@@ -53,7 +53,7 @@ export function LegalDetailsStep() {
       </WizardFieldWrapper>
 
       {/* Tax ID & Registration Number */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <WizardFieldWrapper
           fieldName="tax_id"
           label="Tax ID / VAT Number"
@@ -86,8 +86,8 @@ export function LegalDetailsStep() {
       </div>
 
       {/* Legal Address Section */}
-      <div className="space-y-4 pt-4 border-t border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-900">Legal Address</h3>
+      <div className="space-y-3 pt-3 border-t border-gray-200">
+        <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Legal Address</h3>
         
         {/* Address Line 1 */}
         <WizardFieldWrapper

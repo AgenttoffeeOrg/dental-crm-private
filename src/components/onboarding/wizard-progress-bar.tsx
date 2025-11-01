@@ -49,12 +49,14 @@ export function WizardProgressBar() {
   return (
     <div className="w-full">
       {/* Overall Progress Bar */}
-      <div className="mb-6">
+      <div className="mb-5">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">Overall Progress</span>
-          <span className="text-sm font-bold text-blue-600">{progressPercentage}%</span>
+          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Overall Progress</span>
+          <span className="text-lg font-bold text-blue-600">
+            {progressPercentage}%
+          </span>
         </div>
-        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
             className="h-full bg-blue-600 transition-all duration-500 ease-out"
             style={{ width: `${progressPercentage}%` }}
@@ -65,10 +67,10 @@ export function WizardProgressBar() {
       {/* Step Indicators */}
       <div className="relative">
         {/* Connection Line */}
-        <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-200 hidden md:block" />
+        <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200 hidden md:block" />
         
         {/* Steps */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:justify-between gap-4 md:gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:justify-between gap-3 md:gap-1">
           {steps.map((step, index) => {
             const Icon = getStepIcon(step.stepIcon)
             const status = getStepStatus(index, step.stepId)
@@ -80,7 +82,7 @@ export function WizardProgressBar() {
                 onClick={() => clickable && setCurrentStep(index + 1)}
                 disabled={!clickable}
                 className={cn(
-                  'relative flex flex-col items-center gap-2 p-3 rounded-lg transition-all',
+                  'relative flex flex-col items-center gap-1.5 p-2 rounded-lg transition-all',
                   'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
                   clickable && 'cursor-pointer hover:bg-gray-50',
                   !clickable && 'cursor-not-allowed opacity-50'
@@ -89,23 +91,23 @@ export function WizardProgressBar() {
                 {/* Step Circle */}
                 <div
                   className={cn(
-                    'relative z-10 w-12 h-12 rounded-full flex items-center justify-center',
-                    'border-2 transition-all duration-300',
-                    status === 'completed' && 'bg-green-500 border-green-500',
-                    status === 'skipped' && 'bg-gray-300 border-gray-400',
-                    status === 'current' && 'bg-blue-500 border-blue-600 ring-4 ring-blue-100 animate-pulse',
-                    status === 'accessible' && 'bg-white border-gray-300',
-                    status === 'locked' && 'bg-gray-100 border-gray-200'
+                    'relative z-10 w-10 h-10 rounded-full flex items-center justify-center',
+                    'border-2 transition-all duration-200',
+                    status === 'completed' && 'bg-green-500 border-green-600 shadow-sm',
+                    status === 'skipped' && 'bg-gray-200 border-gray-300',
+                    status === 'current' && 'bg-blue-600 border-blue-600 ring-2 ring-blue-100 shadow-md',
+                    status === 'accessible' && 'bg-white border-gray-300 shadow-sm',
+                    status === 'locked' && 'bg-gray-50 border-gray-200'
                   )}
                 >
                   {status === 'completed' ? (
-                    <Check className="h-6 w-6 text-white" />
+                    <Check className="h-5 w-5 text-white" />
                   ) : status === 'locked' ? (
-                    <Lock className="h-5 w-5 text-gray-400" />
+                    <Lock className="h-4 w-4 text-gray-400" />
                   ) : (
                     <Icon
                       className={cn(
-                        'h-6 w-6',
+                        'h-5 w-5',
                         status === 'current' && 'text-white',
                         status === 'accessible' && 'text-gray-600',
                         status === 'skipped' && 'text-gray-500'

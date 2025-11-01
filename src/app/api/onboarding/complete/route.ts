@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest) {
     // Get user data
     const { data: appUser } = await supabase
       .from('app_users')
-      .select('tenant_id, onboarding_flow_type')
+      .select('tenant_id, active_tenant_id, onboarding_flow_type')
       .eq('id', user.id)
       .single()
 
@@ -43,34 +43,39 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Get tenant account type
-    const { data: tenant } = await supabase
-      .from('tenants')
-      .select('account_type')
-      .eq('id', appUser.tenant_id)
-      .single()
-
-    const accountType = appUser.onboarding_flow_type || tenant?.account_type || 'organization'
-
-    // Get all required steps for this account type
-    const { data: requiredSteps } = await supabase
-      .from('onboarding_step_definitions')
-      .select('id')
-      .contains('account_types', [accountType])
-      .eq('is_skippable', false)
+    // ✅ SIMPLIFIED 4-STEP VALIDATION
+    // Required steps: email_verification, profile_setup
+    // Optional steps: organization_setup, location_setup (only if user has org)
+    
+    const tenantId = appUser.active_tenant_id || appUser.tenant_id
+    const requiredSteps = ['email_verification', 'profile_setup']
+    
+    // Get completed steps
+    let completedStepIds: string[] = []
+    
+    if (tenantId) {
+      // User has tenant - check onboarding_progress table
+      const { data: completedSteps } = await supabase
+        .from('onboarding_progress')
+        .select('step_name')
+        .eq('user_id', user.id)
+        .eq('completed', true)
+      
+      completedStepIds = completedSteps?.map(s => s.step_name) || []
+    } else {
+      // User doesn't have tenant - check onboarding_current_step
+      // If they're past profile_setup, assume email and profile are done
+      if (appUser.onboarding_current_step) {
+        const stepOrder = ['email_verification', 'profile_setup']
+        const currentIndex = stepOrder.findIndex(s => s === appUser.onboarding_current_step)
+        if (currentIndex >= 0) {
+          completedStepIds = stepOrder.slice(0, currentIndex + 1)
+        }
+      }
+    }
 
     // Check if all required steps are completed
-    const { data: completedSteps } = await supabase
-      .from('onboarding_progress')
-      .select('step_name')
-      .eq('user_id', user.id)
-      .eq('completed', true)
-
-    const completedStepIds = completedSteps?.map(s => s.step_name) || []
-    const requiredStepIds = requiredSteps?.map(s => s.id) || []
-
-    // Find missing required steps
-    const missingRequired = requiredStepIds.filter(
+    const missingRequired = requiredSteps.filter(
       stepId => !completedStepIds.includes(stepId)
     )
 
@@ -79,7 +84,9 @@ export async function PUT(request: NextRequest) {
         { 
           error: 'Cannot complete onboarding',
           message: 'Please complete all required steps first',
-          missingSteps: missingRequired
+          missingSteps: missingRequired,
+          requiredSteps,
+          completedSteps: completedStepIds
         },
         { status: 400 }
       )

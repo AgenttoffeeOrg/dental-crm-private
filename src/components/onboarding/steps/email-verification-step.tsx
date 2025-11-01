@@ -95,11 +95,11 @@ export function EmailVerificationStep() {
 
   if (emailVerified) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Alert className="border-green-200 bg-green-50">
-          <CheckCircle className="h-5 w-5 text-green-600" />
+          <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">
-            <div className="font-medium mb-1">Email Verified! ✓</div>
+            <div className="font-medium mb-1 text-sm">Email Verified! ✓</div>
             <div className="text-sm">
               Your email address <strong>{emailAddress}</strong> has been verified.
               You're all set to continue with your profile setup.
@@ -107,13 +107,13 @@ export function EmailVerificationStep() {
           </AlertDescription>
         </Alert>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-          <Mail className="h-12 w-12 text-blue-600 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+          <Mail className="h-10 w-10 text-blue-600 mx-auto mb-2" />
+          <h3 className="text-base font-semibold text-gray-900 mb-1">
             You're Ready to Go!
           </h3>
-          <p className="text-gray-600">
-            Click "Next" to continue setting up your profile.
+          <p className="text-sm text-gray-600">
+            Click "Continue" to set up your profile.
           </p>
         </div>
       </div>
@@ -121,12 +121,12 @@ export function EmailVerificationStep() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Verification Required Alert */}
       <Alert variant="destructive">
-        <AlertCircle className="h-5 w-5" />
+        <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          <div className="font-medium mb-1">Email Verification Required</div>
+          <div className="font-medium mb-1 text-sm">Email Verification Required</div>
           <div className="text-sm">
             Please verify your email address to continue with the setup process.
           </div>
@@ -134,18 +134,18 @@ export function EmailVerificationStep() {
       </Alert>
 
       {/* Instructions */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
         <div className="flex items-start gap-3">
-          <Mail className="h-6 w-6 text-gray-600 flex-shrink-0 mt-1" />
+          <Mail className="h-5 w-5 text-gray-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-semibold text-gray-900 mb-2">Verify Your Email</h3>
-            <p className="text-gray-600 text-sm mb-4">
+            <h3 className="font-semibold text-gray-900 mb-1.5 text-sm">Verify Your Email</h3>
+            <p className="text-gray-600 text-xs mb-3">
               We've sent a verification link to:
             </p>
-            <div className="bg-white border border-gray-200 rounded px-4 py-2 mb-4">
-              <p className="font-mono text-sm text-gray-900">{emailAddress}</p>
+            <div className="bg-white border border-gray-200 rounded px-3 py-2 mb-3">
+              <p className="font-mono text-xs text-gray-900">{emailAddress}</p>
             </div>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 text-xs">
               Please check your inbox and click the verification link. Once verified, 
               this page will automatically update.
             </p>
@@ -153,7 +153,7 @@ export function EmailVerificationStep() {
         </div>
 
         {/* Resend Button */}
-        <div className="pt-4 border-t border-gray-200">
+        <div className="pt-3 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">Didn't receive the email?</p>
             <Button
@@ -193,9 +193,9 @@ export function EmailVerificationStep() {
       </div>
 
       {/* Tips */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="text-sm font-medium text-blue-900 mb-2">Tips:</h4>
-        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <h4 className="text-xs font-medium text-blue-900 mb-1.5">Tips:</h4>
+        <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
           <li>Check your spam/junk folder if you don't see the email</li>
           <li>Make sure to check the correct inbox for {emailAddress}</li>
           <li>The verification link expires after 24 hours</li>
