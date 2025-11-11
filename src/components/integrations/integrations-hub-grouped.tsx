@@ -36,6 +36,7 @@ import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { ServiceStatusBadge } from './service-status-badge'
 import { INTEGRATION_GROUPS } from '@/lib/integrations/unified-scopes'
+import { formatErrorForUser } from '@/lib/integrations/error-handler'
 
 interface Service {
   id: string
