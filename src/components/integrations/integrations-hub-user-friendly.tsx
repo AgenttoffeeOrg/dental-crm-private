@@ -262,22 +262,50 @@ export function IntegrationsHubUserFriendly() {
         .select('*')
         .eq('tenant_id', tenantId)
 
-      const updatedIntegrations = INTEGRATIONS.map(integration => {
-        const connection = connections?.find(c => c.integration_type === integration.type)
-        if (connection) {
-          return {
-            ...integration,
-            status: connection.status as Integration['status'],
-            configured: connection.is_active,
-            credentials: {
-              accountId: connection.config?.account_id || connection.config?.account_sid,
-              accountName: connection.integration_name,
-              expiresAt: connection.token_expires_at,
-            },
+      // Load status for each integration to check service activation
+      const updatedIntegrations = await Promise.all(
+        INTEGRATIONS.map(async (integration) => {
+          const connection = connections?.find(c => c.integration_type === integration.type)
+          
+          if (connection) {
+            // Check service status if it's part of a group
+            let serviceStatus = integration.status
+            if (connection.scopes && connection.scopes.length > 0) {
+              try {
+                const statusResponse = await fetch(`/api/integrations/${integration.type}/status`)
+                if (statusResponse.ok) {
+                  const statusData = await statusResponse.json()
+                  const serviceInfo = statusData.services?.find((s: any) => s.serviceType === integration.type)
+                  if (serviceInfo) {
+                    if (serviceInfo.status === 'pending_verification') {
+                      serviceStatus = 'expiring_soon' // Show as warning
+                    } else if (serviceInfo.status === 'missing_scopes') {
+                      serviceStatus = 'error'
+                    } else {
+                      serviceStatus = 'connected'
+                    }
+                  }
+                }
+              } catch (error) {
+                // Fallback to connection status
+                console.error('Error checking service status:', error)
+              }
+            }
+
+            return {
+              ...integration,
+              status: serviceStatus as Integration['status'],
+              configured: connection.is_active,
+              credentials: {
+                accountId: connection.config?.account_id || connection.config?.account_sid,
+                accountName: connection.integration_name,
+                expiresAt: connection.token_expires_at,
+              },
+            }
           }
-        }
-        return integration
-      })
+          return integration
+        })
+      )
 
       setIntegrations(updatedIntegrations)
     } catch (error) {
