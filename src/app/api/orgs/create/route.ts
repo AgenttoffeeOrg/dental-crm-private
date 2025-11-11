@@ -1,2 +1,2 @@
-export { POST } from '../organizations/create/route'
+export { POST } from '../../organizations/create/route'
 
