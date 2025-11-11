@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-server'
+import { getGroupForService, getActivableServices } from '@/lib/integrations/unified-scopes'
 
 /**
  * OAuth callback handler
@@ -62,6 +63,15 @@ export async function GET(
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/${type}/oauth/callback`
     const tokens = await exchangeCodeForTokens(type, code, redirectUri, state)
 
+    // Get granted scopes from token response
+    const grantedScopes = tokens.scope 
+      ? (Array.isArray(tokens.scope) ? tokens.scope : tokens.scope.split(' '))
+      : []
+
+    // Get integration group for this service
+    const group = getGroupForService(type)
+    const provider = group?.provider || type.split('_')[0] // Fallback to first part of type
+
     // Store tokens in integration_connections
     const encryptionKey = process.env.INTEGRATION_CREDENTIAL_KEY
     if (!encryptionKey) {
@@ -87,7 +97,7 @@ export async function GET(
       p_updated_by: user.id,
     })
 
-    // Create or update integration_connection
+    // Create or update integration_connection for the specific service
     const { error: connectionError } = await serviceSupabase
       .from('integration_connections')
       .upsert({
@@ -97,7 +107,12 @@ export async function GET(
         status: 'connected',
         is_active: true,
         credentials: {}, // Credentials stored separately in vault
+        scopes: grantedScopes,
         token_expires_at: credentials.expires_at,
+        config: {
+          provider,
+          granted_scopes: grantedScopes,
+        },
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'tenant_id,integration_type',
@@ -108,6 +123,38 @@ export async function GET(
       return NextResponse.redirect(
         new URL('/settings/integrations?error=storage_failed', request.url)
       )
+    }
+
+    // UNIFIED OAUTH: Activate all services from the same provider
+    // If user connected Gmail, also activate Analytics, Ads, Calendar if scopes granted
+    if (group) {
+      const activableServices = getActivableServices(group.provider, grantedScopes)
+      
+      // Create connections for all activable services
+      for (const serviceType of activableServices) {
+        if (serviceType !== type) { // Don't duplicate the current service
+          await serviceSupabase
+            .from('integration_connections')
+            .upsert({
+              tenant_id: tenantId,
+              integration_type: serviceType,
+              integration_name: getIntegrationName(serviceType),
+              status: 'connected',
+              is_active: true,
+              credentials: {}, // Same credentials stored separately
+              scopes: grantedScopes,
+              token_expires_at: credentials.expires_at,
+              config: {
+                provider: group.provider,
+                granted_scopes: grantedScopes,
+                shared_with: type, // Track that this service shares credentials with the original
+              },
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'tenant_id,integration_type',
+            })
+        }
+      }
     }
 
     return NextResponse.redirect(
