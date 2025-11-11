@@ -64,6 +64,7 @@ import { UnifiedMarketingTab } from './unified-marketing-tab'
 
 // Integrations Section Components
 import { CommunicationsIntegrationsTab } from './communications-integrations-tab'
+import { IntegrationsHubV2 } from '@/components/integrations/integrations-hub-v2'
 import { APIDeveloperTab } from './api-developer-tab'
 import { BrandingSettingsTab } from './branding-settings-tab'
 
@@ -114,6 +115,7 @@ const SECTION_TABS = {
     { id: 'marketing', label: 'Marketing & Forms' },
   ],
   integrations: [
+    { id: 'integrations', label: 'Integrations' },
     { id: 'connected-apps', label: 'Connected Apps' },
     { id: 'api', label: 'API & Developers' },
     { id: 'branding', label: 'Branding' },
@@ -161,7 +163,7 @@ export function SettingsTabs() {
     workflow: 'pipelines',
     communications: 'email',
     ai: 'ai-assistant',
-    integrations: 'connected-apps',
+    integrations: 'integrations',
     system: 'security-privacy',
   })
 

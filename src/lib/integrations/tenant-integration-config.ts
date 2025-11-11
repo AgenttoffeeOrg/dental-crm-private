@@ -396,8 +396,19 @@ export async function loadTenantIntegrationSettings(
     return legacy
   }
 
-  // Final fallback: environment variables
+  // Final fallback: environment variables (ONLY for admin/system use)
+  // In production, this should be disabled or restricted to admin-only
+  // Users should configure their own credentials via the integrations UI
   const fallback = buildSettingsFromEnv(mergedSecrets)
+
+  // Only return fallback if explicitly enabled for this tenant (admin override)
+  // Otherwise, return null to force users to configure their own credentials
+  const allowEnvFallback = process.env.ALLOW_ENV_FALLBACK === 'true'
+  
+  if (!allowEnvFallback) {
+    // No fallback - user must configure their own credentials
+    return null
+  }
 
   if (!fallback.is_email_configured && !fallback.is_sms_configured && !fallback.is_whatsapp_configured && !fallback.is_voice_configured) {
     return null
