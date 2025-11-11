@@ -209,12 +209,25 @@ export function UnifiedIntegrationsHub() {
 
       const data = await response.json()
 
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorMessage = formatErrorForUser(errorData.error || errorData)
+        toast.error('Connection failed', {
+          description: errorMessage,
+          duration: 5000,
+        })
+        return
+      }
+
+      const data = await response.json()
+
       if (data.authUrl) {
         window.location.href = data.authUrl
       } else {
-        const errorMessage = formatErrorForUser(data.error || error)
+        const errorMessage = formatErrorForUser(data.error || 'Unknown error')
         toast.error('Connection failed', {
           description: errorMessage,
+          duration: 5000,
         })
       }
     } catch (error) {
@@ -222,6 +235,7 @@ export function UnifiedIntegrationsHub() {
       const errorMessage = formatErrorForUser(error)
       toast.error('Connection failed', {
         description: errorMessage,
+        duration: 5000,
       })
     }
   }

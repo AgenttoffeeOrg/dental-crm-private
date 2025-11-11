@@ -26,6 +26,24 @@ export const INTEGRATION_ERRORS: Record<string, IntegrationError> = {
     recoverable: true,
     recoveryAction: 'sign_in',
   },
+  'GOOGLE_OAUTH_NOT_CONFIGURED': {
+    code: 'GOOGLE_OAUTH_NOT_CONFIGURED',
+    message: 'Google OAuth Client ID is missing',
+    userMessage: 'Google OAuth is not configured. Please contact your administrator to set up Google OAuth credentials. See OAUTH_SETUP_REQUIRED.md for instructions.',
+    recoverable: false,
+  },
+  'FACEBOOK_OAUTH_NOT_CONFIGURED': {
+    code: 'FACEBOOK_OAUTH_NOT_CONFIGURED',
+    message: 'Facebook App ID is missing',
+    userMessage: 'Facebook OAuth is not configured. Please contact your administrator to set up Facebook OAuth credentials. See OAUTH_SETUP_REQUIRED.md for instructions.',
+    recoverable: false,
+  },
+  'MICROSOFT_OAUTH_NOT_CONFIGURED': {
+    code: 'MICROSOFT_OAUTH_NOT_CONFIGURED',
+    message: 'Microsoft Client ID is missing',
+    userMessage: 'Microsoft OAuth is not configured. Please contact your administrator to set up Microsoft OAuth credentials. See OAUTH_SETUP_REQUIRED.md for instructions.',
+    recoverable: false,
+  },
   'oauth_cancelled': {
     code: 'oauth_cancelled',
     message: 'User cancelled OAuth flow',

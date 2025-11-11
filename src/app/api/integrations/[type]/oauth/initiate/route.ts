@@ -101,7 +101,7 @@ function buildGoogleOAuthUrl(
 ): string {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID
   if (!clientId) {
-    throw new Error('Google OAuth client ID not configured')
+    throw new Error('GOOGLE_OAUTH_NOT_CONFIGURED: Google OAuth Client ID is missing. Please add GOOGLE_OAUTH_CLIENT_ID to your Railway environment variables. See OAUTH_SETUP_REQUIRED.md for setup instructions.')
   }
 
   const scopes = getGoogleScopes(type)
@@ -127,7 +127,7 @@ function buildFacebookOAuthUrl(
 ): string {
   const appId = process.env.FACEBOOK_APP_ID
   if (!appId) {
-    throw new Error('Facebook App ID not configured')
+    throw new Error('FACEBOOK_OAUTH_NOT_CONFIGURED: Facebook App ID is missing. Please add FACEBOOK_APP_ID to your Railway environment variables. See OAUTH_SETUP_REQUIRED.md for setup instructions.')
   }
 
   const scopes = type === 'instagram' 
@@ -169,7 +169,7 @@ function buildOutlookOAuthUrl(
 ): string {
   const clientId = process.env.MICROSOFT_CLIENT_ID
   if (!clientId) {
-    throw new Error('Microsoft Client ID not configured')
+    throw new Error('MICROSOFT_OAUTH_NOT_CONFIGURED: Microsoft Client ID is missing. Please add MICROSOFT_CLIENT_ID to your Railway environment variables. See OAUTH_SETUP_REQUIRED.md for setup instructions.')
   }
 
   const params = new URLSearchParams({
