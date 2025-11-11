@@ -307,9 +307,10 @@ export function IntegrationsHubUserFriendly() {
 
     const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
 
-    // Show friendly message
-    toast.info('Redirecting to connect your account...', {
-      description: 'You\'ll be back in just a moment!',
+    // Show friendly message explaining what's happening
+    toast.info(`Connecting ${integration.name}...`, {
+      description: 'You\'ll be redirected to approve access. Just click "Allow" and you\'ll be back!',
+      duration: 3000,
     })
 
     try {
@@ -322,6 +323,8 @@ export function IntegrationsHubUserFriendly() {
       const data = await response.json()
 
       if (data.authUrl) {
+        // ONE-CLICK: Immediately redirect to provider's permission page
+        // User approves → Automatically redirected back → Connection complete!
         window.location.href = data.authUrl
       } else {
         toast.error('Oops! Something went wrong', {

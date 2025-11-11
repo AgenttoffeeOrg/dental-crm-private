@@ -30,8 +30,9 @@ export default function IntegrationsPage() {
     }
 
     if (success === 'connected') {
-      toast.success('Integration Connected', {
-        description: 'Your integration has been connected successfully',
+      toast.success('🎉 Connected Successfully!', {
+        description: 'Your integration is now active and ready to use. You can start using it right away!',
+        duration: 5000,
       })
     }
   }, [searchParams])
