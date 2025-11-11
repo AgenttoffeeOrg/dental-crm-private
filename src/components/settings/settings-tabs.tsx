@@ -450,6 +450,10 @@ function renderAITabs(tab: string, tenantId: string | null) {
 function renderIntegrationsTabs(tab: string) {
   return (
     <>
+      <TabsContent value="integrations" className="space-y-6">
+        <IntegrationsHubV2 />
+      </TabsContent>
+      
       <TabsContent value="connected-apps" className="space-y-6">
         <CommunicationsIntegrationsTab />
       </TabsContent>
