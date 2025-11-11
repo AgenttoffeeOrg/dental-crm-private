@@ -221,7 +221,12 @@ async function exchangeGoogleTokens(code: string, redirectUri: string) {
     throw new Error(`Google token exchange failed: ${error}`)
   }
 
-  return await response.json()
+  const tokenData = await response.json()
+  // Ensure scope is included in response
+  return {
+    ...tokenData,
+    scope: tokenData.scope || tokenData.scopes || '',
+  }
 }
 
 async function exchangeFacebookTokens(code: string, redirectUri: string) {
@@ -248,7 +253,12 @@ async function exchangeFacebookTokens(code: string, redirectUri: string) {
     throw new Error(`Facebook token exchange failed: ${error}`)
   }
 
-  return await response.json()
+  const tokenData = await response.json()
+  // Ensure scope is included in response
+  return {
+    ...tokenData,
+    scope: tokenData.scope || tokenData.scopes || '',
+  }
 }
 
 async function exchangeTikTokTokens(code: string, redirectUri: string) {
@@ -276,7 +286,12 @@ async function exchangeTikTokTokens(code: string, redirectUri: string) {
     throw new Error(`TikTok token exchange failed: ${error}`)
   }
 
-  return await response.json()
+  const tokenData = await response.json()
+  // Ensure scope is included in response
+  return {
+    ...tokenData,
+    scope: tokenData.scope || tokenData.scopes || '',
+  }
 }
 
 async function exchangeOutlookTokens(code: string, redirectUri: string) {
@@ -304,7 +319,12 @@ async function exchangeOutlookTokens(code: string, redirectUri: string) {
     throw new Error(`Microsoft token exchange failed: ${error}`)
   }
 
-  return await response.json()
+  const tokenData = await response.json()
+  // Ensure scope is included in response
+  return {
+    ...tokenData,
+    scope: tokenData.scope || tokenData.scopes || '',
+  }
 }
 
 function getIntegrationName(type: string): string {
