@@ -26,6 +26,7 @@ import {
   MapPin,
   Star,
   Monitor,
+  PlayCircle,
 } from 'lucide-react'
 
 export interface UnifiedIntegration {
@@ -96,6 +97,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   MapPin,
   Star,
   Monitor,
+  PlayCircle,
 }
 
 export function getIntegrationIcon(iconName: string): LucideIcon {
