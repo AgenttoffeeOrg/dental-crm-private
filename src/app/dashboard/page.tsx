@@ -40,12 +40,14 @@ import { CreateTaskSlideOver } from '@/components/tasks/create-task-slide-over'
 import { CreateDealSlideOver } from '@/components/deals/create-deal-slide-over'
 import { TodaysPriorities } from '@/components/dashboard/todays-priorities'
 import { AIInsightsWidget } from '@/components/dashboard/ai-insights-widget'
+import { LiveCoachPanel } from '@/components/dashboard/live-coach-panel'
 import { KeyboardShortcutsModal } from '@/components/dashboard/keyboard-shortcuts-modal'
 import { ExportMenu } from '@/components/dashboard/export-menu'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useDataFreshness } from '@/hooks/use-data-freshness'
 import { useDashboardRealtime } from '@/lib/realtime-service'
 import { useOrgGuard, OrgRequiredModal } from '@/components/guards'
+import { DashboardIntelligencePanel } from '@/components/dashboard/dashboard-intelligence-panel'
 
 export default function DashboardRedesigned() {
   const router = useRouter()
@@ -279,7 +281,7 @@ export default function DashboardRedesigned() {
 
       {/* CLEAN, MODERN LAYOUT - COMPACT & EFFICIENT */}
       <div className="h-full overflow-y-auto bg-gray-50">
-        <div className="max-w-[1800px] mx-auto px-4 py-4 space-y-4 pb-24">
+        <div className="max-w-[1800px] mx-auto px-6 py-6 space-y-8 pb-24">
           
           {/* HEADER - Compact & Clean */}
           <div className="flex items-center justify-between">
@@ -351,98 +353,112 @@ export default function DashboardRedesigned() {
           </div>
 
           {/* KPI CARDS - Compact & Efficient */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {/* Revenue */}
-            <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
+            <Card className="group h-full overflow-hidden transition-shadow duration-200 hover:shadow-md focus-within:shadow-md">
+              <CardContent className="flex h-full flex-col justify-between p-5">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total Revenue</p>
+                    <p className="mt-2 text-2xl font-semibold text-gray-900">
                       {format.currency(stats.totalRevenue / 100)}
                     </p>
-                    {revenueTrend.change !== 0 && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <revenueTrend.icon className={`h-3 w-3 ${revenueTrend.color}`} />
-                        <span className={`text-xs font-medium ${revenueTrend.color}`}>
-                          {revenueTrend.change > 0 ? '+' : ''}{revenueTrend.change.toFixed(1)}%
-                        </span>
-                      </div>
-                    )}
                   </div>
                   <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-green-100">
                       <DollarSign className="h-5 w-5 text-green-600" />
                     </div>
                   </div>
                 </div>
+                {revenueTrend.change !== 0 && (
+                  <div className="mt-4 flex items-center gap-2 text-xs font-medium">
+                    <revenueTrend.icon className={`h-3.5 w-3.5 ${revenueTrend.color}`} />
+                    <span className={revenueTrend.color}>
+                      {revenueTrend.change > 0 ? '+' : ''}{revenueTrend.change.toFixed(1)}%
+                    </span>
+                    <span className="text-gray-400">vs last month</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Contacts */}
-            <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/contacts')}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
+            <Card
+              className="group h-full cursor-pointer overflow-hidden transition-shadow duration-200 hover:shadow-md focus-within:shadow-md"
+              onClick={() => router.push('/contacts')}
+            >
+              <CardContent className="flex h-full flex-col justify-between p-5">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Total Contacts</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total Contacts</p>
+                    <p className="mt-2 text-2xl font-semibold text-gray-900">
                       {format.number(stats.totalContacts)}
                     </p>
                   </div>
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <Users className="h-5 w-5 text-blue-600" />
-                    </div>
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
+                    <Users className="h-5 w-5 text-blue-600" />
                   </div>
                 </div>
+                <p className="mt-4 text-xs text-gray-500">Click to review your contact workspace</p>
               </CardContent>
             </Card>
 
             {/* Deals */}
-            <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/deals')}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
+            <Card
+              className="group h-full cursor-pointer overflow-hidden transition-shadow duration-200 hover:shadow-md focus-within:shadow-md"
+              onClick={() => router.push('/deals')}
+            >
+              <CardContent className="flex h-full flex-col justify-between p-5">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Active {LABELS.DEAL.plural}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Active {LABELS.DEAL.plural}</p>
+                    <p className="mt-2 text-2xl font-semibold text-gray-900">
                       {format.number(stats.totalDeals)}
                     </p>
                   </div>
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                      <Target className="h-5 w-5 text-purple-600" />
-                    </div>
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-purple-100">
+                    <Target className="h-5 w-5 text-purple-600" />
                   </div>
                 </div>
+                <p className="mt-4 text-xs text-gray-500">Pipeline momentum across all open deals</p>
               </CardContent>
             </Card>
 
             {/* Tasks */}
-            <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/tasks')}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
+            <Card
+              className="group h-full cursor-pointer overflow-hidden transition-shadow duration-200 hover:shadow-md focus-within:shadow-md"
+              onClick={() => router.push('/tasks')}
+            >
+              <CardContent className="flex h-full flex-col justify-between p-5">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Pending Tasks</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Pending Tasks</p>
+                    <p className="mt-2 text-2xl font-semibold text-gray-900">
                       {format.number(stats.activeTasks)}
                     </p>
                     {stats.activeTasks > 10 && (
-                      <Badge variant="secondary" className="mt-1 text-xs bg-orange-100 text-orange-700 border-orange-200">
+                      <Badge variant="secondary" className="mt-2 w-fit bg-orange-100 text-xs font-semibold text-orange-700">
                         High
                       </Badge>
                     )}
                   </div>
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                      <CheckCircle className="h-5 w-5 text-emerald-600" />
-                    </div>
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+                    <CheckCircle className="h-5 w-5 text-emerald-600" />
                   </div>
                 </div>
+                <p className="mt-4 text-xs text-gray-500">Stay on top of follow-ups and reminders</p>
               </CardContent>
             </Card>
           </div>
 
+          {hasTenant && <LiveCoachPanel />}
+
           {/* MAIN CONTENT - Side by Side Layout */}
+          <DashboardIntelligencePanel
+            tenantId={appUser?.active_tenant_id || appUser?.tenant_id || ''}
+            onOpenCoaching={() => router.push('/call-coaching')}
+          />
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* LEFT: PRIORITIES - Compact */}
             {hasTenant && (

@@ -553,3 +553,12 @@ const inviteCode = randomBytes(8).toString('hex').toUpperCase()
 6. **No Transaction:** Operations are not atomic (manual rollback)
 7. **Service Client:** Used to bypass RLS for tenant creation
 
+
+
+
+
+
+
+
+
+

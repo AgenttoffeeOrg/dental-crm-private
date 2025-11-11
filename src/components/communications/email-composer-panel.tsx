@@ -43,6 +43,7 @@ export function EmailComposerPanel({
   tenantId,
   userId
 }: EmailComposerPanelProps) {
+  const supabase = createClient()
   const [toEmail, setToEmail] = useState(to)
   const [cc, setCc] = useState('')
   const [bcc, setBcc] = useState('')
@@ -59,12 +60,31 @@ export function EmailComposerPanel({
       return
     }
 
+    if (!tenantId || !userId) {
+      toast.error('Missing tenant or user context. Please refresh and try again.')
+      return
+    }
+
     setSending(true)
 
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      const authHeaders = session?.access_token
+        ? {
+            Authorization: `Bearer ${session.access_token}`,
+          }
+        : {}
+
       const response = await fetch('/api/communications/send-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        credentials: 'include',
         body: JSON.stringify({
           to: toEmail.split(',').map(e => e.trim()),
           cc: cc ? cc.split(',').map(e => e.trim()) : [],
@@ -144,6 +164,31 @@ export function EmailComposerPanel({
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
+          </div>
+        </div>
+
+        <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between text-sm text-gray-600">
+          <div>
+            <p className="font-medium text-gray-900">
+              {toEmail || 'Add a recipient to begin'}
+            </p>
+            <p className="text-xs text-gray-500">
+              {dealId
+                ? 'This email will be logged against the active deal.'
+                : contactId
+                ? 'Contact-linked communication.'
+                : 'Manual outreach.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              Email
+            </Badge>
+            {subject && (
+              <span className="text-xs text-gray-500 truncate max-w-[160px]">
+                Subject: {subject}
+              </span>
+            )}
           </div>
         </div>
 

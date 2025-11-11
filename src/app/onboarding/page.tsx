@@ -29,8 +29,10 @@ export default function OnboardingPage() {
   const [shouldShowFlow, setShouldShowFlow] = useState(false)
 
   useEffect(() => {
+    if (!authLoading) {
     checkOnboardingStatus()
-  }, [user?.id])
+    }
+  }, [authLoading, user?.id])
 
   const checkOnboardingStatus = async () => {
     if (authLoading) return
@@ -43,6 +45,37 @@ export default function OnboardingPage() {
     try {
       const supabase = createClient()
 
+      // Ensure user has an organization membership
+      const { data: membership, error: membershipError } = await supabase
+        .from('user_tenant_memberships')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle()
+
+      let resolvedMembership = membership
+
+      if (membershipError) {
+        console.warn('[ONBOARDING] Active membership lookup failed, attempting legacy fallback:', membershipError)
+        const { data: legacyMembership, error: legacyError } = await supabase
+          .from('user_tenant_memberships')
+          .select('tenant_id')
+          .eq('user_id', user.id)
+          .maybeSingle()
+
+        if (legacyError) {
+          console.error('[ONBOARDING] Legacy membership lookup failed:', legacyError)
+          throw legacyError
+        }
+
+        resolvedMembership = legacyMembership
+      }
+
+      if (!resolvedMembership) {
+        router.push('/organization-setup')
+        return
+      }
+
       // Check user's onboarding status
       const { data: appUser } = await supabase
         .from('app_users')
@@ -50,13 +83,11 @@ export default function OnboardingPage() {
         .eq('id', user.id)
         .single()
 
-      // If onboarding already completed, redirect to dashboard
       if (appUser?.onboarding_completed || appUser?.profile_completed) {
         router.push('/dashboard')
         return
       }
 
-      // Show integrated flow
       setShouldShowFlow(true)
     } catch (error) {
       console.error('Error checking onboarding status:', error)

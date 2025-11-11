@@ -476,3 +476,12 @@ The schema has evolved through multiple migrations. Key changes:
 - `user_tenant_memberships` was added to support multiple org memberships
 - `onboarding_progress` was added to track wizard state
 
+
+
+
+
+
+
+
+
+

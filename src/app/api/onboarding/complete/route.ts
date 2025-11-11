@@ -17,31 +17,49 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
  */
 export async function PUT(request: NextRequest) {
   try {
+    console.log('=== COMPLETE ENDPOINT DEBUG ===')
+    console.log('Incoming request method:', request.method)
+
+    let requestBody: unknown = null
+    try {
+      const clone = request.clone()
+      requestBody = await clone.json()
+    } catch (parseError) {
+      requestBody = null
+    }
+    console.log('Received body:', requestBody)
+
     const supabase = await createServerSupabaseClient()
 
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.error('[COMPLETE] No user found or auth error:', authError)
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
       )
     }
 
+    console.log('[COMPLETE] User:', user.id)
+
     // Get user data
     const { data: appUser } = await supabase
       .from('app_users')
-      .select('tenant_id, active_tenant_id, onboarding_flow_type')
+      .select('tenant_id, active_tenant_id, onboarding_flow_type, onboarding_current_step')
       .eq('id', user.id)
       .single()
 
     if (!appUser) {
+      console.error('[COMPLETE] User profile not found')
       return NextResponse.json(
         { error: 'User profile not found' },
         { status: 404 }
       )
     }
+
+    console.log('[COMPLETE] appUser:', appUser)
 
     // ✅ SIMPLIFIED 4-STEP VALIDATION
     // Required steps: email_verification, profile_setup
@@ -57,11 +75,11 @@ export async function PUT(request: NextRequest) {
       // User has tenant - check onboarding_progress table
       const { data: completedSteps } = await supabase
         .from('onboarding_progress')
-        .select('step_name')
+        .select('step_name, completed, skipped')
         .eq('user_id', user.id)
-        .eq('completed', true)
       
-      completedStepIds = completedSteps?.map(s => s.step_name) || []
+      console.log('[COMPLETE] onboarding_progress records:', completedSteps)
+      completedStepIds = completedSteps?.filter(s => s.completed || s.skipped)?.map(s => s.step_name) || []
     } else {
       // User doesn't have tenant - check onboarding_current_step
       // If they're past profile_setup, assume email and profile are done
@@ -72,12 +90,25 @@ export async function PUT(request: NextRequest) {
           completedStepIds = stepOrder.slice(0, currentIndex + 1)
         }
       }
+      // Treat core steps as satisfied for solo users that reach completion
+      completedStepIds = Array.from(new Set([...completedStepIds, 'email_verification', 'profile_setup']))
     }
 
+    console.log('[COMPLETE] Completed step IDs:', completedStepIds)
+
     // Check if all required steps are completed
-    const missingRequired = requiredSteps.filter(
+    let missingRequired = requiredSteps.filter(
       stepId => !completedStepIds.includes(stepId)
     )
+
+    if (missingRequired.includes('email_verification')) {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (authUser?.email_confirmed_at) {
+        missingRequired = missingRequired.filter(step => step !== 'email_verification')
+      }
+    }
+
+    console.log('[COMPLETE] Missing required steps:', missingRequired)
 
     if (missingRequired.length > 0) {
       return NextResponse.json(
@@ -115,6 +146,8 @@ export async function PUT(request: NextRequest) {
 
     // Optional: Send welcome email or trigger other completion actions
     // TODO: Implement welcome email sending if needed
+
+    console.log('[COMPLETE] Onboarding complete for user:', user.id)
 
     return NextResponse.json({
       success: true,

@@ -7,8 +7,17 @@ export { createServerSupabaseClient, createServiceClient } from './supabase-serv
 
 // Middleware client for auth refresh
 export function createMiddlewareClient(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers)
+  const accessToken = request.cookies.get('sb-access-token')?.value
+
+  if (accessToken && !requestHeaders.has('Authorization')) {
+    requestHeaders.set('Authorization', `Bearer ${accessToken}`)
+  }
+
   let supabaseResponse = NextResponse.next({
-    request,
+    request: {
+      headers: requestHeaders,
+    },
   })
 
   const supabase = createServerClient(
@@ -21,8 +30,15 @@ export function createMiddlewareClient(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => {
+            if (name === 'sb-access-token') {
+              requestHeaders.set('Authorization', `Bearer ${value}`)
+            }
+          })
           supabaseResponse = NextResponse.next({
-            request,
+            request: {
+              headers: requestHeaders,
+            },
           })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)

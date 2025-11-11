@@ -13,6 +13,7 @@ import { CSS } from '@dnd-kit/utilities'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
@@ -20,8 +21,9 @@ import { ProbabilityRing } from './deal-intelligence/ProbabilityRing'
 import { HealthPill } from './deal-intelligence/HealthPill'
 import { NextActionPill } from './deal-intelligence/NextActionPill'
 import { enhanceDealWithIntelligence } from '@/lib/intelligence/deal-intelligence'
-import { formatCurrency, formatDaysAgo, formatTreatmentTags, getInitials } from '@/lib/intelligence/deal-intelligence'
-import { MoreVertical, Phone, FileText, MapPin, Clock } from 'lucide-react'
+import { formatCurrency, formatDaysAgo, getInitials } from '@/lib/intelligence/deal-intelligence'
+import { GripVertical, MoreVertical, Phone, FileText, MapPin, Clock } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { DealWithRelations, PipelineStage } from '@/types/database'
 import type { DealWithIntelligence } from '@/types/deal-intelligence'
 
@@ -32,6 +34,7 @@ interface DealCardPremiumProps {
   isDragging?: boolean
   compact?: boolean  // Compact mode toggle
   onDealUpdate?: () => void
+  tagPalette?: Map<string, { color: string; icon: string }>
 }
 
 export function DealCardPremium({
@@ -40,7 +43,8 @@ export function DealCardPremium({
   locationName = null,
   isDragging = false,
   compact = false,
-  onDealUpdate
+  onDealUpdate,
+  tagPalette
 }: DealCardPremiumProps) {
   const router = useRouter()
   const [showActions, setShowActions] = useState(false)
@@ -107,27 +111,66 @@ export function DealCardPremium({
       className={`
         group relative cursor-move
         transition-all duration-200 ease-out
-        bg-white border border-gray-200
-        hover:border-gray-300
+        bg-white/95 backdrop-blur-sm border border-slate-200
+        hover:border-blue-200
         ${isBeingDragged 
-          ? 'shadow-[0_12px_32px_0_rgb(0_0_0_/_0.15),_0_2px_8px_0_rgb(59_130_246_/_0.1)] scale-[1.02] rotate-1' 
-          : 'shadow-[0_2px_12px_0_rgb(0_0_0_/_0.06)] hover:shadow-[0_6px_20px_0_rgb(0_0_0_/_0.10)]'
+          ? 'shadow-[0_12px_32px_0_rgb(59_130_246_/_0.22),_0_2px_8px_0_rgb(59_130_246_/_0.25)] scale-[1.01]' 
+          : 'shadow-[0_2px_10px_0_rgb(15_23_42_/_0.08)] hover:shadow-[0_10px_24px_0_rgb(59_130_246_/_0.12)]'
         }
-        ${compact ? 'rounded-lg' : 'rounded-xl'}
+        ${compact ? 'rounded-xl' : 'rounded-2xl'}
       `}
     >
-      {/* Thin top accent bar (8-10% opacity of stage color) */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-blue-600/10 rounded-t-xl" />
+      {/* Drag handle indicator */}
+      <div className="pointer-events-none absolute left-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-400 shadow-sm transition-colors duration-200 group-hover:text-slate-600">
+        <GripVertical className="h-3.5 w-3.5" />
+      </div>
+      {/* Thin top accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-blue-600/15" />
       
-      <CardContent className={compact ? 'p-3' : 'p-4'}>
+      <CardContent className={cn(compact ? 'p-3' : 'px-4 pt-4 pb-3')}>
         <div className="space-y-3">
           {/* HEADER BLOCK */}
           <div className="space-y-1.5">
-            {/* Treatment/Service line (muted, small) */}
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide truncate">
-                {formatTreatmentTags(deal.treatment_tags)}
-              </span>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-wrap gap-1">
+                {Array.isArray(deal.treatment_tags) && deal.treatment_tags.length > 0 ? (
+                  (() => {
+                    const maxTags = compact ? 2 : 3
+                    const displayTags = deal.treatment_tags.slice(0, maxTags)
+                    const remaining = deal.treatment_tags.length - displayTags.length
+
+                    return (
+                      <>
+                        {displayTags.map((tagName) => {
+                          const meta = tagPalette?.get(tagName)
+                          const backgroundColor = meta?.color || '#2563eb'
+                          const icon = meta?.icon || '🏷️'
+                          return (
+                            <Badge
+                              key={tagName}
+                              style={{ backgroundColor, color: '#ffffff' }}
+                              className="border-0 text-[10px] font-medium px-2 py-0.5 shadow-none"
+                            >
+                              <span className="mr-1">{icon}</span>
+                              <span className="hidden sm:inline">{tagName}</span>
+                              <span className="sm:hidden">{tagName.slice(0, 8)}{tagName.length > 8 ? '…' : ''}</span>
+                            </Badge>
+                          )
+                        })}
+                        {remaining > 0 && (
+                          <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
+                            +{remaining}
+                          </Badge>
+                        )}
+                      </>
+                    )
+                  })()
+                ) : (
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                    No tags
+                  </span>
+                )}
+              </div>
               
               {/* Hover-only menu (⋯) */}
               <DropdownMenu>

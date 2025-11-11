@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getSupabaseAuthContext } from '@/lib/api/auth'
 
 /**
  * GET /api/onboarding/status
@@ -25,10 +25,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient()
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { supabase, user, error: authError } = await getSupabaseAuthContext(request)
 
     if (authError || !user) {
       return NextResponse.json(

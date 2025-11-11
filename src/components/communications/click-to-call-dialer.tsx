@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { createClient } from '@/lib/supabase-client'
+import { sanitizePhoneNumber } from '@/lib/utils/phone'
 
 interface ClickToCallDialerProps {
   isOpen: boolean
@@ -52,6 +53,8 @@ export function ClickToCallDialer({
   const [recording, setRecording] = useState(true)
   const [dealIntelligence, setDealIntelligence] = useState<any>(null)
   const [loadingIntelligence, setLoadingIntelligence] = useState(false)
+
+  const normalizedPhoneNumber = sanitizePhoneNumber(phoneNumber)
 
   // Load deal intelligence when panel opens
   useEffect(() => {
@@ -94,6 +97,12 @@ export function ClickToCallDialer({
   }
 
   const initiateCall = async () => {
+    const sanitizedTarget = sanitizePhoneNumber(phoneNumber)
+    if (!sanitizedTarget) {
+      toast.error('Phone number is missing or invalid. Please update the contact first.')
+      return
+    }
+
     setCallStatus('calling')
     
     try {
@@ -101,7 +110,7 @@ export function ClickToCallDialer({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: phoneNumber,
+          to: sanitizedTarget,
           contact_id: contactId,
           deal_id: dealId,
           tenant_id: tenantId,
@@ -191,7 +200,7 @@ export function ClickToCallDialer({
               </span>
             </div>
             <h2 className="text-2xl font-bold mb-1">{contactName || 'Unknown'}</h2>
-            <p className="text-blue-100 text-lg mb-2">{phoneNumber}</p>
+            <p className="text-blue-100 text-lg mb-2">{normalizedPhoneNumber || 'No number available'}</p>
             
             <Badge className={cn("mt-2",
               callStatus === 'calling' && 'bg-yellow-500 animate-pulse',

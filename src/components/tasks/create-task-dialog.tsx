@@ -6,6 +6,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-client'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
+import { useTaskMutation } from '@/lib/hooks/use-task-mutation'
+import { useAccessibleLocations } from '@/lib/hooks/use-locations'
+import { LocationSelector } from '@/components/ui/location-selector'
+import { ContactSelector } from '@/components/ui/contact-selector'
+import { DealSelector } from '@/components/ui/deal-selector'
 import {
   Dialog,
   DialogContent,
@@ -43,6 +48,7 @@ const taskSchema = z.object({
   due_at: z.string().optional(),
   contact_id: z.string().optional(),
   deal_id: z.string().optional(),
+  location_id: z.string().optional(),
   estimated_duration_minutes: z.number().optional(),
 })
 
@@ -70,6 +76,14 @@ export function CreateTaskDialog({
   const [users, setUsers] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+  const { locations, loading: locationsLoading } = useAccessibleLocations()
+  const { createTask, isLoading: mutationLoading } = useTaskMutation({
+    onSuccess: () => {
+      onTaskCreated()
+      onOpenChange(false)
+      form.reset()
+    },
+  })
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -82,6 +96,7 @@ export function CreateTaskDialog({
       due_at: '',
       contact_id: preselectedContactId || '',
       deal_id: preselectedDealId || '',
+      location_id: '',
       estimated_duration_minutes: 30,
     },
   })
@@ -138,41 +153,76 @@ export function CreateTaskDialog({
         due_at: '',
         contact_id: preselectedContactId || '',
         deal_id: preselectedDealId || '',
+        location_id: '',
       })
     }
   }, [open, preselectedContactId, preselectedDealId])
+
+  // Auto-resolve location when contact/deal changes
+  useEffect(() => {
+    const resolveLocation = async () => {
+      const contactId = form.watch('contact_id')
+      const dealId = form.watch('deal_id')
+      if (!contactId && !dealId) return
+
+      let resolvedLocationId: string | null = null
+
+      if (contactId) {
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('location_id')
+          .eq('id', contactId)
+          .single()
+        if (contact?.location_id) {
+          resolvedLocationId = contact.location_id
+        }
+      }
+
+      if (!resolvedLocationId && dealId) {
+        const { data: deal } = await supabase
+          .from('deals')
+          .select('location_id')
+          .eq('id', dealId)
+          .single()
+        if (deal?.location_id) {
+          resolvedLocationId = deal.location_id
+        }
+      }
+
+      if (resolvedLocationId && form.getValues('location_id') !== resolvedLocationId) {
+        form.setValue('location_id', resolvedLocationId)
+      }
+    }
+
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'contact_id' || name === 'deal_id') {
+        resolveLocation()
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [form, supabase])
 
   const onSubmit = async (data: TaskFormData) => {
     setLoading(true)
     try {
       const taskData = {
         title: data.title,
-        description: data.description || null,
+        description: data.description || undefined,
         priority: data.priority,
         task_type: data.task_type || 'todo',
-        estimated_duration_minutes: data.estimated_duration_minutes || null,
-        tenant_id: tenantId,
-        status: 'open' as const,
-        auto_created: false,
-        due_at: data.due_at || null,
-        assignee_user_id: data.assignee_user_id || null,
-        contact_id: data.contact_id || null,
-        deal_id: data.deal_id || null,
+        estimated_duration_minutes: data.estimated_duration_minutes || undefined,
+        due_at: data.due_at || undefined,
+        assignee_user_id: data.assignee_user_id || undefined,
+        contact_id: data.contact_id || undefined,
+        deal_id: data.deal_id || undefined,
+        location_id: data.location_id || undefined,
       }
 
-      const { error } = await supabase
-        .from('tasks')
-        .insert([taskData])
-
-      if (error) throw error
-
-      toast.success('Task created successfully')
-      onTaskCreated()
-      onOpenChange(false)
-      form.reset()
+      await createTask(taskData)
     } catch (error) {
       console.error('Error creating task:', error)
-      toast.error('Failed to create task')
+      // Error already handled by useTaskMutation
     } finally {
       setLoading(false)
     }
@@ -380,24 +430,14 @@ export function CreateTaskDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Related Contact</FormLabel>
-                    <Select 
-                      onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} 
-                      defaultValue={field.value || 'none'}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="None" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {contacts.map(contact => (
-                          <SelectItem key={contact.id} value={contact.id}>
-                            {contact.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <ContactSelector
+                        contacts={contacts}
+                        value={field.value || null}
+                        onValueChange={(val) => field.onChange(val || '')}
+                        placeholder="None"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -409,29 +449,41 @@ export function CreateTaskDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Related Deal</FormLabel>
-                    <Select 
-                      onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} 
-                      defaultValue={field.value || 'none'}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="None" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {deals.map(deal => (
-                          <SelectItem key={deal.id} value={deal.id}>
-                            {deal.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <DealSelector
+                        deals={deals}
+                        value={field.value || null}
+                        onValueChange={(val) => field.onChange(val || '')}
+                        placeholder="None"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
+            {locations.length > 0 && (
+              <FormField
+                control={form.control}
+                name="location_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <LocationSelector
+                        locations={locations}
+                        value={field.value || null}
+                        onValueChange={(val) => field.onChange(val || '')}
+                        placeholder="Auto-inherited from contact/deal"
+                        disabled={locationsLoading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button
@@ -442,8 +494,8 @@ export function CreateTaskDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Creating...' : 'Create Task'}
+              <Button type="submit" disabled={loading || mutationLoading}>
+                {loading || mutationLoading ? 'Creating...' : 'Create Task'}
               </Button>
             </div>
           </form>

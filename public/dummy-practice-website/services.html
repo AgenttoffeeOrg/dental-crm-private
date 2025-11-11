@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Services - Smile Dental Practice</title>
+    <meta name="description" content="Comprehensive dental services for the whole family">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            transition: opacity 0.3s;
+            font-weight: 500;
+        }
+        
+        nav a:hover {
+            opacity: 0.8;
+        }
+        
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+        
+        .page-header h1 {
+            font-size: 2.5rem;
+            color: #0c4a6e;
+            margin-bottom: 1rem;
+        }
+        
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        /* Services Section */
+        .services {
+            padding: 4rem 0;
+            background: white;
+        }
+        
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .service-card {
+            background: #f8fafc;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .service-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .service-card h3 {
+            color: #0284c7;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .service-card p {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        
+        /* Footer */
+        footer {
+            background: #0c4a6e;
+            color: white;
+            padding: 3rem 0;
+            text-align: center;
+        }
+        
+        footer p {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 2rem;
+            }
+            
+            nav ul {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <nav>
+            <div class="logo">🦷 Smile Dental Practice</div>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="services.html">Services</a></li>
+                <li><a href="contact.html">Contact Us</a></li>
+                <li><a href="appointment.html">Book Appointment</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <h1>Our Services</h1>
+            <p style="font-size: 1.125rem; color: #075985;">Comprehensive dental care for the whole family</p>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section class="services">
+        <div class="container">
+            <div class="services-grid">
+                <div class="service-card">
+                    <h3>🦷 General Dentistry</h3>
+                    <p>Comprehensive dental care including cleanings, fillings, and preventive treatments to keep your smile healthy.</p>
+                    <p><strong>Services:</strong> Cleanings, Fillings, Root Canals, Extractions</p>
+                </div>
+                <div class="service-card">
+                    <h3>✨ Cosmetic Dentistry</h3>
+                    <p>Teeth whitening, veneers, and smile makeovers to enhance your appearance and boost your confidence.</p>
+                    <p><strong>Services:</strong> Teeth Whitening, Veneers, Bonding, Smile Makeovers</p>
+                </div>
+                <div class="service-card">
+                    <h3>🦴 Orthodontics</h3>
+                    <p>Braces and Invisalign treatments to straighten your teeth and improve your smile alignment.</p>
+                    <p><strong>Services:</strong> Traditional Braces, Invisalign, Retainers</p>
+                </div>
+                <div class="service-card">
+                    <h3>🦷 Dental Implants</h3>
+                    <p>Dental implants to replace missing teeth and restore your smile with permanent, natural-looking solutions.</p>
+                    <p><strong>Services:</strong> Single Implants, Implant Bridges, Full Mouth Restoration</p>
+                </div>
+                <div class="service-card">
+                    <h3>😬 Emergency Care</h3>
+                    <p>24/7 emergency dental services for urgent dental issues. We're here when you need us most.</p>
+                    <p><strong>Services:</strong> Tooth Pain, Broken Teeth, Lost Fillings, Dental Trauma</p>
+                </div>
+                <div class="service-card">
+                    <h3>👶 Pediatric Dentistry</h3>
+                    <p>Specialized dental care for children in a friendly, comfortable environment designed for young patients.</p>
+                    <p><strong>Services:</strong> Child Cleanings, Sealants, Fluoride Treatments, Education</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p><strong>Smile Dental Practice</strong></p>
+            <p>123 Main Street, City, State 12345</p>
+            <p>Phone: (555) 123-4567 | Email: info@smiledental.com</p>
+            <p style="margin-top: 1rem; opacity: 0.8;">© 2025 Smile Dental Practice. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
+

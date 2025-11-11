@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -39,12 +39,24 @@ import {
   Target,
   TrendingUp,
   Bot,
+  Loader2,
   X
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
-import { Contact, Deal, DealWithRelations, PipelineStage } from '@/types/database'
+import {
+  Contact,
+  Deal,
+  DealWithRelations,
+  PipelineStage,
+  ContactPsychProfile,
+  ContactPsychProfileHistory,
+} from '@/types/database'
 import { toast } from 'sonner'
-import { useTenant } from '@/lib/hooks/use-tenant'
+import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
+import { NextBestScriptPanel } from '@/components/scripts/next-best-script-panel'
+import { formatDistanceToNow } from 'date-fns'
+import { sanitizePhoneNumber } from '@/lib/utils/phone'
+import { LearningLoopSummary } from '@/components/contacts/learning-loop-summary'
 
 interface ContactDetailViewProps {
   contactId: string
@@ -55,6 +67,7 @@ export function ContactDetailView({
 }: ContactDetailViewProps) {
   const router = useRouter()
   const { tenantId } = useTenant()
+  const { userId: currentUserId } = useCurrentUser()
   const [contact, setContact] = useState<Contact | null>(null)
   const [deals, setDeals] = useState<DealWithRelations[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,11 +81,27 @@ export function ContactDetailView({
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   
+  const sanitizedPrimaryPhone = useMemo(
+    () => sanitizePhoneNumber(contact?.primary_phone ?? ''),
+    [contact?.primary_phone]
+  )
+
   // Communication panels state
   const [emailComposerOpen, setEmailComposerOpen] = useState(false)
   const [smsComposerOpen, setSmsComposerOpen] = useState(false)
   const [callDialerOpen, setCallDialerOpen] = useState(false)
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false)
+  const [psychProfile, setPsychProfile] = useState<ContactPsychProfile | null>(null)
+  const [psychHistory, setPsychHistory] = useState<ContactPsychProfileHistory[]>([])
+  const [analyzingPersona, setAnalyzingPersona] = useState(false)
+
+  const primaryDealId = useMemo(() => {
+    const activeDeal = deals.find(deal => {
+      const stageName = deal.stage?.name?.toLowerCase() || ''
+      return !['closed_won', 'closed_lost'].includes(stageName)
+    })
+    return activeDeal?.id ?? deals[0]?.id ?? null
+  }, [deals])
 
   const fetchContactData = async () => {
     try {
@@ -116,30 +145,73 @@ export function ContactDetailView({
     }
   }
 
+  const fetchPsychProfile = async () => {
+    try {
+      const supabase = createClient()
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('contact_psych_profiles')
+        .select('*')
+        .eq('contact_id', contactId)
+        .maybeSingle()
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Psych profile error:', profileError)
+        throw profileError
+      }
+
+      setPsychProfile(profileData ?? null)
+
+      const { data: historyData, error: historyError } = await supabase
+        .from('contact_psych_profile_history')
+        .select('*')
+        .eq('contact_id', contactId)
+        .order('recorded_at', { ascending: false })
+        .limit(5)
+
+      if (historyError) {
+        console.error('Psych history error:', historyError)
+      } else {
+        setPsychHistory(historyData ?? [])
+      }
+    } catch (error) {
+      console.error('Error fetching psychological profile:', error)
+      toast.error('Failed to load persona insights')
+    }
+  }
+
+  const handleRefreshPersonaInsights = async () => {
+    try {
+      setAnalyzingPersona(true)
+      const response = await fetch('/api/psych-profiles/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ contactId }),
+      })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body.error || 'Unable to refresh persona insights')
+      }
+
+      await fetchPsychProfile()
+      toast.success('Persona insights updated')
+    } catch (error) {
+      console.error('Failed to refresh persona insights:', error)
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to refresh persona insights. Try again shortly.'
+      )
+    } finally {
+      setAnalyzingPersona(false)
+    }
+  }
+
   useEffect(() => {
     fetchContactData()
+    fetchPsychProfile()
   }, [contactId])
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading contact details...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!contact) {
-    return (
-      <div className="text-center py-12">
-        <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Contact not found</h3>
-        <p className="text-gray-600">The contact you&apos;re looking for doesn&apos;t exist or has been deleted.</p>
-      </div>
-    )
-  }
 
   const getLeadScoreColor = (score: number) => {
     if (score >= 80) return 'bg-red-100 text-red-800'
@@ -162,8 +234,146 @@ export function ContactDetailView({
     }).format(cents / 100)
   }
 
+  const isDealClosed = (deal: DealWithRelations) => {
+    const stageName = deal.stage?.name?.toLowerCase() ?? ''
+    return stageName.includes('closed') || stageName.includes('won') || stageName.includes('lost')
+  }
+
+  const openDeals = useMemo(
+    () => deals.filter((deal) => !isDealClosed(deal)),
+    [deals]
+  )
+
+  const openPipelineValue = useMemo(
+    () => openDeals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0),
+    [openDeals]
+  )
+
+  const wonPipelineValue = useMemo(
+    () =>
+      deals
+        .filter((deal) => {
+          const stageName = deal.stage?.name?.toLowerCase() ?? ''
+          return stageName.includes('won')
+        })
+        .reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0),
+    [deals]
+  )
+
+  const lastInteractionTimestamp = useMemo(() => {
+    const timestamps: string[] = []
+    if (contact?.updated_at) timestamps.push(contact.updated_at)
+    deals.forEach((deal) => {
+      if (deal.updated_at) timestamps.push(deal.updated_at)
+      if ((deal as any).last_activity_at) timestamps.push((deal as any).last_activity_at)
+    })
+    psychHistory.forEach((entry) => {
+      if (entry.recorded_at) timestamps.push(entry.recorded_at)
+    })
+    if (timestamps.length === 0) return null
+    return timestamps.reduce((latest, current) =>
+      new Date(current) > new Date(latest) ? current : latest
+    )
+  }, [contact?.updated_at, deals, psychHistory])
+
+  const lastInteractionLabel = useMemo(() => {
+    if (!lastInteractionTimestamp) return 'No activity yet'
+    try {
+      return formatDistanceToNow(new Date(lastInteractionTimestamp), { addSuffix: true })
+    } catch {
+      return 'No activity yet'
+    }
+  }, [lastInteractionTimestamp])
+
+  const personaLabel = useMemo(() => {
+    if (!psychProfile?.dominant_trait) return 'Needs insights'
+    return psychProfile.dominant_trait.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+  }, [psychProfile?.dominant_trait])
+
+  const personaUpdatedLabel = useMemo(() => {
+    const timestamp = psychProfile?.updated_at || psychHistory[0]?.recorded_at || null
+    if (!timestamp) return 'Never analysed'
+    try {
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+    } catch {
+      return 'Never analysed'
+    }
+  }, [psychProfile?.updated_at, psychHistory])
+
+  const summaryCards = useMemo(
+    () => [
+      {
+        title: 'Active Deals',
+        value: openDeals.length,
+        helper: deals.length ? `${deals.length} total` : 'No deals yet',
+        icon: Target,
+        iconColor: 'text-blue-600',
+        iconBg: 'bg-blue-50',
+      },
+      {
+        title: 'Pipeline Value',
+        value: formatCurrency(openPipelineValue),
+        helper: wonPipelineValue
+          ? `Won ${formatCurrency(wonPipelineValue)}`
+          : 'No closed deals yet',
+        icon: DollarSign,
+        iconColor: 'text-emerald-600',
+        iconBg: 'bg-emerald-50',
+      },
+      {
+        title: 'Last Engagement',
+        value: lastInteractionLabel,
+        helper: openDeals.length
+          ? `${openDeals.length} in progress`
+          : 'No active engagements',
+        icon: ActivityIcon,
+        iconColor: 'text-purple-600',
+        iconBg: 'bg-purple-50',
+      },
+      {
+        title: 'Persona Focus',
+        value: personaLabel,
+        helper: analyzingPersona ? 'Analysing…' : personaUpdatedLabel,
+        icon: Brain,
+        iconColor: 'text-amber-600',
+        iconBg: 'bg-amber-50',
+      },
+    ],
+    [
+      openDeals.length,
+      deals.length,
+      openPipelineValue,
+      wonPipelineValue,
+      lastInteractionLabel,
+      personaLabel,
+      personaUpdatedLabel,
+      analyzingPersona,
+    ]
+  )
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading contact details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!contact) {
+    return (
+      <div className="text-center py-12">
+        <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Contact not found</h3>
+        <p className="text-gray-600">The contact you&apos;re looking for doesn&apos;t exist or has been deleted.</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex h-full bg-gray-50 overflow-hidden">
+    <div className="flex h-full min-h-[calc(100vh-3.5rem)] bg-gray-50 overflow-hidden">
       {/* Left Sidebar - Contact Info */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
         {/* Contact Header */}
@@ -173,7 +383,7 @@ export function ContactDetailView({
               <User className="h-8 w-8 text-blue-600" />
             </div>
             <div className="flex-1">
-              <h1 className="text-xl font-semibold text-gray-900">
+              <h1 className="text-2xl font-semibold text-gray-900">
                 {contact?.full_name || 'Loading...'}
               </h1>
               {contact?.lead_score && contact.lead_score > 0 && (
@@ -198,7 +408,7 @@ export function ContactDetailView({
         </div>
 
         {/* Contact Details */}
-        <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+        <div className="flex-1 p-6 space-y-6 overflow-y-auto pb-24">
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -214,18 +424,18 @@ export function ContactDetailView({
                   <div className="flex items-center justify-between gap-3 group/field">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      {contact.primary_phone ? (
+                      {sanitizedPrimaryPhone ? (
                         <button
                           onClick={() => setCallDialerOpen(true)}
                           className="text-sm text-blue-600 hover:text-blue-700 hover:underline cursor-pointer truncate text-left"
                         >
-                          {contact.primary_phone}
+                          {sanitizedPrimaryPhone}
                         </button>
                       ) : (
                         <span className="text-sm text-gray-400 italic">No phone number</span>
                       )}
                     </div>
-                    {!contact.primary_phone ? (
+                    {!sanitizedPrimaryPhone ? (
                       <Button
                         size="sm"
                         variant="ghost"
@@ -349,6 +559,282 @@ export function ContactDetailView({
                   </div>
                 </div>
               )}
+
+              {/* Persona Insights */}
+              <div className="rounded-xl border border-blue-100 bg-white shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-blue-100 px-4 py-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-blue-600" />
+                      Persona Insights
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      AI-guided profile to shape tone, pacing, and follow-up strategy.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1"
+                      onClick={() => router.push(`/call-coaching?contactId=${contactId}`)}
+                    >
+                      <Bot className="h-3.5 w-3.5" />
+                      Call Coaching
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 text-xs gap-1"
+                      onClick={handleRefreshPersonaInsights}
+                      disabled={analyzingPersona}
+                    >
+                      {analyzingPersona ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Updating…
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3 w-3" />
+                          {psychProfile ? 'Refresh' : 'Generate'}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {psychProfile ? (
+                  <div className="px-5 py-5 space-y-5 text-sm">
+                    <div className="flex flex-wrap items-end justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+                          Primary Persona
+                        </p>
+                        <h4 className="text-lg font-semibold text-slate-900">{personaLabel}</h4>
+                        <p className="text-xs text-slate-500">
+                          Updated {personaUpdatedLabel}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="text-[11px] bg-blue-100 text-blue-700">
+                        AI Generated
+                      </Badge>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {psychProfile.anxiety_level !== null && psychProfile.anxiety_level !== undefined && (
+                        <div className="rounded-lg border border-red-100 bg-red-50/60 p-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">
+                              Anxiety
+                            </span>
+                            <span className="text-xs text-red-600 font-medium">
+                              {psychProfile.anxiety_level} / 100
+                            </span>
+                          </div>
+                          <div className="mt-2 h-2 rounded-full bg-red-100 overflow-hidden">
+                            <div
+                              className="h-full bg-red-500"
+                              style={{ width: `${Math.max(0, Math.min(psychProfile.anxiety_level ?? 0, 100))}%` }}
+                            />
+                          </div>
+                          <p className="mt-2 text-xs text-red-700">
+                            {psychProfile.anxiety_level >= 70
+                              ? 'High anxiety — lead with reassurance and allow space for questions.'
+                              : psychProfile.anxiety_level >= 45
+                              ? 'Moderate anxiety — acknowledge concerns and set clear expectations.'
+                              : 'Low anxiety — focus on outcomes and keep momentum.'}
+                          </p>
+                        </div>
+                      )}
+
+                      {psychProfile.trust_score !== null && psychProfile.trust_score !== undefined && (
+                        <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
+                              Trust Score
+                            </span>
+                            <span className="text-xs text-emerald-600 font-medium">
+                              {psychProfile.trust_score} / 100
+                            </span>
+                          </div>
+                          <div className="mt-2 h-2 rounded-full bg-emerald-100 overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-500"
+                              style={{ width: `${Math.max(0, Math.min(psychProfile.trust_score ?? 0, 100))}%` }}
+                            />
+                          </div>
+                          <p className="mt-2 text-xs text-emerald-700">
+                            {psychProfile.trust_score >= 70
+                              ? 'High trust — you can recommend next steps confidently.'
+                              : psychProfile.trust_score >= 45
+                              ? 'Building trust — reinforce credibility with social proof.'
+                              : 'Low trust — invest time in rapport and validation.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                          Communication Style
+                        </p>
+                        <p className="text-sm text-slate-900 capitalize">
+                          {psychProfile.communication_style?.replace(/_/g, ' ') || 'Unknown'}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {(() => {
+                            const style = psychProfile.communication_style?.toLowerCase()
+                            switch (style) {
+                              case 'analytical':
+                                return 'Lead with data, comparisons, and clear next steps.'
+                              case 'expressive':
+                                return 'Use storytelling, energy, and future-focused language.'
+                              case 'driver':
+                                return 'Be concise, outcome-oriented, and respect their time.'
+                              case 'amiable':
+                                return 'Prioritize rapport and reassurance before details.'
+                              default:
+                                return 'Mirror their tone during the conversation to build trust.'
+                            }
+                          })()}
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                          Decision Style
+                        </p>
+                        <p className="text-sm text-slate-900 capitalize">
+                          {psychProfile.decision_style?.replace(/_/g, ' ') || 'Unknown'}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {(() => {
+                            const style = psychProfile.decision_style?.toLowerCase()
+                            switch (style) {
+                              case 'logical':
+                                return 'Expect detailed reasoning and comparison before commitment.'
+                              case 'collaborative':
+                                return 'Invite them into the plan and co-create next steps.'
+                              case 'decisive':
+                                return 'Provide a confident recommendation and a clear action.'
+                              case 'deliberate':
+                                return 'Give space for follow-up questions and documentation.'
+                              default:
+                                return 'Clarify their decision process to keep momentum.'
+                            }
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {Array.isArray(psychProfile.snapshot?.persona_tags) &&
+                      psychProfile.snapshot.persona_tags.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                            Persona Tags
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {psychProfile.snapshot.persona_tags.map((tag: string) => (
+                              <Badge key={tag} variant="secondary" className="text-[11px] capitalize">
+                                #{tag.replace(/_/g, ' ')}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                    {Array.isArray(psychProfile.snapshot?.primary_concerns) &&
+                      psychProfile.snapshot.primary_concerns.length > 0 && (
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">
+                            Primary Concerns
+                          </p>
+                          <ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">
+                            {psychProfile.snapshot.primary_concerns.map((concern: string, idx: number) => (
+                              <li key={idx}>{concern}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                    {psychProfile.snapshot?.recommended_approach && (
+                      <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-4 text-xs text-slate-700">
+                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">
+                          Recommended Approach
+                        </p>
+                        <p>{psychProfile.snapshot.recommended_approach}</p>
+                      </div>
+                    )}
+
+                    {psychHistory.length > 0 && (
+                      <div className="pt-4 border-t border-blue-100">
+                        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">
+                          Recent AI updates
+                        </p>
+                        <div className="space-y-2">
+                          {psychHistory.slice(0, 3).map((entry) => {
+                            const when = entry.recorded_at
+                              ? formatDistanceToNow(new Date(entry.recorded_at), { addSuffix: true })
+                              : 'Recently'
+                            const tags = Array.isArray(entry.snapshot?.persona_tags)
+                              ? entry.snapshot.persona_tags.slice(0, 3).map((tag: string) => `#${tag.replace(/_/g, ' ')}`).join(', ')
+                              : null
+
+                            return (
+                              <div
+                                key={entry.id}
+                                className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600"
+                              >
+                                <div className="flex-1">
+                                  <p className="font-medium text-slate-800">
+                                    Persona refreshed
+                                  </p>
+                                  <p className="text-[11px] text-slate-500">
+                                    {tags ? `Tags: ${tags}` : 'Insights updated'}
+                                  </p>
+                                </div>
+                                <span className="text-[11px] text-slate-400 whitespace-nowrap">
+                                  {when}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="px-5 py-6 text-sm text-blue-800">
+                    <div className="rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-6 text-center">
+                      <p className="text-sm font-semibold text-blue-800 mb-2">
+                        No persona insights yet
+                      </p>
+                      <p className="text-xs text-blue-700 max-w-xs mx-auto mb-4">
+                        Run the analyzer to understand this patient&apos;s motivations, trust posture, and the tone that resonates best.
+                      </p>
+                      <Button
+                        size="sm"
+                        className="gap-2"
+                        onClick={handleRefreshPersonaInsights}
+                        disabled={analyzingPersona}
+                      >
+                        {analyzingPersona ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Analysing…
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4" />
+                            Generate Persona Profile
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Customer Value Summary */}
               <div>
@@ -480,10 +966,17 @@ export function ContactDetailView({
                     variant="outline"
                     size="sm"
                     className="w-full justify-start"
-                    onClick={() => setCreateActivityDialogOpen(true)}
+                    onClick={() => {
+                      if (sanitizedPrimaryPhone) {
+                        setCallDialerOpen(true)
+                      } else {
+                        toast.error('Add a phone number before placing a call.')
+                      }
+                    }}
+                    disabled={!sanitizedPrimaryPhone}
                   >
                     <PhoneCall className="h-4 w-4 mr-2" />
-                    Log Call
+                    Call Contact
                   </Button>
                   <Button
                     variant="outline"
@@ -525,9 +1018,125 @@ export function ContactDetailView({
         </div>
       </div>
 
-      {/* Main Content - Tabs */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+        <div className="border-b border-gray-200 bg-white px-6 py-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Relationship Snapshot
+              </p>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {contact.full_name || 'Contact Overview'}
+              </h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (sanitizedPrimaryPhone) {
+                    setCallDialerOpen(true)
+                  } else {
+                    toast.error('Add a phone number before placing a call.')
+                  }
+                }}
+                disabled={!sanitizedPrimaryPhone}
+              >
+                <PhoneCall className="h-4 w-4 mr-2" />
+                Call
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (contact.primary_email) {
+                    setEmailComposerOpen(true)
+                  } else {
+                    toast.error('Add an email address before composing.')
+                  }
+                }}
+                disabled={!contact.primary_email}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Email
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (sanitizedPrimaryPhone) {
+                    setSmsComposerOpen(true)
+                  } else {
+                    toast.error('Add a phone number before sending an SMS.')
+                  }
+                }}
+                disabled={!sanitizedPrimaryPhone}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                SMS
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCreateActivityDialogOpen(true)}
+              >
+                <ActivityIcon className="h-4 w-4 mr-2" />
+                Log Activity
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setCreateDealDialogOpen(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Deal
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {summaryCards.map((card) => {
+              const Icon = card.icon
+              return (
+                <Card key={card.title} className="border border-gray-200 rounded-2xl shadow-sm">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {card.title}
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-gray-900">
+                          {card.value}
+                        </p>
+                        {card.helper && (
+                          <p className="text-xs text-gray-500 mt-1">{card.helper}</p>
+                        )}
+                      </div>
+                      <div
+                        className={`h-10 w-10 rounded-full flex items-center justify-center ${card.iconBg}`}
+                      >
+                        <Icon className={`h-5 w-5 ${card.iconColor}`} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <LearningLoopSummary
+            tenantId={tenantId}
+            onOpenCoaching={() => router.push(`/call-coaching?contactId=${contactId}`)}
+          />
+        </div>
+
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-0"
+        >
           <div className="px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
             <TabsList className="grid w-full grid-cols-3 max-w-xl">
               <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -537,8 +1146,8 @@ export function ContactDetailView({
           </div>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="flex-1 overflow-y-auto mt-0">
-            <div className="p-6 bg-gray-50">
+          <TabsContent value="overview" className="mt-0">
+            <div className="p-6 pb-24 bg-gray-50">
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -727,7 +1336,7 @@ export function ContactDetailView({
           </TabsContent>
 
           {/* Deals Tab */}
-          <TabsContent value="deals" className="flex-1 overflow-y-auto mt-0">
+          <TabsContent value="deals" className="mt-0">
             <div className="p-6 bg-gray-50">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">All Deals</h3>
@@ -747,7 +1356,7 @@ export function ContactDetailView({
                     return (
                       <div
                         key={deal.id}
-                        onClick={() => setSelectedDealId(deal.id)}
+                        onClick={() => router.push(`/deals/${deal.id}`)}
                         className={`p-4 rounded-lg border cursor-pointer group transition-all hover:shadow-md ${
                           isActive ? 'bg-white border-blue-200 hover:border-blue-300' :
                           isWon ? 'bg-green-50 border-green-200 hover:border-green-300' :
@@ -820,7 +1429,7 @@ export function ContactDetailView({
           </TabsContent>
 
           {/* Activities & Tasks Tab */}
-          <TabsContent value="activities" className="flex-1 overflow-y-auto mt-0">
+          <TabsContent value="activities" className="mt-0">
             <div className="p-6 bg-gray-50">
               <ActivityFeedEnterprise
                 contactId={contactId}
@@ -829,7 +1438,7 @@ export function ContactDetailView({
                 showAllContactActivities={true}
                 tenantId={tenantId}
                 contactEmail={contact?.primary_email}
-                contactPhone={contact?.primary_phone}
+                contactPhone={sanitizedPrimaryPhone}
                 contactName={contact?.full_name}
               />
             </div>
@@ -920,29 +1529,29 @@ export function ContactDetailView({
             to={contact.primary_email}
             contactId={contactId}
             dealId={deals.length > 0 ? deals[0].id : undefined}
-            tenantId={tenantId}
-            userId={tenantId}
+            tenantId={tenantId || undefined}
+            userId={currentUserId || undefined}
           />
 
           <SMSComposerPanel
             isOpen={smsComposerOpen}
             onClose={() => setSmsComposerOpen(false)}
-            to={contact.primary_phone}
+        to={sanitizedPrimaryPhone}
             contactId={contactId}
             dealId={deals.length > 0 ? deals[0].id : undefined}
-            tenantId={tenantId}
-            userId={tenantId}
+            tenantId={tenantId || undefined}
+            userId={currentUserId || undefined}
           />
 
           <ClickToCallDialer
             isOpen={callDialerOpen}
             onClose={() => setCallDialerOpen(false)}
-            phoneNumber={contact.primary_phone || ''}
+        phoneNumber={sanitizedPrimaryPhone}
             contactName={contact.full_name}
             contactId={contactId}
             dealId={deals.length > 0 ? deals[0].id : undefined}
-            tenantId={tenantId}
-            userId={tenantId}
+            tenantId={tenantId || undefined}
+            userId={currentUserId || undefined}
           />
         </>
       )}

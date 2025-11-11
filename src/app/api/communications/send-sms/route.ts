@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase-server'
+import { queueManager } from '@/lib/queues/queue-manager'
+import { enqueueCommunication, registerCommunicationQueue } from '@/lib/queues/communication-queue'
+import { dispatchSms } from '@/lib/communications/dispatcher'
 
 // AI Helper: Extract SMS purpose from message content
 function extractSMSPurpose(message: string): string {
   const lower = message.toLowerCase()
-  
+
   if (lower.includes('appointment') || lower.includes('schedule') || lower.includes('reminder')) {
     return 'Appointment Reminder'
   }
@@ -20,8 +22,14 @@ function extractSMSPurpose(message: string): string {
   if (lower.includes('question') || lower.includes('?')) {
     return 'Question'
   }
-  
+
   return 'Quick Message'
+}
+
+const QUEUE_ENABLED = process.env.QUEUE_COMMUNICATIONS === 'true'
+
+if (queueManager.isEnabled() && QUEUE_ENABLED) {
+  registerCommunicationQueue()
 }
 
 export async function POST(request: NextRequest) {
@@ -33,7 +41,7 @@ export async function POST(request: NextRequest) {
       contact_id,
       deal_id,
       tenant_id,
-      user_id
+      user_id,
     } = body
 
     // Validate required fields
@@ -44,117 +52,55 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = createServiceClient()
-
-    // 1. Load integration settings
-    const { data: settings, error: settingsError } = await supabase
-      .from('integration_settings')
-      .select('*')
-      .eq('tenant_id', tenant_id)
-      .single()
-
-    if (settingsError || !settings || !settings.is_sms_configured) {
-      return NextResponse.json(
-        { error: 'SMS integration not configured. Please configure in Settings → Integrations.' },
-        { status: 400 }
-      )
-    }
-
-    // 2. SEND SMS VIA TWILIO
-    // TODO: Add actual Twilio SMS sending logic
-    let externalId: string | null = null
-    let sendSuccess = false
-
-    try {
-      // TODO: Integrate Twilio SDK
-      // Example:
-      // const twilio = require('twilio')
-      // const client = twilio(settings.sms_account_sid, settings.sms_auth_token)
-      // const twilioMessage = await client.messages.create({
-      //   body: message,
-      //   from: settings.sms_from_number,
-      //   to: to
-      // })
-      // externalId = twilioMessage.sid
-      // sendSuccess = twilioMessage.status === 'queued' || twilioMessage.status === 'sent'
-      
-      console.log('[SMS] Twilio integration ready. Add credentials to send.')
-      console.log(`[SMS] Would send to ${to}: "${message.substring(0, 50)}..."`)
-      externalId = `twilio_sms_${Date.now()}`
-      sendSuccess = true
-      
-    } catch (twilioError) {
-      console.error('[SMS] Twilio error:', twilioError)
-      sendSuccess = false
-    }
-
-    // 3. AI-Extract PURPOSE, OUTCOME, and SUMMARY
     const aiPurpose = extractSMSPurpose(message)
-    const aiOutcome = sendSuccess ? 'Sent successfully' : 'Failed to send'
-    const aiSummary = `${aiPurpose} SMS to ${to} - ${message.substring(0, 60)}${message.length > 60 ? '...' : ''}`
-    
-    // 4. Log activity in CRM with AI insights
-    const { data: activity, error: activityError } = await supabase
-      .from('activities')
-      .insert({
-        tenant_id,
-        type: 'sms',
-        contact_id,
-        deal_id,
-        agent_user_id: user_id,
-        direction: 'outbound',
-        subject: 'SMS',
-        snippet: message.substring(0, 200),
-        integration_provider: 'twilio_sms',
-        external_id: externalId,
-        from_number: settings.sms_from_number,
-        to_number: to,
-        message_status: sendSuccess ? 'sent' : 'failed',
-        metadata: {
-          ai_purpose: aiPurpose,
-          ai_outcome: aiOutcome,
-          ai_summary: aiSummary,
-          ai_sentiment: 'neutral'
-        },
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single()
 
-    if (activityError) {
-      console.error('[SMS] Error logging activity:', activityError)
+    if (queueManager.isEnabled() && QUEUE_ENABLED) {
+      await enqueueCommunication({
+        type: 'sms',
+        context: {
+          tenantId: tenant_id,
+          userId: user_id,
+          contactId: contact_id,
+          dealId: deal_id,
+        },
+        to,
+        message,
+      })
+
       return NextResponse.json(
-        { error: 'SMS sent but failed to log activity', details: activityError },
-        { status: 500 }
+        {
+          success: true,
+          queued: true,
+          message: 'SMS queued for delivery',
+          ai_purpose: aiPurpose,
+        },
+        { status: 202 }
       )
     }
 
-    // 4. Log integration event
-    await supabase
-      .from('integration_logs')
-      .insert({
-        tenant_id,
-        integration_type: 'sms',
-        action: 'send',
-        provider: 'twilio',
-        activity_id: activity.id,
-        external_id: externalId,
-        request_data: { to, message_length: message.length },
-        status: sendSuccess ? 'success' : 'error',
-        error_message: sendSuccess ? null : 'Twilio not fully configured'
-      })
+    const result = await dispatchSms({
+      context: {
+        tenantId: tenant_id,
+        userId: user_id,
+        contactId: contact_id,
+        dealId: deal_id,
+      },
+      to,
+      message,
+    })
 
     return NextResponse.json({
       success: true,
-      activity_id: activity.id,
-      external_id: externalId,
-      message: sendSuccess 
-        ? 'SMS sent successfully!' 
-        : 'SMS logged. Configure Twilio to actually send.',
+      activity_id: result.activityId,
+      external_id: result.externalId,
+      message: 'SMS sent successfully!',
+      status: result.status,
+      ai_purpose: result.aiPurpose,
+      ai_outcome: result.aiOutcome,
+      ai_summary: result.aiSummary,
       characters: message.length,
-      estimated_cost: Math.ceil(message.length / 160) * 0.0075
+      estimated_cost: Math.ceil(message.length / 160) * 0.0075,
     })
-
   } catch (error: unknown) {
     console.error('[SMS] Error sending SMS:', error)
     return NextResponse.json(

@@ -5,8 +5,8 @@
  * Enterprise-style right-side slide-over for creating tasks
  */
 
-import { useState } from 'react'
-import { X, CheckSquare, User, Calendar, Flag, FileText, Save } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, CheckSquare, User, Calendar, Flag, FileText, Save, MapPin, Phone, Mail, Repeat, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +19,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase-client'
+import { useTaskMutation } from '@/lib/hooks/use-task-mutation'
+import { useAccessibleLocations } from '@/lib/hooks/use-locations'
+import { LocationSelector } from '@/components/ui/location-selector'
+import { ContactSelector } from '@/components/ui/contact-selector'
+import { DealSelector } from '@/components/ui/deal-selector'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth'
 
@@ -38,15 +43,111 @@ export function CreateTaskSlideOver({
   preselectedDealId 
 }: CreateTaskSlideOverProps) {
   const { appUser } = useAuth()
+  const { locations, loading: locationsLoading } = useAccessibleLocations()
+  const { createTask, isLoading: mutationLoading } = useTaskMutation({
+    onSuccess: () => {
+      onTaskCreated()
+      onClose()
+    },
+  })
   const [loading, setLoading] = useState(false)
+  const [contacts, setContacts] = useState<any[]>([])
+  const [deals, setDeals] = useState<any[]>([])
+  const [users, setUsers] = useState<any[]>([])
+  const [dataLoading, setDataLoading] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    task_type: 'todo',
     priority: 'normal',
     due_date: '',
     contact_id: preselectedContactId || '',
     deal_id: preselectedDealId || '',
+    location_id: '',
+    assignee_user_id: '',
   })
+
+  // Load contacts, deals, and users when component opens
+  useEffect(() => {
+    if (open && appUser?.tenant_id) {
+      loadData()
+    }
+  }, [open, appUser?.tenant_id])
+
+  // Reset form when preselected values change
+  useEffect(() => {
+    if (open) {
+      setFormData(prev => ({
+        ...prev,
+        contact_id: preselectedContactId || prev.contact_id,
+        deal_id: preselectedDealId || prev.deal_id,
+      }))
+    }
+  }, [open, preselectedContactId, preselectedDealId])
+
+  // Auto-resolve location when contact/deal changes
+  useEffect(() => {
+    const resolveLocation = async () => {
+      if (!formData.contact_id && !formData.deal_id) return
+
+      const supabase = createClient()
+      let resolvedLocationId: string | null = null
+
+      if (formData.contact_id) {
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('location_id')
+          .eq('id', formData.contact_id)
+          .single()
+        if (contact?.location_id) {
+          resolvedLocationId = contact.location_id
+        }
+      }
+
+      if (!resolvedLocationId && formData.deal_id) {
+        const { data: deal } = await supabase
+          .from('deals')
+          .select('location_id')
+          .eq('id', formData.deal_id)
+          .single()
+        if (deal?.location_id) {
+          resolvedLocationId = deal.location_id
+        }
+      }
+
+      if (resolvedLocationId && resolvedLocationId !== formData.location_id) {
+        setFormData(prev => ({ ...prev, location_id: resolvedLocationId || '' }))
+      }
+    }
+
+    if (formData.contact_id || formData.deal_id) {
+      resolveLocation()
+    }
+  }, [formData.contact_id, formData.deal_id])
+
+  const loadData = async () => {
+    if (!appUser?.tenant_id) return
+    
+    setDataLoading(true)
+    try {
+      const supabase = createClient()
+      
+      const [contactsRes, dealsRes, usersRes] = await Promise.all([
+        supabase.from('contacts').select('id, full_name').eq('tenant_id', appUser.tenant_id).order('full_name').limit(100),
+        supabase.from('deals').select('id, title').eq('tenant_id', appUser.tenant_id).order('title').limit(100),
+        supabase.from('app_users').select('id, full_name').eq('tenant_id', appUser.tenant_id).order('full_name')
+      ])
+
+      setContacts(contactsRes.data || [])
+      setDeals(dealsRes.data || [])
+      setUsers(usersRes.data || [])
+    } catch (error) {
+      console.error('Error loading data:', error)
+      toast.error('Failed to load form data')
+    } finally {
+      setDataLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,54 +165,36 @@ export function CreateTaskSlideOver({
     setLoading(true)
 
     try {
-      const supabase = createClient()
-
       const taskData = {
         title: formData.title.trim(),
-        description: formData.description.trim() || null,
+        description: formData.description.trim() || undefined,
+        task_type: formData.task_type,
         priority: formData.priority,
-        due_date: formData.due_date || null,
-        contact_id: formData.contact_id || null,
-        deal_id: formData.deal_id || null,
-        tenant_id: appUser.tenant_id,
-        assigned_to: appUser.id, // Assign to current user by default
+        due_at: formData.due_date || undefined,
+        contact_id: formData.contact_id || undefined,
+        deal_id: formData.deal_id || undefined,
+        location_id: formData.location_id || undefined,
+        assignee_user_id: formData.assignee_user_id || appUser?.id || undefined,
       }
 
-      console.log('[CREATE_TASK] Creating task:', taskData)
-
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert([taskData])
-        .select()
-        .single()
-
-      if (error) {
-        console.error('[CREATE_TASK] Error:', error)
-        throw error
-      }
-
-      console.log('[CREATE_TASK] Success:', data)
-      toast.success('Task created successfully!')
+      await createTask(taskData)
       
       // Reset form
       setFormData({
         title: '',
         description: '',
+        task_type: 'todo',
         priority: 'normal',
         due_date: '',
         contact_id: preselectedContactId || '',
         deal_id: preselectedDealId || '',
+        location_id: '',
+        assignee_user_id: '',
       })
-
-      // Notify parent and close
-      onTaskCreated()
-      onClose()
 
     } catch (error: any) {
       console.error('[CREATE_TASK] Failed:', error)
-      toast.error('Failed to create task', {
-        description: error.message || 'Please try again'
-      })
+      // Error already handled by useTaskMutation
     } finally {
       setLoading(false)
     }
@@ -121,12 +204,23 @@ export function CreateTaskSlideOver({
     setFormData({
       title: '',
       description: '',
+      task_type: 'todo',
       priority: 'normal',
       due_date: '',
       contact_id: preselectedContactId || '',
       deal_id: preselectedDealId || '',
+      location_id: '',
+      assignee_user_id: '',
     })
     onClose()
+  }
+
+  const TASK_TYPE_ICONS = {
+    call: Phone,
+    email: Mail,
+    todo: CheckSquare,
+    meeting: Calendar,
+    follow_up: Repeat,
   }
 
   if (!open) return null
@@ -195,21 +289,124 @@ export function CreateTaskSlideOver({
                 />
               </div>
 
-              {/* Priority */}
+              {/* Task Type & Priority - 2 Columns */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="task_type" className="text-sm font-medium">
+                    Task Type
+                  </Label>
+                  <Select value={formData.task_type} onValueChange={(value) => setFormData({ ...formData, task_type: value })}>
+                    <SelectTrigger className="h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="call">
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4" />
+                          <span>Call</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="email">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          <span>Email</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="meeting">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>Meeting</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="todo">
+                        <div className="flex items-center gap-2">
+                          <CheckSquare className="h-4 w-4" />
+                          <span>Todo</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="follow_up">
+                        <div className="flex items-center gap-2">
+                          <Repeat className="h-4 w-4" />
+                          <span>Follow-up</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="priority" className="text-sm font-medium flex items-center gap-2">
+                    <Flag className="h-4 w-4" />
+                    Priority
+                  </Label>
+                  <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value })}>
+                    <SelectTrigger className="h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Contact & Deal - 2 Columns */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contact_id" className="text-sm font-medium flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Contact
+                  </Label>
+                  <ContactSelector
+                    contacts={contacts}
+                    value={formData.contact_id || null}
+                    onValueChange={(value) => setFormData({ ...formData, contact_id: value || '' })}
+                    placeholder="Select contact..."
+                    disabled={dataLoading}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="deal_id" className="text-sm font-medium flex items-center gap-2">
+                    <Link2 className="h-4 w-4" />
+                    Deal
+                  </Label>
+                  <DealSelector
+                    deals={deals}
+                    value={formData.deal_id || null}
+                    onValueChange={(value) => setFormData({ ...formData, deal_id: value || '' })}
+                    placeholder="Select deal..."
+                    disabled={dataLoading}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+
+              {/* Assignee */}
               <div className="space-y-2">
-                <Label htmlFor="priority" className="text-sm font-medium flex items-center gap-2">
-                  <Flag className="h-4 w-4" />
-                  Priority
+                <Label htmlFor="assignee_user_id" className="text-sm font-medium flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Assign To
                 </Label>
-                <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value })}>
+                <Select
+                  value={formData.assignee_user_id || 'me'}
+                  onValueChange={(value) => setFormData({ ...formData, assignee_user_id: value === 'me' ? '' : value })}
+                  disabled={dataLoading}
+                >
                   <SelectTrigger className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="me">Me ({appUser?.full_name || 'Current user'})</SelectItem>
+                    {users.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.full_name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -228,6 +425,26 @@ export function CreateTaskSlideOver({
                   className="h-11"
                 />
               </div>
+
+              {/* Location */}
+              {locations.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="location_id" className="text-sm font-medium flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Location
+                    {(formData.contact_id || formData.deal_id) && formData.location_id && (
+                      <span className="text-xs text-gray-500 ml-auto">(Auto-inherited)</span>
+                    )}
+                  </Label>
+                  <LocationSelector
+                    locations={locations}
+                    value={formData.location_id || null}
+                    onValueChange={(val) => setFormData({ ...formData, location_id: val || '' })}
+                    placeholder="Auto-inherited from contact/deal"
+                    disabled={locationsLoading}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -238,10 +455,10 @@ export function CreateTaskSlideOver({
             </Button>
             <Button 
               type="submit" 
-              disabled={loading || !formData.title.trim()}
+              disabled={loading || mutationLoading || !formData.title.trim()}
               className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700"
             >
-              {loading ? (
+              {loading || mutationLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                   Creating...

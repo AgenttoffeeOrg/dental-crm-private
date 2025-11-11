@@ -691,3 +691,12 @@ If `steps` is empty, `currentStepId` will be empty string, and components should
 6. **Current Step:** Determined by `steps[currentStep - 1]?.stepId`
 7. **Race Conditions:** Possible if `steps` is empty - handled with optional chaining
 
+
+
+
+
+
+
+
+
+

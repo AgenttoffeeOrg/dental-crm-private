@@ -83,24 +83,23 @@ export function DealCardMinimal({ deal, isDragging = false, onDealClick }: DealC
       style={style}
       onClick={() => onDealClick(deal.id)}
       className={cn(
-        'group relative bg-white rounded-lg border border-gray-200 p-3',
-        'hover:border-blue-400 hover:shadow-md transition-all duration-200',
-        'cursor-pointer',
-        (isDragging || isSortableDragging) && 'shadow-lg ring-2 ring-blue-400'
+        'group relative cursor-pointer rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200',
+        'hover:border-blue-300 hover:shadow-md',
+        (isDragging || isSortableDragging) && 'ring-2 ring-blue-300 shadow-lg'
       )}
     >
       {/* Drag Handle */}
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+        className="absolute left-2 top-3 flex h-5 w-5 -translate-y-0 items-center justify-center rounded-full bg-slate-100 text-slate-400 opacity-70 shadow-sm transition-all duration-200 group-hover:opacity-100"
         onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical className="h-4 w-4 text-gray-400" />
+        <GripVertical className="h-3.5 w-3.5" />
       </div>
 
       {/* Contact */}
-      <div className="flex items-center gap-2 mb-2 pl-4">
+      <div className="mb-2 flex items-center gap-2 pl-5">
         <Avatar className="h-7 w-7 flex-shrink-0">
           <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-medium">
             {deal.contact?.full_name ? getInitials(deal.contact.full_name) : '?'}
@@ -112,15 +111,15 @@ export function DealCardMinimal({ deal, isDragging = false, onDealClick }: DealC
       </div>
 
       {/* Deal Title */}
-      <div className="mb-2 pl-4">
-        <p className="text-xs text-gray-700 line-clamp-1">
+      <div className="mb-2 pl-5">
+        <p className="line-clamp-1 text-xs text-gray-700">
           {deal.title}
         </p>
       </div>
 
       {/* Value & Age */}
-      <div className="flex items-center justify-between pl-4">
-        <span className="text-lg font-bold text-gray-900">
+      <div className="flex items-center justify-between pl-5">
+        <span className="text-lg font-semibold text-gray-900">
           {formatCurrency(deal.value_estimate_cents)}
         </span>
         <Badge className={cn('text-xs font-medium', agingColor)}>
@@ -130,7 +129,7 @@ export function DealCardMinimal({ deal, isDragging = false, onDealClick }: DealC
 
       {/* Next Action Date (if exists) - Only show recent or upcoming */}
       {deal.last_activity_at && differenceInDays(new Date(), new Date(deal.last_activity_at)) < 7 && (
-        <div className="mt-2 pl-4 flex items-center gap-1 text-xs text-gray-500">
+        <div className="mt-2 flex items-center gap-1 pl-5 text-xs text-gray-500">
           <Calendar className="h-3 w-3" />
           <span>{formatDistanceToNow(new Date(deal.last_activity_at), { addSuffix: true })}</span>
         </div>

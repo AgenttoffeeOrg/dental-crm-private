@@ -42,6 +42,7 @@ interface DealTreatmentTagsProps {
   showHistory?: boolean
   editable?: boolean
   compact?: boolean // For smaller displays like cards
+  prefetchedTags?: TreatmentTag[]
 }
 
 export function DealTreatmentTags({
@@ -51,7 +52,8 @@ export function DealTreatmentTags({
   onTagsChange,
   showHistory = true,
   editable = true,
-  compact = false
+  compact = false,
+  prefetchedTags
 }: DealTreatmentTagsProps) {
   const [treatmentTags, setTreatmentTags] = useState<TreatmentTag[]>([])
   const [availableTags, setAvailableTags] = useState<TreatmentTag[]>([])
@@ -61,13 +63,30 @@ export function DealTreatmentTags({
   const supabase = createClient()
 
   useEffect(() => {
-    if (orgId) {
-      loadTreatmentTagsData()
+    if (!orgId) {
+      return
+    }
+
+    if (prefetchedTags && prefetchedTags.length > 0) {
+      setAvailableTags(prefetchedTags)
+      if (dealTags && dealTags.length > 0) {
+        const selected = prefetchedTags.filter(tag => dealTags.includes(tag.name))
+        setTreatmentTags(selected)
+      } else {
+        setTreatmentTags([])
+      }
       if (showHistory) {
         loadRoutingHistory()
       }
+      setLoading(false)
+      return
     }
-  }, [orgId, dealTags])
+
+    loadTreatmentTagsData()
+    if (showHistory) {
+      loadRoutingHistory()
+    }
+  }, [orgId, dealTags, prefetchedTags, showHistory])
 
   const loadTreatmentTagsData = async () => {
     try {

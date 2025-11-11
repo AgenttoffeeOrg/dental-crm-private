@@ -11,13 +11,17 @@ import {
   Download,
   Brain,
   Users as UsersIcon,
-  Target
+  Target,
+  Sparkles,
+  Globe
 } from 'lucide-react'
 import { ExecutiveDashboardV2 } from '@/components/analytics/executive-dashboard-v2'
 import { CRMAnalyticsV2 } from '@/components/analytics/crm-analytics-v2'
 import { MarketingAnalyticsV2 } from '@/components/analytics/marketing-analytics-v2'
 import { CohortAnalysis } from '@/components/analytics/cohort-analysis'
 import { PredictiveAnalytics } from '@/components/analytics/predictive-analytics'
+import { ConversionIntelligenceDashboard } from '@/components/analytics/conversion-intelligence-dashboard'
+import { CompetitiveInsightsDashboard } from '@/components/analytics/competitive-insights-dashboard'
 import { useAuth } from '@/lib/auth'
 import { LoadingState } from '@/components/ui/loading-state'
 import { NoOrgEmptyState } from '@/components/guards'
@@ -76,7 +80,7 @@ export default function AnalyticsPage() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full max-w-4xl grid-cols-5 h-12">
+            <TabsList className="grid w-full max-w-5xl grid-cols-7 h-12">
               <TabsTrigger value="executive" className="text-sm">
                 <TrendingUp className="h-4 w-4 mr-2" />
                 Executive
@@ -84,6 +88,14 @@ export default function AnalyticsPage() {
               <TabsTrigger value="crm" className="text-sm">
                 <Target className="h-4 w-4 mr-2" />
                 CRM Analytics
+              </TabsTrigger>
+              <TabsTrigger value="conversion" className="text-sm">
+                <Sparkles className="h-4 w-4 mr-2" />
+                Conversion Intelligence
+              </TabsTrigger>
+              <TabsTrigger value="competitive" className="text-sm">
+                <Globe className="h-4 w-4 mr-2" />
+                Competitive
               </TabsTrigger>
               <TabsTrigger value="marketing" className="text-sm">
                 <DollarSign className="h-4 w-4 mr-2" />
@@ -107,6 +119,16 @@ export default function AnalyticsPage() {
             {/* CRM Analytics */}
             <TabsContent value="crm" className="space-y-6">
               <CRMAnalyticsV2 tenantId={tenantId} />
+            </TabsContent>
+
+            {/* Conversion Intelligence */}
+            <TabsContent value="conversion" className="space-y-6">
+              <ConversionIntelligenceDashboard tenantId={tenantId} />
+            </TabsContent>
+
+            {/* Competitive Insights */}
+            <TabsContent value="competitive" className="space-y-6">
+              <CompetitiveInsightsDashboard tenantId={tenantId} />
             </TabsContent>
 
             {/* Marketing Analytics */}

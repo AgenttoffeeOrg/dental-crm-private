@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us - Smile Dental Practice</title>
+    <meta name="description" content="Get in touch with Smile Dental Practice. We're here to help!">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            transition: opacity 0.3s;
+            font-weight: 500;
+        }
+        
+        nav a:hover {
+            opacity: 0.8;
+        }
+        
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+        
+        .page-header h1 {
+            font-size: 2.5rem;
+            color: #0c4a6e;
+            margin-bottom: 1rem;
+        }
+        
+        .page-header p {
+            font-size: 1.125rem;
+            color: #075985;
+        }
+        
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        /* Form Section */
+        .form-section {
+            padding: 4rem 0;
+            background: white;
+        }
+        
+        .form-section h2 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #0c4a6e;
+        }
+        
+        .form-section p {
+            text-align: center;
+            font-size: 1.125rem;
+            color: #075985;
+            margin-bottom: 3rem;
+        }
+        
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        /* Contact Info */
+        .contact-info {
+            padding: 3rem 0;
+            background: #f8fafc;
+        }
+        
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .contact-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .contact-card h3 {
+            color: #0284c7;
+            margin-bottom: 1rem;
+        }
+        
+        /* Footer */
+        footer {
+            background: #0c4a6e;
+            color: white;
+            padding: 3rem 0;
+            text-align: center;
+        }
+        
+        footer p {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 2rem;
+            }
+            
+            nav ul {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .form-container {
+                padding: 2rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <nav>
+            <div class="logo">🦷 Smile Dental Practice</div>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="services.html">Services</a></li>
+                <li><a href="contact.html">Contact Us</a></li>
+                <li><a href="appointment.html">Book Appointment</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <h1>Contact Us</h1>
+            <p>We'd love to hear from you. Fill out the form below and we'll get back to you soon!</p>
+        </div>
+    </section>
+
+    <!-- Form Section -->
+    <section class="form-section">
+        <div class="container">
+            <h2>Send Us a Message</h2>
+            <p>Fill out the form below and we'll respond within 24 hours</p>
+            
+            <div class="form-container">
+                <!-- CRM Form Embedded Here -->
+                <iframe 
+                    src="http://localhost:3000/f/bd04a1ec-5525-4fa2-889b-b74834c11749" 
+                    width="100%" 
+                    height="600" 
+                    frameborder="0" 
+                    style="border: none; border-radius: 8px;">
+                </iframe>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Info -->
+    <section class="contact-info">
+        <div class="container">
+            <h2 style="text-align: center; color: #0c4a6e; margin-bottom: 2rem;">Other Ways to Reach Us</h2>
+            <div class="contact-grid">
+                <div class="contact-card">
+                    <h3>📍 Location</h3>
+                    <p>123 Main Street<br>City, State 12345</p>
+                </div>
+                <div class="contact-card">
+                    <h3>📞 Phone</h3>
+                    <p>(555) 123-4567</p>
+                </div>
+                <div class="contact-card">
+                    <h3>📧 Email</h3>
+                    <p>info@smiledental.com</p>
+                </div>
+                <div class="contact-card">
+                    <h3>🕐 Hours</h3>
+                    <p>Mon-Fri: 9am-6pm<br>Sat: 9am-2pm</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p><strong>Smile Dental Practice</strong></p>
+            <p>123 Main Street, City, State 12345</p>
+            <p>Phone: (555) 123-4567 | Email: info@smiledental.com</p>
+            <p style="margin-top: 1rem; opacity: 0.8;">© 2025 Smile Dental Practice. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
+

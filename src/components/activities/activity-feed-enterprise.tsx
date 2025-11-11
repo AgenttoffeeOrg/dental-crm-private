@@ -57,6 +57,7 @@ import { EmailComposerPanel } from '@/components/communications/email-composer-p
 import { SMSComposerPanel } from '@/components/communications/sms-composer-panel'
 import { WhatsAppComposerPanel } from '@/components/communications/whatsapp-composer-panel'
 import { ClickToCallDialer } from '@/components/communications/click-to-call-dialer'
+import { sanitizePhoneNumber } from '@/lib/utils/phone'
 
 interface Activity {
   id: string
@@ -148,6 +149,11 @@ export function ActivityFeedEnterprise({
   const [composerContext, setComposerContext] = useState<any>({})
   
   const supabase = createClient()
+
+const sanitizedContactPhone = useMemo(
+  () => sanitizePhoneNumber(contactPhone ?? ''),
+  [contactPhone]
+)
 
   const fetchActivities = async () => {
     try {
@@ -507,7 +513,7 @@ export function ActivityFeedEnterprise({
                   onClick={(e) => {
                     e.stopPropagation()
                     setComposerContext({
-                      phoneNumber: activity.contact_phone,
+                      phoneNumber: sanitizePhoneNumber(activity.contact_phone),
                       contactId: activity.contact_id,
                       dealId: activity.deal_id,
                       contactName: activity.contact_name
@@ -528,7 +534,7 @@ export function ActivityFeedEnterprise({
                   onClick={(e) => {
                     e.stopPropagation()
                     setComposerContext({
-                      to: activity.contact_phone,
+                      to: sanitizePhoneNumber(activity.contact_phone),
                       contactId: activity.contact_id,
                       dealId: activity.deal_id,
                       contactName: activity.contact_name
@@ -653,14 +659,14 @@ export function ActivityFeedEnterprise({
           onClick={(e) => {
             e.stopPropagation()
             setComposerContext({
-              phoneNumber: contactPhone,
+              phoneNumber: sanitizedContactPhone,
               contactId,
               dealId,
               contactName
             })
             setCallDialerOpen(true)
           }}
-          disabled={!contactPhone}
+          disabled={!sanitizedContactPhone}
         >
           <Phone className="h-4 w-4 mr-1.5 text-green-600" />
           Make Call
@@ -672,14 +678,14 @@ export function ActivityFeedEnterprise({
           onClick={(e) => {
             e.stopPropagation()
             setComposerContext({
-              to: contactPhone,
+              to: sanitizedContactPhone,
               contactId,
               dealId,
               contactName
             })
             setSmsComposerOpen(true)
           }}
-          disabled={!contactPhone}
+          disabled={!sanitizedContactPhone}
         >
           <MessageSquare className="h-4 w-4 mr-1.5 text-purple-600" />
           Send SMS
@@ -691,14 +697,14 @@ export function ActivityFeedEnterprise({
           onClick={(e) => {
             e.stopPropagation()
             setComposerContext({
-              to: contactPhone,
+              to: sanitizedContactPhone,
               contactId,
               dealId,
               contactName
             })
             setWhatsappComposerOpen(true)
           }}
-          disabled={!contactPhone}
+          disabled={!sanitizedContactPhone}
         >
           <MessageSquare className="h-4 w-4 mr-1.5 text-emerald-600" />
           WhatsApp

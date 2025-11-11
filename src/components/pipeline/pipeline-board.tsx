@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
@@ -28,6 +28,15 @@ import {
   SelectLabel,
   SelectSeparator,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { 
   Plus, 
   Settings, 
@@ -44,7 +53,8 @@ import {
   Search,
   Filter,
   User,
-  ArrowUpDown
+  ArrowUpDown,
+  Tag
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -108,6 +118,13 @@ const PIPELINE_TEMPLATES = [
     suggested_stages: ['New Lead', 'Consultation', 'Proposal Sent', 'Negotiation', 'Closed Won']
   },
 ]
+
+type TreatmentTagOption = {
+  id: string
+  name: string
+  color: string
+  icon: string
+}
 
 interface PipelineBoardProps {}
 
@@ -335,7 +352,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
   const [stages, setStages] = useState<PipelineStage[]>([])
   const [deals, setDeals] = useState<DealWithRelations[]>([])
   const [locations, setLocations] = useState<any[]>([]) // NEW: Locations for filtering
-  const [availableTags, setAvailableTags] = useState<string[]>([])
+  const [availableTags, setAvailableTags] = useState<TreatmentTagOption[]>([])
   
   // UI state
   const [loading, setLoading] = useState(true)
@@ -352,11 +369,21 @@ export function PipelineBoard({}: PipelineBoardProps) {
   // NEW: Advanced Filters & Search
   const [localSearchQuery, setLocalSearchQuery] = useState('')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
-  const [treatmentFilter, setTreatmentFilter] = useState<string>('all')
+  const [treatmentFilters, setTreatmentFilters] = useState<string[]>([])
   const [marketingSourceFilter, setMarketingSourceFilter] = useState<string>('all') // NEW: Marketing filter
   const [locationFilter, setLocationFilter] = useState<string>('all') // NEW: Location filter
   const [sortBy, setSortBy] = useState<'date' | 'value' | 'name' | 'stage'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const tagPalette = useMemo(() => {
+    const map = new Map<string, { color: string; icon: string }>()
+    availableTags.forEach((tag) => {
+      map.set(tag.name, {
+        color: tag.color,
+        icon: tag.icon || '🏷️',
+      })
+    })
+    return map
+  }, [availableTags])
   
   // Dialog state
   const [createDealDialogOpen, setCreateDealDialogOpen] = useState(false)
@@ -464,22 +491,22 @@ export function PipelineBoard({}: PipelineBoardProps) {
     
     try {
       const { data, error } = await supabase
-        .from('deals')
-        .select('treatment_tags')
+        .from('treatment_tags')
+        .select('id, name, color, icon')
         .eq('tenant_id', orgId)
-        .not('treatment_tags', 'is', null)
+        .eq('is_active', true)
+        .order('usage_count', { ascending: false })
 
       if (error) throw error
       
-      // Extract unique tags from all deals
-      const allTags = new Set<string>()
-      data?.forEach(deal => {
-        if (deal.treatment_tags && Array.isArray(deal.treatment_tags)) {
-          deal.treatment_tags.forEach(tag => allTags.add(tag))
-        }
-      })
+      const tagOptions = (data || []).map((tag) => ({
+        id: tag.id,
+        name: tag.name,
+        color: tag.color || '#4318FF',
+        icon: tag.icon || '🏷️',
+      }))
       
-      setAvailableTags(Array.from(allTags).sort())
+      setAvailableTags(tagOptions)
     } catch (error) {
       console.error('Error loading available tags:', error)
     }
@@ -693,11 +720,15 @@ export function PipelineBoard({}: PipelineBoardProps) {
       filtered = filtered.filter(deal => deal.source === sourceFilter)
     }
     
-    // 4. Treatment tags filter
-    if (treatmentFilter !== 'all') {
-      filtered = filtered.filter(deal => 
-        deal.treatment_tags?.includes(treatmentFilter)
-      )
+    // 4. Treatment tags filter (match all selected tags)
+    if (treatmentFilters.length > 0) {
+      filtered = filtered.filter(deal => {
+        const tags = Array.isArray(deal.treatment_tags) ? deal.treatment_tags : []
+        if (tags.length === 0) {
+          return false
+        }
+        return treatmentFilters.every(tag => tags.includes(tag))
+      })
     }
     
     // 5. Marketing Source filter (NEW)
@@ -742,7 +773,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
     })
     
     return filtered
-  }, [deals, ownerFilter, localSearchQuery, sourceFilter, treatmentFilter, marketingSourceFilter, locationFilter, sortBy, sortOrder, currentUserId])
+  }, [deals, ownerFilter, localSearchQuery, sourceFilter, treatmentFilters, marketingSourceFilter, locationFilter, sortBy, sortOrder, currentUserId])
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -910,27 +941,67 @@ export function PipelineBoard({}: PipelineBoardProps) {
                 </SelectContent>
               </Select>
 
-              {/* Treatment Tags Filter - Dynamic */}
-              <Select value={treatmentFilter} onValueChange={setTreatmentFilter}>
-                <SelectTrigger className={cn(
-                  "w-[155px] h-9 text-xs",
-                  treatmentFilter !== 'all' && "border-brand-navy-500 bg-brand-navy-50"
-                )}>
-                  <SelectValue placeholder="Treatment Tag" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Treatments</SelectItem>
+              {/* Treatment Tags Filter - Multi-select */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-9 text-xs px-3 flex items-center gap-2",
+                      treatmentFilters.length > 0 && "border-brand-navy-500 bg-brand-navy-50"
+                    )}
+                  >
+                    <Tag className="h-3.5 w-3.5" />
+                    {treatmentFilters.length > 0 ? `${treatmentFilters.length} Tags` : 'Tags'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64">
+                  <DropdownMenuLabel>Treatment Tags</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
                   {availableTags.length === 0 ? (
-                    <SelectItem value="_no_tags" disabled>No tags available</SelectItem>
+                    <DropdownMenuCheckboxItem checked={false} disabled>
+                      No tags available
+                    </DropdownMenuCheckboxItem>
                   ) : (
-                    availableTags.map(tag => (
-                      <SelectItem key={tag} value={tag}>
-                        🏷️ {tag}
-                      </SelectItem>
-                    ))
+                    availableTags.map((tag) => {
+                      const checked = treatmentFilters.includes(tag.name)
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={tag.id}
+                          checked={checked}
+                          onCheckedChange={(isChecked) => {
+                            setTreatmentFilters((prev) => {
+                              if (isChecked) {
+                                if (prev.includes(tag.name)) return prev
+                                return [...prev, tag.name]
+                              }
+                              return prev.filter((item) => item !== tag.name)
+                            })
+                          }}
+                          className="flex items-center gap-2 text-xs"
+                        >
+                          <span
+                            className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                            style={{ backgroundColor: tag.color }}
+                          />
+                          <span className="flex-1 truncate">
+                            {tag.icon || '🏷️'} {tag.name}
+                          </span>
+                        </DropdownMenuCheckboxItem>
+                      )
+                    })
                   )}
-                </SelectContent>
-              </Select>
+                  {treatmentFilters.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setTreatmentFilters([])}>
+                        Clear selection
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Owner Filter - Only for All Deals */}
               {selectedPipelineId === '_all_deals' && (
@@ -990,13 +1061,13 @@ export function PipelineBoard({}: PipelineBoardProps) {
               )}
 
               {/* Clear Filters - Only show if any filter is active */}
-              {(sourceFilter !== 'all' || treatmentFilter !== 'all' || ownerFilter !== 'all' || marketingSourceFilter !== 'all' || localSearchQuery) && (
+              {(sourceFilter !== 'all' || treatmentFilters.length > 0 || ownerFilter !== 'all' || marketingSourceFilter !== 'all' || localSearchQuery) && (
                 <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={() => {
                     setSourceFilter('all')
-                    setTreatmentFilter('all')
+                    setTreatmentFilters([])
                     setOwnerFilter('all')
                     setMarketingSourceFilter('all')
                     setLocalSearchQuery('')
@@ -1103,6 +1174,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
                           locationMap={locationMap}
                           compact={compactMode}
                           onDealUpdate={fetchPipelineData}
+                          tagPalette={tagPalette}
                         />
                       ))
                     )}
@@ -1117,6 +1189,7 @@ export function PipelineBoard({}: PipelineBoardProps) {
                       locationName={draggedDeal.location_id ? locationMap.get(draggedDeal.location_id) || null : null}
                       isDragging 
                       compact={compactMode}
+                      tagPalette={tagPalette}
                     />
                   )}
                 </DragOverlay>

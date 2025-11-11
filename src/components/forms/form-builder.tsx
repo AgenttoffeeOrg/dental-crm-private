@@ -18,6 +18,7 @@ import { useMarketingForms, type MarketingForm } from '@/hooks/use-marketing-for
 import { CreateFormSlideOver } from '@/components/forms/create-form-slide-over'
 import { FormSubmissionsModal } from '@/components/forms/form-submissions-modal'
 import { FormTemplatesModal } from '@/components/forms/form-templates-modal'
+import { EmbedCodeModal } from '@/components/forms/embed-code-modal'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -52,6 +53,7 @@ export function FormBuilder() {
   const [slideOverOpen, setSlideOverOpen] = useState(false)
   const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false)
   const [templatesModalOpen, setTemplatesModalOpen] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
   const [selectedForm, setSelectedForm] = useState<MarketingForm | null>(null)
   const [mode, setMode] = useState<'create' | 'edit'>('create')
 
@@ -110,6 +112,11 @@ export function FormBuilder() {
   const handleViewSubmissions = (form: MarketingForm) => {
     setSelectedForm(form)
     setSubmissionsModalOpen(true)
+  }
+
+  const handleShare = (form: MarketingForm) => {
+    setSelectedForm(form)
+    setShareModalOpen(true)
   }
 
   const getStatusBadge = (status: string, isPublished: boolean) => {
@@ -295,7 +302,7 @@ export function FormBuilder() {
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Analytics
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toast.info('Share modal coming soon!')}>
+                      <DropdownMenuItem onClick={() => handleShare(form)}>
                         <Share2 className="h-4 w-4 mr-2" />
                         Share & Embed
                       </DropdownMenuItem>
@@ -377,7 +384,7 @@ export function FormBuilder() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => toast.info('Share modal coming soon!')}
+                    onClick={() => handleShare(form)}
                   >
                     <Share2 className="h-3 w-3" />
                   </Button>
@@ -415,6 +422,15 @@ export function FormBuilder() {
         onClose={() => setTemplatesModalOpen(false)}
         onSelectTemplate={handleSelectTemplate}
       />
+
+      {/* Share/Embed Modal */}
+      {selectedForm && (
+        <EmbedCodeModal
+          form={selectedForm}
+          open={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+        />
+      )}
     </div>
   )
 }

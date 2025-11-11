@@ -184,3 +184,12 @@ user_tenant_memberships (many) ←──→ (many) tenants
 **Document Status:** ✅ COMPLETE  
 **Last Updated:** December 2024
 
+
+
+
+
+
+
+
+
+

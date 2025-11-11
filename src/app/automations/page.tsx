@@ -276,7 +276,7 @@ export default function AutomationsPage() {
           fetchStats()
         }}
         initialCategory={activeTab}
-        tenantId="550e8400-e29b-41d4-a716-446655440000"
+        tenantId={appUser?.active_tenant_id || appUser?.tenant_id || null}
       />
     </DashboardLayout>
   )

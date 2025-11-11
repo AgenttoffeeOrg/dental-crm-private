@@ -311,10 +311,10 @@ export async function createDealTask(
   try {
     const supabase = createClient()
 
-    // Get deal details
+    // Get deal details with location_id
     const { data: deal } = await supabase
       .from('deals')
-      .select('contact_id, owner_user_id')
+      .select('contact_id, owner_user_id, location_id')
       .eq('id', dealId)
       .single()
 
@@ -331,6 +331,7 @@ export async function createDealTask(
         deal_id: dealId,
         contact_id: deal.contact_id,
         assignee_user_id: taskData.assigneeUserId || deal.owner_user_id,
+        location_id: deal.location_id, // Inherit location from deal
         due_at: taskData.dueAt,
         priority: taskData.priority || 'normal',
         status: 'open',

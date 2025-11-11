@@ -12,6 +12,11 @@ import { Separator } from '@/components/ui/separator'
 import { X, Phone, Mail, CheckSquare, Calendar, Repeat, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
+import { useTaskMutation } from '@/lib/hooks/use-task-mutation'
+import { useAccessibleLocations } from '@/lib/hooks/use-locations'
+import { LocationSelector } from '@/components/ui/location-selector'
+import { ContactSelector } from '@/components/ui/contact-selector'
+import { DealSelector } from '@/components/ui/deal-selector'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { addHours, addDays } from 'date-fns'
@@ -41,6 +46,15 @@ export function CreateTaskPanel({
   prefilledContactId,
   tenantId
 }: CreateTaskPanelProps) {
+  const { orgId } = useTenantContext()
+  const { locations, loading: locationsLoading } = useAccessibleLocations()
+  const { createTask, isLoading: mutationLoading } = useTaskMutation({
+    onSuccess: () => {
+      onTaskCreated()
+      onClose()
+    },
+  })
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -50,6 +64,7 @@ export function CreateTaskPanel({
     assignee_user_id: '',
     contact_id: prefilledContactId || '',
     deal_id: prefilledDealId || '',
+    location_id: '',
     estimated_duration_minutes: 30
   })
 
@@ -71,10 +86,49 @@ export function CreateTaskPanel({
         assignee_user_id: '',
         contact_id: prefilledContactId || '',
         deal_id: prefilledDealId || '',
+        location_id: '',
         estimated_duration_minutes: 30
       })
     }
   }, [open, prefilledContactId, prefilledDealId])
+
+  // Auto-resolve location when contact/deal changes
+  useEffect(() => {
+    const resolveLocation = async () => {
+      if (!formData.contact_id && !formData.deal_id) return
+
+      const supabase = createClient()
+      let resolvedLocationId: string | null = null
+
+      if (formData.contact_id) {
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('location_id')
+          .eq('id', formData.contact_id)
+          .single()
+        if (contact?.location_id) {
+          resolvedLocationId = contact.location_id
+        }
+      }
+
+      if (!resolvedLocationId && formData.deal_id) {
+        const { data: deal } = await supabase
+          .from('deals')
+          .select('location_id')
+          .eq('id', formData.deal_id)
+          .single()
+        if (deal?.location_id) {
+          resolvedLocationId = deal.location_id
+        }
+      }
+
+      if (resolvedLocationId && resolvedLocationId !== formData.location_id) {
+        setFormData(prev => ({ ...prev, location_id: resolvedLocationId || '' }))
+      }
+    }
+
+    resolveLocation()
+  }, [formData.contact_id, formData.deal_id])
 
   const loadData = async () => {
     try {
@@ -112,31 +166,20 @@ export function CreateTaskPanel({
 
       const taskData = {
         title: formData.title,
-        description: formData.description || null,
+        description: formData.description || undefined,
         task_type: formData.task_type,
         priority: formData.priority,
-        estimated_duration_minutes: formData.estimated_duration_minutes,
-        due_at: formData.due_at || null,
-        assignee_user_id: formData.assignee_user_id || user?.id || null,
-        contact_id: formData.contact_id || null,
-        deal_id: formData.deal_id || null,
-        tenant_id: tenantId,
-        status: 'open',
-        auto_created: false
+        due_at: formData.due_at || undefined,
+        assignee_user_id: formData.assignee_user_id || user?.id || undefined,
+        contact_id: formData.contact_id || undefined,
+        deal_id: formData.deal_id || undefined,
+        location_id: formData.location_id || undefined,
       }
 
-      const { error } = await supabase
-        .from('tasks')
-        .insert([taskData])
-
-      if (error) throw error
-
-      toast.success('Task created!')
-      onTaskCreated()
-      onClose()
+      await createTask(taskData)
     } catch (error) {
       console.error('Error creating task:', error)
-      toast.error('Failed to create task')
+      // Error already handled by useTaskMutation
     } finally {
       setLoading(false)
     }
@@ -290,40 +333,40 @@ export function CreateTaskPanel({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Deal</Label>
-              <Select
-                value={formData.deal_id || 'none'}
-                onValueChange={(val) => setFormData({ ...formData, deal_id: val === 'none' ? '' : val })}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {deals.slice(0, 20).map(deal => (
-                    <SelectItem key={deal.id} value={deal.id}>{deal.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <DealSelector
+                deals={deals}
+                value={formData.deal_id || null}
+                onValueChange={(val) => setFormData({ ...formData, deal_id: val || '' })}
+                placeholder="None"
+                className="h-9"
+              />
             </div>
 
             <div>
               <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Contact</Label>
-              <Select
-                value={formData.contact_id || 'none'}
-                onValueChange={(val) => setFormData({ ...formData, contact_id: val === 'none' ? '' : val })}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {contacts.slice(0, 20).map(contact => (
-                    <SelectItem key={contact.id} value={contact.id}>{contact.full_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ContactSelector
+                contacts={contacts}
+                value={formData.contact_id || null}
+                onValueChange={(val) => setFormData({ ...formData, contact_id: val || '' })}
+                placeholder="None"
+                className="h-9"
+              />
             </div>
           </div>
+
+          {/* Location */}
+          {locations.length > 0 && (
+            <div>
+              <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Location</Label>
+              <LocationSelector
+                locations={locations}
+                value={formData.location_id || null}
+                onValueChange={(val) => setFormData({ ...formData, location_id: val || '' })}
+                placeholder="Auto-inherited from contact/deal"
+                disabled={locationsLoading}
+              />
+            </div>
+          )}
         </div>
       </ScrollArea>
 
@@ -340,10 +383,10 @@ export function CreateTaskPanel({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !formData.title.trim()}
+            disabled={loading || mutationLoading || !formData.title.trim()}
             className="flex-1 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
           >
-            {loading ? 'Creating...' : 'Create Task'}
+            {loading || mutationLoading ? 'Creating...' : 'Create Task'}
           </Button>
         </div>
       </div>

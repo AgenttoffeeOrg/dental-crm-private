@@ -392,3 +392,12 @@ This check is likely performed in:
 4. **Without org:** User can edit profile, complete wizard, but cannot use CRM features
 5. **Personal vs Org:** Personal fields in `app_users`, organizational in `tenants`
 
+
+
+
+
+
+
+
+
+

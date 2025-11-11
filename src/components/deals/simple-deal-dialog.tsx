@@ -128,6 +128,7 @@ export function SimpleDealDialog({
   const [pipelineSuggestion, setPipelineSuggestion] = useState<PipelineSuggestion | null>(null)
   const [userOverridePipeline, setUserOverridePipeline] = useState(false)
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
+  const [pendingPipelineId, setPendingPipelineId] = useState<string | null>(null)
   const [selectedTreatmentTags, setSelectedTreatmentTags] = useState<string[]>([])
   const [matchedContacts, setMatchedContacts] = useState<Contact[]>([])
   const [showContactCreation, setShowContactCreation] = useState(false)
@@ -358,21 +359,36 @@ export function SimpleDealDialog({
     setSuggestedTagIds(prev => prev.filter(id => id !== tagId))
   }
 
+  const applyPipelineSelection = (value: string, override = false) => {
+    form.setValue('pipeline_id', value)
+    form.setValue('stage_id', '')
+    loadStagesForPipeline(value)
+    setUserOverridePipeline(override)
+    setPendingPipelineId(null)
+  }
+
   const handlePipelineChangeWithValidation = (value: string) => {
     // If there's a suggestion and user is choosing different pipeline, show confirmation
     if (pipelineSuggestion && pipelineSuggestion.pipeline_id !== value && selectedTagIds.length > 0) {
+      setPendingPipelineId(value)
       setShowOverrideConfirm(true)
       return
     }
     
-    setUserOverridePipeline(true)
-    form.setValue('pipeline_id', value)
-    form.setValue('stage_id', '')
-    loadStagesForPipeline(value)
+    const shouldOverride =
+      pipelineSuggestion != null ? pipelineSuggestion.pipeline_id !== value : false
+    applyPipelineSelection(value, shouldOverride)
   }
 
   const confirmOverride = () => {
-    setUserOverridePipeline(true)
+    if (pendingPipelineId) {
+      applyPipelineSelection(pendingPipelineId, true)
+    }
+    setShowOverrideConfirm(false)
+  }
+
+  const cancelOverride = () => {
+    setPendingPipelineId(null)
     setShowOverrideConfirm(false)
   }
 
@@ -809,7 +825,7 @@ export function SimpleDealDialog({
               <div className="space-y-2">
                 <Label htmlFor="pipeline_id" className="flex items-center gap-1">
                   Pipeline <span className="text-red-500">*</span>
-                  {pipelineSuggestion && (
+                  {pipelineSuggestion && !userOverridePipeline && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -849,18 +865,38 @@ export function SimpleDealDialog({
                   onValueChange={handlePipelineChangeWithValidation}
                   disabled={loading}
                 >
-                  <SelectTrigger className={`h-11 ${pipelineSuggestion && pipelineSuggestion.pipeline_id === form.watch('pipeline_id') ? 'border-blue-500 bg-blue-50' : ''}`}>
+                  <SelectTrigger
+                    className={`h-11 ${
+                      pipelineSuggestion &&
+                      pipelineSuggestion.pipeline_id === form.watch('pipeline_id') &&
+                      !userOverridePipeline
+                        ? 'border-blue-500 bg-blue-50'
+                        : ''
+                    }`}
+                  >
                     <SelectValue placeholder="Select pipeline" />
                   </SelectTrigger>
                   <SelectContent>
                     {pipelines.map((pipeline) => (
                       <SelectItem key={pipeline.id} value={pipeline.id}>
                         <div className="flex items-center gap-2">
-                          {pipelineSuggestion && pipelineSuggestion.pipeline_id === pipeline.id && (
+                          {pipelineSuggestion &&
+                            pipelineSuggestion.pipeline_id === pipeline.id &&
+                            !userOverridePipeline && (
                             <Sparkles className="h-3 w-3 text-blue-600" />
                           )}
                           <span>{pipeline.name}</span>
-                          {pipeline.is_default && <Badge variant="secondary" className="ml-2 text-xs">Default</Badge>}
+                          {pipeline.is_default && (
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              Default
+                            </Badge>
+                          )}
+                          {userOverridePipeline &&
+                            form.watch('pipeline_id') === pipeline.id && (
+                              <Badge variant="secondary" className="ml-2 text-xs">
+                                Manual Override
+                              </Badge>
+                            )}
                         </div>
                       </SelectItem>
                     ))}
@@ -1090,7 +1126,13 @@ export function SimpleDealDialog({
       </DialogContent>
 
       {/* Override Confirmation Dialog */}
-      <AlertDialog open={showOverrideConfirm} onOpenChange={setShowOverrideConfirm}>
+      <AlertDialog open={showOverrideConfirm} onOpenChange={(openState) => {
+        if (!openState) {
+          cancelOverride()
+        } else {
+          setShowOverrideConfirm(true)
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -1114,7 +1156,7 @@ export function SimpleDealDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Suggestion</AlertDialogCancel>
+            <AlertDialogCancel onClick={cancelOverride}>Keep Suggestion</AlertDialogCancel>
             <AlertDialogAction onClick={confirmOverride} className="bg-blue-600 hover:bg-blue-700">
               Yes, Override
             </AlertDialogAction>

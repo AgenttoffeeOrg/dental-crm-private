@@ -487,3 +487,429 @@ export interface LeadPipelineAnalytics {
   avg_lead_score: number;
   total_pipeline_value: number;
 }
+
+export type ScriptTrigger =
+  | 'price_objection'
+  | 'dental_anxiety'
+  | 'timing_conflict'
+  | 'trust_and_credibility'
+  | 'finance_and_insurance'
+  | 'alternative_seeking'
+  | 'pain_urgency'
+  | 'second_opinion'
+  | 'universal';
+
+export interface SalesScript {
+  id: string;
+  tenant_id: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  persona?: string | null;
+  stage_id?: string | null;
+  is_active: boolean;
+  category?: string | null;
+  marketing_hook?: string | null;
+  created_by?: string | null;
+  archived_at?: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+export interface SalesScriptVersion {
+  id: string;
+  tenant_id: string;
+  script_id: string;
+  slug: string;
+  version_number: number;
+  title: string;
+  content: string;
+  trigger_type?: ScriptTrigger | null;
+  persona_tags: string[];
+  tone_descriptor?: string | null;
+  target_persona?: string | null;
+  hypothesis?: string | null;
+  rollout_strategy?: string | null;
+  variant_label?: string | null;
+  estimated_duration_seconds?: number | null;
+  usage_count: number;
+  helpful_count: number;
+  success_rate: number;
+  last_used_at?: string | null;
+  outcome_count: number;
+  positive_outcome_count: number;
+  total_revenue_cents: number;
+  last_outcome_at?: string | null;
+  metadata: Record<string, any>;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+export interface SalesScriptUsage {
+  id: string;
+  tenant_id: string;
+  script_id: string;
+  script_version_id: string;
+  contact_id?: string | null;
+  deal_id?: string | null;
+  activity_id?: string | null;
+  trigger_type?: string | null;
+  persona_snapshot: Record<string, any>;
+  used_by?: string | null;
+  used_at: string;
+  helpful?: boolean | null;
+  helpful_recorded_at?: string | null;
+  feedback?: string | null;
+  context: Record<string, any>;
+  metadata: Record<string, any>;
+}
+
+export interface ConversationOutcome {
+  id: string;
+  tenant_id: string;
+  usage_id?: string | null;
+  contact_id?: string | null;
+  deal_id?: string | null;
+  activity_id?: string | null;
+  outcome_type: 'appointment_booked' | 'deal_won' | 'deal_lost' | 'follow_up' | 'not_helpful' | 'other';
+  outcome_score?: number | null;
+  notes?: string | null;
+  revenue_cents: number;
+  occurred_at: string;
+  recorded_by?: string | null;
+  metadata: Record<string, any>;
+}
+
+export interface ContactPsychProfile {
+  id: string;
+  tenant_id: string;
+  contact_id: string;
+  location_id?: string | null;
+  snapshot: Record<string, any>;
+  anxiety_level?: number | null;
+  trust_score?: number | null;
+  decision_style?: string | null;
+  communication_style?: string | null;
+  recorded_at: string;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+export interface ContactPsychProfileHistory {
+  id: string;
+  tenant_id: string;
+  contact_id: string;
+  profile_id?: string | null;
+  snapshot: Record<string, any>;
+  recorded_at: string;
+  recorded_by?: string | null;
+  created_at: string;
+}
+
+export type EngagementCampaignStatus = 'draft' | 'active' | 'paused' | 'archived';
+
+export interface EngagementCampaign {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description?: string;
+  status: EngagementCampaignStatus;
+  trigger_config: Record<string, any>;
+  schedule_config: Record<string, any>;
+  ai_config: Record<string, any>;
+  timezone: string;
+  created_by_user_id?: string;
+  updated_by_user_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EngagementStepType =
+  | 'send_email'
+  | 'send_sms'
+  | 'send_whatsapp'
+  | 'wait'
+  | 'ai_message'
+  | 'notify_human'
+  | 'webhook'
+  | 'branch';
+
+export interface EngagementStep {
+  id: string;
+  tenant_id: string;
+  campaign_id: string;
+  step_order: number;
+  step_type: EngagementStepType;
+  config: Record<string, any>;
+  wait_duration_seconds?: number;
+  ai_prompt?: string;
+  branch_conditions?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EngagementEnrollmentStatus =
+  | 'pending'
+  | 'active'
+  | 'waiting'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface EngagementEnrollment {
+  id: string;
+  tenant_id: string;
+  campaign_id: string;
+  contact_id?: string;
+  deal_id?: string;
+  status: EngagementEnrollmentStatus;
+  current_step_order: number;
+  next_run_at?: string;
+  last_run_at?: string;
+  context: Record<string, any>;
+  metadata?: Record<string, any>;
+  last_error?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EngagementEvent {
+  id: string;
+  tenant_id: string;
+  campaign_id?: string;
+  enrollment_id?: string;
+  step_id?: string;
+  event_type: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  payload: Record<string, any>;
+  error_message?: string;
+  created_at: string;
+}
+
+export type BotSessionStatus = 'active' | 'paused' | 'escalated' | 'closed';
+export type BotChannel = 'web' | 'sms' | 'whatsapp' | 'voice' | 'api';
+
+export interface BotSession {
+  id: string;
+  tenant_id: string;
+  contact_id?: string;
+  deal_id?: string;
+  channel: BotChannel;
+  status: BotSessionStatus;
+  context: Record<string, any>;
+  automation_source?: string;
+  assigned_user_id?: string;
+  created_by_user_id?: string;
+  started_at: string;
+  last_activity_at: string;
+  closed_at?: string;
+  metadata?: Record<string, any>;
+}
+
+export type BotTurnRole = 'patient' | 'bot' | 'human' | 'system';
+
+export interface BotTurn {
+  id: string;
+  tenant_id: string;
+  session_id: string;
+  role: BotTurnRole;
+  message: string;
+  metadata?: Record<string, any>;
+  confidence_score?: number;
+  intent?: string;
+  created_at: string;
+}
+
+export type BotEscalationStatus = 'pending' | 'acknowledged' | 'resolved' | 'dismissed';
+
+export interface BotEscalation {
+  id: string;
+  tenant_id: string;
+  session_id: string;
+  reason: string;
+  requested_by: 'patient' | 'bot' | 'human';
+  status: BotEscalationStatus;
+  assigned_user_id?: string;
+  resolved_by_user_id?: string;
+  resolution_notes?: string;
+  created_at: string;
+  updated_at: string;
+  resolved_at?: string;
+}
+
+export interface QueueAlertRule {
+  id: string;
+  tenant_id?: string | null;
+  queue_name: string;
+  label: string;
+  max_waiting_jobs?: number | null;
+  max_delayed_jobs?: number | null;
+  max_failed_jobs?: number | null;
+  max_oldest_job_seconds?: number | null;
+  notify_via: string[];
+  enabled: boolean;
+  created_by_user_id?: string | null;
+  updated_by_user_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, any>;
+}
+
+export interface QueueHealthIncident {
+  id: string;
+  rule_id?: string | null;
+  tenant_id?: string | null;
+  queue_name: string;
+  incident_type: string;
+  severity: 'info' | 'warning' | 'critical';
+  status: 'open' | 'acknowledged' | 'resolved';
+  metrics: Record<string, any>;
+  detected_at: string;
+  resolved_at?: string | null;
+  resolution_notes?: string | null;
+  acknowledged_by_user_id?: string | null;
+  resolved_by_user_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BackupVerificationRun {
+  id: string;
+  tenant_id?: string | null;
+  environment: string;
+  status: 'pass' | 'fail' | 'skipped';
+  started_at: string;
+  completed_at?: string | null;
+  duration_ms?: number | null;
+  details: Record<string, any>;
+  log_url?: string | null;
+  initiated_by_user_id?: string | null;
+  created_at: string;
+}
+
+export interface FeatureFlagRegistry {
+  id: string;
+  flag_key: string;
+  name: string;
+  description?: string | null;
+  category: string;
+  rollout_type: string;
+  default_enabled: boolean;
+  allow_tenant_override: boolean;
+  metadata: Record<string, any>;
+  created_by_user_id?: string | null;
+  updated_by_user_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeatureFlagAssignment {
+  id: string;
+  flag_id: string;
+  tenant_id?: string | null;
+  environment: string;
+  enabled: boolean;
+  variant?: string | null;
+  rollout_percentage?: number | null;
+  reason?: string | null;
+  expires_at?: string | null;
+  metadata: Record<string, any>;
+  created_by_user_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeatureFlagAuditLog {
+  id: string;
+  flag_id?: string | null;
+  tenant_id?: string | null;
+  environment: string;
+  action: 'created' | 'updated' | 'deleted' | 'override_enabled' | 'override_disabled';
+  previous_state?: Record<string, any> | null;
+  new_state?: Record<string, any> | null;
+  context?: Record<string, any> | null;
+  performed_by_user_id?: string | null;
+  performed_at: string;
+}
+
+export interface Competitor {
+  id: string;
+  tenant_id: string;
+  name: string;
+  website?: string | null;
+  primary_location?: string | null;
+  notes?: string | null;
+  is_active?: boolean | null;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+export interface CompetitorPricePoint {
+  id: string;
+  tenant_id: string;
+  competitor_id: string;
+  treatment_code?: string | null;
+  treatment_name?: string | null;
+  price_cents?: number | null;
+  collected_at: string;
+  source?: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+export interface CompetitorTouchpoint {
+  id: string;
+  tenant_id: string;
+  competitor_id: string;
+  touchpoint_type: string;
+  occurred_at: string;
+  summary?: string | null;
+  link?: string | null;
+  captured_by?: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
+export interface CompetitorDocument {
+  id: string;
+  tenant_id: string;
+  competitor_id?: string | null;
+  document_path: string;
+  source?: string | null;
+  captured_at: string;
+  checksum?: string | null;
+  metadata: Record<string, any>;
+  created_by_user_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CompetitorIngestionStatus = 'pending' | 'processing' | 'succeeded' | 'failed';
+
+export interface CompetitorIngestionJob {
+  id: string;
+  tenant_id?: string | null;
+  source_name: string;
+  source_type: 'manual' | 'webhook' | 'scheduled' | 'api';
+  status: CompetitorIngestionStatus;
+  payload: Record<string, any>;
+  result_summary?: Record<string, any> | null;
+  error_message?: string | null;
+  started_at: string;
+  completed_at?: string | null;
+  created_by_user_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}

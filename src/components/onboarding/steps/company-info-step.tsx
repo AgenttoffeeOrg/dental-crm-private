@@ -38,65 +38,138 @@ export function CompanyInfoStep() {
   const [logoUrl, setLogoUrl] = useState(stepData.logo_url || '')
   const [hasTenant, setHasTenant] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [hasExistingOrg, setHasExistingOrg] = useState(false)
+  const [existingOrg, setExistingOrg] = useState<any>(null)
 
   // Load existing organization data
   // ✅ FIX: Wait for currentStepId to be set, and re-run when step changes
   useEffect(() => {
-    // Only run if currentStepId is available (step is loaded)
-    if (currentStepId === 'organization_setup') {
-      loadExistingData()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStepId]) // We intentionally don't include formData or loadExistingData to avoid infinite loops
-
   const loadExistingData = async () => {
     try {
       setLoading(true)
       const supabase = createClient()
+
+        console.log('=== COMPANY INFO STEP DEBUG ===')
       
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+        console.log('User ID:', user?.id)
 
-      // Get tenant_id (use active_tenant_id first, fallback to tenant_id)
+        if (!user) {
+          setLoading(false)
+          return
+        }
+
       const { data: appUser } = await supabase
         .from('app_users')
         .select('tenant_id, active_tenant_id')
         .eq('id', user.id)
         .single()
 
-      if (!appUser) return
+        console.log('App User tenant IDs:', appUser)
 
-      const tenantId = appUser.active_tenant_id || appUser.tenant_id
+        const tenantId = appUser?.active_tenant_id || appUser?.tenant_id
       setHasTenant(!!tenantId)
 
-      if (tenantId) {
-        // Load existing tenant/organization data (load all relevant fields)
-        const { data: tenant } = await supabase
-          .from('tenants')
-          .select('name, description, specialty, website_url, logo_url, industry, company_size, founded_date')
-          .eq('id', tenantId)
-          .single()
+        if (!tenantId) {
+          setLoading(false)
+          return
+        }
 
-        if (tenant) {
-          // ✅ FIX: Always pre-fill from DB data (DB is source of truth)
-          // Only skip if formData already has a non-empty value (user edited it)
-          const existingStepData = formData['organization_setup'] || {}
-          
-          // Force pre-fill from DB (DB data takes precedence over saved empty values)
-          if (tenant.name && (!existingStepData.name || existingStepData.name === '')) {
-            updateFieldValue('name', tenant.name)
-          }
-          if (tenant.description && (!existingStepData.description || existingStepData.description === '')) {
-            updateFieldValue('description', tenant.description)
-          }
-          if (tenant.specialty && (!existingStepData.specialty || existingStepData.specialty === '')) {
-            updateFieldValue('specialty', tenant.specialty)
-          }
-          if (tenant.logo_url && (!existingStepData.logo_url || existingStepData.logo_url === '') && !logoUrl) {
-            setLogoUrl(tenant.logo_url)
-            updateFieldValue('logo_url', tenant.logo_url)
+        let tenant: any = null
+
+        // Method 1: membership join with active status filter (new schema)
+        const { data: membership, error: membershipError } = await supabase
+          .from('user_tenant_memberships')
+          .select(`tenant_id, status, tenants:tenant_id(name, company_description, specialty, website_url, logo_url, industry, company_size, founded_date)`) // prefers new column
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .maybeSingle()
+
+        let membershipTenant = membership?.tenants
+
+        if (membershipError) {
+          console.warn('[COMPANY_INFO] Membership lookup with status/company_description failed. Falling back to legacy schema:', membershipError)
+          const { data: legacyMembership, error: legacyMembershipError } = await supabase
+            .from('user_tenant_memberships')
+            .select(`tenant_id, tenants:tenant_id(name, description, specialty, website_url, logo_url, industry, company_size, founded_date)`) // legacy column names
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          if (legacyMembershipError) {
+            console.error('[COMPANY_INFO] Legacy membership lookup failed:', legacyMembershipError)
+          } else {
+            membershipTenant = legacyMembership?.tenants
           }
         }
+
+        if (membershipTenant) {
+          const resolvedTenant = Array.isArray(membershipTenant) ? membershipTenant[0] : membershipTenant
+          if (resolvedTenant) {
+            console.log('FOUND ORG VIA MEMBERSHIP:', resolvedTenant)
+            tenant = resolvedTenant
+          }
+        }
+
+        // Method 2: fallback direct tenant fetch
+        if (!tenant) {
+          const { data: tenantData, error: tenantError } = await supabase
+            .from('tenants')
+            .select('id, name, company_description, specialty, website_url, logo_url, industry, company_size, founded_date')
+            .eq('id', tenantId)
+            .maybeSingle()
+
+          let resolvedTenantData = tenantData
+
+          if (tenantError) {
+            console.warn('[COMPANY_INFO] Direct tenant fetch (company_description) failed. Trying legacy description:', tenantError)
+            const { data: legacyTenantData, error: legacyTenantError } = await supabase
+          .from('tenants')
+              .select('id, name, description, specialty, website_url, logo_url, industry, company_size, founded_date')
+          .eq('id', tenantId)
+              .maybeSingle()
+
+            if (legacyTenantError) {
+              console.error('[COMPANY_INFO] Legacy tenant lookup failed:', legacyTenantError)
+            } else {
+              resolvedTenantData = legacyTenantData
+            }
+          }
+
+          if (resolvedTenantData) {
+            const resolvedTenant = Array.isArray(resolvedTenantData) ? resolvedTenantData[0] : resolvedTenantData
+            console.log('FOUND ORG VIA DIRECT LOOKUP:', resolvedTenant)
+            tenant = resolvedTenant
+          }
+        }
+
+        if (tenant) {
+          const normalizedTenant = {
+            ...tenant,
+            company_description: tenant.company_description ?? tenant.description ?? null,
+          }
+
+          setHasExistingOrg(true)
+          console.log('Setting form values with:', normalizedTenant.name)
+
+          const existingStepData = formData['organization_setup'] || {}
+          
+          if (normalizedTenant.name && (!existingStepData.name || existingStepData.name === '')) {
+            updateFieldValue('name', normalizedTenant.name)
+          }
+          const tenantDescription = normalizedTenant.company_description
+          if (tenantDescription && (!existingStepData.description || existingStepData.description === '')) {
+            updateFieldValue('description', tenantDescription)
+          }
+          if (normalizedTenant.specialty && (!existingStepData.specialty || existingStepData.specialty === '')) {
+            updateFieldValue('specialty', normalizedTenant.specialty)
+          }
+          if (normalizedTenant.logo_url && (!existingStepData.logo_url || existingStepData.logo_url === '') && !logoUrl) {
+            setLogoUrl(normalizedTenant.logo_url)
+            updateFieldValue('logo_url', normalizedTenant.logo_url)
+          }
+          setExistingOrg(normalizedTenant)
+        } else {
+          setHasExistingOrg(false)
       }
     } catch (error) {
       console.error('Error loading organization data:', error)
@@ -104,6 +177,12 @@ export function CompanyInfoStep() {
       setLoading(false)
     }
   }
+
+    if (currentStepId === 'organization_setup') {
+      loadExistingData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStepId]) // We intentionally don't include formData or loadExistingData to avoid infinite loops
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -263,13 +342,18 @@ export function CompanyInfoStep() {
         isRequired={false}
         helpText="The official name of your organization"
       >
+        <div className="space-y-1">
+          {hasExistingOrg && existingOrg?.name && (
+            <p className="text-xs text-green-600 font-medium">✓ Using your existing organization</p>
+          )}
         <Input
           id="name"
           value={stepData.name || ''}
           onChange={(e) => updateFieldValue('name', e.target.value)}
-          placeholder="e.g., Bright Smile Dental Practice"
-          className="text-base"
+            placeholder={hasExistingOrg ? existingOrg?.name || '' : 'e.g., Bright Smile Dental Practice'}
+            className={hasExistingOrg ? 'text-base bg-gray-50' : 'text-base'}
         />
+        </div>
       </WizardFieldWrapper>
 
       {/* Specialty */}

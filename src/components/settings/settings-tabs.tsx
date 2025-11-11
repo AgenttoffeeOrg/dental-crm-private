@@ -71,6 +71,8 @@ import { BrandingSettingsTab } from './branding-settings-tab'
 import { UnifiedSecurityPrivacyTab } from './unified-security-privacy-tab'
 import { AnalyticsSettingsTab } from './analytics-settings-tab'
 import { AuditTrailViewer } from './audit-trail-viewer'
+import { FeatureFlagsGovernanceTab } from './feature-flags-governance-tab'
+import { SystemReliabilityTab } from './system-reliability-tab'
 
 // Hooks
 import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
@@ -118,6 +120,8 @@ const SECTION_TABS = {
   ],
   system: [
     { id: 'security-privacy', label: 'Security & Privacy' },
+    { id: 'reliability', label: 'Reliability' },
+    { id: 'feature-flags', label: 'Feature Flags' },
     { id: 'analytics', label: 'Analytics' },
     { id: 'audit', label: 'Audit Trail' },
   ],
@@ -465,6 +469,14 @@ function renderSystemTabs(tab: string, tenantId: string | null) {
     <>
       <TabsContent value="security-privacy" className="space-y-6">
         <UnifiedSecurityPrivacyTab />
+      </TabsContent>
+
+      <TabsContent value="reliability" className="space-y-6">
+        <SystemReliabilityTab />
+      </TabsContent>
+
+      <TabsContent value="feature-flags" className="space-y-6">
+        <FeatureFlagsGovernanceTab />
       </TabsContent>
       
       <TabsContent value="analytics" className="space-y-6">

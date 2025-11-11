@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
           const orgUpdate: any = {}
           
           if (fieldData.name !== undefined) orgUpdate.name = fieldData.name || null
-          if (fieldData.description !== undefined) orgUpdate.description = fieldData.description || null
+          if (fieldData.description !== undefined) orgUpdate.company_description = fieldData.description || null
           if (fieldData.specialty !== undefined) orgUpdate.specialty = fieldData.specialty || null
 
           if (Object.keys(orgUpdate).length > 0) {
@@ -247,6 +247,35 @@ export async function POST(request: NextRequest) {
                 .eq('id', user.id)
             } else if (locCreateError) {
               console.error('[API] Error creating location:', locCreateError)
+            }
+          }
+
+          const additionalLocations = Array.isArray(fieldData.additional_locations)
+            ? fieldData.additional_locations
+            : []
+
+          for (const loc of additionalLocations) {
+            const hasValues = ['name', 'address_line1', 'city', 'postal_code', 'phone_number']
+              .some(field => (loc?.[field] || '').toString().trim().length > 0)
+
+            if (!hasValues) continue
+
+            const insertPayload: any = {
+              tenant_id: tenantId,
+              name: loc.name || 'Additional Location',
+              address: loc.address_line1 || null,
+              city: loc.city || null,
+              postal_code: loc.postal_code || null,
+              phone: loc.phone_number || null,
+              is_active: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }
+
+            try {
+              await supabase.from('locations').insert(insertPayload)
+            } catch (additionalError) {
+              console.error('[API] Error creating additional location:', additionalError)
             }
           }
         }

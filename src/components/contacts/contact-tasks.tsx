@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { useTaskMutation } from '@/lib/hooks/use-task-mutation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -41,6 +42,13 @@ export function ContactTasks({
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const supabase = createClient()
+  
+  const { updateTask } = useTaskMutation({
+    onSuccess: () => {
+      fetchTasks()
+      onTasksChanged?.()
+    },
+  })
 
   useEffect(() => {
     fetchTasks()
@@ -73,24 +81,12 @@ export function ContactTasks({
   }
 
   const handleTaskComplete = async (taskId: string, completed: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ 
-          status: completed ? 'done' : 'open',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', taskId)
-
-      if (error) throw error
-
-      toast.success(completed ? 'Task completed' : 'Task reopened')
-      fetchTasks()
-      onTasksChanged?.()
-    } catch (error) {
-      console.error('Error updating task:', error)
-      toast.error('Failed to update task')
+    const result = await updateTask(taskId, { status: completed ? 'done' : 'open' })
+    if (result.error) {
+      // Error already handled by useTaskMutation
+      return
     }
+    // Success handled by onSuccess callback
   }
 
   const handleTaskCreated = () => {

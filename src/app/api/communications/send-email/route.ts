@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase-server'
+import { queueManager } from '@/lib/queues/queue-manager'
+import { enqueueCommunication, registerCommunicationQueue } from '@/lib/queues/communication-queue'
+import { dispatchEmail } from '@/lib/communications/dispatcher'
 
 // AI Helper: Extract email purpose from subject/body
 function extractEmailPurpose(subject: string, body: string): string {
   const combined = `${subject} ${body}`.toLowerCase()
-  
+
   // Keywords for common purposes
   if (combined.includes('quote') || combined.includes('pricing') || combined.includes('cost') || combined.includes('price')) {
     return 'Quote Request'
@@ -39,9 +41,15 @@ function extractEmailPurpose(subject: string, body: string): string {
   if (combined.includes('reminder')) {
     return 'Reminder'
   }
-  
+
   // Default
   return 'General Communication'
+}
+
+const QUEUE_ENABLED = process.env.QUEUE_COMMUNICATIONS === 'true'
+
+if (queueManager.isEnabled() && QUEUE_ENABLED) {
+  registerCommunicationQueue()
 }
 
 export async function POST(request: NextRequest) {
@@ -56,7 +64,7 @@ export async function POST(request: NextRequest) {
       contact_id,
       deal_id,
       tenant_id,
-      user_id
+      user_id,
     } = body
 
     // Validate required fields
@@ -67,133 +75,64 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = createServiceClient()
-
-    // 1. Load integration settings
-    const { data: settings, error: settingsError } = await supabase
-      .from('integration_settings')
-      .select('*')
-      .eq('tenant_id', tenant_id)
-      .single()
-
-    if (settingsError || !settings || !settings.is_email_configured) {
-      return NextResponse.json(
-        { error: 'Email integration not configured. Please configure in Settings → Integrations.' },
-        { status: 400 }
-      )
-    }
-
-    // 2. SEND EMAIL VIA PROVIDER
-    // TODO: Add actual email sending logic based on provider
-    let externalId: string | null = null
-    let sendSuccess = false
-
-    if (settings.email_provider === 'sendgrid') {
-      // TODO: Integrate SendGrid API
-      // Example:
-      // const sgMail = require('@sendgrid/mail')
-      // sgMail.setApiKey(settings.email_api_key)
-      // const msg = {
-      //   to: Array.isArray(to) ? to : [to],
-      //   from: settings.email_from_address,
-      //   subject: subject,
-      //   html: emailBody,
-      // }
-      // const response = await sgMail.send(msg)
-      // externalId = response[0].headers['x-message-id']
-      
-      console.log('[EMAIL] SendGrid integration ready. Add API key to send.')
-      externalId = `sendgrid_${Date.now()}`
-      sendSuccess = true
-      
-    } else if (settings.email_provider === 'gmail') {
-      // TODO: Integrate Gmail API (OAuth required)
-      console.log('[EMAIL] Gmail integration ready. Add OAuth token to send.')
-      externalId = `gmail_${Date.now()}`
-      sendSuccess = true
-      
-    } else if (settings.email_provider === 'outlook') {
-      // TODO: Integrate Microsoft Graph API (OAuth required)
-      console.log('[EMAIL] Outlook integration ready. Add OAuth token to send.')
-      externalId = `outlook_${Date.now()}`
-      sendSuccess = true
-      
-    } else if (settings.email_provider === 'ses') {
-      // TODO: Integrate Amazon SES
-      console.log('[EMAIL] Amazon SES integration ready. Add credentials to send.')
-      externalId = `ses_${Date.now()}`
-      sendSuccess = true
-    }
-
-    // 3. AI-Extract PURPOSE, OUTCOME, and SUMMARY
+    const toList = Array.isArray(to) ? to : [to]
+    const ccList = Array.isArray(cc) ? cc : cc ? [cc] : []
+    const bccList = Array.isArray(bcc) ? bcc : bcc ? [bcc] : []
     const aiPurpose = extractEmailPurpose(subject, emailBody)
-    const aiOutcome = sendSuccess ? 'Sent successfully' : 'Failed to send'
-    const aiSummary = `${aiPurpose} email to ${Array.isArray(to) ? to.join(', ') : to}${subject ? ` - ${subject}` : ''}`
-    
-    // 4. Log activity in CRM with AI insights
-    const { data: activity, error: activityError } = await supabase
-      .from('activities')
-      .insert({
-        tenant_id,
-        type: 'email',
-        contact_id,
-        deal_id,
-        agent_user_id: user_id,
-        direction: 'outbound',
-        subject,
-        snippet: emailBody.substring(0, 200),
-        rich_content: emailBody,
-        integration_provider: settings.email_provider,
-        external_id: externalId,
-        email_to: Array.isArray(to) ? to : [to],
-        email_cc: cc || [],
-        email_bcc: bcc || [],
-        email_from: settings.email_from_address,
-        message_status: sendSuccess ? 'sent' : 'failed',
-        metadata: {
-          ai_purpose: aiPurpose,
-          ai_outcome: aiOutcome,
-          ai_summary: aiSummary,
-          ai_sentiment: 'neutral'
-        },
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single()
 
-    if (activityError) {
-      console.error('[EMAIL] Error logging activity:', activityError)
+    if (queueManager.isEnabled() && QUEUE_ENABLED) {
+      await enqueueCommunication({
+        type: 'email',
+        context: {
+          tenantId: tenant_id,
+          userId: user_id,
+          contactId: contact_id,
+          dealId: deal_id,
+        },
+        payload: {
+          to: toList,
+          cc: ccList,
+          bcc: bccList,
+          subject,
+          html: emailBody,
+        },
+      })
+
       return NextResponse.json(
-        { error: 'Email sent but failed to log activity', details: activityError },
-        { status: 500 }
+        {
+          success: true,
+          queued: true,
+          message: 'Email queued for delivery',
+          ai_purpose: aiPurpose,
+        },
+        { status: 202 }
       )
     }
 
-    // 4. Log integration event
-    await supabase
-      .from('integration_logs')
-      .insert({
-        tenant_id,
-        integration_type: 'email',
-        action: 'send',
-        provider: settings.email_provider,
-        activity_id: activity.id,
-        external_id: externalId,
-        request_data: { to, subject, body_length: emailBody.length },
-        status: sendSuccess ? 'success' : 'error',
-        error_message: sendSuccess ? null : 'Provider not fully configured'
-      })
+    const result = await dispatchEmail({
+      context: {
+        tenantId: tenant_id,
+        userId: user_id,
+        contactId: contact_id,
+        dealId: deal_id,
+      },
+      to: toList,
+      cc: ccList,
+      bcc: bccList,
+      subject,
+      html: emailBody,
+    })
 
     return NextResponse.json({
       success: true,
-      activity_id: activity.id,
-      external_id: externalId,
-      message: sendSuccess 
-        ? 'Email sent successfully!' 
-        : 'Email logged. Configure integration to actually send.',
-      provider: settings.email_provider
+      activity_id: result.activityId,
+      external_id: result.externalId,
+      message: 'Email sent successfully!',
+      status: result.status,
+      ai_purpose: result.aiPurpose,
+      ai_outcome: result.aiOutcome,
+      ai_summary: result.aiSummary,
     })
-
   } catch (error: unknown) {
     console.error('[EMAIL] Error sending email:', error)
     return NextResponse.json(

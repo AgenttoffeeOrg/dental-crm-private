@@ -3,53 +3,69 @@
  * Applies security headers, rate limiting, and authentication
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { applySecurityHeaders, getCacheHeaders } from '@/lib/marketing-audit/security/security-headers';
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { createMiddlewareClient } from '@/lib/supabase'
+
+const PUBLIC_ROUTES = [
+  '/sign-in',
+  '/sign-up',
+  '/auth',
+  '/',
+]
+
+const AUTH_ONLY_ROUTES = [
+  '/organization-setup',
+  '/profile/settings',
+]
+
+const ORG_REQUIRED_ROUTES = [
+  '/dashboard',
+  '/contacts',
+  '/deals',
+  '/tasks',
+  '/pipelines',
+  '/settings',
+  '/onboarding',
+]
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
+  const { pathname } = request.nextUrl
+  const { supabase, supabaseResponse } = createMiddlewareClient(request)
 
-  // Apply security headers to all responses
-  applySecurityHeaders(response.headers);
-
-  // Apply caching headers based on route
-  if (request.nextUrl.pathname.startsWith('/api/')) {
-    // API routes - no cache
-    const noCacheHeaders = getCacheHeaders('no-cache');
-    Object.entries(noCacheHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-  } else if (request.nextUrl.pathname.startsWith('/_next/static/')) {
-    // Static assets - long cache
-    const publicCacheHeaders = getCacheHeaders('public', 31536000); // 1 year
-    Object.entries(publicCacheHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-  } else {
-    // Pages - short cache
-    const privateCacheHeaders = getCacheHeaders('private', 3600); // 1 hour
-    Object.entries(privateCacheHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
+  if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
+    return supabaseResponse
   }
 
-  // Add custom headers
-  response.headers.set('X-App-Version', process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0');
-  response.headers.set('X-Request-ID', crypto.randomUUID());
+  const { data: { user } } = await supabase.auth.getUser()
 
-  return response;
+  if (!user) {
+    const redirectUrl = new URL('/sign-in', request.url)
+    redirectUrl.searchParams.set('redirectTo', pathname)
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  if (AUTH_ONLY_ROUTES.some(route => pathname.startsWith(route))) {
+    return supabaseResponse
+  }
+
+  const { data: membership } = await supabase
+    .from('user_tenant_memberships')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (!membership && ORG_REQUIRED_ROUTES.some(route => pathname.startsWith(route))) {
+    return NextResponse.redirect(new URL('/organization-setup', request.url))
+  }
+
+  return supabaseResponse
 }
 
-// Configure which routes to run middleware on
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * 1. /_next/static (static files)
-     * 2. /_next/image (image optimization files)
-     * 3. /favicon.ico, /sitemap.xml, /robots.txt (metadata files)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api|public).*)',
   ],
-};
+}
 

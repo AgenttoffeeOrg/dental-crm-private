@@ -152,11 +152,13 @@ function SignUpForm() {
       if (existingAppUser) {
         // User already exists - update their information (keep existing tenant_id if they have one)
         console.log('[SIGNUP] App user already exists, updating...')
+        const normalizedEmail = formData.email?.trim() || authData.user.email
         const { error: updateError } = await supabase
           .from('app_users')
           .update({
             full_name: formData.fullName.trim(),
-            role: existingAppUser.role || 'owner' // Preserve existing role
+            email: normalizedEmail,
+            role: existingAppUser.role || 'owner', // Preserve existing role
           })
           .eq('id', authData.user.id)
 
@@ -166,10 +168,12 @@ function SignUpForm() {
         }
       } else {
         // Create new app user WITHOUT tenant_id initially
+        const normalizedEmail = formData.email?.trim() || authData.user.email
         const { error: appUserError } = await supabase
           .from('app_users')
           .insert({
             id: authData.user.id,
+            email: normalizedEmail,
             full_name: formData.fullName.trim(),
             role: 'owner'
             // tenant_id is NOT set initially - will be set below for practice sign-ups

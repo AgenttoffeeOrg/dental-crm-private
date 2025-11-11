@@ -30,7 +30,7 @@ import { FirstLocationStep } from './steps/first-location-step'
  */
 
 export function WizardStepContainer() {
-  const { currentStep, currentStepData, validationErrors, accountType } = useWizard()
+  const { currentStep, currentStepData, validationErrors, accountType, formData } = useWizard()
 
   console.log('[STEP_CONTAINER] Rendering with:', {
     currentStepData,
@@ -49,11 +49,45 @@ export function WizardStepContainer() {
     )
   }
 
+  const stepComponentsMap = {
+    email_verification: EmailVerificationStep,
+    profile_setup: PersonalInfoStep,
+    profile_personal: PersonalInfoStep,
+    personal_info: PersonalInfoStep,
+    organization_setup: CompanyInfoStep,
+    org_company: CompanyInfoStep,
+    company_info: CompanyInfoStep,
+    location_setup: FirstLocationStep,
+    location_first: FirstLocationStep,
+    profile_work: WorkPreferencesStep,
+    work_preferences: WorkPreferencesStep,
+    profile_communication: CommunicationSettingsStep,
+    communication_settings: CommunicationSettingsStep,
+    profile_security: SecuritySettingsStep,
+    security_settings: SecuritySettingsStep,
+    org_legal: LegalDetailsStep,
+    legal_details: LegalDetailsStep,
+    org_contact: ContactInfoStep,
+    contact_info: ContactInfoStep,
+    org_business: BusinessSettingsStep,
+    business_settings: BusinessSettingsStep,
+  }
+
+  console.log('[STEP_CONTAINER] Getting component for stepId:', currentStepData.stepId)
+  console.log('[STEP_CONTAINER] Current formData:', formData)
+  console.log('[STEP_CONTAINER] Step Components available:', Object.keys(stepComponentsMap))
+
   const Icon = (LucideIcons as any)[currentStepData.stepIcon] || Info
 
   // Map stepId to component
   const getStepComponent = () => {
-    console.log('[STEP_CONTAINER] Getting component for stepId:', currentStepData.stepId)
+    const component = stepComponentsMap[currentStepData.stepId as keyof typeof stepComponentsMap]
+
+    if (component) {
+      return React.createElement(component)
+    }
+
+    console.log('[STEP_CONTAINER] Falling back to switch for stepId:', currentStepData.stepId)
     
     switch (currentStepData.stepId) {
       // STEP 1: Email Verification

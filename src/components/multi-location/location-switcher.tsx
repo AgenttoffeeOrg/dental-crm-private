@@ -10,6 +10,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapPin, Check, ChevronDown, Loader2, Building2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { authFetch } from '@/lib/auth-fetch'
+import { useAuth } from '@/lib/auth'
 
 interface Location {
   id: string
@@ -37,6 +39,7 @@ export function LocationSwitcher({
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const { refreshUser } = useAuth()
 
   // Don't render if not multi-location
   if (!isMultiLocation) {
@@ -67,11 +70,13 @@ export function LocationSwitcher({
     setLoading(true)
 
     try {
-      const response = await fetch('/api/locations/accessible')
-      const data = await response.json()
+      const response = await authFetch('/api/locations/accessible')
 
       if (response.ok) {
+        const data = await response.json()
         setLocations(data.locations || [])
+      } else {
+        console.error('Failed to load locations, status:', response.status)
       }
     } catch (error) {
       console.error('Error loading locations:', error)
@@ -89,7 +94,7 @@ export function LocationSwitcher({
     setSwitching(true)
 
     try {
-      const response = await fetch('/api/locations/switch', {
+      const response = await authFetch('/api/locations/switch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ location_id: locationId }),

@@ -249,18 +249,33 @@ export async function processFormSubmission(
       console.log(`[Form Processor] Tracked last-touch attribution for deal ${dealId}`);
     }
 
-    // Create task for assigned owner
-    if (assignedOwnerId) {
+    // Create task for assigned owner with location inheritance
+    if (assignedOwnerId && dealId) {
+      // Get deal and contact locations for inheritance
+      const [dealResult, contactResult] = await Promise.all([
+        supabase.from('deals').select('location_id').eq('id', dealId).single(),
+        supabase.from('contacts').select('location_id').eq('id', contactId).single(),
+      ]);
+
+      const deal = dealResult.data;
+      const contact = contactResult.data;
+      
+      // Inherit location: deal > contact > null
+      const locationId = deal?.location_id || contact?.location_id || null;
+
       await supabase.from('tasks').insert({
         tenant_id: submission.tenantId,
         title: `Follow up: ${submission.formName} lead`,
         description: `New form submission from ${contactData.full_name}${treatmentTags.length > 0 ? `\nTreatment interests: ${treatmentTags.join(', ')}` : ''}`,
-        assigned_to: assignedOwnerId,
-        related_to_type: 'deal',
-        related_to_id: dealId,
+        assignee_user_id: assignedOwnerId,
+        contact_id: contactId,
+        deal_id: dealId,
+        location_id: locationId, // Inherit from deal or contact
         priority: 'high',
-        status: 'pending',
-        due_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
+        task_type: 'follow_up',
+        status: 'open',
+        due_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
+        auto_created: true,
       });
     }
   }

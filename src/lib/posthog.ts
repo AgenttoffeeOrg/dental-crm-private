@@ -5,16 +5,33 @@
  * TODO: Integrate with actual PostHog when ready.
  */
 
-export function trackEvent(
-  userId: string,
-  eventName: string,
-  properties?: Record<string, any>
-): void {
-  // Stub implementation - logs to console in development
+type TrackEventOverload = {
+  (eventName: string, properties?: Record<string, any>): void
+  (userId: string, eventName: string, properties?: Record<string, any>): void
+}
+
+export const trackEvent: TrackEventOverload = (
+  identifierOrEvent: string,
+  eventOrProperties?: string | Record<string, any>,
+  maybeProperties?: Record<string, any>
+) => {
+  let eventName: string
+  let properties: Record<string, any> | undefined
+  let userId: string | undefined
+
+  if (typeof eventOrProperties === 'string') {
+    userId = identifierOrEvent
+    eventName = eventOrProperties
+    properties = maybeProperties
+  } else {
+    eventName = identifierOrEvent
+    properties = eventOrProperties
+  }
+
   if (process.env.NODE_ENV === 'development') {
     console.log('[Analytics]', eventName, { userId, ...properties })
   }
-  
+
   // TODO: Implement actual PostHog tracking
   // posthog.capture(eventName, { distinct_id: userId, ...properties })
 }

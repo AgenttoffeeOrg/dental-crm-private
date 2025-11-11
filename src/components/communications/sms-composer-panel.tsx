@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,7 @@ import {
   DollarSign
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { sanitizePhoneNumber } from '@/lib/utils/phone'
 
 interface SMSComposerPanelProps {
   isOpen: boolean
@@ -35,7 +36,7 @@ export function SMSComposerPanel({
   tenantId,
   userId
 }: SMSComposerPanelProps) {
-  const [toNumber, setToNumber] = useState(to)
+  const [toNumber, setToNumber] = useState(sanitizePhoneNumber(to))
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
 
@@ -43,8 +44,16 @@ export function SMSComposerPanel({
   const estimatedCost = messageSegments * 0.0075
   const charsRemaining = 160 - (message.length % 160)
 
+  useEffect(() => {
+    if (isOpen) {
+      setToNumber(sanitizePhoneNumber(to))
+    }
+  }, [isOpen, to])
+
   const handleSend = async () => {
-    if (!toNumber || !message) {
+    const normalizedTo = sanitizePhoneNumber(toNumber)
+
+    if (!normalizedTo || !message) {
       toast.error('Please enter both phone number and message')
       return
     }
@@ -56,7 +65,7 @@ export function SMSComposerPanel({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: toNumber,
+          to: normalizedTo,
           message,
           contact_id: contactId,
           deal_id: dealId,
@@ -105,6 +114,24 @@ export function SMSComposerPanel({
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
+        </div>
+
+        <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between text-sm text-gray-600">
+          <div>
+            <p className="font-medium text-gray-900">
+              {toNumber || 'Add a recipient number'}
+            </p>
+            <p className="text-xs text-gray-500">
+              {dealId
+                ? 'This SMS will be tracked on the related deal.'
+                : contactId
+                ? 'Linked to the selected contact.'
+                : 'Manual SMS communication.'}
+            </p>
+          </div>
+          <Badge variant="outline" className="text-xs">
+            SMS
+          </Badge>
         </div>
 
         {/* SMS Form */}

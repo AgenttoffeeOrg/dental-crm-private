@@ -23,16 +23,48 @@ export default function PublicFormPage() {
     try {
       setLoading(true)
 
-      // Fetch form by slug (public access, no auth required)
-      const { data, error } = await supabase
+      // Try to fetch by slug first, then fallback to ID if slug doesn't match
+      // This allows using either a custom slug or the form ID
+      let query = supabase
         .from('marketing_forms')
         .select('*')
-        .eq('public_url_slug', params.slug)
         .eq('status', 'active')
         .eq('is_published', true)
-        .single()
 
-      if (error) {
+      // Check if slug looks like a UUID (has dashes and is 36 chars)
+      const isUUID = params.slug && params.slug.length === 36 && params.slug.includes('-')
+      
+      if (isUUID) {
+        // Try ID lookup first
+        query = query.eq('id', params.slug)
+      } else {
+        // Try slug lookup
+        query = query.eq('public_url_slug', params.slug)
+      }
+
+      const { data, error } = await query.single()
+
+      // If slug lookup failed and it's not a UUID, try ID lookup as fallback
+      if (error && !isUUID) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('marketing_forms')
+          .select('*')
+          .eq('id', params.slug)
+          .eq('status', 'active')
+          .eq('is_published', true)
+          .single()
+
+        if (fallbackError || !fallbackData) {
+          console.error('[PublicForm] Error loading form:', error)
+          setError('Form not found')
+          return
+        }
+
+        setForm(fallbackData)
+        return
+      }
+
+      if (error || !data) {
         console.error('[PublicForm] Error loading form:', error)
         setError('Form not found')
         return

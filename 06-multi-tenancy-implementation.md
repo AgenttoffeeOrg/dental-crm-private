@@ -658,3 +658,12 @@ CREATE POLICY "Users can view tenant contacts"
 5. **Data Isolation:** All queries filter by `tenant_id`, RLS policies enforce at database level
 6. **UI Conditionals:** Org switcher shows if `activeMemberships.length > 1`, location switcher shows if `is_multi_location && locations.length > 1`
 
+
+
+
+
+
+
+
+
+

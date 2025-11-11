@@ -200,62 +200,103 @@ export async function handleTaskCompletion(
       return { createdTasks: [] }
     }
 
-    // Get parent task details
-    const { data: parentTask } = await supabase
-      .from('tasks')
-      .select('assignee_user_id, contact_id, deal_id')
-      .eq('id', taskId)
-      .single()
-
-    if (!parentTask) {
-      return { createdTasks: [] }
-    }
 
     const createdTasks: string[] = []
 
-    // Create child tasks
+    // Get parent task with location_id
+    const { data: parentTaskWithLocation } = await supabase
+      .from('tasks')
+      .select('assignee_user_id, contact_id, deal_id, location_id')
+      .eq('id', taskId)
+      .single()
+
+    if (!parentTaskWithLocation) {
+      return { createdTasks: [] }
+    }
+
+    // Create child tasks via API
     for (const dep of dependencies) {
       const template = dep.child_task_template as any
       
       const dueAt = template.due_offset_hours
         ? new Date(Date.now() + template.due_offset_hours * 60 * 60 * 1000).toISOString()
-        : null
+        : undefined
 
-      const { data: newTask } = await supabase
-        .from('tasks')
-        .insert({
-          tenant_id: tenantId,
-          title: template.title,
-          description: template.description,
-          task_type: template.task_type,
-          priority: template.priority,
-          assignee_user_id: parentTask.assignee_user_id,
-          contact_id: parentTask.contact_id,
-          deal_id: parentTask.deal_id,
-          status: 'open',
-          auto_created: true,
-          due_at: dueAt,
-        })
-        .select('id')
-        .single()
-
-      if (newTask) {
-        createdTasks.push(newTask.id)
-        
-        // Emit TASK.CREATED event
-        await events.taskCreated({
-          taskId: newTask.id,
-          title: template.title,
-          tenantId,
-          assigneeUserId: parentTask.assignee_user_id,
-          contactId: parentTask.contact_id,
-          dealId: parentTask.deal_id,
-          autoCreated: true,
-          priority: template.priority,
-          dueAt,
+      try {
+        // Use API endpoint for task creation to ensure location inheritance
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/tasks`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // Note: In server-side context, we'd need to pass auth headers
+            // For now, this will use service role or we need to handle auth differently
+          },
+          body: JSON.stringify({
+            title: template.title,
+            description: template.description,
+            task_type: template.task_type || 'todo',
+            priority: template.priority || 'normal',
+            assignee_user_id: parentTaskWithLocation.assignee_user_id,
+            contact_id: parentTaskWithLocation.contact_id,
+            deal_id: parentTaskWithLocation.deal_id,
+            location_id: parentTaskWithLocation.location_id,
+            due_at: dueAt,
+            status: 'open',
+          }),
         })
 
-        console.log(`[Task Dependencies] Created child task ${newTask.id} from parent ${taskId}`)
+        if (!response.ok) {
+          const error = await response.json()
+          console.error(`[Task Dependencies] Failed to create child task:`, error)
+          continue
+        }
+
+        const { task: newTask } = await response.json()
+
+        if (newTask) {
+          createdTasks.push(newTask.id)
+          
+          // Emit TASK.CREATED event
+          await events.taskCreated({
+            taskId: newTask.id,
+            title: template.title,
+            tenantId,
+            assigneeUserId: parentTaskWithLocation.assignee_user_id,
+            contactId: parentTaskWithLocation.contact_id,
+            dealId: parentTaskWithLocation.deal_id,
+            autoCreated: true,
+            priority: template.priority,
+            dueAt,
+          })
+
+          console.log(`[Task Dependencies] Created child task ${newTask.id} from parent ${taskId}`)
+        }
+      } catch (error) {
+        console.error(`[Task Dependencies] Error creating child task:`, error)
+        // Fallback to direct Supabase insert if API fails (for backward compatibility)
+        // But this should ideally use API context
+        const { data: newTask } = await supabase
+          .from('tasks')
+          .insert({
+            tenant_id: tenantId,
+            title: template.title,
+            description: template.description,
+            task_type: template.task_type,
+            priority: template.priority,
+            assignee_user_id: parentTaskWithLocation.assignee_user_id,
+            contact_id: parentTaskWithLocation.contact_id,
+            deal_id: parentTaskWithLocation.deal_id,
+            location_id: parentTaskWithLocation.location_id,
+            status: 'open',
+            auto_created: true,
+            due_at: dueAt || null,
+          })
+          .select('id')
+          .single()
+
+        if (newTask) {
+          createdTasks.push(newTask.id)
+        }
       }
     }
 

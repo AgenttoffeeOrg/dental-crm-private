@@ -1,20 +1,45 @@
 // SMS Service using Twilio
 
-import twilio from 'twilio'
+import twilio, { Twilio } from 'twilio'
 
 export interface SMSOptions {
   to: string
   message: string
   from?: string
+  messagingServiceSid?: string
+}
+
+interface SMSInitConfig {
+  accountSid: string
+  authToken: string
+  fromNumber?: string | null
+  messagingServiceSid?: string | null
 }
 
 export class SMSService {
-  private client: any = null
-  private fromNumber: string = ''
+  private client: Twilio | null = null
+  private fromNumber: string | null = null
+  private messagingServiceSid: string | null = null
+  private accountSid: string | null = null
+  private authToken: string | null = null
 
-  async initialize(accountSid: string, authToken: string, fromNumber: string) {
+  async initialize(config: SMSInitConfig) {
+    const { accountSid, authToken, fromNumber, messagingServiceSid } = config
+
+    if (
+      this.client &&
+      this.accountSid === accountSid &&
+      this.fromNumber === (fromNumber || null) &&
+      this.messagingServiceSid === (messagingServiceSid || null)
+    ) {
+      return
+    }
+
     this.client = twilio(accountSid, authToken)
-    this.fromNumber = fromNumber
+    this.fromNumber = fromNumber || null
+    this.messagingServiceSid = messagingServiceSid || null
+    this.accountSid = accountSid
+    this.authToken = authToken
   }
 
   async send(options: SMSOptions) {
@@ -23,14 +48,34 @@ export class SMSService {
     }
 
     try {
-      const result = await this.client.messages.create({
+      const messageConfig: any = {
         body: options.message,
-        from: options.from || this.fromNumber,
-        to: options.to
-      })
+        to: options.to,
+      }
+
+      const messagingServiceSid = options.messagingServiceSid || this.messagingServiceSid
+
+      if (messagingServiceSid) {
+        messageConfig.messagingServiceSid = messagingServiceSid
+      } else {
+        messageConfig.from = options.from || this.fromNumber
+      }
+
+      const result = await this.client.messages.create(messageConfig)
 
       console.log('✅ SMS sent:', result.sid)
-      return { success: true, messageId: result.sid }
+      return { 
+        success: true, 
+        messageId: result.sid,
+        status: result.status,
+        providerResponse: {
+          sid: result.sid,
+          status: result.status,
+          to: result.to,
+          from: result.from,
+          numSegments: result.numSegments,
+        }
+      }
     } catch (error: any) {
       console.error('SMS send error:', error)
       throw new Error(`Failed to send SMS: ${error.message}`)

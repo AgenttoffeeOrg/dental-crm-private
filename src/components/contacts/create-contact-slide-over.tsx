@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase-client'
+import { sanitizePhoneNumber } from '@/lib/utils/phone'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth'
 import type { Contact } from '@/types/database'
@@ -285,7 +286,7 @@ export function CreateContactSlideOver({
       const contactData = {
         tenant_id: appUser.tenant_id,
         full_name: formData.full_name.trim(),
-        primary_phone: formData.primary_phone.trim() || null,
+        primary_phone: formData.primary_phone ? sanitizePhoneNumber(formData.primary_phone) : null,
         primary_email: formData.primary_email.trim().toLowerCase() || null,
         source: formData.source || null,
         tags: selectedTags,

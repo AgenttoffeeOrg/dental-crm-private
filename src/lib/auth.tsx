@@ -1,8 +1,8 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase-client'
-import type { User } from '@supabase/supabase-js'
+import type { Session, User } from '@supabase/supabase-js'
 import type { AppUser } from '@/types/database'
 
 interface AuthContextType {
@@ -29,6 +29,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [appUser, setAppUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+
+  const syncSessionWithServer = useCallback(async (event: string, session: Session | null) => {
+    try {
+      console.log('[AUTH] syncSessionWithServer event:', event, 'session?', !!session)
+      await fetch('/auth/callback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ event, session }),
+        credentials: 'include',
+      })
+    } catch (error) {
+      console.error('[AUTH] Failed to sync session with server:', error)
+    }
+  }, [])
 
   const fetchAppUser = async (userId: string, user?: any) => {
     try {
@@ -58,18 +74,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const refreshUser = async () => {
+    setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser()
 
-      if (user) {
-        const appUserData = await fetchAppUser(user.id, user)
-        setAppUser(appUserData)
-      } else {
-        setAppUser(null)
+      if (error) {
+        console.error('[AUTH] refreshUser getUser error:', error)
       }
+
+      if (!user) {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession()
+
+        if (sessionError) {
+          console.error('[AUTH] refreshUser getSession error:', sessionError)
+        }
+
+        if (session?.user) {
+          setUser(session.user)
+          const appUserData = await fetchAppUser(session.user.id, session.user)
+          setAppUser(appUserData)
+          return
+        }
+
+        setUser(null)
+        setAppUser(null)
+        return
+      }
+
+      setUser(user)
+      const appUserData = await fetchAppUser(user.id, user)
+      setAppUser(appUserData)
     } catch (error) {
       console.error('Error refreshing user:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -91,7 +135,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (mounted) {
             setAppUser(appUserData)
           }
+          console.log('[AUTH] initAuth initial session user', session.user.id)
+          // Ensure server is aware of existing session on initial load
+          await syncSessionWithServer('INITIAL_SESSION', session)
         } else {
+          console.log('[AUTH] initAuth no session on load')
           setAppUser(null)
         }
         
@@ -104,6 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           async (event, session) => {
             if (!mounted) return
             
+            console.log('[AUTH] onAuthStateChange', event, 'hasSession?', !!session)
             setUser(session?.user ?? null)
             
             if (session?.user) {
@@ -115,6 +164,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setAppUser(null)
             }
             
+            await syncSessionWithServer(event, session)
+
             if (mounted) {
               setLoading(false)
             }
@@ -141,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         authSubscription.unsubscribe()
       }
     }
-  }, [supabase])
+  }, [supabase, syncSessionWithServer])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({

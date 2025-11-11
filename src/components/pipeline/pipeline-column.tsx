@@ -58,52 +58,56 @@ export function PipelineColumn({ stage, deals, onDealUpdate, onDealClick, allDea
     : last7Days > 0 ? 100 : 0
 
   return (
-    <div className="flex-shrink-0 w-80">
-      <Card className={`h-full ${isOver ? 'ring-2 ring-blue-500 ring-opacity-50' : ''} border-gray-200`}>
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between mb-2">
-            <CardTitle className="text-sm font-semibold text-gray-900">{stage.name}</CardTitle>
-            <Badge variant="secondary" className="text-xs font-medium">
+    <div className="w-80 flex-shrink-0">
+      <Card
+        className={cn(
+          'h-full rounded-2xl border border-slate-200 bg-slate-50/80 shadow-[0_1px_6px_rgba(15,23,42,0.04)] transition-colors duration-200',
+          isOver && 'border-blue-300 bg-blue-50/70 shadow-[0_8px_20px_rgba(56,189,248,0.15)]'
+        )}
+      >
+        <CardHeader className="border-b border-slate-200 pb-4">
+          <div className="mb-2 flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-slate-900">{stage.name}</CardTitle>
+            <Badge variant="secondary" className="border border-slate-200 bg-white text-xs font-semibold text-brand-navy-700">
               {deals.length}
             </Badge>
           </div>
-          
+
           {/* Enhanced Metrics Row */}
-          <div className="space-y-1">
-            {/* Total Value */}
-            {totalValue > 0 && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Total Value</span>
-                <span className="text-sm font-bold text-gray-900">
-                  {formatCurrency(totalValue)}
-                </span>
-              </div>
-            )}
-            
-            {/* Average Days in Stage */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500">Total Value</span>
+              <span className="text-sm font-semibold text-brand-navy-700">
+                {formatCurrency(totalValue)}
+              </span>
+            </div>
+
             {deals.length > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500 flex items-center gap-1">
+                <span className="flex items-center gap-1 text-xs text-slate-500">
                   <Clock className="h-3 w-3" />
                   Avg Age
                 </span>
-                <span className={cn(
-                  "text-xs font-medium",
-                  avgDaysInStage > 14 ? "text-orange-600" : "text-gray-600"
-                )}>
+                <span
+                  className={cn(
+                    'text-xs font-medium',
+                    avgDaysInStage > 14 ? 'text-orange-600' : 'text-slate-600'
+                  )}
+                >
                   {avgDaysInStage}d
                 </span>
               </div>
             )}
-            
-            {/* Trend Indicator */}
+
             {deals.length > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">7d Trend</span>
-                <span className={cn(
-                  "text-xs font-medium flex items-center gap-0.5",
-                  trend > 0 ? "text-green-600" : trend < 0 ? "text-red-600" : "text-gray-500"
-                )}>
+                <span className="text-xs text-slate-500">7d Trend</span>
+                <span
+                  className={cn(
+                    'flex items-center gap-0.5 text-xs font-medium',
+                    trend > 0 ? 'text-emerald-600' : trend < 0 ? 'text-rose-600' : 'text-slate-500'
+                  )}
+                >
                   {trend > 0 ? (
                     <TrendingUp className="h-3 w-3" />
                   ) : trend < 0 ? (
@@ -115,33 +119,35 @@ export function PipelineColumn({ stage, deals, onDealUpdate, onDealClick, allDea
             )}
           </div>
         </CardHeader>
-        <CardContent className="pt-0 px-4 pb-4">
+        <CardContent className="px-4 pb-4 pt-0">
           <div
             ref={setNodeRef}
-            className="space-y-3 min-h-[400px]"
-            style={{
-              backgroundColor: isOver ? '#f0f9ff' : 'transparent',
-            }}
+            className={cn(
+              'min-h-[320px] space-y-3 rounded-2xl rounded-t-none px-1 py-4 transition-colors duration-150',
+              isOver
+                ? 'border border-dashed border-blue-300 bg-blue-50/40 shadow-inner'
+                : 'border border-transparent bg-transparent'
+            )}
           >
-            <SortableContext 
+            <SortableContext
               items={deals.map(deal => deal.id)}
               strategy={verticalListSortingStrategy}
             >
               {deals.map(deal => (
-                <DealCard 
-                  key={deal.id} 
-                  deal={deal} 
+                <DealCard
+                  key={deal.id}
+                  deal={deal}
                   onDealUpdate={onDealUpdate}
                   onDealClick={onDealClick}
                 />
               ))}
             </SortableContext>
-            
+
             {deals.length === 0 && (
-              <div className="text-center text-gray-400 text-sm py-12 border-2 border-dashed border-gray-200 rounded-lg">
+              <div className="flex h-32 flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-white/60 text-center">
                 <div className="space-y-2">
-                  <div className="text-gray-300">No deals in this stage</div>
-                  <div className="text-xs text-gray-400">Drag deals here or create a new one</div>
+                  <div className="text-sm font-medium text-slate-400">No deals in this stage</div>
+                  <div className="text-xs text-slate-400">Drag deals here or create a new one</div>
                 </div>
               </div>
             )}

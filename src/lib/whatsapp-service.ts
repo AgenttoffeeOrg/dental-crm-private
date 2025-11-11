@@ -1,6 +1,6 @@
 // WhatsApp Service using Twilio WhatsApp Business API
 
-import twilio from 'twilio'
+import twilio, { Twilio } from 'twilio'
 
 export interface WhatsAppOptions {
   to: string
@@ -9,12 +9,22 @@ export interface WhatsAppOptions {
 }
 
 export class WhatsAppService {
-  private client: any = null
+  private client: Twilio | null = null
   private fromNumber: string = ''
+  private accountSid: string | null = null
 
   async initialize(accountSid: string, authToken: string, fromNumber: string) {
+    if (
+      this.client &&
+      this.accountSid === accountSid &&
+      this.fromNumber === (fromNumber.startsWith('whatsapp:') ? fromNumber : `whatsapp:${fromNumber}`)
+    ) {
+      return
+    }
+
     this.client = twilio(accountSid, authToken)
     this.fromNumber = fromNumber.startsWith('whatsapp:') ? fromNumber : `whatsapp:${fromNumber}`
+    this.accountSid = accountSid
   }
 
   async send(options: WhatsAppOptions) {
@@ -38,7 +48,18 @@ export class WhatsAppService {
       const result = await this.client.messages.create(messageData)
 
       console.log('✅ WhatsApp sent:', result.sid)
-      return { success: true, messageId: result.sid }
+      return { 
+        success: true, 
+        messageId: result.sid,
+        status: result.status,
+        providerResponse: {
+          sid: result.sid,
+          status: result.status,
+          to: result.to,
+          from: result.from,
+          numSegments: result.numSegments,
+        }
+      }
     } catch (error: any) {
       console.error('WhatsApp send error:', error)
       throw new Error(`Failed to send WhatsApp: ${error.message}`)

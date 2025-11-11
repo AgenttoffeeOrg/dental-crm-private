@@ -119,18 +119,23 @@ export function CreateOrgModal({
       setSubmitting(true)
       setSubmitError(null)
 
-      const response = await fetch('/api/orgs/create', {
+      const response = await fetch('/api/organizations/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           name: formData.name.trim(),
-          location_name: formData.location_name?.trim() || 'Main Office'
+          locationName: formData.location_name?.trim() || undefined,
         })
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to create organization')
+        if (response.status === 401) {
+          throw new Error('Your session expired. Please sign in again and try creating the organization.')
+        }
+
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || errorData.error || 'Failed to create organization')
       }
 
       const data = await response.json()

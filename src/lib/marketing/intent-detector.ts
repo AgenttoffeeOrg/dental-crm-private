@@ -77,14 +77,27 @@ export async function handleHighIntentClick(
   const category = getIntentCategory(clickedUrl, config);
   if (!category) return;
 
-  // Get contact details
+  // Get contact details with location
   const { data: contact } = await supabase
     .from('contacts')
-    .select('full_name, tags, owner_user_id')
+    .select('full_name, tags, owner_user_id, location_id')
     .eq('id', contactId)
     .single();
 
   if (!contact) return;
+
+  // Get deal location if dealId exists
+  let locationId = contact.location_id;
+  if (dealId) {
+    const { data: deal } = await supabase
+      .from('deals')
+      .select('location_id')
+      .eq('id', dealId)
+      .single();
+    if (deal?.location_id) {
+      locationId = deal.location_id;
+    }
+  }
 
   // Add hot_lead tag
   if (config.autoAddTag) {
@@ -110,13 +123,15 @@ export async function handleHighIntentClick(
       tenant_id: tenantId,
       title: taskTitle,
       description: taskDescription,
-      assigned_to: contact.owner_user_id || null,
-      related_to_type: dealId ? 'deal' : 'contact',
-      related_to_id: dealId || contactId,
+      assignee_user_id: contact.owner_user_id || null,
+      contact_id: contactId,
+      deal_id: dealId || null,
+      location_id: locationId, // Inherit from contact/deal
       priority: config.taskPriority,
-      status: 'pending',
-      due_date: dueDate.toISOString(),
-      tags: ['marketing_signal', 'hot_lead', category],
+      task_type: 'follow_up',
+      status: 'open',
+      due_at: dueDate.toISOString(),
+      auto_created: true,
     });
 
     console.log(`[Intent Detector] 🔥 Created urgent task for ${contact.full_name} (${category})`);

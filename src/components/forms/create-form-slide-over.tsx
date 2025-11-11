@@ -41,6 +41,8 @@ import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth'
 import type { MarketingForm, FormField } from '@/hooks/use-marketing-forms'
+import { SortableFieldList } from '@/components/forms/sortable-field-list'
+import { useMarketingForms } from '@/hooks/use-marketing-forms'
 
 interface CreateFormSlideOverProps {
   open: boolean
@@ -83,6 +85,7 @@ export function CreateFormSlideOver({
   mode = 'create',
 }: CreateFormSlideOverProps) {
   const { appUser } = useAuth()
+  const { createForm, updateForm } = useMarketingForms()
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('fields')
   
@@ -166,12 +169,22 @@ export function CreateFormSlideOver({
   }
 
   const updateField = (fieldId: string, updates: Partial<FormField>) => {
-    setFormData(prev => ({
-      ...prev,
-      fields_json: prev.fields_json.map(f =>
+    setFormData(prev => {
+      const updatedFields = prev.fields_json.map(f =>
         f.id === fieldId ? { ...f, ...updates } : f
       )
-    }))
+      // Update selectedField if it's the one being edited
+      if (selectedField?.id === fieldId) {
+        const updatedField = updatedFields.find(f => f.id === fieldId)
+        if (updatedField) {
+          setSelectedField(updatedField)
+        }
+      }
+      return {
+        ...prev,
+        fields_json: updatedFields
+      }
+    })
   }
 
   const deleteField = (fieldId: string) => {
@@ -179,7 +192,25 @@ export function CreateFormSlideOver({
       ...prev,
       fields_json: prev.fields_json.filter(f => f.id !== fieldId)
     }))
-    setSelectedField(null)
+    // Clear selected field if it was deleted
+    if (selectedField?.id === fieldId) {
+      setSelectedField(null)
+    }
+  }
+
+  const handleReorderFields = (reorderedFields: FormField[]) => {
+    setFormData(prev => ({
+      ...prev,
+      fields_json: reorderedFields
+    }))
+  }
+
+  const handleUpdateField = (fieldId: string, field: FormField) => {
+    updateField(fieldId, field)
+    // Update selectedField if it's the one being updated
+    if (selectedField?.id === fieldId) {
+      setSelectedField(field)
+    }
   }
 
   const handleSave = async () => {
@@ -196,35 +227,40 @@ export function CreateFormSlideOver({
 
     setLoading(true)
     try {
-      const supabase = createClient()
-      
+      // Ensure fields have order property
+      const fieldsWithOrder = formData.fields_json.map((field, index) => ({
+        ...field,
+        order: field.order ?? index
+      }))
+
+      const formDataToSave = {
+        ...formData,
+        fields_json: fieldsWithOrder
+      }
+
       if (mode === 'create') {
-        // Create new form
-        const { error } = await supabase
-          .from('marketing_forms')
-          .insert({
-            ...formData,
-            tenant_id: appUser?.tenant_id,
-          })
-
-        if (error) throw error
-        toast.success('Form created successfully!')
+        // Create new form using hook
+        const result = await createForm(formDataToSave)
+        if (!result) {
+          throw new Error('Failed to create form')
+        }
       } else {
-        // Update existing form
-        const { error } = await supabase
-          .from('marketing_forms')
-          .update(formData)
-          .eq('id', form?.id)
-
-        if (error) throw error
-        toast.success('Form updated successfully!')
+        // Update existing form using hook
+        if (!form?.id) {
+          toast.error('Form ID not found')
+          return
+        }
+        const result = await updateForm(form.id, formDataToSave)
+        if (!result) {
+          throw new Error('Failed to update form')
+        }
       }
 
       onFormSaved?.()
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving form:', error)
-      toast.error(`Failed to ${mode === 'create' ? 'create' : 'update'} form`)
+      toast.error(error.message || `Failed to ${mode === 'create' ? 'create' : 'update'} form`)
     } finally {
       setLoading(false)
     }
@@ -479,96 +515,22 @@ export function CreateFormSlideOver({
                   </div>
                 </div>
 
-                {/* Field List */}
+                {/* Field List with Drag & Drop */}
                 <div>
                   <h3 className="text-sm font-semibold mb-3">
                     Form Fields ({formData.fields_json.length})
                   </h3>
-                  <div className="space-y-2">
-                    {formData.fields_json.length === 0 ? (
-                      <p className="text-sm text-gray-500 text-center py-8">
-                        No fields added yet. Click a field type to add it.
-                      </p>
-                    ) : (
-                      formData.fields_json.map((field, idx) => (
-                        <div
-                          key={field.id}
-                          className={`p-3 border rounded-lg cursor-pointer hover:border-blue-500 transition-colors ${
-                            selectedField?.id === field.id ? 'border-blue-500 bg-blue-50' : ''
-                          }`}
-                          onClick={() => setSelectedField(field)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500">#{idx + 1}</span>
-                              <span className="font-medium">{field.label}</span>
-                              {field.required && (
-                                <Badge variant="destructive" className="text-xs">Required</Badge>
-                              )}
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                deleteField(field.id)
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1 capitalize">{field.type}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  <SortableFieldList
+                    fields={formData.fields_json}
+                    onReorder={handleReorderFields}
+                    onUpdateField={handleUpdateField}
+                    onDeleteField={deleteField}
+                    selectedFieldId={selectedField?.id}
+                    onSelectField={setSelectedField}
+                  />
                 </div>
               </div>
 
-              {/* Field Editor */}
-              {selectedField && (
-                <div className="mt-6 p-4 border rounded-lg bg-gray-50">
-                  <h3 className="text-sm font-semibold mb-4">Edit Field</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <Label>Field Label</Label>
-                      <Input
-                        value={selectedField.label}
-                        onChange={(e) => updateField(selectedField.id, { label: e.target.value })}
-                        placeholder="e.g., Your Name"
-                      />
-                    </div>
-                    <div>
-                      <Label>Placeholder</Label>
-                      <Input
-                        value={selectedField.placeholder || ''}
-                        onChange={(e) => updateField(selectedField.id, { placeholder: e.target.value })}
-                        placeholder="e.g., Enter your name"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label>Required Field</Label>
-                      <Switch
-                        checked={selectedField.required}
-                        onCheckedChange={(checked) => updateField(selectedField.id, { required: checked })}
-                      />
-                    </div>
-                    {(selectedField.type === 'select' || selectedField.type === 'radio' || selectedField.type === 'checkbox') && (
-                      <div>
-                        <Label>Options (comma-separated)</Label>
-                        <Input
-                          value={selectedField.options?.join(', ') || ''}
-                          onChange={(e) => updateField(selectedField.id, { 
-                            options: e.target.value.split(',').map(o => o.trim()).filter(Boolean)
-                          })}
-                          placeholder="Option 1, Option 2, Option 3"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </TabsContent>
 
             {/* SETTINGS TAB */}

@@ -13,9 +13,10 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@/lib/auth'
-import { createClient } from '@/lib/supabase-client'
 import { useFeatureFlag } from '@/lib/feature-flags-client'
 import { useRouter } from 'next/navigation'
+import { authFetch } from '@/lib/auth-fetch'
+import { createClient } from '@/lib/supabase-client'
 
 // ============================================================================
 // Types
@@ -53,8 +54,9 @@ export interface OrgSwitchResult {
 // ============================================================================
 
 export function useMemberships() {
-  const { appUser, loading: authLoading } = useAuth()
-  const multiOrgEnabled = useFeatureFlag('multi_org_enabled', (appUser?.active_tenant_id || appUser?.tenant_id))
+  const { appUser, loading: authLoading, refreshUser } = useAuth()
+  const activeTenantId = appUser?.active_tenant_id || appUser?.tenant_id
+  const multiOrgEnabled = useFeatureFlag('multi_org_enabled', activeTenantId)
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -66,27 +68,11 @@ export function useMemberships() {
       return
     }
 
-    // If multi-org not enabled, return single membership from app_user
-    if (!multiOrgEnabled) {
-      if ((appUser?.active_tenant_id || (appUser?.active_tenant_id || appUser?.tenant_id))) {
-        setMemberships([{
-          id: appUser.id,
-          tenant_id: (appUser?.active_tenant_id || (appUser?.active_tenant_id || appUser?.tenant_id)),
-          tenant_name: 'My Organization', // Will be replaced with actual tenant name
-          role: appUser.role as any,
-          status: 'active',
-          joined_at: appUser.created_at || new Date().toISOString(),
-        }])
-      }
-      setLoading(false)
-      return
-    }
-
     try {
       setLoading(true)
       setError(null)
 
-      const response = await fetch('/api/org/memberships')
+      const response = await authFetch('/api/org/memberships')
       const data = await response.json()
 
       if (!response.ok) {
@@ -101,7 +87,7 @@ export function useMemberships() {
     } finally {
       setLoading(false)
     }
-  }, [appUser?.id, (appUser?.active_tenant_id || appUser?.tenant_id), appUser?.role, multiOrgEnabled])
+  }, [appUser?.id, activeTenantId, refreshUser])
 
   useEffect(() => {
     if (!authLoading) {
@@ -117,30 +103,28 @@ export function useMemberships() {
   const currentMembership = useMemo(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log('[useMemberships] Finding current membership:', {
-        activeTenantId: appUser?.active_tenant_id,
-        tenantId: (appUser?.active_tenant_id || appUser?.tenant_id),
+        activeTenantId,
         membershipCount: memberships.length,
         memberships: memberships.map(m => ({ id: m.tenant_id, name: m.tenant_name }))
       })
     }
-    
-    // CRITICAL: Check active_tenant_id FIRST (takes priority over tenant_id)
-    // Only fall back to tenant_id if active_tenant_id is not set
-    const activeTenantId = appUser?.active_tenant_id || (appUser?.active_tenant_id || appUser?.tenant_id)
+
     const found = memberships.find(m => m.tenant_id === activeTenantId)
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.log('[useMemberships] Using tenant ID:', activeTenantId)
       console.log('[useMemberships] Current membership found:', found?.tenant_name || 'NONE')
     }
-    
-    return found
-  }, [memberships, appUser])
 
-  const isMultiOrg = useMemo(
-    () => multiOrgEnabled && activeMemberships.length > 1,
-    [multiOrgEnabled, activeMemberships]
-  )
+    return found
+  }, [memberships, activeTenantId])
+
+  const isMultiOrg = useMemo(() => {
+    if (activeMemberships.length > 1) {
+      return true
+    }
+    return multiOrgEnabled && activeMemberships.length > 1
+  }, [multiOrgEnabled, activeMemberships])
 
   return {
     memberships,
@@ -180,7 +164,7 @@ export function useOrgSwitcher() {
 
     try {
       console.log('[useOrgSwitcher] Calling API...')
-      const response = await fetch('/api/org/switch', {
+      const response = await authFetch('/api/org/switch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId }),
@@ -249,7 +233,7 @@ export function useOrgPreferences(tenantId?: string) {
 
     try {
       setLoading(true)
-      const response = await fetch(`/api/org/preferences?tenant_id=${tenantId}`)
+      const response = await authFetch(`/api/org/preferences?tenant_id=${tenantId}`)
       const data = await response.json()
 
       if (response.ok) {
@@ -272,7 +256,7 @@ export function useOrgPreferences(tenantId?: string) {
     if (!appUser?.id || !tenantId) return
 
     try {
-      const response = await fetch('/api/org/preferences', {
+      const response = await authFetch('/api/org/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -293,7 +277,7 @@ export function useOrgPreferences(tenantId?: string) {
     if (!appUser?.id || !tenantId) return
 
     try {
-      const response = await fetch('/api/org/preferences', {
+      const response = await authFetch('/api/org/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -314,7 +298,7 @@ export function useOrgPreferences(tenantId?: string) {
     if (!appUser?.id || !tenantId) return
 
     try {
-      const response = await fetch('/api/org/preferences', {
+      const response = await authFetch('/api/org/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

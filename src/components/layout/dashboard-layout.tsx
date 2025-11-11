@@ -37,10 +37,14 @@ import {
   Bell,
   GitBranch,
   Calendar,
+  MessageCircle,
+  PhoneCall,
+  Headphones,
 } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
 import { createClient } from '@/lib/supabase-client'
+import { authFetch } from '@/lib/auth-fetch'
 import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
 import { useKeyboardShortcuts } from '@/lib/hooks/use-keyboard-shortcuts'
 import { LocationSwitcher } from '@/components/multi-location/location-switcher'
@@ -52,9 +56,12 @@ const getNavigation = (featureFlags: any) => [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: LABELS.DEAL.plural, href: '/deals', icon: DollarSign },
   { name: 'Pipeline', href: '/pipeline', icon: Workflow },
+  { name: 'Call Coaching', href: '/call-coaching', icon: PhoneCall, badge: 'Coach', badgeColor: 'bg-emerald-600 text-white' },
+  { name: 'Reception', href: '/reception', icon: Headphones, badge: 'Desk', badgeColor: 'bg-sky-600 text-white' },
   { name: LABELS.CONTACT.plural, href: '/contacts', icon: Users },
   { name: LABELS.TASK.plural, href: '/tasks', icon: CheckSquare },
   { name: 'Marketing', href: '/marketing', icon: Mail },
+  { name: 'Autonomous Engagement', href: '/engagement', icon: MessageCircle, badge: 'AI', badgeColor: 'bg-purple-600 text-white' },
   { name: 'Automations', href: '/automations', icon: GitBranch, badge: 'NEW', badgeColor: 'bg-blue-600 text-white' },
   { name: 'Marketing Audit', href: '/marketing-audit', icon: LineChart, badge: 'New', badgeColor: 'bg-blue-600 text-white' },
   { name: 'Forms', href: '/forms', icon: FileText },
@@ -168,7 +175,7 @@ function AccountAutoRepair({ user }: { user: any }) {
 }
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
-  const { user, appUser, loading } = useAuth()
+  const { user, appUser, loading, refreshUser } = useAuth()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notifDrawerOpen, setNotifDrawerOpen] = useState(false)
@@ -190,27 +197,25 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchTenantContext = async () => {
       try {
-        const response = await fetch('/api/tenant/context')
+        const response = await authFetch('/api/tenant/context')
         if (response.ok) {
           const data = await response.json()
           setTenantContext(data)
         } else {
-          // Even if response not ok, set empty context to prevent loading state
           setTenantContext({
             primaryTenant: null,
             accessibleTenants: [],
             isMultiLocation: false,
-            locationCount: 0
+            locationCount: 0,
           })
         }
       } catch (error) {
         console.error('Error fetching tenant context:', error)
-        // Set empty context on error to prevent loading state
         setTenantContext({
           primaryTenant: null,
           accessibleTenants: [],
           isMultiLocation: false,
-          locationCount: 0
+          locationCount: 0,
         })
       }
     }
@@ -218,33 +223,31 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     if (appUser) {
       fetchTenantContext()
     }
-  }, [appUser])
+  }, [appUser, refreshUser])
 
   // Fetch location context
   useEffect(() => {
     const fetchLocationContext = async () => {
       try {
-        const response = await fetch('/api/locations/context')
+        const response = await authFetch('/api/locations/context')
         if (response.ok) {
           const data = await response.json()
           setLocationContext(data)
         } else {
-          // Even if response not ok, set empty context to prevent loading state
           setLocationContext({
             activeLocation: null,
             accessibleLocations: [],
             isMultiLocation: false,
-            locationCount: 0
+            locationCount: 0,
           })
         }
       } catch (error) {
         console.error('Error fetching location context:', error)
-        // Set empty context on error to prevent loading state
         setLocationContext({
           activeLocation: null,
           accessibleLocations: [],
           isMultiLocation: false,
-          locationCount: 0
+          locationCount: 0,
         })
       }
     }
@@ -252,7 +255,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     if (appUser) {
       fetchLocationContext()
     }
-  }, [appUser])
+  }, [appUser, refreshUser])
 
   // Debug logging - minimal
   if (process.env.NODE_ENV === 'development') {
@@ -313,7 +316,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   // Auth state is valid, render dashboard
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
           {/* MOBILE HEADER - Shows on small screens */}
           <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">
@@ -357,7 +360,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation Menu - Vertical */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-none">
           {navigation.map((item) => {
             // Exact match for active state to avoid /marketing matching /marketing-audit
             const isActive = pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/')
@@ -508,7 +511,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Main Content - Full Width */}
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-y-auto min-h-0">
           {children}
         </main>
       </div>

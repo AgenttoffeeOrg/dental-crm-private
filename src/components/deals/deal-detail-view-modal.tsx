@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,7 +37,7 @@ import { UniversalSearchBar } from '@/components/search/universal-search-bar'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { MessageSquare } from 'lucide-react'
-import { 
+import {
   ArrowLeft,
   Edit,
   DollarSign,
@@ -64,6 +64,8 @@ import { formatDateTime } from '@/lib/dates'
 import { toast } from 'sonner'
 import type { Deal, Contact, PipelineStage } from '@/types/database'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
+import { sanitizePhoneNumber } from '@/lib/utils/phone'
+import { formatDistanceToNow } from 'date-fns'
 
 interface DealDetailViewProps {
   dealId: string
@@ -102,6 +104,11 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false)
   
   const supabase = createClient()
+
+const sanitizedContactPhone = useMemo(
+  () => sanitizePhoneNumber(contact?.primary_phone ?? ''),
+  [contact?.primary_phone]
+)
 
   useEffect(() => {
     if (orgId && !tenantLoading) {
@@ -232,7 +239,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
   const handleQuickAction = (action: string) => {
     switch (action) {
       case 'call':
-        if (contact?.primary_phone) {
+        if (sanitizedContactPhone) {
           setCallDialerOpen(true)
         } else {
           toast.error('No phone number available')
@@ -246,7 +253,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
         }
         break
       case 'text':
-        if (contact?.primary_phone) {
+        if (sanitizedContactPhone) {
           setSmsComposerOpen(true)
         } else {
           toast.error('No phone number available')
@@ -304,6 +311,72 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
       default: return 'Deal'
     }
   }
+
+  const stageName = stage?.name ?? 'Unassigned'
+
+  const lastActivityLabel = useMemo(() => {
+    const candidate =
+      deal?.last_activity_at ||
+      activities?.[0]?.occurred_at ||
+      deal?.updated_at ||
+      null
+
+    if (!candidate) return 'No recent activity'
+    try {
+      return formatDistanceToNow(new Date(candidate), { addSuffix: true })
+    } catch {
+      return 'No recent activity'
+    }
+  }, [deal?.last_activity_at, deal?.updated_at, activities])
+
+  const createdLabel = useMemo(() => {
+    if (!deal?.created_at) return 'Unknown'
+    try {
+      return formatDateTime(deal.created_at)
+    } catch {
+      return 'Unknown'
+    }
+  }, [deal?.created_at])
+
+  const dealSummaryCards = useMemo(() => {
+    if (!deal) return []
+    return [
+      {
+        title: 'Stage',
+        value: stageName,
+        helper: deal.deal_type ? getDealTypeLabel(deal.deal_type) : 'Deal workflow',
+        icon: Target,
+        iconColor: 'text-blue-600',
+        iconBg: 'bg-blue-50',
+      },
+      {
+        title: 'Deal Value',
+        value: formatCurrency(deal.value_estimate_cents || 0),
+        helper: `Created ${createdLabel}`,
+        icon: DollarSign,
+        iconColor: 'text-emerald-600',
+        iconBg: 'bg-emerald-50',
+      },
+      {
+        title: 'Last Activity',
+        value: lastActivityLabel,
+        helper: activities.length
+          ? `${activities.length} activity${activities.length === 1 ? '' : 'ies'} logged`
+          : 'No activity yet',
+        icon: Clock,
+        iconColor: 'text-purple-600',
+        iconBg: 'bg-purple-50',
+      },
+      {
+        title: 'Primary Contact',
+        value: contact?.full_name ?? 'Contact not assigned',
+        helper: contact?.primary_email ?? contact?.primary_phone ?? 'No contact info on file',
+        icon: User,
+        iconColor: 'text-amber-600',
+        iconBg: 'bg-amber-50',
+      },
+    ]
+  }, [deal, stageName, createdLabel, lastActivityLabel, activities.length, contact?.full_name, contact?.primary_email, contact?.primary_phone])
 
   if (loading) {
     return (
@@ -393,7 +466,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
             <div className="flex h-14 items-center justify-between">
               {/* Deal Title & Badges */}
               <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-gray-900">{deal.title}</h2>
+                <h1 className="text-2xl font-bold text-gray-900">{deal.title}</h1>
                 {deal.deal_type && (
                   <Badge className={`text-xs font-semibold ${getDealTypeColor(deal.deal_type)}`}>
                     {getDealTypeLabel(deal.deal_type)}
@@ -426,11 +499,116 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
         </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Left Sidebar - Deal Details */}
-        <div className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-6 space-y-6">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className="border-b border-gray-200 bg-white px-6 py-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Deal Summary
+              </p>
+              <h1 className="text-2xl font-semibold text-gray-900">{deal.title}</h1>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (sanitizedContactPhone) {
+                    setCallDialerOpen(true)
+                  } else {
+                    toast.error('No phone number available for this contact.')
+                  }
+                }}
+                disabled={!sanitizedContactPhone}
+              >
+                <PhoneCall className="h-4 w-4 mr-2" />
+                Call
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (contact.primary_email) {
+                    setEmailComposerOpen(true)
+                  } else {
+                    toast.error('No email address available for this contact.')
+                  }
+                }}
+                disabled={!contact.primary_email}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Email
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (sanitizedContactPhone) {
+                    setSmsComposerOpen(true)
+                  } else {
+                    toast.error('No phone number available for SMS.')
+                  }
+                }}
+                disabled={!sanitizedContactPhone}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                SMS
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setAiAssistantOpen(true)}
+              >
+                <Bot className="h-4 w-4 mr-2" />
+                AI Assist
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setCreateActivityDialogOpen(true)}
+              >
+                <ActivityIcon className="h-4 w-4 mr-2" />
+                Log Activity
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {dealSummaryCards.map((card) => {
+              const Icon = card.icon
+              return (
+                <Card key={card.title} className="border border-gray-200 shadow-sm rounded-2xl">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {card.title}
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-gray-900">
+                          {card.value}
+                        </p>
+                        {card.helper && (
+                          <p className="text-xs text-gray-500 mt-1">{card.helper}</p>
+                        )}
+                      </div>
+                      <div
+                        className={`h-10 w-10 rounded-full flex items-center justify-center ${card.iconBg}`}
+                      >
+                        <Icon className={`h-5 w-5 ${card.iconColor}`} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-hidden">
+          <div className="grid min-h-0 grid-cols-1 gap-6 xl:grid-cols-[1.7fr,1fr]">
+        {/* Left Column - Deal Details */}
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 overflow-hidden">
+          <div className="max-h-full overflow-y-auto">
+            <div className="px-6 py-6 space-y-6">
               {/* Deal Value - Editable */}
               <div>
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Deal Value</h3>
@@ -480,10 +658,10 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
                             <span className="truncate">{contact.primary_email}</span>
                           </div>
                         )}
-                        {contact.primary_phone && (
+                        {sanitizedContactPhone && (
                           <div className="flex items-center gap-2 text-xs text-gray-600">
                             <Phone className="h-3 w-3" />
-                            <span>{contact.primary_phone}</span>
+                            <span>{sanitizedContactPhone}</span>
                           </div>
                         )}
                       </div>
@@ -655,9 +833,9 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
           </div>
         </div>
 
-        {/* Right Side - Activity Timeline & Tasks */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="p-6 border-b border-gray-200 bg-white flex-shrink-0">
+        {/* Right Column - Activity Timeline & Tasks */}
+        <div className="flex flex-col rounded-2xl border border-gray-200 bg-white min-h-0">
+          <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Deal Management</h2>
             <p className="text-sm text-gray-600 mt-1">
               Activities, tasks, and interactions for this deal
@@ -674,7 +852,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
               </div>
 
               <TabsContent value="activities" className="flex-1 overflow-y-auto mt-0">
-                <div className="p-4 space-y-3">
+                <div className="p-4 pb-24 space-y-3">
                   {/* AI-Powered Deal Intelligence - COMPACT & HIGHER */}
                   <DealIntelligenceCard
                     dealId={dealId}
@@ -689,14 +867,14 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
                     onActivityCreated={fetchDealData}
                     tenantId={deal.tenant_id}
                     contactEmail={contact.primary_email}
-                    contactPhone={contact.primary_phone}
+                contactPhone={sanitizedContactPhone}
                     contactName={contact.full_name}
                   />
                 </div>
               </TabsContent>
 
               <TabsContent value="tasks" className="flex-1 overflow-y-auto mt-0">
-                <div className="p-6">
+                <div className="p-6 pb-24">
                   <DealTasks
                     dealId={dealId}
                     contactId={contact.id}
@@ -707,7 +885,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
             </Tabs>
           </div>
         </div>
-      </div>
+      </div></div>
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -895,7 +1073,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
           setSmsComposerOpen(false)
           fetchDealData()
         }}
-        to={contact?.primary_phone}
+        to={sanitizedContactPhone}
         contactId={contact?.id}
         dealId={dealId}
         tenantId={deal?.tenant_id}
@@ -907,7 +1085,7 @@ export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailVi
           setCallDialerOpen(false)
           fetchDealData()
         }}
-        phoneNumber={contact?.primary_phone || ''}
+        phoneNumber={sanitizedContactPhone}
         contactName={contact?.full_name}
         contactId={contact?.id}
         dealId={dealId}

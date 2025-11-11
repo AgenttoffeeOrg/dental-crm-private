@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ import {
   Paperclip
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { sanitizePhoneNumber } from '@/lib/utils/phone'
 
 interface WhatsAppComposerPanelProps {
   isOpen: boolean
@@ -36,13 +37,21 @@ export function WhatsAppComposerPanel({
   tenantId,
   userId
 }: WhatsAppComposerPanelProps) {
-  const [toNumber, setToNumber] = useState(to)
+  const [toNumber, setToNumber] = useState(sanitizePhoneNumber(to))
   const [message, setMessage] = useState('')
   const [mediaUrl, setMediaUrl] = useState('')
   const [sending, setSending] = useState(false)
 
+  useEffect(() => {
+    if (isOpen) {
+      setToNumber(sanitizePhoneNumber(to))
+    }
+  }, [isOpen, to])
+
   const handleSend = async () => {
-    if (!toNumber || !message) {
+    const normalizedTo = sanitizePhoneNumber(toNumber)
+
+    if (!normalizedTo || !message) {
       toast.error('Please enter both phone number and message')
       return
     }
@@ -54,7 +63,7 @@ export function WhatsAppComposerPanel({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: toNumber,
+          to: normalizedTo,
           message,
           media_url: mediaUrl || undefined,
           contact_id: contactId,

@@ -1,12 +1,58 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { authFetch } from '@/lib/auth-fetch'
+import { useAuth } from '@/lib/auth'
 
 export interface Location {
   id: string
   tenant_id: string
   name: string
   address?: string
+  address_line1?: string
+  phone?: string
+  phone_number?: string
+  city?: string
+  postal_code?: string
+  email?: string
   is_primary?: boolean
+  is_active?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+// Helper functions for safe field access during migration
+export function getLocationAddress(location: Partial<Location>): string | undefined {
+  return location.address_line1 || location.address || undefined
+}
+
+export function getLocationPhone(location: Partial<Location>): string | undefined {
+  return location.phone_number || location.phone || undefined
+}
+
+// Helper to prepare location data for forms (maps DB fields to form fields)
+export function mapLocationForForm(location: Partial<Location>): Partial<Location> {
+  return {
+    ...location,
+    address_line1: location.address_line1 || location.address,
+    phone_number: location.phone_number || location.phone,
+  }
+}
+
+// Helper to prepare form data for DB (maps form fields to current DB fields)
+export function mapLocationForDB(formData: Partial<Location>): Partial<Location> {
+  const result: Partial<Location> = { ...formData }
+
+  if (formData.address_line1 !== undefined) {
+    result.address = formData.address_line1
+    delete (result as Record<string, unknown>).address_line1
+  }
+
+  if (formData.phone_number !== undefined) {
+    result.phone = formData.phone_number
+    delete (result as Record<string, unknown>).phone_number
+  }
+
+  return result
 }
 
 export function useLocation(locationId: string | null | undefined) {
@@ -109,30 +155,31 @@ export function useAccessibleLocations() {
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { refreshUser } = useAuth()
+
+  const fetchAccessibleLocations = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await authFetch('/api/locations/accessible')
+      if (!response.ok) throw new Error('Failed to fetch accessible locations')
+
+      const data = await response.json()
+      setLocations(data.locations || [])
+    } catch (err: any) {
+      console.error('[useAccessibleLocations] Error:', err)
+      setError(err.message)
+      setLocations([])
+    } finally {
+      setLoading(false)
+    }
+  }, [refreshUser])
 
   useEffect(() => {
-    const fetchAccessibleLocations = async () => {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const response = await fetch('/api/locations/accessible')
-        if (!response.ok) throw new Error('Failed to fetch accessible locations')
-        
-        const data = await response.json()
-        setLocations(data.locations || [])
-      } catch (err: any) {
-        console.error('[useAccessibleLocations] Error:', err)
-        setError(err.message)
-        setLocations([])
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchAccessibleLocations()
-  }, [])
+  }, [fetchAccessibleLocations])
 
-  return { locations, loading, error, refetch: () => {} }
+  return { locations, loading, error, refetch: fetchAccessibleLocations }
 }
 

@@ -240,6 +240,9 @@ export function PersonalInfoStep() {
       </div>
 
       {/* Full Name */}
+      <div className="pt-2">
+        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Identity</h4>
+      </div>
       <WizardFieldWrapper
         fieldName="full_name"
         label="Full Name"
@@ -274,6 +277,8 @@ export function PersonalInfoStep() {
       </WizardFieldWrapper>
 
       {/* Phone Numbers */}
+      <div>
+        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Contact Numbers</h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <WizardFieldWrapper
           fieldName="phone_mobile"
@@ -308,9 +313,13 @@ export function PersonalInfoStep() {
             className="text-base"
           />
         </WizardFieldWrapper>
+        </div>
       </div>
 
       {/* Bio */}
+      <div className="pt-2">
+        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">About You</h4>
+      </div>
       <WizardFieldWrapper
         fieldName="bio"
         label="Bio"

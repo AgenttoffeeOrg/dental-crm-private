@@ -24,9 +24,16 @@ import {
   Plus,
   User,
   CheckCircle2,
-  ArrowRight
+  ArrowRight,
+  MapPin
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { useTaskMutation } from '@/lib/hooks/use-task-mutation'
+import { useLocation, useAccessibleLocations } from '@/lib/hooks/use-locations'
+import { LocationSelector } from '@/components/ui/location-selector'
+import { ContactSelector } from '@/components/ui/contact-selector'
+import { DealSelector } from '@/components/ui/deal-selector'
+import { useAuth } from '@/lib/auth'
 import { toast } from 'sonner'
 
 interface TaskDetailModalProps {
@@ -40,18 +47,54 @@ interface TaskDetailModalProps {
 }
 
 export function TaskDetailModal({ taskId, open, onClose, onUpdate, onComplete, queueMode, onNext }: TaskDetailModalProps) {
+  const { updateTask: updateTaskViaAPI, isLoading: mutationLoading } = useTaskMutation({
+    onSuccess: () => {
+      loadTaskDetails()
+      onUpdate?.()
+    },
+  })
   const [task, setTask] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [subtasks, setSubtasks] = useState<any[]>([])
   const [comments, setComments] = useState<any[]>([])
   const [newComment, setNewComment] = useState('')
+  const [contacts, setContacts] = useState<any[]>([])
+  const [deals, setDeals] = useState<any[]>([])
+  const [users, setUsers] = useState<any[]>([])
+  const [loadingData, setLoadingData] = useState(false)
+  const { appUser } = useAuth()
+  const { location: taskLocation } = useLocation(task?.location_id)
+  const { locations, loading: locationsLoading } = useAccessibleLocations()
 
   useEffect(() => {
     if (open && taskId) {
       loadTaskDetails()
+      if (appUser?.tenant_id) {
+        loadEditData()
+      }
     }
-  }, [open, taskId])
+  }, [open, taskId, appUser?.tenant_id])
+
+  const loadEditData = async () => {
+    if (!appUser?.tenant_id) return
+    setLoadingData(true)
+    try {
+      const supabase = createClient()
+      const [contactsRes, dealsRes, usersRes] = await Promise.all([
+        supabase.from('contacts').select('id, full_name').eq('tenant_id', appUser.tenant_id).order('full_name').limit(100),
+        supabase.from('deals').select('id, title').eq('tenant_id', appUser.tenant_id).order('title').limit(100),
+        supabase.from('app_users').select('id, full_name').eq('tenant_id', appUser.tenant_id).order('full_name')
+      ])
+      setContacts(contactsRes.data || [])
+      setDeals(dealsRes.data || [])
+      setUsers(usersRes.data || [])
+    } catch (error) {
+      console.error('Error loading edit data:', error)
+    } finally {
+      setLoadingData(false)
+    }
+  }
 
   const loadTaskDetails = async () => {
     if (!taskId) return
@@ -60,15 +103,22 @@ export function TaskDetailModal({ taskId, open, onClose, onUpdate, onComplete, q
     try {
       const supabase = createClient()
       
-      // Load main task
+      // Load main task with location info
       const { data: taskData, error: taskError } = await supabase
         .from('tasks_with_associations')
-        .select('*')
+        .select('*, contact:contacts(location_id), deal:deals(location_id)')
         .eq('id', taskId)
         .single()
 
       if (taskError) throw taskError
-      setTask(taskData)
+      
+      // Add location inheritance info
+      const enrichedTask = {
+        ...taskData,
+        contact_location_id: taskData.contact?.location_id,
+        deal_location_id: taskData.deal?.location_id,
+      }
+      setTask(enrichedTask)
 
       // Load subtasks
       const { data: subtasksData } = await supabase
@@ -100,20 +150,17 @@ export function TaskDetailModal({ taskId, open, onClose, onUpdate, onComplete, q
     
     setSaving(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('tasks')
-        .update(updates)
-        .eq('id', taskId)
+      // Convert datetime-local format to ISO string if needed
+      const normalizedUpdates: any = { ...updates }
+      if (updates.due_at && typeof updates.due_at === 'string' && !updates.due_at.includes('T')) {
+        // If it's datetime-local format, convert to ISO
+        normalizedUpdates.due_at = new Date(updates.due_at).toISOString()
+      }
 
-      if (error) throw error
-      
-      toast.success('Task updated')
-      await loadTaskDetails()
-      onUpdate?.()
+      await updateTaskViaAPI(taskId, normalizedUpdates)
     } catch (error) {
       console.error('Error updating task:', error)
-      toast.error('Failed to update task')
+      // Error already handled by useTaskMutation
     } finally {
       setSaving(false)
     }
@@ -339,25 +386,77 @@ export function TaskDetailModal({ taskId, open, onClose, onUpdate, onComplete, q
 
                 <Separator />
 
-                {/* Associations */}
-                {task.deal_title && (
-                  <div>
-                    <Label className="text-xs text-gray-500 uppercase mb-2 block">Deal</Label>
-                    <Badge variant="secondary" className="w-full justify-start">
-                      <Link2 className="h-3 w-3 mr-1" />
-                      {task.deal_title}
-                    </Badge>
-                  </div>
-                )}
-
-                {task.contact_name && (
+                {/* Editable Associations */}
+                <div className="space-y-4">
                   <div>
                     <Label className="text-xs text-gray-500 uppercase mb-2 block">Contact</Label>
-                    <Badge variant="outline" className="w-full justify-start">
-                      👤 {task.contact_name}
-                    </Badge>
+                    <ContactSelector
+                      contacts={contacts}
+                      value={task.contact_id || null}
+                      onValueChange={(val) => updateTask({ contact_id: val || null })}
+                      placeholder="No contact"
+                      disabled={loadingData}
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-gray-500 uppercase mb-2 block">Deal</Label>
+                    <DealSelector
+                      deals={deals}
+                      value={task.deal_id || null}
+                      onValueChange={(val) => updateTask({ deal_id: val || null })}
+                      placeholder="No deal"
+                      disabled={loadingData}
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-gray-500 uppercase mb-2 block">Assignee</Label>
+                    <Select
+                      value={task.assignee_user_id || 'none'}
+                      onValueChange={(val) => updateTask({ assignee_user_id: val === 'none' ? null : val })}
+                      disabled={loadingData}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Unassigned" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Unassigned</SelectItem>
+                        {users.map(user => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Location */}
+                  {locations.length > 0 && (
+                    <div>
+                      <Label className="text-xs text-gray-500 uppercase mb-2 block flex items-center justify-between">
+                        <span>Location</span>
+                        {(task.contact_id && task.contact_location_id === task.location_id) || 
+                         (task.deal_id && task.deal_location_id === task.location_id) ? (
+                          <span className="text-xs text-blue-600 font-normal">(Auto-inherited)</span>
+                        ) : null}
+                      </Label>
+                      <LocationSelector
+                        locations={locations}
+                        value={task.location_id || null}
+                        onValueChange={(val) => updateTask({ location_id: val || null })}
+                        placeholder="Select location..."
+                        disabled={locationsLoading}
+                      />
+                      {task.contact_id && task.contact_location_id === task.location_id && (
+                        <p className="text-xs text-gray-500 mt-1">Inherited from contact</p>
+                      )}
+                      {task.deal_id && task.deal_location_id === task.location_id && (
+                        <p className="text-xs text-gray-500 mt-1">Inherited from deal</p>
+                      )}
                   </div>
                 )}
+                </div>
               </div>
             </div>
           </div>

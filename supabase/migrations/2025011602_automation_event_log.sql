@@ -34,6 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_automation_event_log_tenant_type ON automation_ev
 -- RLS Policies
 ALTER TABLE automation_event_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their tenant's event logs" ON automation_event_log;
 CREATE POLICY "Users can view their tenant's event logs"
     ON automation_event_log FOR SELECT
     USING (tenant_id IN (
@@ -41,6 +42,7 @@ CREATE POLICY "Users can view their tenant's event logs"
     ));
 
 -- Admins can insert event logs (system use)
+DROP POLICY IF EXISTS "System can insert event logs" ON automation_event_log;
 CREATE POLICY "System can insert event logs"
     ON automation_event_log FOR INSERT
     WITH CHECK (true);

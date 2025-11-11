@@ -6,7 +6,8 @@ import { WizardFieldWrapper } from '../wizard-field-wrapper'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { MapPin, Building, Phone, Mail, Globe, Loader2 } from 'lucide-react'
+import { MapPin, Phone, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase-client'
 
 /**
@@ -26,6 +27,13 @@ export function FirstLocationStep() {
   const stepData = formData[currentStepId] || {}
   const [hasTenant, setHasTenant] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [additionalLocations, setAdditionalLocations] = useState<Array<Record<string, any>>>(
+    stepData.additional_locations || []
+  )
+
+  useEffect(() => {
+    setAdditionalLocations(stepData.additional_locations || [])
+  }, [stepData.additional_locations])
 
   // Load existing location data
   // ✅ FIX: Wait for currentStepId to be set, and re-run when step changes
@@ -58,13 +66,63 @@ export function FirstLocationStep() {
       setHasTenant(!!tenantId)
 
       if (tenantId) {
-        // ✅ FIRST: Try to load location by active_location_id if set
+        const { data: locations } = await supabase
+          .from('locations')
+          .select('id, name, address, city, postal_code, phone, is_primary')
+          .eq('tenant_id', tenantId)
+          .order('is_primary', { ascending: false })
+          .order('created_at', { ascending: true })
+
+        if (locations && locations.length > 0) {
+          const existingStepData = formData['location_setup'] || {}
+
+          const primaryLocation =
+            locations.find(loc => loc.id === appUser.active_location_id) ||
+            locations[0]
+
+          if (primaryLocation) {
+            if (primaryLocation.name && (!existingStepData.name || existingStepData.name === '')) {
+              updateFieldValue('name', primaryLocation.name)
+            }
+            if (primaryLocation.address && (!existingStepData.address_line1 || existingStepData.address_line1 === '')) {
+              updateFieldValue('address_line1', primaryLocation.address)
+            }
+            if (primaryLocation.city && (!existingStepData.city || existingStepData.city === '')) {
+              updateFieldValue('city', primaryLocation.city)
+            }
+            if (primaryLocation.postal_code && (!existingStepData.postal_code || existingStepData.postal_code === '')) {
+              updateFieldValue('postal_code', primaryLocation.postal_code)
+            }
+            if (primaryLocation.phone && (!existingStepData.phone_number || existingStepData.phone_number === '')) {
+              updateFieldValue('phone_number', primaryLocation.phone)
+            }
+          }
+
+          const others = locations.filter(loc => primaryLocation && loc.id !== primaryLocation.id)
+          if (!existingStepData.additional_locations || existingStepData.additional_locations.length === 0) {
+            const mapped = others.map(loc => ({
+              id: loc.id,
+              name: loc.name || '',
+              address_line1: loc.address || '',
+              city: loc.city || '',
+              postal_code: loc.postal_code || '',
+              phone_number: loc.phone || ''
+            }))
+            if (mapped.length > 0) {
+              setAdditionalLocations(mapped)
+              updateFieldValue('additional_locations', mapped)
+            }
+          }
+          return
+        }
+
+        // ✅ FALLBACK: If no locations found, keep existing behaviour
         if (appUser.active_location_id) {
           const { data: location } = await supabase
             .from('locations')
             .select('name, address, city, postal_code, phone')
             .eq('id', appUser.active_location_id)
-            .eq('tenant_id', tenantId) // Security: ensure location belongs to tenant
+            .eq('tenant_id', tenantId)
             .single()
 
           if (location) {
@@ -95,18 +153,15 @@ export function FirstLocationStep() {
           }
         }
 
-        // ✅ FALLBACK: If no active_location_id or location not found, 
-        // load the first/default location for this tenant
-        const { data: locations } = await supabase
+        const { data: fallbackLocations } = await supabase
           .from('locations')
           .select('name, address, city, postal_code, phone')
           .eq('tenant_id', tenantId)
-          .order('is_primary', { ascending: false }) // Primary location first
-          .order('created_at', { ascending: true }) // Then oldest (likely default)
+          .order('created_at', { ascending: true })
           .limit(1)
 
-        if (locations && locations.length > 0) {
-          const location = locations[0]
+        if (fallbackLocations && fallbackLocations.length > 0) {
+          const location = fallbackLocations[0]
           // ✅ FIX: Always pre-fill from DB data (DB is source of truth)
           // Map database columns (address, phone) to form field names (address_line1, phone_number)
           // Only skip if formData already has a non-empty value (user edited it)
@@ -317,6 +372,126 @@ export function FirstLocationStep() {
           </div>
         </div>
       )}
+
+      {/* Additional Locations */}
+      <div className="space-y-4 pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-gray-900">Additional Locations</h4>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const newLocations = [...additionalLocations, { name: '', address_line1: '', city: '', postal_code: '', phone_number: '' }]
+              setAdditionalLocations(newLocations)
+              updateFieldValue('additional_locations', newLocations)
+            }}
+          >
+            Add Another Location
+          </Button>
+        </div>
+
+        {additionalLocations.length === 0 && (
+          <p className="text-sm text-gray-600">You can add more practice locations using the button above.</p>
+        )}
+
+        {additionalLocations.map((loc, index) => (
+          <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3 bg-white">
+            <h5 className="text-xs font-semibold text-gray-500 uppercase">Location {index + 2}</h5>
+            <WizardFieldWrapper
+              fieldName={`additional_locations.${index}.name`}
+              label="Location Name"
+              isRequired={false}
+              helpText="Internal name for this location"
+            >
+              <Input
+                value={loc.name || ''}
+                onChange={(e) => {
+                  const newLocations = [...additionalLocations]
+                  newLocations[index] = { ...newLocations[index], name: e.target.value }
+                  setAdditionalLocations(newLocations)
+                  updateFieldValue('additional_locations', newLocations)
+                }}
+                placeholder="e.g., Downtown Branch"
+              />
+            </WizardFieldWrapper>
+
+            <WizardFieldWrapper
+              fieldName={`additional_locations.${index}.address_line1`}
+              label="Street Address"
+              isRequired={false}
+              helpText="Street address"
+            >
+              <Input
+                value={loc.address_line1 || ''}
+                onChange={(e) => {
+                  const newLocations = [...additionalLocations]
+                  newLocations[index] = { ...newLocations[index], address_line1: e.target.value }
+                  setAdditionalLocations(newLocations)
+                  updateFieldValue('additional_locations', newLocations)
+                }}
+                placeholder="e.g., 45 River Road"
+              />
+            </WizardFieldWrapper>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <WizardFieldWrapper
+                fieldName={`additional_locations.${index}.city`}
+                label="City"
+                isRequired={false}
+                helpText="City name"
+              >
+                <Input
+                  value={loc.city || ''}
+                  onChange={(e) => {
+                    const newLocations = [...additionalLocations]
+                    newLocations[index] = { ...newLocations[index], city: e.target.value }
+                    setAdditionalLocations(newLocations)
+                    updateFieldValue('additional_locations', newLocations)
+                  }}
+                  placeholder="e.g., Winterfell"
+                />
+              </WizardFieldWrapper>
+
+              <WizardFieldWrapper
+                fieldName={`additional_locations.${index}.postal_code`}
+                label="Postal Code"
+                isRequired={false}
+                helpText="Postal/ZIP code"
+              >
+                <Input
+                  value={loc.postal_code || ''}
+                  onChange={(e) => {
+                    const newLocations = [...additionalLocations]
+                    newLocations[index] = { ...newLocations[index], postal_code: e.target.value }
+                    setAdditionalLocations(newLocations)
+                    updateFieldValue('additional_locations', newLocations)
+                  }}
+                  placeholder="e.g., WF1 1AA"
+                />
+              </WizardFieldWrapper>
+            </div>
+
+            <WizardFieldWrapper
+              fieldName={`additional_locations.${index}.phone_number`}
+              label="Phone Number"
+              isRequired={false}
+              helpText="Location phone number"
+            >
+              <Input
+                value={loc.phone_number || ''}
+                onChange={(e) => {
+                  const newLocations = [...additionalLocations]
+                  newLocations[index] = { ...newLocations[index], phone_number: e.target.value }
+                  setAdditionalLocations(newLocations)
+                  updateFieldValue('additional_locations', newLocations)
+                }}
+                placeholder="e.g., +44 20 7000 0000"
+              />
+            </WizardFieldWrapper>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

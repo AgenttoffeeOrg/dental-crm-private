@@ -17,9 +17,11 @@ interface SortableFieldProps {
   field: FormField
   onUpdate: (field: FormField) => void
   onDelete: () => void
+  onSelect?: (field: FormField) => void
+  isSelected?: boolean
 }
 
-function SortableField({ field, onUpdate, onDelete }: SortableFieldProps) {
+function SortableField({ field, onUpdate, onDelete, onSelect, isSelected }: SortableFieldProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   
   const {
@@ -38,7 +40,12 @@ function SortableField({ field, onUpdate, onDelete }: SortableFieldProps) {
   }
 
   return (
-    <Card ref={setNodeRef} style={style} className={isDragging ? 'ring-2 ring-blue-500' : ''}>
+    <Card 
+      ref={setNodeRef} 
+      style={style} 
+      className={`${isDragging ? 'ring-2 ring-blue-500' : ''} ${isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : ''} cursor-pointer`}
+      onClick={() => onSelect?.(field)}
+    >
       <CardContent className="p-4">
         {/* Field Header */}
         <div className="flex items-center gap-3">
@@ -175,9 +182,18 @@ interface SortableFieldListProps {
   onReorder: (fields: FormField[]) => void
   onUpdateField: (fieldId: string, field: FormField) => void
   onDeleteField: (fieldId: string) => void
+  selectedFieldId?: string | null
+  onSelectField?: (field: FormField) => void
 }
 
-export function SortableFieldList({ fields, onReorder, onUpdateField, onDeleteField }: SortableFieldListProps) {
+export function SortableFieldList({ 
+  fields, 
+  onReorder, 
+  onUpdateField, 
+  onDeleteField,
+  selectedFieldId,
+  onSelectField
+}: SortableFieldListProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const sensors = useSensors(
@@ -232,6 +248,8 @@ export function SortableFieldList({ fields, onReorder, onUpdateField, onDeleteFi
               field={field}
               onUpdate={(updatedField) => onUpdateField(field.id, updatedField)}
               onDelete={() => onDeleteField(field.id)}
+              onSelect={onSelectField}
+              isSelected={selectedFieldId === field.id}
             />
           ))}
         </div>

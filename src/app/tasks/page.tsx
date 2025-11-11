@@ -26,13 +26,15 @@ import {
   CheckSquare,
   Calendar,
   Repeat,
-  HelpCircle
+  HelpCircle,
+  MapPin
 } from 'lucide-react'
 import { CreateTaskSlideOver } from '@/components/tasks/create-task-slide-over'
 import { TaskQueuePanel } from '@/components/tasks/task-queue-panel'
 import { BulkActionsMenu } from '@/components/tasks/bulk-actions-menu'
 import { TaskCalendarView } from '@/components/tasks/task-calendar-view'
 import { TaskAnalyticsDashboard } from '@/components/analytics/task-analytics-dashboard'
+import { useTaskMutation } from '@/lib/hooks/use-task-mutation'
 import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { formatDistanceToNow, isToday, isTomorrow, isPast, isThisWeek, addDays } from 'date-fns'
@@ -76,7 +78,15 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<FilterTab>('today')
   const [searchQuery, setSearchQuery] = useState('')
-  const [locationFilter, setLocationFilter] = useState<string>('all') // NEW: Location filter
+  const [locationFilter, setLocationFilter] = useState<string>('all')
+  const [contactFilter, setContactFilter] = useState<string>('all')
+  const [dealFilter, setDealFilter] = useState<string>('all')
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('all')
+  const [taskTypeFilter, setTaskTypeFilter] = useState<string>('all')
+  const [priorityFilter, setPriorityFilter] = useState<string>('all')
+  const [contacts, setContacts] = useState<any[]>([])
+  const [deals, setDeals] = useState<any[]>([])
+  const [users, setUsers] = useState<any[]>([])
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [queueOpen, setQueueOpen] = useState(false)
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
@@ -84,10 +94,36 @@ export default function TasksPage() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'analytics'>('list')
   const [showHelp, setShowHelp] = useState(false)
 
+  const { completeTask } = useTaskMutation({
+    onSuccess: () => {
+      loadTasks()
+    },
+  })
+
   useEffect(() => {
     loadTasks()
-    loadLocations() // NEW: Load locations for filtering
+    loadLocations()
+    loadFilterData()
   }, [])
+
+  const loadFilterData = async () => {
+    if (!appUser?.tenant_id) return
+    
+    try {
+      const supabase = createClient()
+      const [contactsRes, dealsRes, usersRes] = await Promise.all([
+        supabase.from('contacts').select('id, full_name').eq('tenant_id', appUser.tenant_id).order('full_name').limit(100),
+        supabase.from('deals').select('id, title').eq('tenant_id', appUser.tenant_id).order('title').limit(100),
+        supabase.from('app_users').select('id, full_name').eq('tenant_id', appUser.tenant_id).order('full_name')
+      ])
+      
+      setContacts(contactsRes.data || [])
+      setDeals(dealsRes.data || [])
+      setUsers(usersRes.data || [])
+    } catch (error) {
+      console.error('Error loading filter data:', error)
+    }
+  }
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -179,23 +215,12 @@ export default function TasksPage() {
   }
 
   const handleCompleteTask = async (taskId: string) => {
-    try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('tasks')
-        .update({ 
-          status: 'done',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', taskId)
-
-      if (error) throw error
-      toast.success('Task completed!')
-      await loadTasks()
-    } catch (error) {
-      console.error('Error completing task:', error)
-      toast.error('Failed to complete task')
+    const result = await completeTask(taskId)
+    if (result.error) {
+      // Error already handled by useTaskMutation
+      return
     }
+    // Success handled by onSuccess callback
   }
 
   const filterTasks = (tasks: any[], filter: FilterTab) => {
@@ -219,17 +244,65 @@ export default function TasksPage() {
     }
   }
 
+  // Enhanced search that includes all relevant fields
   const filteredTasks = searchQuery
-    ? filterTasks(tasks, activeFilter).filter(t =>
-        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? filterTasks(tasks, activeFilter).filter(t => {
+        const query = searchQuery.toLowerCase()
+        return (
+          t.title?.toLowerCase().includes(query) ||
+          t.description?.toLowerCase().includes(query) ||
+          t.contact_name?.toLowerCase().includes(query) ||
+          t.deal_title?.toLowerCase().includes(query) ||
+          t.assignee_name?.toLowerCase().includes(query) ||
+          t.location_name?.toLowerCase().includes(query) ||
+          t.task_type?.toLowerCase().includes(query) ||
+          t.priority?.toLowerCase().includes(query)
+        )
+      })
     : filterTasks(tasks, activeFilter)
 
-  // NEW: Apply location filter
-  const locationFilteredTasks = locationFilter !== 'all'
-    ? filteredTasks.filter(t => t.location_id === locationFilter)
-    : filteredTasks
+  // Apply all filters
+  const applyFilters = (tasks: any[]) => {
+    let result = tasks
+
+    if (locationFilter !== 'all') {
+      result = result.filter(t => t.location_id === locationFilter)
+    }
+    if (contactFilter !== 'all') {
+      result = result.filter(t => t.contact_id === contactFilter)
+    }
+    if (dealFilter !== 'all') {
+      result = result.filter(t => t.deal_id === dealFilter)
+    }
+    if (assigneeFilter !== 'all') {
+      if (assigneeFilter === 'unassigned') {
+        result = result.filter(t => !t.assignee_user_id)
+      } else {
+        result = result.filter(t => t.assignee_user_id === assigneeFilter)
+      }
+    }
+    if (taskTypeFilter !== 'all') {
+      result = result.filter(t => t.task_type === taskTypeFilter)
+    }
+    if (priorityFilter !== 'all') {
+      result = result.filter(t => t.priority === priorityFilter)
+    }
+
+    return result
+  }
+
+  const locationFilteredTasks = applyFilters(filteredTasks)
+
+  const clearAllFilters = () => {
+    setLocationFilter('all')
+    setContactFilter('all')
+    setDealFilter('all')
+    setAssigneeFilter('all')
+    setTaskTypeFilter('all')
+    setPriorityFilter('all')
+  }
+
+  const hasActiveFilters = locationFilter !== 'all' || contactFilter !== 'all' || dealFilter !== 'all' || assigneeFilter !== 'all' || taskTypeFilter !== 'all' || priorityFilter !== 'all'
 
   const getTaskCounts = () => {
     return {
@@ -395,6 +468,113 @@ export default function TasksPage() {
           </div>
         )}
 
+        {/* Filters Bar */}
+        <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <span className="text-xs font-medium text-gray-700 mr-2">Filters:</span>
+          
+          {/* Location Filter */}
+          {locations.length > 0 && (
+            <Select value={locationFilter} onValueChange={setLocationFilter}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="Location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {locations.map(loc => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Contact Filter */}
+          {contacts.length > 0 && (
+            <Select value={contactFilter} onValueChange={setContactFilter}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="Contact" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Contacts</SelectItem>
+                {contacts.map(contact => (
+                  <SelectItem key={contact.id} value={contact.id}>{contact.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Deal Filter */}
+          {deals.length > 0 && (
+            <Select value={dealFilter} onValueChange={setDealFilter}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="Deal" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Deals</SelectItem>
+                {deals.map(deal => (
+                  <SelectItem key={deal.id} value={deal.id}>{deal.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Assignee Filter */}
+          {users.length > 0 && (
+            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="Assignee" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Assignees</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {users.map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Task Type Filter */}
+          <Select value={taskTypeFilter} onValueChange={setTaskTypeFilter}>
+            <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectValue placeholder="Task Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="call">Call</SelectItem>
+              <SelectItem value="email">Email</SelectItem>
+              <SelectItem value="meeting">Meeting</SelectItem>
+              <SelectItem value="todo">Todo</SelectItem>
+              <SelectItem value="follow_up">Follow-up</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Priority Filter */}
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="h-8 w-[120px] text-xs">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priorities</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="normal">Normal</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              className="h-8 text-xs"
+            >
+              Clear Filters
+            </Button>
+          )}
+        </div>
+
         {/* Search & Bulk Actions */}
         <div className="flex items-center gap-4">
           <div className="flex-1 relative">
@@ -460,10 +640,11 @@ export default function TasksPage() {
                   }}
                 />
               </div>
-              <div className="col-span-4">Task</div>
-              <div className="col-span-2">Type & Priority</div>
-              <div className="col-span-2">Due Date</div>
+              <div className="col-span-3">Task</div>
+              <div className="col-span-1">Type & Priority</div>
+              <div className="col-span-1">Due Date</div>
               <div className="col-span-2">Associated With</div>
+              <div className="col-span-2">Location</div>
               <div className="col-span-1">Assignee</div>
             </div>
 
@@ -488,7 +669,7 @@ export default function TasksPage() {
                     </div>
 
                     {/* Task Title */}
-                    <div className="col-span-4 min-w-0">
+                    <div className="col-span-3 min-w-0">
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium text-sm text-gray-900 truncate">
                           {task.title}
@@ -515,7 +696,7 @@ export default function TasksPage() {
                     </div>
 
                     {/* Type & Priority */}
-                    <div className="col-span-2 flex items-center gap-2">
+                    <div className="col-span-1 flex items-center gap-2">
                       <div className="p-1.5 bg-gray-100 rounded">
                         <TypeIcon className="h-3.5 w-3.5 text-gray-600" />
                       </div>
@@ -528,7 +709,7 @@ export default function TasksPage() {
                     </div>
 
                     {/* Due Date */}
-                    <div className="col-span-2 flex items-center">
+                    <div className="col-span-1 flex items-center">
                       {task.due_at ? (
                         <div className={cn(
                           "text-sm",
@@ -554,6 +735,18 @@ export default function TasksPage() {
                         <div className="text-xs text-gray-500 truncate">
                           👤 {task.contact_name}
                         </div>
+                      )}
+                    </div>
+
+                    {/* Location */}
+                    <div className="col-span-2 flex items-center">
+                      {task.location_name ? (
+                        <Badge variant="secondary" className="text-xs">
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {task.location_name}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-gray-400">No location</span>
                       )}
                     </div>
 

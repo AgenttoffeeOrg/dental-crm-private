@@ -4,12 +4,13 @@
  * GET /api/locations/accessible - Get all locations accessible to current user
  */
 
+import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { getLocationsForSwitcher } from '@/lib/services/tenant-context'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const locations = await getLocationsForSwitcher()
+    const locations = await getLocationsForSwitcher(request)
     
     return NextResponse.json({
       locations,

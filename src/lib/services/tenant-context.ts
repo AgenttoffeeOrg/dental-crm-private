@@ -8,7 +8,9 @@
  * - Performance optimization (dual-path architecture)
  */
 
+import type { NextRequest } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getSupabaseAuthContext } from '@/lib/api/auth'
 import { cache } from 'react'
 
 export interface TenantInfo {
@@ -262,17 +264,14 @@ export async function switchActiveLocation(
  * Get locations for dropdown/switcher UI
  * Returns actual locations from the locations table, not tenants
  */
-export async function getLocationsForSwitcher(): Promise<Array<{
+export async function getLocationsForSwitcher(request: NextRequest): Promise<Array<{
   id: string
   name: string
   locationName: string | null
   isPrimary: boolean
 }>> {
-  const supabase = await createServerSupabaseClient()
-  
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser()
-  
+  const { supabase, user } = await getSupabaseAuthContext(request)
+
   if (!user) {
     return []
   }
