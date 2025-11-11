@@ -186,20 +186,26 @@ function buildOutlookOAuthUrl(
 }
 
 function getGoogleScopes(type: string): string[] {
+  // Unified OAuth: Request ALL Google scopes at once
+  // User approves once, all Google services are connected
+  const allGoogleScopes = [
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/analytics.readonly',
+    'https://www.googleapis.com/auth/adwords',
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/calendar.events',
+  ]
+  
+  // For backward compatibility, still support individual service requests
+  // But default to requesting all scopes for unified experience
   switch (type) {
     case 'gmail':
-      return [
-        'https://www.googleapis.com/auth/gmail.send',
-        'https://www.googleapis.com/auth/gmail.readonly',
-      ]
     case 'google_analytics':
-      return [
-        'https://www.googleapis.com/auth/analytics.readonly',
-      ]
     case 'google_ads':
-      return [
-        'https://www.googleapis.com/auth/adwords',
-      ]
+    case 'google_calendar':
+      // Request all Google scopes for unified connection
+      return allGoogleScopes
     default:
       return []
   }
