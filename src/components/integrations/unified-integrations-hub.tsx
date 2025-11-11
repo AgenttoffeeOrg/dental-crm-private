@@ -68,19 +68,19 @@ interface ProviderGroup {
   id: string
   name: string
   provider: string
-  icon: React.ReactNode
+  iconName: string
   integrations: UnifiedIntegration[]
   connected: boolean
   connectionStatus: 'connected' | 'disconnected' | 'error'
 }
 
-const PROVIDER_ICONS: Record<string, React.ReactNode> = {
-  google: <Settings className="h-5 w-5" />,
-  facebook: <MessageSquare className="h-5 w-5" />,
-  microsoft: <Mail className="h-5 w-5" />,
-  twilio: <Phone className="h-5 w-5" />,
-  sendgrid: <Mail className="h-5 w-5" />,
-  tiktok: <PlayCircle className="h-5 w-5" />,
+const PROVIDER_ICONS: Record<string, string> = {
+  google: 'Settings',
+  facebook: 'MessageSquare',
+  microsoft: 'Mail',
+  twilio: 'Phone',
+  sendgrid: 'Mail',
+  tiktok: 'PlayCircle',
 }
 
 export function UnifiedIntegrationsHub() {
@@ -141,7 +141,7 @@ export function UnifiedIntegrationsHub() {
           id: provider,
           name: provider.charAt(0).toUpperCase() + provider.slice(1),
           provider,
-          icon: PROVIDER_ICONS[provider] || <Settings className="h-5 w-5" />,
+          iconName: PROVIDER_ICONS[provider] || 'Settings',
           integrations: providerIntegrations.map(i => {
             const conn = groupConnections.find(c => c.integration_type === i.type)
             return {
@@ -403,7 +403,10 @@ export function UnifiedIntegrationsHub() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    {group.icon}
+                    {(() => {
+                      const IconComponent = getIntegrationIcon(group.iconName)
+                      return <IconComponent className="h-5 w-5" />
+                    })()}
                     <div>
                       <CardTitle className="text-lg">{group.name}</CardTitle>
                       <CardDescription className="mt-1">
