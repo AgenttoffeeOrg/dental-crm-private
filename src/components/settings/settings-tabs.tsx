@@ -63,7 +63,6 @@ import { AIAnalyticsTab } from './ai-analytics-tab'
 import { UnifiedMarketingTab } from './unified-marketing-tab'
 
 // Integrations Section Components
-import { CommunicationsIntegrationsTab } from './communications-integrations-tab'
 import { IntegrationsHubV2 } from '@/components/integrations/integrations-hub-v2'
 import { APIDeveloperTab } from './api-developer-tab'
 import { BrandingSettingsTab } from './branding-settings-tab'
