@@ -1,27 +1,28 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { IntegrationsHub } from '@/components/integrations/integrations-hub'
-import { useAuth } from '@/lib/auth'
-import { NoOrgEmptyState } from '@/components/guards'
+import { Loader2 } from 'lucide-react'
 
+/**
+ * Redirects to unified integrations hub in Settings
+ * All integrations are now managed in Settings → Integrations
+ */
 export default function IntegrationsPage() {
-  const { appUser, loading: authLoading } = useAuth()
-  const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
+  const router = useRouter()
 
-  // Show empty state if user has no tenant
-  if (!hasTenant && !authLoading) {
-    return (
-      <DashboardLayout>
-        <NoOrgEmptyState title="Integrations" />
-      </DashboardLayout>
-    )
-  }
+  useEffect(() => {
+    router.replace('/settings?section=integrations&tab=integrations')
+  }, [router])
 
   return (
     <DashboardLayout>
-      <div className="h-full">
-        <IntegrationsHub />
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">Redirecting to unified integrations hub...</p>
+        </div>
       </div>
     </DashboardLayout>
   )

@@ -624,7 +624,7 @@ export function UnifiedIntegrationsHub() {
                         onClick={() => setWizardStep(2)}
                       >
                         I Have My Account
-                        <ChevronUp className="h-4 w-4 ml-2" />
+                        <ChevronDown className="h-4 w-4 ml-2" />
                       </Button>
                     </div>
                   </div>
@@ -732,7 +732,7 @@ export function UnifiedIntegrationsHub() {
                       className="flex-1"
                     >
                       Save & Connect
-                      <ChevronUp className="h-4 w-4 ml-2" />
+                      <CheckCircle2 className="h-4 w-4 ml-2" />
                     </Button>
                   </div>
 

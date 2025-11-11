@@ -116,7 +116,6 @@ const SECTION_TABS = {
   ],
   integrations: [
     { id: 'integrations', label: 'Integrations' },
-    { id: 'connected-apps', label: 'Connected Apps' },
     { id: 'api', label: 'API & Developers' },
     { id: 'branding', label: 'Branding' },
   ],
@@ -452,10 +451,6 @@ function renderIntegrationsTabs(tab: string) {
     <>
       <TabsContent value="integrations" className="space-y-6">
         <IntegrationsHubV2 />
-      </TabsContent>
-      
-      <TabsContent value="connected-apps" className="space-y-6">
-        <CommunicationsIntegrationsTab />
       </TabsContent>
       
       <TabsContent value="api" className="space-y-6">
