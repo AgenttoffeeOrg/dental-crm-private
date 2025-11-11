@@ -3,9 +3,9 @@
 /**
  * Comprehensive Integration Management Hub
  * 
- * NOTE: This file now re-exports the grouped version
- * which shows integrations grouped by provider with unified OAuth
+ * NOTE: This file now re-exports the unified hub
+ * which consolidates ALL integrations in ONE place
  */
 
-// Re-export the grouped version (shows providers, not individual services)
-export { IntegrationsHubGrouped as IntegrationsHubV2 } from './integrations-hub-grouped'
+// Re-export the unified hub (ONE place for ALL integrations)
+export { UnifiedIntegrationsHub as IntegrationsHubV2 } from './unified-integrations-hub'
