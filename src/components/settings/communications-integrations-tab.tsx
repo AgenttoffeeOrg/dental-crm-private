@@ -218,29 +218,22 @@ export function CommunicationsIntegrationsTab() {
         </p>
       </div>
 
-      {/* Migration Reminder Banner */}
-      {settings && !settings.id && (
-        <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-blue-900 mb-1">Database Migration Required</h3>
-              <p className="text-sm text-blue-700 mb-3">
-                To enable integrations, run the database migration first:
-              </p>
-              <ol className="text-sm text-blue-700 space-y-1 mb-3 ml-4 list-decimal">
-                <li>Open your Supabase project dashboard</li>
-                <li>Go to <strong>SQL Editor</strong></li>
-                <li>Copy the file: <code className="bg-blue-100 px-1 rounded">dental-crm/supabase/sql/19_activity_integrations.sql</code></li>
-                <li>Paste and click <strong>RUN</strong></li>
-              </ol>
-              <p className="text-xs text-blue-600">
-                💡 After running the migration, refresh this page. The UI will work even without the migration, but settings won't be saved.
-              </p>
-            </div>
+      {/* Info Banner - Using New Unified Integration System */}
+      <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-blue-900 mb-1">Using New Unified Integration System</h3>
+            <p className="text-sm text-blue-700 mb-2">
+              This page is for API key-based integrations (Twilio, SendGrid). For OAuth integrations (Google, Facebook, Microsoft), 
+              use the <strong>"Integrations"</strong> tab above.
+            </p>
+            <p className="text-xs text-blue-600">
+              💡 The new unified system allows one-click connection per provider. Switch to the "Integrations" tab to get started!
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
       <Tabs defaultValue="email" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
