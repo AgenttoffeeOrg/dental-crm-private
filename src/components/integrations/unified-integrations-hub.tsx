@@ -209,17 +209,16 @@ export function UnifiedIntegrationsHub() {
 
       const data = await response.json()
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        const errorMessage = formatErrorForUser(errorData.error || errorData)
+        const errorMessage = formatErrorForUser(data.error || data)
         toast.error('Connection failed', {
           description: errorMessage,
           duration: 5000,
         })
         return
       }
-
-      const data = await response.json()
 
       if (data.authUrl) {
         window.location.href = data.authUrl
