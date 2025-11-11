@@ -3,14 +3,9 @@
 /**
  * Comprehensive Integration Management Hub
  * 
- * NOTE: This file now re-exports the user-friendly version
- * which has better UX for non-technical users with:
- * - Step-by-step wizards
- * - Plain English instructions
- * - Visual guides
- * - Auto-testing
- * - Help videos
+ * NOTE: This file now re-exports the grouped version
+ * which shows integrations grouped by provider with unified OAuth
  */
 
-// Re-export the user-friendly version
-export { IntegrationsHubUserFriendly as IntegrationsHubV2 } from './integrations-hub-user-friendly'
+// Re-export the grouped version (shows providers, not individual services)
+export { IntegrationsHubGrouped as IntegrationsHubV2 } from './integrations-hub-grouped'
