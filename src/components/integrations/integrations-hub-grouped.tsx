@@ -180,14 +180,16 @@ export function IntegrationsHubGrouped() {
       if (data.authUrl) {
         window.location.href = data.authUrl
       } else {
-        toast.error('Oops! Something went wrong', {
-          description: 'Please try again or contact support if this continues.',
+        const errorMessage = formatErrorForUser(data.error || error)
+        toast.error('Connection failed', {
+          description: errorMessage,
         })
       }
     } catch (error) {
       console.error('OAuth initiation error:', error)
+      const errorMessage = formatErrorForUser(error)
       toast.error('Connection failed', {
-        description: 'Please try again. If this keeps happening, contact our support team.',
+        description: errorMessage,
       })
     }
   }
