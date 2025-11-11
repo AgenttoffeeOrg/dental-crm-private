@@ -209,8 +209,6 @@ export function UnifiedIntegrationsHub() {
 
       const data = await response.json()
 
-      const data = await response.json()
-
       if (!response.ok) {
         const errorMessage = formatErrorForUser(data.error || data)
         toast.error('Connection failed', {
