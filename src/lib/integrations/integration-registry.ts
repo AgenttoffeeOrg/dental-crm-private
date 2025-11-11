@@ -5,6 +5,7 @@
  * Every integration in the system is cataloged here
  */
 
+import type { LucideIcon } from 'lucide-react'
 import { 
   Mail, 
   MessageSquare, 
@@ -56,8 +57,8 @@ export interface UnifiedIntegration {
   status: 'connected' | 'disconnected' | 'error' | 'pending_verification'
   configured: boolean
   
-  // UI
-  icon: React.ReactNode
+  // UI - Use icon name instead of JSX
+  iconName: string // 'Mail', 'MessageSquare', 'Phone', etc.
   description: string
   simpleDescription: string
   helpVideoUrl?: string
@@ -72,6 +73,33 @@ export interface UnifiedIntegration {
   // Webhook (if applicable)
   webhookUrl?: string
   webhookInstructions?: string
+}
+
+// Icon mapping
+const ICON_MAP: Record<string, LucideIcon> = {
+  Mail,
+  MessageSquare,
+  Phone,
+  Settings,
+  Calendar,
+  TrendingUp,
+  Camera,
+  Video,
+  FileText,
+  Globe,
+  Search,
+  Smartphone,
+  Headphones,
+  DollarSign,
+  Zap,
+  Users,
+  MapPin,
+  Star,
+  Monitor,
+}
+
+export function getIntegrationIcon(iconName: string): LucideIcon {
+  return ICON_MAP[iconName] || Settings
 }
 
 /**
@@ -94,7 +122,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       'https://www.googleapis.com/auth/gmail.readonly',
     ],
     oauthGroup: 'google',
-    icon: <Mail className="h-5 w-5" />,
+    iconName: 'Mail',
     description: 'Send and receive emails via Gmail',
     simpleDescription: 'Use your Gmail account to send emails from the CRM',
     features: ['Send emails', 'Receive emails', 'Thread management'],
@@ -115,7 +143,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       'https://graph.microsoft.com/Mail.Read',
     ],
     oauthGroup: 'microsoft',
-    icon: <Mail className="h-5 w-5" />,
+    iconName: 'Mail',
     description: 'Send and receive emails via Outlook',
     simpleDescription: 'Use your Outlook account to send emails from the CRM',
     features: ['Send emails', 'Receive emails', 'Calendar integration'],
@@ -150,7 +178,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       },
     ],
     buyUrl: 'https://signup.sendgrid.com/',
-    icon: <Mail className="h-5 w-5" />,
+    iconName: 'Mail',
     description: 'Send transactional and marketing emails',
     simpleDescription: 'Send professional emails to patients - appointment reminders, newsletters, and more',
     features: ['Transactional emails', 'Marketing campaigns', 'Email tracking', 'Templates'],
@@ -199,7 +227,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
     buyUrl: 'https://www.twilio.com/try-twilio',
     webhookUrl: '/api/webhooks/sms',
     webhookInstructions: 'In Twilio Console → Phone Numbers → Your Number → Messaging → A MESSAGE COMES IN → Set to this URL',
-    icon: <MessageSquare className="h-5 w-5" />,
+    iconName: 'MessageSquare',
     description: 'Send and receive SMS messages',
     simpleDescription: 'Send text messages to your patients directly from the CRM',
     features: ['Send SMS', 'Receive SMS', 'Two-way messaging', 'Appointment reminders'],
@@ -248,7 +276,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
     buyUrl: 'https://www.twilio.com/whatsapp',
     webhookUrl: '/api/webhooks/whatsapp',
     webhookInstructions: 'In Twilio Console → Messaging → WhatsApp Senders → Your Sender → Webhook URL → Set to this URL',
-    icon: <MessageSquare className="h-5 w-5" />,
+    iconName: 'MessageSquare',
     description: 'Send WhatsApp Business messages',
     simpleDescription: 'Send WhatsApp messages to patients - they prefer this over SMS!',
     features: ['Send WhatsApp', 'Receive WhatsApp', 'Media sharing', 'Rich messaging'],
@@ -297,7 +325,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
     buyUrl: 'https://www.twilio.com/voice',
     webhookUrl: '/api/webhooks/voice',
     webhookInstructions: 'In Twilio Console → Phone Numbers → Your Number → Voice & Fax → STATUS CALLBACK URL → Set to this URL',
-    icon: <Phone className="h-5 w-5" />,
+    iconName: 'Phone',
     description: 'Make and receive phone calls',
     simpleDescription: 'Make phone calls directly from the CRM - no need to use your phone!',
     features: ['Make calls', 'Receive calls', 'Call recording', 'Call analytics'],
@@ -321,7 +349,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       'https://www.googleapis.com/auth/adwords',
     ],
     oauthGroup: 'google',
-    icon: <DollarSign className="h-5 w-5" />,
+    iconName: 'DollarSign',
     description: 'Manage Google Ads campaigns',
     simpleDescription: 'See how your Google Ads are performing and which ones bring in patients',
     features: ['Campaign management', 'Lead tracking', 'Conversion tracking', 'ROI analysis'],
@@ -342,7 +370,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       'ads_read',
     ],
     oauthGroup: 'facebook',
-    icon: <DollarSign className="h-5 w-5" />,
+    iconName: 'DollarSign',
     description: 'Manage Facebook ad campaigns',
     simpleDescription: 'Track Facebook ad performance and capture leads automatically',
     features: ['Campaign management', 'Lead ads', 'Conversion tracking', 'Audience insights'],
@@ -363,7 +391,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       'pages_read_engagement',
     ],
     oauthGroup: 'facebook',
-    icon: <MessageSquare className="h-5 w-5" />,
+    iconName: 'MessageSquare',
     description: 'Manage Facebook pages and posts',
     simpleDescription: 'Post to your Facebook page and manage ads - all from one place',
     features: ['Post scheduling', 'Page management', 'Engagement tracking'],
@@ -385,7 +413,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       'pages_read_engagement',
     ],
     oauthGroup: 'facebook',
-    icon: <Camera className="h-5 w-5" />,
+    iconName: 'Camera',
     description: 'Manage Instagram business account',
     simpleDescription: 'Post to Instagram and respond to messages - grow your social presence',
     features: ['Post scheduling', 'Story management', 'DM automation', 'Analytics'],
@@ -405,7 +433,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       'user.info.basic',
       'user.info.profile',
     ],
-    icon: <Video className="h-5 w-5" />,
+    iconName: 'Video',
     description: 'Manage TikTok business account',
     simpleDescription: 'Manage your TikTok content and engage with followers',
     features: ['Content management', 'Analytics', 'Lead generation'],
@@ -430,7 +458,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       'https://www.googleapis.com/auth/calendar.events',
     ],
     oauthGroup: 'google',
-    icon: <Calendar className="h-5 w-5" />,
+    iconName: 'Calendar',
     description: 'Sync appointments with Google Calendar',
     simpleDescription: 'Schedule appointments and sync them with Google Calendar automatically',
     features: ['Two-way sync', 'Appointment reminders', 'Availability management'],
@@ -450,7 +478,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       'https://graph.microsoft.com/Calendars.ReadWrite',
     ],
     oauthGroup: 'microsoft',
-    icon: <Calendar className="h-5 w-5" />,
+    iconName: 'Calendar',
     description: 'Sync appointments with Outlook Calendar',
     simpleDescription: 'Schedule appointments and sync them with Outlook Calendar automatically',
     features: ['Two-way sync', 'Appointment reminders', 'Teams integration'],
@@ -474,7 +502,7 @@ export const ALL_INTEGRATIONS: UnifiedIntegration[] = [
       'https://www.googleapis.com/auth/analytics.readonly',
     ],
     oauthGroup: 'google',
-    icon: <TrendingUp className="h-5 w-5" />,
+    iconName: 'TrendingUp',
     description: 'Track website analytics',
     simpleDescription: 'See how many people visit your website and what they do there',
     features: ['Website traffic', 'User behavior', 'Conversion tracking', 'Reports'],
