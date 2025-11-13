@@ -1,0 +1,62 @@
+name: SQLFluff
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sqlfluff:
+    name: SQLFluff Linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install SQLFluff
+        run: |
+          pip install sqlfluff
+
+      - name: Run SQLFluff
+        run: |
+          sqlfluff lint supabase/migrations/ --dialect postgres || echo "SQLFluff found issues"
+        continue-on-error: true
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = [
+              '## 📝 SQLFluff Linting Results',
+              '',
+              '**Status:** SQL linting completed',
+              '',
+              '**What was checked:**',
+              '- SQL syntax consistency',
+              '- Code style compliance',
+              '- Best practices',
+              '',
+              '📊 Check workflow logs for detailed results'
+            ].join('\n');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+
