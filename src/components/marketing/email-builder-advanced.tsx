@@ -32,6 +32,14 @@ interface EmailBuilderProps {
   templateId?: string
 }
 
+function handleExportTemplate(editor: any, onSave?: (html: string, css: string) => void) {
+  const html = editor.getHtml()
+  const css = editor.getCss()
+  if (onSave) {
+    onSave(html, css)
+  }
+}
+
 export function EmailBuilderAdvanced({ initialHtml, initialCss, onSave, templateId }: EmailBuilderProps) {
   const editorRef = useRef<any>(null)
   const [editor, setEditor] = useState<any>(null)

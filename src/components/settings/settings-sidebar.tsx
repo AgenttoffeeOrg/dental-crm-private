@@ -94,6 +94,18 @@ export function SettingsSidebar({
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={onMobileClose}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onMobileClose()
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close sidebar"
+          role="button"
+          tabIndex={0}
+          aria-label="Close settings sidebar"
         />
       )}
 

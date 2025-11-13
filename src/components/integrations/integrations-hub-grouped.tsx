@@ -63,12 +63,29 @@ const PROVIDER_ICONS: Record<string, React.ReactNode> = {
   microsoft: <Mail className="h-5 w-5" />,
 }
 
+const SERVICE_INFO: Record<string, { name: string; icon: React.ReactNode; description: string }> = {
+  gmail: { name: 'Gmail', icon: <Mail className="h-4 w-4" />, description: 'Send emails' },
+  google_analytics: { name: 'Analytics', icon: <Settings className="h-4 w-4" />, description: 'Track website' },
+  google_ads: { name: 'Ads', icon: <Settings className="h-4 w-4" />, description: 'Manage campaigns' },
+  google_calendar: { name: 'Calendar', icon: <Settings className="h-4 w-4" />, description: 'Schedule appointments' },
+  facebook_pages: { name: 'Pages', icon: <MessageSquare className="h-4 w-4" />, description: 'Manage pages' },
+  facebook_ads: { name: 'Ads', icon: <MessageSquare className="h-4 w-4" />, description: 'Run ads' },
+  instagram: { name: 'Instagram', icon: <MessageSquare className="h-4 w-4" />, description: 'Post content' },
+  outlook: { name: 'Outlook', icon: <Mail className="h-4 w-4" />, description: 'Send emails' },
+  onedrive: { name: 'OneDrive', icon: <Settings className="h-4 w-4" />, description: 'Store files' },
+  microsoft_calendar: { name: 'Calendar', icon: <Settings className="h-4 w-4" />, description: 'Schedule appointments' },
+}
+
+function getServiceInfo(serviceType: string) {
+  return SERVICE_INFO[serviceType] || { name: serviceType, icon: <Settings className="h-4 w-4" />, description: '' }
+}
+
 export function IntegrationsHubGrouped() {
   const { appUser } = useAuth()
   const [groups, setGroups] = useState<ProviderGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-  const [activeTab, setActiveTab] = useState<string>('all')
+  // Removed unused: activeTab, setActiveTab
 
   useEffect(() => {
     loadIntegrations()
@@ -96,22 +113,8 @@ export function IntegrationsHubGrouped() {
 
         const services: Service[] = group.services.map(serviceType => {
           const connection = groupConnections.find(c => c.integration_type === serviceType)
-          
-          // Map service types to names and icons
-          const serviceInfo: Record<string, { name: string; icon: React.ReactNode; description: string }> = {
-            gmail: { name: 'Gmail', icon: <Mail className="h-4 w-4" />, description: 'Send emails' },
-            google_analytics: { name: 'Analytics', icon: <Settings className="h-4 w-4" />, description: 'Track website' },
-            google_ads: { name: 'Ads', icon: <Settings className="h-4 w-4" />, description: 'Manage campaigns' },
-            google_calendar: { name: 'Calendar', icon: <Settings className="h-4 w-4" />, description: 'Schedule appointments' },
-            facebook_pages: { name: 'Pages', icon: <MessageSquare className="h-4 w-4" />, description: 'Manage pages' },
-            facebook_ads: { name: 'Ads', icon: <MessageSquare className="h-4 w-4" />, description: 'Run ads' },
-            instagram: { name: 'Instagram', icon: <MessageSquare className="h-4 w-4" />, description: 'Post content' },
-            outlook: { name: 'Outlook', icon: <Mail className="h-4 w-4" />, description: 'Send emails' },
-            onedrive: { name: 'OneDrive', icon: <Settings className="h-4 w-4" />, description: 'Store files' },
-            microsoft_calendar: { name: 'Calendar', icon: <Settings className="h-4 w-4" />, description: 'Schedule appointments' },
-          }
-
-          const info = serviceInfo[serviceType] || { name: serviceType, icon: <Settings className="h-4 w-4" />, description: '' }
+          const info = getServiceInfo(serviceType)
+          const status = connection?.is_active ? 'connected' : connection?.status === 'error' ? 'missing_scopes' : 'available'
 
           return {
             id: serviceType,
@@ -119,11 +122,7 @@ export function IntegrationsHubGrouped() {
             name: info.name,
             description: info.description,
             icon: info.icon,
-            status: connection?.is_active 
-              ? 'connected' 
-              : connection?.status === 'error'
-              ? 'missing_scopes'
-              : 'available',
+            status,
           }
         })
 

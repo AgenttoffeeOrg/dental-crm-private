@@ -100,6 +100,16 @@ export function CalendarWeekView({
                         <div
                           key={activity.id}
                           className="absolute left-1 right-1 pointer-events-auto cursor-pointer rounded-lg p-2 text-white shadow-md hover:shadow-lg transition-all overflow-hidden text-xs"
+                          onClick={() => onActivityClick(activity.id, activity.type)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              onActivityClick(activity.id, activity.type)
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`View ${activity.type} activity`}
                           style={{
                             top,
                             height,
@@ -107,6 +117,10 @@ export function CalendarWeekView({
                             minHeight: '3rem'
                           }}
                           onClick={() => onActivityClick(activity.id, activity.type)}
+                          onKeyDown={(e) => e.key === 'Enter' && onActivityClick(activity.id, activity.type)}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`View ${activity.type} activity`}
                         >
                           <div className="flex items-center gap-1">
                             <Icon className="h-3 w-3 flex-shrink-0" />

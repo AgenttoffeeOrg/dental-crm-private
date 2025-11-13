@@ -83,6 +83,35 @@ const PROVIDER_ICONS: Record<string, string> = {
   tiktok: 'PlayCircle',
 }
 
+function buildProviderGroup(provider: string, connections: any[]): ProviderGroup {
+  const providerIntegrations = getIntegrationsByProvider(provider)
+  const groupConnections = connections?.filter(c => 
+    providerIntegrations.some(i => i.type === c.integration_type)
+  ) || []
+
+  const hasConnection = groupConnections.some(c => c.is_active)
+  const connectionStatus = hasConnection ? 'connected' : 'disconnected'
+
+  const integrations = providerIntegrations.map(i => {
+    const conn = groupConnections.find(c => c.integration_type === i.type)
+    return {
+      ...i,
+      status: conn?.is_active ? 'connected' : 'disconnected',
+      configured: conn?.is_active || false,
+    }
+  })
+
+  return {
+    id: provider,
+    name: provider.charAt(0).toUpperCase() + provider.slice(1),
+    provider,
+    iconName: PROVIDER_ICONS[provider] || 'Settings',
+    integrations,
+    connected: hasConnection,
+    connectionStatus,
+  }
+}
+
 export function UnifiedIntegrationsHub() {
   const { appUser } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -113,47 +142,12 @@ export function UnifiedIntegrationsHub() {
         .select('*')
         .eq('tenant_id', tenantId)
 
-      // Update integration statuses
-      const updatedIntegrations = ALL_INTEGRATIONS.map(integration => {
-        const connection = connections?.find(c => c.integration_type === integration.type)
-        if (connection) {
-          return {
-            ...integration,
-            status: connection.status as UnifiedIntegration['status'],
-            configured: connection.is_active,
-          }
-        }
-        return integration
-      })
-
       // Build provider groups
+      // Note: Integration statuses are checked inline below
       const providers = getAllProviders()
-      const providerGroups: ProviderGroup[] = providers.map(provider => {
-        const providerIntegrations = getIntegrationsByProvider(provider)
-        const groupConnections = connections?.filter(c => 
-          providerIntegrations.some(i => i.type === c.integration_type)
-        ) || []
-
-        const hasConnection = groupConnections.some(c => c.is_active)
-        const connectionStatus = hasConnection ? 'connected' : 'disconnected'
-
-        return {
-          id: provider,
-          name: provider.charAt(0).toUpperCase() + provider.slice(1),
-          provider,
-          iconName: PROVIDER_ICONS[provider] || 'Settings',
-          integrations: providerIntegrations.map(i => {
-            const conn = groupConnections.find(c => c.integration_type === i.type)
-            return {
-              ...i,
-              status: conn?.is_active ? 'connected' : 'disconnected',
-              configured: conn?.is_active || false,
-            }
-          }),
-          connected: hasConnection,
-          connectionStatus,
-        }
-      })
+      const providerGroups: ProviderGroup[] = providers.map(provider => 
+        buildProviderGroup(provider, connections)
+      )
 
       setProviderGroups(providerGroups)
     } catch (error) {

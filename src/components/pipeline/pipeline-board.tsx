@@ -131,6 +131,24 @@ interface PipelineBoardProps {}
 type ViewMode = 'board' | 'list'
 
 // List Row Component with clickable elements  
+function TagFilterItem({ tag, checked, onToggle }: { tag: any; checked: boolean; onToggle: (checked: boolean) => void }) {
+  return (
+    <DropdownMenuCheckboxItem
+      checked={checked}
+      onCheckedChange={onToggle}
+      className="flex items-center gap-2 text-xs"
+    >
+      <span
+        className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+        style={{ backgroundColor: tag.color }}
+      />
+      <span className="flex-1 truncate">
+        {tag.icon || '🏷️'} {tag.name}
+      </span>
+    </DropdownMenuCheckboxItem>
+  )
+}
+
 function DealListRow({ 
   deal, 
   onUpdate, 
@@ -157,6 +175,13 @@ function DealListRow({
 
   const handleDealClick = () => {
     if (!editingTitle) {
+      onDealClick(deal.id)
+    }
+  }
+
+  const handleDealKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.key === 'Enter' || e.key === ' ') && !editingTitle) {
+      e.preventDefault()
       onDealClick(deal.id)
     }
   }
@@ -191,6 +216,10 @@ function DealListRow({
       <div 
         className="grid grid-cols-12 gap-4 p-4 border-b hover:bg-blue-50 transition-colors items-center cursor-pointer group"
         onClick={handleDealClick}
+        onKeyDown={handleDealKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label={`View deal ${deal.title || deal.id}`}
       >
         {/* Deal Name - Editable */}
         <div className={showPipeline ? "col-span-2" : "col-span-3"}>
@@ -336,7 +365,7 @@ function DealListRow({
   )
 }
 
-export function PipelineBoard({}: PipelineBoardProps) {
+export function PipelineBoard() {
   // Pipeline state - Initialize from URL to persist on reload!
   const router = useRouter()
   const { orgId, userId: currentUserId, isLoading: tenantLoading } = useTenantContext()
@@ -769,7 +798,10 @@ export function PipelineBoard({}: PipelineBoardProps) {
           bValue = new Date(b.created_at).getTime()
       }
       
-      return sortOrder === 'asc' ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1)
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1
+      }
+      return aValue < bValue ? 1 : -1
     })
     
     return filtered
@@ -964,33 +996,21 @@ export function PipelineBoard({}: PipelineBoardProps) {
                       No tags available
                     </DropdownMenuCheckboxItem>
                   ) : (
-                    availableTags.map((tag) => {
-                      const checked = treatmentFilters.includes(tag.name)
-                      return (
-                        <DropdownMenuCheckboxItem
-                          key={tag.id}
-                          checked={checked}
-                          onCheckedChange={(isChecked) => {
-                            setTreatmentFilters((prev) => {
-                              if (isChecked) {
-                                if (prev.includes(tag.name)) return prev
-                                return [...prev, tag.name]
-                              }
-                              return prev.filter((item) => item !== tag.name)
-                            })
-                          }}
-                          className="flex items-center gap-2 text-xs"
-                        >
-                          <span
-                            className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                            style={{ backgroundColor: tag.color }}
-                          />
-                          <span className="flex-1 truncate">
-                            {tag.icon || '🏷️'} {tag.name}
-                          </span>
-                        </DropdownMenuCheckboxItem>
-                      )
-                    })
+                    availableTags.map((tag) => (
+                      <TagFilterItem
+                        key={tag.id}
+                        tag={tag}
+                        checked={treatmentFilters.includes(tag.name)}
+                        onToggle={(isChecked) => {
+                          setTreatmentFilters((prev) => {
+                            if (isChecked) {
+                              return prev.includes(tag.name) ? prev : [...prev, tag.name]
+                            }
+                            return prev.filter((item) => item !== tag.name)
+                          })
+                        }}
+                      />
+                    ))
                   )}
                   {treatmentFilters.length > 0 && (
                     <>

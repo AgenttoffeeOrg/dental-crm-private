@@ -204,6 +204,23 @@ const PIPELINE_TEMPLATES: PipelineTemplate[] = [
 // MAIN COMPONENT
 // ============================================================================
 
+function TagMenuItem({ tag, checked, onToggle }: { tag: string; checked: boolean; onToggle: (checked: boolean) => void }) {
+  return (
+    <DropdownMenuItem
+      onClick={(e) => {
+        e.preventDefault()
+        onToggle(!checked)
+      }}
+    >
+      <Checkbox
+        checked={checked}
+        className="mr-2"
+      />
+      <span className="text-sm">{tag}</span>
+    </DropdownMenuItem>
+  )
+}
+
 export function EnterpriseDealsTable({
   mode,
   initialPipelineId,
@@ -501,7 +518,7 @@ export function EnterpriseDealsTable({
         }
       })
 
-      setAvailableTags(Array.from(allTags).sort())
+      setAvailableTags(Array.from(allTags).sort((a, b) => a.localeCompare(b)))
     } catch (error) {
       console.error('Error loading available tags:', error)
     }
@@ -1274,23 +1291,18 @@ export function EnterpriseDealsTable({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-[200px]">
                 {availableTags.map(tag => (
-                  <DropdownMenuItem
+                  <TagMenuItem
                     key={tag}
-                    onClick={(e) => {
-                      e.preventDefault()
+                    tag={tag}
+                    checked={tagFilter.includes(tag)}
+                    onToggle={(checked) => {
                       setTagFilter(prev =>
-                        prev.includes(tag)
-                          ? prev.filter(t => t !== tag)
-                          : [...prev, tag]
+                        checked
+                          ? prev.includes(tag) ? prev : [...prev, tag]
+                          : prev.filter(t => t !== tag)
                       )
                     }}
-                  >
-                    <Checkbox
-                      checked={tagFilter.includes(tag)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm">{tag}</span>
-                  </DropdownMenuItem>
+                  />
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1426,6 +1438,16 @@ export function EnterpriseDealsTable({
                                 e.stopPropagation()
                                 handleSelectAll(!(selectedDealIds.size === deals.length && deals.length > 0))
                               }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  handleSelectAll(!(selectedDealIds.size === deals.length && deals.length > 0))
+                                }
+                              }}
+                              role="button"
+                              tabIndex={0}
+                              aria-label={selectedDealIds.size === deals.length && deals.length > 0 ? 'Deselect all deals' : 'Select all deals'}
                             >
                               {selectedDealIds.size === deals.length && deals.length > 0 && (
                                 <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1647,8 +1669,8 @@ export function EnterpriseDealsTable({
                               <td className="px-6 py-4">
                                 {deal.treatment_tags && deal.treatment_tags.length > 0 ? (
                                   <div className="flex flex-wrap gap-1.5">
-                                    {deal.treatment_tags.slice(0, 2).map((tag, idx) => (
-                                      <Badge key={idx} variant="outline" className="text-xs font-normal border-gray-200 bg-white px-2 py-0.5">
+                                    {deal.treatment_tags.slice(0, 2).map((tag) => (
+                                      <Badge key={tag} variant="outline" className="text-xs font-normal border-gray-200 bg-white px-2 py-0.5">
                                         {tag}
                                       </Badge>
                                     ))}
@@ -1924,8 +1946,8 @@ function DraggableDealCard({ deal, onClick, formatCurrencyValue, getAgingBadge }
 
       {deal.treatment_tags && deal.treatment_tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
-          {deal.treatment_tags.slice(0, 2).map((tag, idx) => (
-            <Badge key={idx} variant="outline" className="text-xs">
+          {deal.treatment_tags.slice(0, 2).map((tag) => (
+            <Badge key={tag} variant="outline" className="text-xs">
               {tag}
             </Badge>
           ))}

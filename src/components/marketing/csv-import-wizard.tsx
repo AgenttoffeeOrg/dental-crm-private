@@ -47,6 +47,15 @@ const CRM_FIELDS = [
   { value: 'notes', label: 'Notes', required: false },
 ]
 
+function parseCSVRow(line: string, headers: string[]): CSVRow {
+  const values = line.split(',').map(v => v.trim())
+  const row: CSVRow = {}
+  headers.forEach((header, index) => {
+    row[header] = values[index] || ''
+  })
+  return row
+}
+
 export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
   const [step, setStep] = useState(1)
   const [file, setFile] = useState<File | null>(null)
@@ -107,14 +116,7 @@ export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
       setFieldMappings(autoMappings)
 
       // Parse data rows
-      const rows = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim())
-        const row: CSVRow = {}
-        headers.forEach((header, index) => {
-          row[header] = values[index] || ''
-        })
-        return row
-      })
+      const rows = lines.slice(1).map(line => parseCSVRow(line, headers))
 
       setCsvData(rows)
       setStep(2)

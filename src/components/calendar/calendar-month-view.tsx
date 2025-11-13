@@ -52,6 +52,15 @@ export function CalendarMonthView({
             <div
               key={day.toISOString()}
               onClick={() => onDayClick(day)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onDayClick(day)
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Select date ${day.toLocaleDateString()}`}
               className={cn(
                 "min-h-[120px] p-2 border-r border-b cursor-pointer hover:bg-gray-50 transition-colors",
                 !isCurrentMonth && "bg-gray-50/50 text-gray-400",
@@ -82,6 +91,16 @@ export function CalendarMonthView({
                         e.stopPropagation()
                         onActivityClick(activity.id, activity.type)
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          onActivityClick(activity.id, activity.type)
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`View ${activity.type} activity`}
                       className="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity text-white"
                       style={{ backgroundColor: activity.color }}
                     >

@@ -43,6 +43,16 @@ export function InviteDetectionBanner({
   const [accepting, setAccepting] = useState<string | null>(null) // invite ID being accepted
   const [dismissed, setDismissed] = useState(false)
 
+  const handleDismissInvite = (inviteId: string) => {
+    setInvites(prev => {
+      const filtered = prev.filter(i => i.id !== inviteId)
+      if (filtered.length === 0) {
+        setDismissed(true)
+      }
+      return filtered
+    })
+  }
+
   // =====================================================================================================
   // FETCH PENDING INVITES
   // =====================================================================================================
@@ -160,12 +170,7 @@ export function InviteDetectionBanner({
         >
           {/* Dismiss Button */}
           <button
-            onClick={() => {
-              setInvites(prev => prev.filter(i => i.id !== invite.id))
-              if (invites.length === 1) {
-                setDismissed(true)
-              }
-            }}
+            onClick={() => handleDismissInvite(invite.id)}
             className="absolute right-2 top-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
             disabled={accepting === invite.id}
           >
@@ -253,12 +258,7 @@ export function InviteDetectionBanner({
                 </Button>
 
                 <Button
-                  onClick={() => {
-                    setInvites(prev => prev.filter(i => i.id !== invite.id))
-                    if (invites.length === 1) {
-                      setDismissed(true)
-                    }
-                  }}
+                  onClick={() => handleDismissInvite(invite.id)}
                   disabled={accepting === invite.id}
                   variant="outline"
                   size="sm"

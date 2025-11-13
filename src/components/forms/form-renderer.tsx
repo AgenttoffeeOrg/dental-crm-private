@@ -18,6 +18,18 @@ interface FormRendererProps {
   standalone?: boolean // For embedded forms
 }
 
+function prefillContactData(knownContactData: Record<string, any>, fieldsJson: FormField[], initialData: Record<string, any>) {
+  Object.entries(knownContactData).forEach(([key, value]) => {
+    if (!value) return
+    const matchingField = fieldsJson.find(
+      f => (f as any).field_name === key || f.id === key
+    )
+    if (matchingField) {
+      initialData[matchingField.id] = value
+    }
+  })
+}
+
 export function FormRenderer({ form, onSubmit, standalone = false }: FormRendererProps) {
   const { appUser } = useAuth()
   const [formData, setFormData] = useState<Record<string, any>>({})
@@ -74,17 +86,7 @@ export function FormRenderer({ form, onSubmit, standalone = false }: FormRendere
 
       // Prefill with known contact data
       if (knownContactData) {
-        Object.entries(knownContactData).forEach(([key, value]) => {
-          if (value) {
-            // Find matching field
-            const matchingField = form.fields_json.find(
-              f => (f as any).field_name === key || f.id === key
-            )
-            if (matchingField) {
-              initialData[matchingField.id] = value
-            }
-          }
-        })
+        prefillContactData(knownContactData, form.fields_json, initialData)
       }
 
       setFormData(initialData)

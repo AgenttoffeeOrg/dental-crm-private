@@ -108,7 +108,7 @@ export default function DashboardRedesigned() {
       setCurrentAction('create this task')
       requireOrg(() => setShowCreateTask(true))()
     },
-    onRefresh: () => loadData(),
+    onRefresh: () => { void loadData() },
     onShowHelp: () => setShowShortcutsHelp(true),
     onNavigate: (path) => router.push(path),
     enabled: true
@@ -256,6 +256,15 @@ export default function DashboardRedesigned() {
           <div 
             className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setShowSetupPanel(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setShowSetupPanel(false)
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Close setup panel"
           />
           
           {/* Side Sliding Modal */}

@@ -75,6 +75,15 @@ export function CalendarAgendaView({
                   <div
                     key={activity.id}
                     onClick={() => onActivityClick(activity.id, activity.type)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        onActivityClick(activity.id, activity.type)
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View ${activity.type} activity`}
                     className="bg-white border rounded-lg p-4 hover:shadow-md transition-all cursor-pointer"
                   >
                     <div className="flex items-start gap-4">
