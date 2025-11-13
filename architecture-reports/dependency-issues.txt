@@ -1,0 +1,109 @@
+
+  warn no-orphans: src/middleware-rate-limit.ts
+  warn no-orphans: src/lib/utils/validators.ts
+  warn no-orphans: src/lib/utils/request-deduplication.ts
+  warn no-orphans: src/lib/utils/react-performance.tsx
+  warn no-orphans: src/lib/utils/performance.ts
+  warn no-orphans: src/lib/utils/monitoring.ts
+  warn no-orphans: src/lib/utils/logger.ts
+  warn no-orphans: src/lib/utils/export-helpers.ts
+  warn no-orphans: src/lib/utils/dates.ts
+  warn no-orphans: src/lib/utils/cache.ts
+  warn no-orphans: src/lib/utils/analytics.ts
+  warn no-orphans: src/lib/utils/accessibility.ts
+  warn no-orphans: src/lib/schemas/task-schema.ts
+  warn no-orphans: src/lib/schemas/deal-schema.ts
+  warn no-orphans: src/lib/schemas/contact-schema.ts
+  warn no-orphans: src/lib/permissions.ts
+  warn no-orphans: src/lib/marketing/sms-provider.ts
+  warn no-orphans: src/lib/marketing/mail-provider.ts
+  warn no-orphans: src/lib/marketing/ai-content-helper.ts
+  warn no-orphans: src/lib/marketing/activity-event-helpers.ts
+  warn no-orphans: src/lib/marketing-audit/webhooks/webhook-dispatcher.ts
+  warn no-orphans: src/lib/marketing-audit/utils/validation.ts
+  warn no-orphans: src/lib/marketing-audit/utils/mobile-detection.ts
+  warn no-orphans: src/lib/marketing-audit/security/security-headers.ts
+  warn no-orphans: src/lib/marketing-audit/security/rate-limit-advanced.ts
+  warn no-orphans: src/lib/marketing-audit/security/penetration-test-prep.ts
+  warn no-orphans: src/lib/marketing-audit/performance/web-vitals-tracker.ts
+  warn no-orphans: src/lib/marketing-audit/performance/query-optimizer.ts
+  warn no-orphans: src/lib/marketing-audit/performance/performance-monitor.ts
+  warn no-orphans: src/lib/marketing-audit/performance/lazy-load-helper.tsx
+  warn no-orphans: src/lib/marketing-audit/optimization/bundle-analyzer.ts
+  warn no-orphans: src/lib/marketing-audit/image/chart-to-image.ts
+  warn no-orphans: src/lib/marketing-audit/cache/cache-manager.ts
+  warn no-orphans: src/lib/marketing-audit/attribution/attribution-engine.ts
+  warn no-orphans: src/lib/marketing-audit/accessibility/aria-helper.tsx
+  warn no-orphans: src/lib/integrations/logger.ts
+  warn no-orphans: src/lib/integrations/field-mapping-configs.ts
+  warn no-orphans: src/lib/hooks/use-unsaved-changes.ts
+  warn no-orphans: src/lib/hooks/use-undo-redo.ts
+  warn no-orphans: src/lib/hooks/use-prefetch.ts
+  warn no-orphans: src/lib/hooks/use-optimistic-update.ts
+  warn no-orphans: src/lib/hooks/use-local-storage.ts
+  warn no-orphans: src/lib/hooks/use-instant-search.ts
+  warn no-orphans: src/lib/hooks/use-form-validation.ts
+  warn no-orphans: src/lib/hooks/use-debounced-search.ts
+  warn no-orphans: src/lib/hooks/use-auto-save.ts
+  warn no-orphans: src/lib/forms/validation.ts
+  warn no-orphans: src/lib/forms/performance.ts
+  warn no-orphans: src/lib/forms/ga4-events.ts
+  warn no-orphans: src/lib/forms/accessibility.ts
+  warn no-orphans: src/lib/feature-flags.tsx
+  warn no-orphans: src/lib/design-tokens.ts
+  warn no-orphans: src/lib/demo-mode.ts
+  warn no-orphans: src/lib/automations/automation-validator.ts
+  warn no-orphans: src/lib/api-cache-headers.ts
+  warn no-orphans: src/lib/analytics/pdf-export.ts
+  warn no-orphans: src/lib/analytics/attribution-models.ts
+  warn no-orphans: src/lib/analytics/anomaly-detection.ts
+  warn no-orphans: src/lib/accessibility.ts
+  warn no-orphans: src/hooks/use-settings-deep-link.tsx
+  warn no-orphans: src/hooks/use-pipeline-keyboard.ts
+  warn no-orphans: src/hooks/use-cross-filtering.ts
+  warn no-orphans: src/hooks/use-analytics-drilldown.ts
+  warn no-orphans: src/config/dashboard-layouts.ts
+  warn no-orphans: src/components/team/seat-usage-display.tsx
+  warn no-orphans: src/components/team/join-request-manager.tsx
+  warn no-orphans: src/components/onboarding/organization-discovery.tsx
+  warn no-orphans: src/components/marketing-audit/ui-polish/tab-animations.tsx
+  warn no-orphans: src/components/marketing-audit/ui-polish/enhanced-transitions.tsx
+  warn no-orphans: src/components/marketing-audit/shared/trend-indicator.tsx
+  warn no-orphans: src/components/marketing-audit/shared/tooltip.tsx
+  warn no-orphans: src/components/marketing-audit/shared/percentile-rank-viz.tsx
+  warn no-orphans: src/components/marketing-audit/shared/gap-analysis-chart.tsx
+  warn no-orphans: src/components/marketing-audit/shared/error-boundary.tsx
+  warn no-orphans: src/components/marketing-audit/mobile/touch-optimizations.tsx
+  warn no-orphans: src/components/marketing-audit/history/regression-detector.tsx
+  warn no-orphans: src/components/marketing-audit/filters/advanced-filter-panel.tsx
+  warn no-orphans: src/components/marketing-audit/dashboard/score-comparison-widget.tsx
+  warn no-orphans: src/components/marketing-audit/content/editorial-calendar.tsx
+  warn no-orphans: src/components/marketing-audit/charts/roi-trend-chart.tsx
+  warn no-orphans: src/components/marketing-audit/branding/white-label-config.tsx
+  warn no-orphans: src/components/marketing-audit/animations/stagger-children.tsx
+  warn no-orphans: src/components/marketing-audit/animations/slide-in.tsx
+  warn no-orphans: src/components/marketing-audit/animations/skeleton-pulse.tsx
+  warn no-orphans: src/components/marketing-audit/animations/progress-ring.tsx
+  warn no-orphans: src/components/marketing-audit/animations/fade-in.tsx
+  warn no-orphans: src/components/marketing-audit/animations/count-up.tsx
+  warn no-orphans: src/components/marketing-audit/accessibility/keyboard-shortcuts.tsx
+  warn no-orphans: src/components/forms/recaptcha-wrapper.tsx
+  warn no-orphans: src/components/common/demo-banner.tsx
+  warn no-orphans: src/components/billing/plan-comparison.tsx
+  error not-to-unresolvable: src/server/middleware/entitlements.ts → @trpc/server
+  error not-to-unresolvable: src/server/middleware/entitlements.ts → ../trpc
+  error not-to-unresolvable: src/lib/security.ts → isomorphic-dompurify
+  error not-to-unresolvable: src/components/ui/sonner.tsx → next-themes
+  error not-to-unresolvable: src/components/ui/quota-warning.tsx → @heroicons/react/24/outline
+  error not-to-unresolvable: src/components/ui/locked-feature.tsx → @heroicons/react/24/outline
+  error not-to-unresolvable: src/components/settings/entitlements-tab.tsx → @heroicons/react/24/outline
+  error not-to-unresolvable: src/components/marketing-audit/ui-polish/toast-notifications.tsx → @headlessui/react
+  error not-to-unresolvable: src/components/marketing-audit/ui-polish/modal-transitions.tsx → @headlessui/react
+  error not-to-unresolvable: src/components/marketing-audit/schedule/schedule-manager.tsx → ./schedule-modal
+  error not-to-unresolvable: src/components/analytics/custom-date-range-picker.tsx → @/components/ui/calendar
+  error no-circular: src/components/guards/index.ts → 
+      src/components/guards/no-org-empty-state.tsx →
+      src/components/guards/index.ts
+
+x 103 dependency violations (12 errors, 91 warnings). 1056 modules, 3357 dependencies cruised.
+

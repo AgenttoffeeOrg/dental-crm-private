@@ -1,0 +1,12 @@
+# Sentry CLI Configuration
+# This file is used by Sentry CLI for releases and source maps upload
+# https://docs.sentry.io/product/cli/configuration/
+
+[auth]
+token=
+
+[defaults]
+org=
+project=
+url=https://sentry.io/
+

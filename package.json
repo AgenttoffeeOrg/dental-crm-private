@@ -49,7 +49,10 @@
     "workers:engagement": "tsx src/workers/engagement-worker.ts",
     "workers:competitor-intel": "tsx src/workers/competitor-intel-worker.ts",
     "runbooks:backup-verify": "tsx scripts/run-backup-verification.ts",
-    "investor:pack": "npm run screens:all && npm run diagram:build && tsx tools/stack-cost-export.ts && tsx tools/feature-matrix.ts"
+    "investor:pack": "npm run screens:all && npm run diagram:build && tsx tools/stack-cost-export.ts && tsx tools/feature-matrix.ts",
+    "analyze:architecture": "node scripts/architecture-analysis.js",
+    "analyze:dependencies": "depcruise --output-type dot src/ | dot -T svg > architecture-reports/dependency-graph.svg && depcruise --validate .dependency-cruiser.js src/",
+    "analyze:sonarcloud": "bash scripts/run-sonarcloud.sh"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.569.0",
@@ -75,6 +78,7 @@
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@sendgrid/mail": "^8.1.6",
+    "@sentry/nextjs": "^10.25.0",
     "@stripe/react-stripe-js": "^5.2.0",
     "@stripe/stripe-js": "^8.1.0",
     "@supabase/ssr": "^0.5.1",
@@ -140,6 +144,7 @@
     "artillery": "^2.0.3",
     "autoprefixer": "^10.4.16",
     "axe-playwright": "^2.0.1",
+    "dependency-cruiser": "^17.2.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.18",
     "glob": "^10.3.10",
@@ -147,6 +152,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8",
     "prettier": "^3.1.1",
+    "sonarqube-scanner": "^4.3.2",
     "supabase": "^2.54.11",
     "tailwindcss": "^4.0.0-beta.19",
     "ts-jest": "^29.4.5",

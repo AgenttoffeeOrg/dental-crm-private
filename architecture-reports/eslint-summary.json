@@ -1,0 +1,62 @@
+[
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/(auth)/auth/callback/route.ts",
+    "errors": 1
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/(auth)/invite/[token]/page.tsx",
+    "errors": 4
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/(auth)/login/page.tsx",
+    "errors": 3
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/(auth)/reset-password/page.tsx",
+    "errors": 3
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/(auth)/sign-in/page.tsx",
+    "errors": 5
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/(auth)/sign-up/page.tsx",
+    "errors": 2
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/api/ai-assistant/action/route.ts",
+    "errors": 9
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/api/ai-assistant/chat/route.ts",
+    "errors": 10
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/api/ai-assistant/draft-email/route.ts",
+    "errors": 4
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/api/ai/summarize-call/route.ts",
+    "errors": 2
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/api/analytics/export/route.ts",
+    "errors": 18
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/api/analytics/multi-org/route.ts",
+    "errors": 2
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/api/analytics/nl-to-sql/route.ts",
+    "errors": 1
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/api/billing/plans/route.ts",
+    "errors": 1
+  },
+  {
+    "file": "/Users/deepak/auth-app/dental-crm/src/app/api/billing/subscription/route.ts",
+    "errors": 2
+  }
+]
