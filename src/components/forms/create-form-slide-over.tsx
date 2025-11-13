@@ -21,7 +21,7 @@ import { useState, useEffect } from 'react'
 import { 
   X, Save, Plus, Trash2, Copy, Eye, Share2, 
   Settings, Link2, Zap, BarChart3, Shield, 
-  FileText, Mail, Globe, Code, QrCode
+  FileText, Mail, Globe, Code, QrCode, Clock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,6 +43,7 @@ import { useAuth } from '@/lib/auth'
 import type { MarketingForm, FormField } from '@/hooks/use-marketing-forms'
 import { SortableFieldList } from '@/components/forms/sortable-field-list'
 import { useMarketingForms } from '@/hooks/use-marketing-forms'
+import { VersionHistory } from '@/components/forms/version-history'
 
 interface CreateFormSlideOverProps {
   open: boolean
@@ -708,6 +709,41 @@ export function CreateFormSlideOver({
                   </Button>
                 </div>
               </div>
+            </TabsContent>
+
+            {/* VERSION HISTORY TAB */}
+            <TabsContent value="version" className="space-y-4">
+              {mode === 'edit' && form?.id ? (
+                <VersionHistory
+                  formId={form.id}
+                  onRollback={() => {
+                    // Reload form data after rollback
+                    if (form) {
+                      setFormData({
+                        name: form.name,
+                        description: form.description || '',
+                        status: form.status,
+                        fields_json: form.fields_json || [],
+                        theme: form.theme || 'light',
+                        button_text: form.button_text || 'Submit',
+                        success_message: form.success_message || 'Thank you! We\'ll be in touch soon.',
+                        redirect_url: form.redirect_url || '',
+                        auto_add_tags: form.auto_add_tags || [],
+                        enable_recaptcha: form.enable_recaptcha || false,
+                        enable_honeypot: form.enable_honeypot || false,
+                        is_published: form.is_published || false,
+                        public_url_slug: form.public_url_slug || '',
+                      })
+                    }
+                    toast.success('Form rolled back successfully')
+                  }}
+                />
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <Clock className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                  <p>Version history will be available after saving the form</p>
+                </div>
+              )}
             </TabsContent>
 
             {/* SHARE TAB */}

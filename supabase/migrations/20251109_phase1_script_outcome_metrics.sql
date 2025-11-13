@@ -136,3 +136,5 @@ FOR EACH ROW EXECUTE FUNCTION trg_refresh_sales_script_stats_from_outcome();
 COMMIT;
 
 
+
+

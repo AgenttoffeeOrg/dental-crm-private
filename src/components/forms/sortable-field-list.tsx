@@ -9,9 +9,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { GripVertical, Trash2, Settings, ChevronDown, ChevronUp } from 'lucide-react'
+import { GripVertical, Trash2, Settings, ChevronDown, ChevronUp, Zap } from 'lucide-react'
 import { useState } from 'react'
 import type { FormField } from '@/hooks/use-marketing-forms'
+import { ConditionalLogicBuilder, type ConditionalRule } from '@/components/forms/conditional-logic-builder'
 
 interface SortableFieldProps {
   field: FormField
@@ -19,9 +20,10 @@ interface SortableFieldProps {
   onDelete: () => void
   onSelect?: (field: FormField) => void
   isSelected?: boolean
+  allFields?: FormField[] // For conditional logic
 }
 
-function SortableField({ field, onUpdate, onDelete, onSelect, isSelected }: SortableFieldProps) {
+function SortableField({ field, onUpdate, onDelete, onSelect, isSelected, allFields = [] }: SortableFieldProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   
   const {
@@ -170,6 +172,73 @@ function SortableField({ field, onUpdate, onDelete, onSelect, isSelected }: Sort
                 </div>
               </div>
             )}
+
+            {/* Hidden Field Settings */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor={`${field.id}-hidden`}>Hidden Field</Label>
+                <p className="text-xs text-gray-500">Field won't be visible to users</p>
+              </div>
+              <Switch
+                id={`${field.id}-hidden`}
+                checked={(field as any).hidden === true}
+                onCheckedChange={(checked) => onUpdate({ ...field, hidden: checked } as any)}
+              />
+            </div>
+
+            {(field as any).hidden && (
+              <div>
+                <Label htmlFor={`${field.id}-default`}>Default Value</Label>
+                <Input
+                  id={`${field.id}-default`}
+                  value={(field as any).defaultValue || ''}
+                  onChange={(e) => onUpdate({ ...field, defaultValue: e.target.value } as any)}
+                  placeholder="Default value for hidden field"
+                />
+              </div>
+            )}
+
+            {/* URL Prefill Settings */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor={`${field.id}-prefill`}>Allow URL Prefill</Label>
+                <p className="text-xs text-gray-500">Allow field to be prefilled from URL params</p>
+              </div>
+              <Switch
+                id={`${field.id}-prefill`}
+                checked={(field as any).allowPrefill !== false}
+                onCheckedChange={(checked) => onUpdate({ ...field, allowPrefill: checked } as any)}
+              />
+            </div>
+
+            {(field as any).allowPrefill !== false && (
+              <div>
+                <Label htmlFor={`${field.id}-urlparam`}>URL Parameter Name (optional)</Label>
+                <Input
+                  id={`${field.id}-urlparam`}
+                  value={(field as any).urlParamName || ''}
+                  onChange={(e) => onUpdate({ ...field, urlParamName: e.target.value } as any)}
+                  placeholder={`Default: ${(field as any).field_name || field.id}`}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Custom URL param name (e.g., ?email= vs ?e=)
+                </p>
+              </div>
+            )}
+
+            {/* Conditional Logic */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap className="h-4 w-4 text-yellow-500" />
+                <Label>Conditional Logic</Label>
+              </div>
+              <ConditionalLogicBuilder
+                fields={allFields}
+                currentFieldId={field.id}
+                rules={(field as any).conditionalRules || []}
+                onChange={(rules) => onUpdate({ ...field, conditionalRules: rules } as any)}
+              />
+            </div>
           </div>
         )}
       </CardContent>
@@ -250,6 +319,7 @@ export function SortableFieldList({
               onDelete={() => onDeleteField(field.id)}
               onSelect={onSelectField}
               isSelected={selectedFieldId === field.id}
+              allFields={fields}
             />
           ))}
         </div>

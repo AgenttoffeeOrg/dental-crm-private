@@ -9,6 +9,8 @@ import { processFormSubmission, type FormSubmission, type DealCreationRules } fr
 import { withMarketingCheck } from '@/lib/marketing/api-middleware';
 import { checkRateLimit, getTimeUntilReset } from '@/lib/rate-limiter';
 import { verifyRecaptchaToken, evaluateRecaptchaScore } from '@/lib/forms/recaptcha';
+import { sendFormSubmissionNotifications } from '@/lib/forms/admin-notifications';
+import { dispatchFormSubmissionWebhook } from '@/lib/forms/webhook-dispatcher';
 
 export async function POST(req: NextRequest) {
   // Check Marketing enabled
@@ -23,7 +25,7 @@ export async function POST(req: NextRequest) {
     const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
     
     // Rate limiting: max 10 form submissions per hour per IP
-    const rateLimit = checkRateLimit({
+    const rateLimit = await checkRateLimit({
       identifier: `form-submit:${ipAddress}`,
       maxRequests: 10,
       windowMs: 60 * 60 * 1000, // 1 hour
@@ -117,6 +119,17 @@ export async function POST(req: NextRequest) {
 
     // Process submission (creates Contact/Deal)
     const result = await processFormSubmission(submission, dealRules as DealCreationRules);
+    
+    // Get assigned user ID if deal was created
+    let assignedUserId: string | undefined;
+    if (result.dealId) {
+      const { data: deal } = await supabase
+        .from('deals')
+        .select('owner_user_id')
+        .eq('id', result.dealId)
+        .single();
+      assignedUserId = deal?.owner_user_id || undefined;
+    }
 
     // Save submission to marketing_form_submissions table
     const { error: submissionError } = await supabase
@@ -149,6 +162,45 @@ export async function POST(req: NextRequest) {
     // Update form stats (increment total_submissions)
     if (formId && !isSpam) {
       await supabase.rpc('increment_form_submissions', { form_id: formId });
+    }
+
+    // Send admin notifications (non-blocking)
+    if (!isSpam) {
+      sendFormSubmissionNotifications({
+        formId,
+        formName: formName || 'Unknown Form',
+        tenantId: appUser.tenant_id,
+        submissionData: payload,
+        submittedAt: new Date().toISOString(),
+        isSpam,
+        spamScore,
+        assignedUserId,
+      }).catch(error => {
+        console.error('[Form Submission] Error sending admin notifications:', error);
+        // Don't fail the request if notifications fail
+      });
+
+      // Dispatch webhooks (non-blocking)
+      dispatchFormSubmissionWebhook({
+        formId,
+        formName: formName || 'Unknown Form',
+        tenantId: appUser.tenant_id,
+        submissionId: result.submissionId,
+        submissionData: payload,
+        contactId: result.contactId,
+        contactEmail: payload.email,
+        contactName: payload.name || payload.full_name,
+        dealId: result.dealId,
+        dealTitle: result.dealId ? `${payload.name || payload.full_name || 'Contact'} - ${formName || 'Form'}` : undefined,
+        metadata: {
+          ip: ipAddress,
+          userAgent,
+          referrer: referrerUrl || undefined,
+        },
+      }).catch(error => {
+        console.error('[Form Submission] Error dispatching webhooks:', error);
+        // Don't fail the request if webhooks fail
+      });
     }
 
     return NextResponse.json({

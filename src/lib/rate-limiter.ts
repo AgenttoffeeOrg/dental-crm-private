@@ -1,16 +1,25 @@
 /**
- * Simple in-memory rate limiter
- * For production, use Redis or a distributed solution
+ * Production-ready rate limiter with Redis backend
+ * Falls back to in-memory storage if Redis is unavailable
+ * 
+ * Features:
+ * - Distributed rate limiting (works across multiple instances)
+ * - Sliding window algorithm (more accurate than fixed window)
+ * - Graceful degradation to in-memory if Redis unavailable
+ * - Automatic cleanup of expired entries
  */
+
+import { getRedisClient } from './redis'
 
 interface RateLimitEntry {
   count: number
   resetTime: number
 }
 
+// In-memory fallback store
 const rateLimitStore = new Map<string, RateLimitEntry>()
 
-// Clean up expired entries every 5 minutes
+// Clean up expired entries every 5 minutes (in-memory fallback only)
 setInterval(() => {
   const now = Date.now()
   for (const [key, entry] of rateLimitStore.entries()) {
@@ -34,9 +43,67 @@ export interface RateLimitResult {
 }
 
 /**
- * Check if a request is allowed based on rate limits
+ * Check rate limit using Redis (with in-memory fallback)
  */
-export function checkRateLimit(options: RateLimitOptions): RateLimitResult {
+export async function checkRateLimit(options: RateLimitOptions): Promise<RateLimitResult> {
+  const redis = getRedisClient()
+  
+  // Use Redis if available (production mode)
+  if (redis) {
+    return checkRateLimitRedis(options, redis)
+  }
+  
+  // Fallback to in-memory (development mode or Redis unavailable)
+  return checkRateLimitMemory(options)
+}
+
+/**
+ * Redis-based rate limiting using sliding window
+ */
+async function checkRateLimitRedis(
+  options: RateLimitOptions,
+  redis: ReturnType<typeof getRedisClient>
+): Promise<RateLimitResult> {
+  const { identifier, maxRequests, windowMs } = options
+  const now = Date.now()
+  const windowStart = now - windowMs
+  const key = `ratelimit:${identifier}`
+  
+  try {
+    // Use sliding window: remove old entries, add current, count remaining
+    const pipeline = redis.pipeline()
+    pipeline.zremrangebyscore(key, 0, windowStart)
+    pipeline.zadd(key, now, `${now}-${Math.random()}`)
+    pipeline.zcard(key)
+    pipeline.expire(key, Math.ceil(windowMs / 1000))
+    
+    const results = await pipeline.exec()
+    
+    if (!results) {
+      throw new Error('Redis pipeline failed')
+    }
+    
+    const count = (results[2]?.[1] as number) || 0
+    const allowed = count <= maxRequests
+    const resetTime = now + windowMs
+    
+    return {
+      allowed,
+      limit: maxRequests,
+      remaining: Math.max(0, maxRequests - count),
+      resetTime,
+    }
+  } catch (error) {
+    console.warn('[RateLimiter] Redis error, falling back to memory:', error)
+    // Fallback to in-memory on Redis error
+    return checkRateLimitMemory(options)
+  }
+}
+
+/**
+ * In-memory rate limiting (fallback)
+ */
+function checkRateLimitMemory(options: RateLimitOptions): RateLimitResult {
   const { identifier, maxRequests, windowMs } = options
   const now = Date.now()
   
@@ -96,7 +163,34 @@ export function checkRateLimit(options: RateLimitOptions): RateLimitResult {
 /**
  * Get rate limit status without incrementing
  */
-export function getRateLimitStatus(identifier: string, maxRequests: number): RateLimitResult {
+export async function getRateLimitStatus(
+  identifier: string,
+  maxRequests: number,
+  windowMs: number = 60 * 60 * 1000
+): Promise<RateLimitResult> {
+  const redis = getRedisClient()
+  
+  if (redis) {
+    try {
+      const now = Date.now()
+      const windowStart = now - windowMs
+      const key = `ratelimit:${identifier}`
+      
+      const count = await redis.zcount(key, windowStart, now)
+      const remaining = Math.max(0, maxRequests - count)
+      
+      return {
+        allowed: count < maxRequests,
+        limit: maxRequests,
+        remaining,
+        resetTime: now + windowMs,
+      }
+    } catch (error) {
+      console.warn('[RateLimiter] Redis error in getStatus:', error)
+    }
+  }
+  
+  // Fallback to memory
   const now = Date.now()
   const entry = rateLimitStore.get(identifier)
   
@@ -105,7 +199,7 @@ export function getRateLimitStatus(identifier: string, maxRequests: number): Rat
       allowed: true,
       limit: maxRequests,
       remaining: maxRequests,
-      resetTime: now,
+      resetTime: now + windowMs,
     }
   }
   
@@ -120,7 +214,19 @@ export function getRateLimitStatus(identifier: string, maxRequests: number): Rat
 /**
  * Reset rate limit for a specific identifier
  */
-export function resetRateLimit(identifier: string): void {
+export async function resetRateLimit(identifier: string): Promise<void> {
+  const redis = getRedisClient()
+  
+  if (redis) {
+    try {
+      await redis.del(`ratelimit:${identifier}`)
+      return
+    } catch (error) {
+      console.warn('[RateLimiter] Redis error in reset:', error)
+    }
+  }
+  
+  // Fallback to memory
   rateLimitStore.delete(identifier)
 }
 

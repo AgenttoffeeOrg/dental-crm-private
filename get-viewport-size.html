@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Viewport Size</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 32px;
+        }
+        .size-box {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 24px;
+            text-align: center;
+        }
+        .size-label {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+        .size-value {
+            font-size: 48px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        .copy-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            font-weight: 600;
+        }
+        .copy-btn:hover {
+            background: #f0f0f0;
+        }
+        .copied {
+            background: #4caf50;
+            color: white;
+        }
+        code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📺 Viewport Size Detector</h1>
+        
+        <div class="size-box">
+            <div class="size-label">Browser Viewport (window.innerWidth × window.innerHeight)</div>
+            <div class="size-value" id="viewport">Loading...</div>
+        </div>
+        
+        <div class="size-box">
+            <div class="size-label">Screen Resolution (screen.width × screen.height)</div>
+            <div class="size-value" id="screen">Loading...</div>
+        </div>
+        
+        <div class="size-box">
+            <div class="size-label">Device Pixel Ratio</div>
+            <div class="size-value" id="dpr">Loading...</div>
+        </div>
+        
+        <button class="copy-btn" onclick="copySize()">📋 Copy Viewport Size</button>
+        
+        <div style="margin-top: 30px; font-size: 14px; opacity: 0.9;">
+            <p><strong>For automation:</strong></p>
+            <p>Use: <code id="automation-size">-</code></p>
+            <p style="font-size: 12px; margin-top: 10px;">
+                This is the actual browser viewport size that automation tools will see.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function updateSize() {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const screenWidth = screen.width;
+            const screenHeight = screen.height;
+            const dpr = window.devicePixelRatio || 1;
+            
+            document.getElementById('viewport').textContent = `${viewportWidth} × ${viewportHeight}`;
+            document.getElementById('screen').textContent = `${screenWidth} × ${screenHeight}`;
+            document.getElementById('dpr').textContent = dpr.toFixed(1) + 'x';
+            document.getElementById('automation-size').textContent = `${viewportWidth} × ${viewportHeight}`;
+        }
+        
+        function copySize() {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const size = `${viewportWidth} × ${viewportHeight}`;
+            
+            navigator.clipboard.writeText(size).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+        
+        // Update on load
+        updateSize();
+        
+        // Update on resize
+        window.addEventListener('resize', updateSize);
+        
+        // Update every second (in case of zoom changes)
+        setInterval(updateSize, 1000);
+    </script>
+</body>
+</html>
+
+

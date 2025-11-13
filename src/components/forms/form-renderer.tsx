@@ -8,6 +8,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import type { MarketingForm, FormField } from '@/hooks/use-marketing-forms'
+import { buildInitialFormData, extractUtmParams } from '@/lib/forms/url-prefill'
+import { getContactByEmail, filterFieldsForProgressiveProfiling } from '@/lib/forms/progressive-profiling'
+import { useAuth } from '@/lib/auth'
 
 interface FormRendererProps {
   form: MarketingForm
@@ -16,10 +19,13 @@ interface FormRendererProps {
 }
 
 export function FormRenderer({ form, onSubmit, standalone = false }: FormRendererProps) {
+  const { appUser } = useAuth()
   const [formData, setFormData] = useState<Record<string, any>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [visibleFields, setVisibleFields] = useState<FormField[]>(form.fields_json)
+  const [progressiveProfilingEnabled] = useState(true) // Can be made configurable
   
   // Honeypot field (hidden from users, but bots will fill it)
   const [honeypot, setHoneypot] = useState('')
@@ -28,13 +34,64 @@ export function FormRenderer({ form, onSubmit, standalone = false }: FormRendere
   const [formLoadTime] = useState(Date.now().toString())
 
   useEffect(() => {
-    // Initialize form data with empty values
-    const initialData: Record<string, any> = {}
-    form.fields_json.forEach((field: FormField) => {
-      initialData[field.id] = ''
-    })
-    setFormData(initialData)
-  }, [form])
+    // Initialize form data with URL prefilling and progressive profiling
+    const initializeForm = async () => {
+      // Get email from URL params for progressive profiling
+      const urlParams = new URLSearchParams(window.location.search)
+      const emailParam = urlParams.get('email') || urlParams.get('e')
+      
+      let knownContactData = null
+      if (emailParam && appUser?.tenant_id && progressiveProfilingEnabled) {
+        try {
+          knownContactData = await getContactByEmail(emailParam, appUser.tenant_id)
+        } catch (error) {
+          console.error('[FormRenderer] Error loading contact data:', error)
+        }
+      }
+
+      // Filter fields for progressive profiling
+      const fieldsToShow = filterFieldsForProgressiveProfiling(
+        form.fields_json,
+        knownContactData,
+        progressiveProfilingEnabled
+      )
+      setVisibleFields(fieldsToShow)
+
+      // Initialize form data with URL prefilling
+      const initialData = buildInitialFormData(
+        form.fields_json.map(field => ({
+          id: field.id,
+          type: field.type,
+          label: field.label,
+          fieldName: (field as any).field_name || field.id,
+          allowPrefill: (field as any).allowPrefill !== false,
+          urlParamName: (field as any).urlParamName,
+          defaultValue: (field as any).defaultValue,
+          hidden: (field as any).hidden === true,
+        })),
+        true // Include UTM parameters
+      )
+
+      // Prefill with known contact data
+      if (knownContactData) {
+        Object.entries(knownContactData).forEach(([key, value]) => {
+          if (value) {
+            // Find matching field
+            const matchingField = form.fields_json.find(
+              f => (f as any).field_name === key || f.id === key
+            )
+            if (matchingField) {
+              initialData[matchingField.id] = value
+            }
+          }
+        })
+      }
+
+      setFormData(initialData)
+    }
+
+    initializeForm()
+  }, [form, appUser?.tenant_id, progressiveProfilingEnabled])
 
   const validateField = (field: FormField, value: any): string | null => {
     if (field.required && (!value || value.toString().trim() === '')) {
@@ -111,13 +168,7 @@ export function FormRenderer({ form, onSubmit, standalone = false }: FormRendere
           sourceUrl: window.location.href,
           honeypot, // Include honeypot value
           formLoadTime, // Include load time for spam detection
-          utmParams: {
-            source: new URLSearchParams(window.location.search).get('utm_source'),
-            medium: new URLSearchParams(window.location.search).get('utm_medium'),
-            campaign: new URLSearchParams(window.location.search).get('utm_campaign'),
-            term: new URLSearchParams(window.location.search).get('utm_term'),
-            content: new URLSearchParams(window.location.search).get('utm_content'),
-          },
+          utmParams: extractUtmParams(),
         }),
       })
 
@@ -169,6 +220,20 @@ export function FormRenderer({ form, onSubmit, standalone = false }: FormRendere
   const renderField = (field: FormField) => {
     const value = formData[field.id] || ''
     const error = errors[field.id]
+    const isHidden = (field as any).hidden === true
+
+    // Render hidden fields as hidden inputs
+    if (isHidden) {
+      return (
+        <input
+          key={field.id}
+          type="hidden"
+          name={field.id}
+          value={value}
+          readOnly
+        />
+      )
+    }
 
     switch (field.type) {
       case 'text':
@@ -346,7 +411,7 @@ export function FormRenderer({ form, onSubmit, standalone = false }: FormRendere
         />
       </div>
 
-      {form.fields_json.map((field) => renderField(field))}
+      {visibleFields.map((field) => renderField(field))}
 
       <Button type="submit" disabled={submitting} className="w-full">
         {submitting ? 'Submitting...' : (form.button_text || 'Submit')}

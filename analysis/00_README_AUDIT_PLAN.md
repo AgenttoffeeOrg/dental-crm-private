@@ -50,3 +50,5 @@ The scope includes the Next.js application under `src/`, Supabase database artif
 
 
 
+
+

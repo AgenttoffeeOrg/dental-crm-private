@@ -67,3 +67,5 @@ echo "   3. Wait for DNS propagation (5 min - 48 hours)"
 echo ""
 echo "🎉 Happy testing!"
 
+
+

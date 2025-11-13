@@ -276,10 +276,10 @@ export async function getLocationsForSwitcher(request: NextRequest): Promise<Arr
     return []
   }
   
-  // Get user's active tenant and location
+  // Get user's active tenant, location, and role
   const { data: appUser } = await supabase
     .from('app_users')
-    .select('active_tenant_id, active_location_id')
+    .select('active_tenant_id, active_location_id, role')
     .eq('id', user.id)
     .single()
   
@@ -287,18 +287,40 @@ export async function getLocationsForSwitcher(request: NextRequest): Promise<Arr
     return []
   }
   
-  // Get all locations accessible to this user in the active tenant
-  const { data: locations, error } = await supabase.rpc(
-    'get_user_accessible_locations',
-    {
-      p_user_id: user.id,
-      p_tenant_id: appUser.active_tenant_id
-    }
-  )
+  const isSuperAdmin = appUser.role === 'super_admin' || appUser.role === 'owner'
   
-  if (error || !locations) {
-    console.error('Error fetching accessible locations:', error)
-    return []
+  let locations: any[] = []
+  
+  if (isSuperAdmin) {
+    // Super admins can access all locations in the active tenant
+    const { data: allLocations, error: locationsError } = await supabase
+      .from('locations')
+      .select('id, name')
+      .eq('tenant_id', appUser.active_tenant_id)
+      .eq('is_active', true)
+    
+    if (locationsError) {
+      console.error('Error fetching locations for super admin:', locationsError)
+      return []
+    }
+    
+    locations = allLocations || []
+  } else {
+    // Regular users: Get accessible locations via RPC function
+    const { data: accessibleLocations, error } = await supabase.rpc(
+      'get_user_accessible_locations',
+      {
+        p_user_id: user.id,
+        p_tenant_id: appUser.active_tenant_id
+      }
+    )
+    
+    if (error) {
+      console.error('Error fetching accessible locations:', error)
+      return []
+    }
+    
+    locations = accessibleLocations || []
   }
   
   return locations.map((loc: any) => ({

@@ -20,3 +20,5 @@ LEFT JOIN deals d ON t.deal_id = d.id
 LEFT JOIN app_users u ON t.assignee_user_id = u.id
 LEFT JOIN locations loc ON t.location_id = loc.id;
 
+
+

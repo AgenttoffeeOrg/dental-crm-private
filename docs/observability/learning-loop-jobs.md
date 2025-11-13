@@ -35,3 +35,5 @@ curl -X POST https://app.example.com/api/system/analytics/recompute \
 Without queue support the endpoint runs synchronously, making it safe for local environments.
 
 
+
+

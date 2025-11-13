@@ -193,3 +193,5 @@ user_tenant_memberships (many) ←──→ (many) tenants
 
 
 
+
+

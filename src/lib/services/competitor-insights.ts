@@ -245,3 +245,5 @@ function determineTopCompetitor(
   return topCompetitor?.name ?? null
 }
 
+
+

@@ -24,10 +24,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get current active_tenant_id for audit trail
+    // Get current active_tenant_id and role for audit trail
     const { data: currentAppUser } = await supabase
       .from('app_users')
-      .select('active_tenant_id')
+      .select('active_tenant_id, role')
       .eq('id', user.id)
       .single()
 
@@ -39,35 +39,60 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'tenant_id is required' }, { status: 400 })
     }
 
-    // Verify user has access to this tenant by checking user_tenant_memberships
-    const { data: membership, error: membershipError } = await supabase
-      .from('user_tenant_memberships')
-      .select('id, tenant_id, role, status')
-      .eq('user_id', user.id)
-      .eq('tenant_id', tenant_id)
-      .eq('status', 'active')
-      .single()
+    // Check if user is super admin or owner (they can access any tenant)
+    const isSuperAdmin = currentAppUser?.role === 'super_admin' || currentAppUser?.role === 'owner'
 
-    if (membershipError || !membership) {
-      // ✅ AUDIT: Log failed switch attempt
-      await supabase.from('audits').insert({
-        user_id: user.id,
-        tenant_id: currentAppUser?.active_tenant_id,
-        action: 'user.tenant_switch_denied',
-        resource_type: 'tenant',
-        resource_id: tenant_id,
-        metadata: {
-          requested_tenant_id: tenant_id,
-          reason: 'no_active_membership',
-        },
-        severity: 'warning',
-      })
-      // Note: Audit log errors are logged but don't fail the request
+    let membership = null
+    let membershipRole = 'owner'
 
-      return NextResponse.json(
-        { error: 'Access denied: You are not a member of this organization' },
-        { status: 403 }
-      )
+    if (!isSuperAdmin) {
+      // Verify user has access to this tenant by checking user_tenant_memberships
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('user_tenant_memberships')
+        .select('id, tenant_id, role, status')
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenant_id)
+        .eq('status', 'active')
+        .single()
+
+      if (membershipError || !membershipData) {
+        // ✅ AUDIT: Log failed switch attempt
+        await supabase.from('audits').insert({
+          user_id: user.id,
+          tenant_id: currentAppUser?.active_tenant_id,
+          action: 'user.tenant_switch_denied',
+          resource_type: 'tenant',
+          resource_id: tenant_id,
+          metadata: {
+            requested_tenant_id: tenant_id,
+            reason: 'no_active_membership',
+          },
+          severity: 'warning',
+        })
+        // Note: Audit log errors are logged but don't fail the request
+
+        return NextResponse.json(
+          { error: 'Access denied: You are not a member of this organization' },
+          { status: 403 }
+        )
+      }
+
+      membership = membershipData
+      membershipRole = membership.role
+    } else {
+      // Super admin/owner: Verify tenant exists (but don't require membership)
+      const { data: tenantExists } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('id', tenant_id)
+        .single()
+
+      if (!tenantExists) {
+        return NextResponse.json(
+          { error: 'Organization not found' },
+          { status: 404 }
+        )
+      }
     }
 
     // Update app_users.active_tenant_id (server-side state)
@@ -104,7 +129,8 @@ export async function POST(request: NextRequest) {
       metadata: {
         previous_tenant_id: currentAppUser?.active_tenant_id,
         new_tenant_id: tenant_id,
-        user_role: membership.role,
+        user_role: membershipRole,
+        is_super_admin: isSuperAdmin,
         switched_at: new Date().toISOString(),
       },
       severity: 'info',

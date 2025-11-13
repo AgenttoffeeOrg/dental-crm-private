@@ -22,3 +22,5 @@ Date: 2025-11-11
 - Include quick-create actions (task, appointment) inline so reception can log follow-ups without leaving the workspace.
 
 
+
+

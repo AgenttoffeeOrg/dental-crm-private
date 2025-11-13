@@ -40,10 +40,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user's active tenant
+    // Get user's active tenant and role
     const { data: appUser, error: appUserError } = await supabase
       .from('app_users')
-      .select('active_tenant_id')
+      .select('active_tenant_id, role')
       .eq('id', user.id)
       .single()
 
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const active_tenant_id = appUser.active_tenant_id
+    const isSuperAdmin = appUser.role === 'super_admin' || appUser.role === 'owner'
 
     // VALIDATION 1: Verify location exists and belongs to active tenant
     const { data: location, error: locationError } = await supabase
@@ -85,43 +86,48 @@ export async function POST(request: NextRequest) {
     }
 
     // VALIDATION 2: Verify user has access to this location
-    // Check if user has all_locations=true OR explicit access via membership_locations
-    const { data: membership, error: membershipError } = await supabase
-      .from('user_tenant_memberships')
-      .select('id, all_locations')
-      .eq('user_id', user.id)
-      .eq('tenant_id', active_tenant_id)
-      .eq('status', 'active')
-      .single()
+    // Super admins/owners have access to all locations
+    let hasAccess = isSuperAdmin
 
-    if (membershipError || !membership) {
-      return NextResponse.json(
-        { error: 'No active membership found for current organization' },
-        { status: 403 }
-      )
-    }
-
-    // If user has all_locations=true, they can access any location
-    let hasAccess = membership.all_locations === true
-
-    // Otherwise, check membership_locations table
     if (!hasAccess) {
-      const { data: locationAccess, error: accessError } = await supabase
-        .from('membership_locations')
-        .select('id')
-        .eq('membership_id', membership.id)
-        .eq('location_id', location_id)
-        .eq('is_active', true)
+      // Check if user has all_locations=true OR explicit access via membership_locations
+      const { data: membership, error: membershipError } = await supabase
+        .from('user_tenant_memberships')
+        .select('id, all_locations')
+        .eq('user_id', user.id)
+        .eq('tenant_id', active_tenant_id)
+        .eq('status', 'active')
         .single()
 
-      if (accessError || !locationAccess) {
+      if (membershipError || !membership) {
         return NextResponse.json(
-          { error: 'Access denied: You do not have permission to access this location' },
+          { error: 'No active membership found for current organization' },
           { status: 403 }
         )
       }
 
-      hasAccess = true
+      // If user has all_locations=true, they can access any location
+      hasAccess = membership.all_locations === true
+
+      // Otherwise, check membership_locations table
+      if (!hasAccess) {
+        const { data: locationAccess, error: accessError } = await supabase
+          .from('membership_locations')
+          .select('id')
+          .eq('membership_id', membership.id)
+          .eq('location_id', location_id)
+          .eq('is_active', true)
+          .single()
+
+        if (accessError || !locationAccess) {
+          return NextResponse.json(
+            { error: 'Access denied: You do not have permission to access this location' },
+            { status: 403 }
+          )
+        }
+
+        hasAccess = true
+      }
     }
 
     if (!hasAccess) {
