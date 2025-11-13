@@ -4,12 +4,12 @@ This document captures the monitoring instrumentation added in Phase 0 and how 
 
 ## Metrics Emitted
 
-- **Queue Metrics (`metric:queue:*`)**  
-  - `queue=communications:dispatch` with events `active`, `completed`, `failed`  
+- **Queue Metrics (`metric:queue:*`)**
+  - `queue=communications:dispatch` with events `active`, `completed`, `failed`
   - Captured through BullMQ `QueueEvents`; forwarded via `trackEvent`
-- **Provider Failures (`metric:provider:failure`)**  
+- **Provider Failures (`metric:provider:failure`)**
   - Includes `provider`, `operation`, `error`
-- **API Latency (`metric:api:latency`)** *(optional)*  
+- **API Latency (`metric:api:latency`)** _(optional)_
   - Wrapper available via `recordApiLatency` helper for routes that need fine-grained latency tracing
 
 PostHog keys (`POSTHOG_API_KEY`, `POSTHOG_HOST`) activate automatic forwarding; when unavailable, metrics log to console if `LOG_METRICS=true`.
@@ -49,16 +49,16 @@ Custom property filters:
 For local debugging, install `@bull-board/express` and mount the UI using the queue manager instance:
 
 ```ts
-import { ExpressAdapter } from '@bull-board/express'
-import { createBullBoard } from '@bull-board/api'
+import { ExpressAdapter } from '@bull-board/express';
+import { createBullBoard } from '@bull-board/api';
 
-const serverAdapter = new ExpressAdapter()
-serverAdapter.setBasePath('/admin/queues')
+const serverAdapter = new ExpressAdapter();
+serverAdapter.setBasePath('/admin/queues');
 
 createBullBoard({
   queues: [new BullMQAdapter(queueManager.getQueue('communications:dispatch'))],
   serverAdapter,
-})
+});
 ```
 
 Deploy behind admin authentication only.
@@ -72,8 +72,3 @@ Deploy behind admin authentication only.
 
 - Wire `recordApiLatency` into priority endpoints (authentication, communications) once baseline is stable.
 - Add uptime alerts via StatusPage integration.
-
-
-
-
-

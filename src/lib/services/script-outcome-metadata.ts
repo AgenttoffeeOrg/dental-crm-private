@@ -5,9 +5,9 @@ export const SCRIPT_OUTCOME_TYPES = [
   'follow_up',
   'not_helpful',
   'other',
-] as const
+] as const;
 
-export type ScriptOutcomeType = (typeof SCRIPT_OUTCOME_TYPES)[number]
+export type ScriptOutcomeType = (typeof SCRIPT_OUTCOME_TYPES)[number];
 
 export const SCRIPT_OUTCOME_LABELS: Record<ScriptOutcomeType, string> = {
   appointment_booked: 'Appointment booked',
@@ -16,13 +16,6 @@ export const SCRIPT_OUTCOME_LABELS: Record<ScriptOutcomeType, string> = {
   follow_up: 'Follow-up scheduled',
   not_helpful: 'Not helpful',
   other: 'Other',
-}
+};
 
-export const POSITIVE_SCRIPT_OUTCOMES: ScriptOutcomeType[] = [
-  'appointment_booked',
-  'deal_won',
-]
-
-
-
-
+export const POSITIVE_SCRIPT_OUTCOMES: ScriptOutcomeType[] = ['appointment_booked', 'deal_won'];

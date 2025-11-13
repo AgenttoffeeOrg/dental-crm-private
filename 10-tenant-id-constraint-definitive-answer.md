@@ -47,6 +47,7 @@ END IF;
 ### Final State: NULLABLE
 
 **Current Production State:**
+
 - `app_users.tenant_id` is **NULLABLE**
 - Users can sign up without `tenant_id`
 - Trigger auto-creates tenant if `active_tenant_id IS NULL` on INSERT
@@ -78,33 +79,33 @@ BEGIN
   IF NEW.active_tenant_id IS NOT NULL THEN
     RETURN NEW;  -- User already has tenant (invited user)
   END IF;
-  
+
   -- Determine tenant name from user info
   v_user_name := COALESCE(NEW.full_name, SPLIT_PART(NEW.email, '@', 1));
-  
+
   -- Create tenant
   INSERT INTO tenants (name, owner_id, is_multi_location, created_at, updated_at)
   VALUES (v_user_name || '''s Practice', NEW.id, false, NOW(), NOW())
   RETURNING id INTO v_new_tenant_id;
-  
+
   -- Create default location
   INSERT INTO locations (tenant_id, name, is_active, created_at, updated_at)
   VALUES (v_new_tenant_id, 'Main Office', true, NOW(), NOW())
   RETURNING id INTO v_new_location_id;
-  
+
   -- Create user membership
   INSERT INTO user_tenant_memberships (
     user_id, tenant_id, role, status, all_locations, created_at, updated_at
   ) VALUES (
     NEW.id, v_new_tenant_id, 'owner', 'active', true, NOW(), NOW()
   ) RETURNING id INTO v_membership_id;
-  
+
   -- Update the NEW record to set active context
   NEW.active_tenant_id := v_new_tenant_id;
   NEW.active_location_id := v_new_location_id;
   NEW.default_tenant_id := v_new_tenant_id;
   NEW.default_location_id := v_new_location_id;
-  
+
   RETURN NEW;
 END;
 $$;
@@ -151,10 +152,10 @@ const { data: authData, error: authError } = await supabase.auth.signUp({
   password,
   options: {
     data: {
-      full_name: formData.fullName
-    }
-  }
-})
+      full_name: formData.fullName,
+    },
+  },
+});
 ```
 
 **Result:** `auth.users` record created with UUID `authData.user.id`
@@ -167,28 +168,27 @@ const { data: existingAppUser } = await supabase
   .from('app_users')
   .select('id')
   .eq('id', authData.user.id)
-  .single()
+  .single();
 
 if (existingAppUser) {
   // Update existing
   await supabase
     .from('app_users')
     .update({ full_name: formData.fullName, role: 'owner' })
-    .eq('id', authData.user.id)
+    .eq('id', authData.user.id);
 } else {
   // Insert new
-  const { error } = await supabase
-    .from('app_users')
-    .insert({
-      id: authData.user.id,
-      full_name: formData.fullName,
-      role: 'owner'
-      // ❌ tenant_id NOT SET - left NULL
-    })
+  const { error } = await supabase.from('app_users').insert({
+    id: authData.user.id,
+    full_name: formData.fullName,
+    role: 'owner',
+    // ❌ tenant_id NOT SET - left NULL
+  });
 }
 ```
 
 **What Happens:**
+
 1. INSERT fires `trigger_auto_create_tenant_for_new_user` (BEFORE INSERT)
 2. Trigger checks: `IF NEW.active_tenant_id IS NOT NULL` → FALSE (NULL)
 3. Trigger creates tenant, location, membership
@@ -198,6 +198,7 @@ if (existingAppUser) {
 #### Step 3: Result
 
 ✅ **INSERT succeeds** because:
+
 - `tenant_id` is NULLABLE (no constraint violation)
 - Trigger sets `active_tenant_id` (not `tenant_id`)
 - User has tenant context via `active_tenant_id`
@@ -213,13 +214,13 @@ if (existingAppUser) {
 ```typescript
 } catch (error: any) {
   console.error('Signup error:', error)
-  
+
   // Special handling for tenant_id constraint errors (shouldn't happen now)
   if (error.message?.includes('tenant_id') || error.code === '23502') {
     console.error('Tenant ID constraint error - this should be auto-resolved')
     // Would redirect to error page in production
   }
-  
+
   setError('Failed to create account. Please try again.')
 }
 ```
@@ -227,11 +228,13 @@ if (existingAppUser) {
 ### Why Is This Needed?
 
 **Historical Reason:** Before trigger existed, signup would fail with:
+
 ```
 Error: null value in column "tenant_id" violates not-null constraint
 ```
 
 **Current Status:** This error should never occur because:
+
 1. `tenant_id` is now NULLABLE
 2. Trigger auto-creates tenant and sets `active_tenant_id`
 
@@ -246,6 +249,7 @@ Error: null value in column "tenant_id" violates not-null constraint
 **Result:** ❌ INSERT fails
 
 **Error Message:**
+
 ```
 null value in column "tenant_id" violates not-null constraint
 ```
@@ -257,6 +261,7 @@ null value in column "tenant_id" violates not-null constraint
 **Result:** ✅ Trigger creates tenant, INSERT succeeds
 
 **Flow:**
+
 1. Trigger fires BEFORE INSERT
 2. Creates tenant, location, membership
 3. Sets `NEW.active_tenant_id`
@@ -270,6 +275,7 @@ null value in column "tenant_id" violates not-null constraint
 **Result:** ✅ INSERT succeeds with NULL
 
 **Flow:**
+
 1. `tenant_id` is NULLABLE → no constraint violation
 2. Trigger fires, creates tenant, sets `active_tenant_id`
 3. INSERT succeeds
@@ -288,17 +294,15 @@ null value in column "tenant_id" violates not-null constraint
 **Example 1:** `src/app/api/onboarding/config/route.ts`
 
 ```typescript
-const tenantId = appUser.active_tenant_id || appUser.tenant_id
+const tenantId = appUser.active_tenant_id || appUser.tenant_id;
 ```
 
 **Example 2:** Multiple API routes
 
 ```typescript
-const { data: appUser } = await supabase
-  .from('app_users')
-  .select('tenant_id, active_tenant_id')
-  
-const effectiveTenantId = appUser.active_tenant_id || appUser.tenant_id
+const { data: appUser } = await supabase.from('app_users').select('tenant_id, active_tenant_id');
+
+const effectiveTenantId = appUser.active_tenant_id || appUser.tenant_id;
 ```
 
 ### Why Use This Pattern?
@@ -306,6 +310,7 @@ const effectiveTenantId = appUser.active_tenant_id || appUser.tenant_id
 **Reason:** Dual-read period during migration from `tenant_id` to `active_tenant_id`
 
 **Architecture Evolution:**
+
 1. **Old:** `tenant_id` was primary (single-org model)
 2. **New:** `active_tenant_id` is primary (multi-org model)
 3. **Transition:** Use fallback pattern for backward compatibility
@@ -323,12 +328,14 @@ const effectiveTenantId = appUser.active_tenant_id || appUser.tenant_id
 **When:** Current production state
 
 **Why:**
+
 - Supports solo signups without immediate tenant assignment
 - Trigger auto-creates tenant for solo users
 - Invited users have `active_tenant_id` set before INSERT (no trigger)
 - Flexible architecture for future enhancements
 
 **Impact:**
+
 - ✅ Signup works for both solo and invited users
 - ✅ No constraint violations
 - ✅ Clean separation: `tenant_id` (legacy) vs `active_tenant_id` (active)
@@ -342,12 +349,14 @@ const effectiveTenantId = appUser.active_tenant_id || appUser.tenant_id
 **When:** Would require trigger to also set `tenant_id`
 
 **Why Not:**
+
 - `tenant_id` is legacy field - shouldn't be primary
 - `active_tenant_id` is the correct field to use
 - Making `tenant_id NOT NULL` adds unnecessary constraint
 - Would require trigger modification
 
 **Impact:**
+
 - ❌ Tightly couples legacy field to new architecture
 - ❌ Reduces flexibility
 - ❌ Duplicates data (tenant_id vs active_tenant_id)
@@ -365,6 +374,7 @@ const effectiveTenantId = appUser.active_tenant_id || appUser.tenant_id
 ✅ **`app_users.tenant_id` is NULLABLE**
 
 **Evidence:**
+
 1. Migration `20251030_disable_auto_tenant_creation.sql` explicitly makes it nullable
 2. Trigger `trigger_auto_create_tenant_for_new_user` doesn't set `tenant_id`
 3. Signup code doesn't set `tenant_id`
@@ -392,15 +402,3 @@ const effectiveTenantId = appUser.active_tenant_id || appUser.tenant_id
 
 **Document Status:** ✅ COMPLETE  
 **Last Updated:** December 2024
-
-
-
-
-
-
-
-
-
-
-
-

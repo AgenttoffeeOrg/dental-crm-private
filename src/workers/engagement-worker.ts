@@ -1,25 +1,20 @@
-import 'dotenv/config'
-import { getRedisClient } from '@/lib/redis'
-import { registerEngagementQueue } from '@/lib/queues/engagement-queue'
+import 'dotenv/config';
+import { getRedisClient } from '@/lib/redis';
+import { registerEngagementQueue } from '@/lib/queues/engagement-queue';
 
 async function bootstrap() {
-  const redis = getRedisClient()
+  const redis = getRedisClient();
   if (!redis) {
-    console.error('[Engagement Worker] Redis not configured. Exiting.')
-    process.exit(1)
+    console.error('[Engagement Worker] Redis not configured. Exiting.');
+    process.exit(1);
   }
 
-  registerEngagementQueue()
+  registerEngagementQueue();
 
-  console.log('[Engagement Worker] Autonomous engagement worker started')
+  console.log('[Engagement Worker] Autonomous engagement worker started');
 }
 
 bootstrap().catch((error) => {
-  console.error('[Engagement Worker] Fatal error', error)
-  process.exit(1)
-})
-
-
-
-
-
+  console.error('[Engagement Worker] Fatal error', error);
+  process.exit(1);
+});

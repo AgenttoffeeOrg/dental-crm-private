@@ -1,66 +1,66 @@
-import { createServiceClient } from '../supabase-server'
-import { recordMetric } from '../monitoring/metrics'
+import { createServiceClient } from '../supabase-server';
+import { recordMetric } from '../monitoring/metrics';
 import type {
   Competitor,
   CompetitorDocument,
   CompetitorIngestionJob,
   CompetitorPricePoint,
   CompetitorTouchpoint,
-} from '@/types/database'
+} from '@/types/database';
 
-export type CompetitorIntelSourceType = 'manual' | 'webhook' | 'scheduled' | 'api'
+export type CompetitorIntelSourceType = 'manual' | 'webhook' | 'scheduled' | 'api';
 
 export interface CompetitorIntelPricePoint {
-  treatmentCode?: string | null
-  treatmentName?: string | null
-  priceCents?: number | null
-  collectedAt?: string
-  source?: string | null
-  metadata?: Record<string, any>
+  treatmentCode?: string | null;
+  treatmentName?: string | null;
+  priceCents?: number | null;
+  collectedAt?: string;
+  source?: string | null;
+  metadata?: Record<string, any>;
 }
 
 export interface CompetitorIntelTouchpoint {
-  touchpointType: string
-  occurredAt?: string
-  summary?: string | null
-  link?: string | null
-  metadata?: Record<string, any>
+  touchpointType: string;
+  occurredAt?: string;
+  summary?: string | null;
+  link?: string | null;
+  metadata?: Record<string, any>;
 }
 
 export interface CompetitorIntelDocument {
-  documentPath: string
-  source?: string | null
-  capturedAt?: string
-  checksum?: string | null
-  metadata?: Record<string, any>
+  documentPath: string;
+  source?: string | null;
+  capturedAt?: string;
+  checksum?: string | null;
+  metadata?: Record<string, any>;
 }
 
 export interface CompetitorIntelRecord {
-  tenantId: string
+  tenantId: string;
   competitor: {
-    name: string
-    website?: string | null
-    primaryLocation?: string | null
-    notes?: string | null
-    metadata?: Record<string, any>
-  }
-  pricePoints?: CompetitorIntelPricePoint[]
-  touchpoints?: CompetitorIntelTouchpoint[]
-  documents?: CompetitorIntelDocument[]
+    name: string;
+    website?: string | null;
+    primaryLocation?: string | null;
+    notes?: string | null;
+    metadata?: Record<string, any>;
+  };
+  pricePoints?: CompetitorIntelPricePoint[];
+  touchpoints?: CompetitorIntelTouchpoint[];
+  documents?: CompetitorIntelDocument[];
 }
 
 export interface CompetitorIngestionOptions {
-  jobId?: string
-  sourceName: string
-  sourceType?: CompetitorIntelSourceType
+  jobId?: string;
+  sourceName: string;
+  sourceType?: CompetitorIntelSourceType;
 }
 
 export interface CompetitorIngestionSummary {
-  competitorsProcessed: number
-  pricePointsInserted: number
-  touchpointsInserted: number
-  documentsLinked: number
-  failures: Array<{ competitor: string; error: string }>
+  competitorsProcessed: number;
+  pricePointsInserted: number;
+  touchpointsInserted: number;
+  documentsLinked: number;
+  failures: Array<{ competitor: string; error: string }>;
 }
 
 const DEFAULT_SUMMARY: CompetitorIngestionSummary = {
@@ -69,30 +69,30 @@ const DEFAULT_SUMMARY: CompetitorIngestionSummary = {
   touchpointsInserted: 0,
   documentsLinked: 0,
   failures: [],
-}
+};
 
 export async function ingestCompetitorIntel(
   records: CompetitorIntelRecord[],
   options: CompetitorIngestionOptions
 ): Promise<CompetitorIngestionSummary> {
-  const supabase = createServiceClient()
-  const summary: CompetitorIngestionSummary = JSON.parse(JSON.stringify(DEFAULT_SUMMARY))
-  const jobId = options.jobId
-  const startedAt = new Date().toISOString()
+  const supabase = createServiceClient();
+  const summary: CompetitorIngestionSummary = JSON.parse(JSON.stringify(DEFAULT_SUMMARY));
+  const jobId = options.jobId;
+  const startedAt = new Date().toISOString();
 
   if (!records.length) {
     await finalizeJob(supabase, jobId, {
       status: 'succeeded',
       result_summary: { ...summary, startedAt },
-    })
-    return summary
+    });
+    return summary;
   }
 
   for (const record of records) {
     try {
-      const competitorId = await upsertCompetitor(supabase, record)
+      const competitorId = await upsertCompetitor(supabase, record);
 
-      summary.competitorsProcessed += 1
+      summary.competitorsProcessed += 1;
 
       if (record.pricePoints?.length) {
         const payload = record.pricePoints.map((point) => ({
@@ -104,14 +104,16 @@ export async function ingestCompetitorIntel(
           collected_at: point.collectedAt ?? new Date().toISOString(),
           source: point.source ?? options.sourceName,
           metadata: point.metadata ?? {},
-        }))
+        }));
 
         if (payload.length) {
-          const { error } = await supabase.from<CompetitorPricePoint>('competitor_price_points').insert(payload)
+          const { error } = await supabase
+            .from<CompetitorPricePoint>('competitor_price_points')
+            .insert(payload);
           if (error) {
-            throw new Error(`Failed to insert price points: ${error.message}`)
+            throw new Error(`Failed to insert price points: ${error.message}`);
           }
-          summary.pricePointsInserted += payload.length
+          summary.pricePointsInserted += payload.length;
         }
       }
 
@@ -124,14 +126,16 @@ export async function ingestCompetitorIntel(
           summary: point.summary ?? null,
           link: point.link ?? null,
           metadata: point.metadata ?? {},
-        }))
+        }));
 
         if (payload.length) {
-          const { error } = await supabase.from<CompetitorTouchpoint>('competitor_touchpoints').insert(payload)
+          const { error } = await supabase
+            .from<CompetitorTouchpoint>('competitor_touchpoints')
+            .insert(payload);
           if (error) {
-            throw new Error(`Failed to insert touchpoints: ${error.message}`)
+            throw new Error(`Failed to insert touchpoints: ${error.message}`);
           }
-          summary.touchpointsInserted += payload.length
+          summary.touchpointsInserted += payload.length;
         }
       }
 
@@ -144,28 +148,35 @@ export async function ingestCompetitorIntel(
           captured_at: doc.capturedAt ?? new Date().toISOString(),
           checksum: doc.checksum ?? null,
           metadata: doc.metadata ?? {},
-        }))
+        }));
 
         if (payload.length) {
-          const { error } = await supabase.from<CompetitorDocument>('competitor_documents').insert(payload)
+          const { error } = await supabase
+            .from<CompetitorDocument>('competitor_documents')
+            .insert(payload);
           if (error) {
-            throw new Error(`Failed to insert documents: ${error.message}`)
+            throw new Error(`Failed to insert documents: ${error.message}`);
           }
-          summary.documentsLinked += payload.length
+          summary.documentsLinked += payload.length;
         }
       }
     } catch (error: any) {
-      summary.failures.push({ competitor: record.competitor.name, error: error.message || String(error) })
+      summary.failures.push({
+        competitor: record.competitor.name,
+        error: error.message || String(error),
+      });
     }
   }
 
-  const status = summary.failures.length ? 'failed' : 'succeeded'
+  const status = summary.failures.length ? 'failed' : 'succeeded';
 
   await finalizeJob(supabase, jobId, {
     status,
     result_summary: { ...summary, sourceName: options.sourceName, startedAt },
-    error_message: summary.failures.length ? summary.failures.map((f) => `${f.competitor}: ${f.error}`).join('; ') : null,
-  })
+    error_message: summary.failures.length
+      ? summary.failures.map((f) => `${f.competitor}: ${f.error}`).join('; ')
+      : null,
+  });
 
   recordMetric('provider', 'competitor_intel_ingested', {
     source: options.sourceName,
@@ -175,20 +186,23 @@ export async function ingestCompetitorIntel(
     touchpoints: summary.touchpointsInserted,
     documents: summary.documentsLinked,
     failures: summary.failures.length,
-  })
+  });
 
   if (summary.failures.length) {
-    throw new Error(`Ingestion completed with ${summary.failures.length} failure(s)`) // allow caller to decide retry
+    throw new Error(`Ingestion completed with ${summary.failures.length} failure(s)`); // allow caller to decide retry
   }
 
-  return summary
+  return summary;
 }
 
-async function upsertCompetitor(supabase: ReturnType<typeof createServiceClient>, record: CompetitorIntelRecord) {
-  const { tenantId, competitor } = record
-  const { name } = competitor
+async function upsertCompetitor(
+  supabase: ReturnType<typeof createServiceClient>,
+  record: CompetitorIntelRecord
+) {
+  const { tenantId, competitor } = record;
+  const { name } = competitor;
   if (!name) {
-    throw new Error('Competitor name is required')
+    throw new Error('Competitor name is required');
   }
 
   const { data: existing, error: selectError } = await supabase
@@ -196,10 +210,10 @@ async function upsertCompetitor(supabase: ReturnType<typeof createServiceClient>
     .select('id')
     .eq('tenant_id', tenantId)
     .ilike('name', name)
-    .maybeSingle()
+    .maybeSingle();
 
   if (selectError) {
-    throw new Error(`Failed to load competitor ${name}: ${selectError.message}`)
+    throw new Error(`Failed to load competitor ${name}: ${selectError.message}`);
   }
 
   if (existing?.id) {
@@ -212,12 +226,12 @@ async function upsertCompetitor(supabase: ReturnType<typeof createServiceClient>
         metadata: competitor.metadata ?? {},
         updated_at: new Date().toISOString(),
       })
-      .eq('id', existing.id)
+      .eq('id', existing.id);
 
     if (updateError) {
-      throw new Error(`Failed to update competitor ${name}: ${updateError.message}`)
+      throw new Error(`Failed to update competitor ${name}: ${updateError.message}`);
     }
-    return existing.id
+    return existing.id;
   }
 
   const { data: inserted, error: insertError } = await supabase
@@ -231,13 +245,15 @@ async function upsertCompetitor(supabase: ReturnType<typeof createServiceClient>
       metadata: competitor.metadata ?? {},
     })
     .select('id')
-    .single()
+    .single();
 
   if (insertError || !inserted) {
-    throw new Error(`Failed to insert competitor ${name}: ${insertError?.message ?? 'unknown error'}`)
+    throw new Error(
+      `Failed to insert competitor ${name}: ${insertError?.message ?? 'unknown error'}`
+    );
   }
 
-  return inserted.id
+  return inserted.id;
 }
 
 async function finalizeJob(
@@ -245,7 +261,7 @@ async function finalizeJob(
   jobId: string | undefined,
   updates: Partial<CompetitorIngestionJob> & { status?: any; error_message?: string | null }
 ) {
-  if (!jobId) return
+  if (!jobId) return;
 
   const { error } = await supabase
     .from<CompetitorIngestionJob>('competitor_ingestion_jobs')
@@ -256,12 +272,9 @@ async function finalizeJob(
       completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq('id', jobId)
+    .eq('id', jobId);
 
   if (error) {
-    console.error('[competitor-intel] failed to finalize ingestion job', error)
+    console.error('[competitor-intel] failed to finalize ingestion job', error);
   }
 }
-
-
-

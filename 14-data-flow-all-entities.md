@@ -7,22 +7,22 @@
 
 ## 1. ENTITY LIST
 
-| Entity | Table | Tenant-Scoped? | Location-Scoped? | Status |
-|--------|-------|----------------|------------------|--------|
-| Contacts | `contacts` | ✅ YES | ✅ YES | Active |
-| Deals | `deals` | ✅ YES | ✅ YES | Active |
-| Tasks | `tasks` | ✅ YES | ✅ YES | Active |
-| Activities | `activities` | ✅ YES | ✅ YES | Active |
-| Pipelines | `pipelines` | ✅ YES | ❌ NO | Active |
-| Pipeline Stages | `pipeline_stages` | ✅ YES | ❌ NO | Active |
-| Files | `files` | ✅ YES | ✅ YES | Active |
-| Tenants | `tenants` | ❌ NO | ❌ NO | Active |
-| Locations | `locations` | ✅ YES | ❌ NO | Active |
-| App Users | `app_users` | ⚠️ LEGACY | ❌ NO | Active |
-| Memberships | `user_tenant_memberships` | ✅ YES | ❌ NO | Active |
-| Membership Locations | `membership_locations` | ✅ YES | ✅ YES | Active |
-| Onboarding Progress | `onboarding_progress` | ✅ YES | ❌ NO | Active |
-| Audits | `audits` | ✅ YES | ✅ YES | Active |
+| Entity               | Table                     | Tenant-Scoped? | Location-Scoped? | Status |
+| -------------------- | ------------------------- | -------------- | ---------------- | ------ |
+| Contacts             | `contacts`                | ✅ YES         | ✅ YES           | Active |
+| Deals                | `deals`                   | ✅ YES         | ✅ YES           | Active |
+| Tasks                | `tasks`                   | ✅ YES         | ✅ YES           | Active |
+| Activities           | `activities`              | ✅ YES         | ✅ YES           | Active |
+| Pipelines            | `pipelines`               | ✅ YES         | ❌ NO            | Active |
+| Pipeline Stages      | `pipeline_stages`         | ✅ YES         | ❌ NO            | Active |
+| Files                | `files`                   | ✅ YES         | ✅ YES           | Active |
+| Tenants              | `tenants`                 | ❌ NO          | ❌ NO            | Active |
+| Locations            | `locations`               | ✅ YES         | ❌ NO            | Active |
+| App Users            | `app_users`               | ⚠️ LEGACY      | ❌ NO            | Active |
+| Memberships          | `user_tenant_memberships` | ✅ YES         | ❌ NO            | Active |
+| Membership Locations | `membership_locations`    | ✅ YES         | ✅ YES           | Active |
+| Onboarding Progress  | `onboarding_progress`     | ✅ YES         | ❌ NO            | Active |
+| Audits               | `audits`                  | ✅ YES         | ✅ YES           | Active |
 
 ---
 
@@ -41,16 +41,16 @@ const { data: contact, error } = await supabase
   .from('contacts')
   .insert({
     tenant_id: appUser.active_tenant_id,
-    location_id: appUser.active_location_id,  // ✅ Assigned to active location
+    location_id: appUser.active_location_id, // ✅ Assigned to active location
     full_name: body.full_name,
     primary_phone: body.primary_phone,
     primary_email: body.primary_email,
     source: body.source,
     tags: body.tags || [],
-    created_by: user.id
+    created_by: user.id,
   })
   .select()
-  .single()
+  .single();
 ```
 
 #### READ
@@ -64,12 +64,12 @@ const { data: contact, error } = await supabase
 let dbQuery = supabase
   .from('contacts')
   .select('*', { count: 'exact' })
-  .eq('tenant_id', appUser.active_tenant_id)
+  .eq('tenant_id', appUser.active_tenant_id);
 
 // Filter by location (if user doesn't have all_locations)
 if (!membership.all_locations) {
-  const locationIds = accessibleLocations.map(l => l.id)
-  dbQuery = dbQuery.in('location_id', locationIds)
+  const locationIds = accessibleLocations.map((l) => l.id);
+  dbQuery = dbQuery.in('location_id', locationIds);
 }
 ```
 
@@ -80,6 +80,7 @@ if (!membership.all_locations) {
 **File:** `src/app/api/contacts/[id]/route.ts:163-309`
 
 **Validates:**
+
 - User has access to contact's location
 - Contact belongs to user's tenant
 
@@ -90,6 +91,7 @@ if (!membership.all_locations) {
 **File:** `src/app/api/contacts/[id]/route.ts:309-370`
 
 **Checks:**
+
 - User is owner/admin (via RLS)
 - Contact belongs to tenant
 
@@ -139,7 +141,7 @@ if (!membership.all_locations) {
 
 ```typescript
 if (!membership.all_locations) {
-  dbQuery = dbQuery.in('location_id', locationIds)
+  dbQuery = dbQuery.in('location_id', locationIds);
 }
 ```
 
@@ -183,15 +185,3 @@ user_tenant_memberships (many) ←──→ (many) tenants
 
 **Document Status:** ✅ COMPLETE  
 **Last Updated:** December 2024
-
-
-
-
-
-
-
-
-
-
-
-

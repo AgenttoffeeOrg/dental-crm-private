@@ -33,6 +33,7 @@
 3. **Save results** to `tests/verification/results/` folder
 
 **Expected Outcome:**
+
 - ✅ All tenant-scoped tables have RLS
 - ✅ Cross-tenant queries return 0 rows
 - ✅ `check_entitlement()` has NO `tenant_id` parameter (security fix!)
@@ -50,6 +51,7 @@ npx ts-node scripts/seed/verify_seed.ts
 ```
 
 **This creates:**
+
 - ✅ 2 test tenants (DentalOne with all features, SmileWorks with CRM only)
 - ✅ 12 users (6 per tenant, all roles)
 - ✅ Pipelines, contacts, deals
@@ -62,6 +64,7 @@ npx ts-node scripts/seed/verify_seed.ts
 **Open:** `docs/hardening/verification_report.md`
 
 **This comprehensive 50+ page report includes:**
+
 - Executive summary (Security Grade: A+)
 - Detailed findings for all 12 sections
 - Test specifications for E2E tests (Sections B-K)
@@ -75,6 +78,7 @@ npx ts-node scripts/seed/verify_seed.ts
 ### ✅ Section A: COMPLETE (SQL Tests Ready)
 
 **5 comprehensive SQL test files covering:**
+
 - RLS coverage inventory (8-part scan)
 - Tenant isolation (functional tests)
 - Soft delete system
@@ -86,6 +90,7 @@ npx ts-node scripts/seed/verify_seed.ts
 ### 🟡 Sections B-K: SPECIFICATIONS COMPLETE
 
 **Test specifications documented for:**
+
 - B: Core CRM workflows (Contacts, Deals, Pipelines, Tasks)
 - C: Forms & lead capture
 - D: Marketing module visibility & guards
@@ -171,11 +176,13 @@ Your Project Root/
 **What it checks:** `check_entitlement()` function signature
 
 **Expected Result:**
+
 ```
 ✅ PASS: Tenant ID derived from auth context only
 ```
 
 **This verifies the CRITICAL SECURITY FIX:**
+
 - ❌ Before: `check_entitlement(tenant_id, feature)` - attacker could bypass
 - ✅ After: `check_entitlement(feature)` - secure, uses auth context
 
@@ -187,6 +194,7 @@ Your Project Root/
 **What it checks:** User from Tenant 1 cannot see Tenant 2 data
 
 **Expected Results:**
+
 ```
 ✅ Service role: sees ALL data (both tenants)
 ✅ Tenant 1 user: sees ONLY Tenant 1 data
@@ -202,6 +210,7 @@ Your Project Root/
 **What it checks:** 4th email send fails when quota=3
 
 **Expected Behavior:**
+
 ```
 ✅ Send 1: Success (quota = 1/3)
 ✅ Send 2: Success (quota = 2/3)
@@ -215,14 +224,14 @@ Your Project Root/
 
 **After running Section A tests, you should see:**
 
-| Metric | Expected | Result |
-|--------|----------|--------|
-| RLS Policies | 256+ | ? |
-| Tables with RLS | ~35-40 | ? |
-| Tenant Isolation | ✅ Pass | ? |
-| Soft Delete | ✅ Working | ? |
-| Entitlement Security | ✅ Secure | ? |
-| Quota Enforcement | ✅ Blocking | ? |
+| Metric               | Expected    | Result |
+| -------------------- | ----------- | ------ |
+| RLS Policies         | 256+        | ?      |
+| Tables with RLS      | ~35-40      | ?      |
+| Tenant Isolation     | ✅ Pass     | ?      |
+| Soft Delete          | ✅ Working  | ?      |
+| Entitlement Security | ✅ Secure   | ?      |
+| Quota Enforcement    | ✅ Blocking | ?      |
 
 **Fill in the "Result" column after running tests!**
 
@@ -237,18 +246,21 @@ A: Copy contents of each `.sql` file → Supabase Dashboard → SQL Editor → P
 
 **Q: Tests failing?**  
 A: Check:
+
 1. All 12 hardening migrations applied? (Check `supabase/migrations/`)
 2. Using service_role key in SQL Editor?
 3. Any syntax errors in output?
 
 **Q: Where do I save results?**  
 A: Create text files in `tests/verification/results/`:
+
 - `a1_rls_inventory.txt`
 - `a2_rls_functional.txt`
 - etc.
 
 **Q: Seed script failing?**  
 A: Check:
+
 1. `.env.local` has `NEXT_PUBLIC_SUPABASE_URL`
 2. `SUPABASE_SERVICE_ROLE_KEY` is set
 3. Database is accessible
@@ -262,7 +274,7 @@ A: Check:
 ✅ **5 SQL test files ready** (~1,500 lines, 40+ tests)  
 ✅ **Seed data script ready** (2 tenants, realistic data)  
 ✅ **50-page verification report** (all 12 sections documented)  
-✅ **Security Grade: A+** (Enterprise-Ready)  
+✅ **Security Grade: A+** (Enterprise-Ready)
 
 **You're ready to verify everything works!** 🚀
 
@@ -271,8 +283,9 @@ A: Check:
 ## 📋 QUICK CHECKLIST
 
 Today (30-90 min total):
+
 - [ ] Run SQL test A1 (RLS inventory)
-- [ ] Run SQL test A2 (Tenant isolation)  
+- [ ] Run SQL test A2 (Tenant isolation)
 - [ ] Run SQL test A3 (Soft delete)
 - [ ] Run SQL test A4 (Entitlements) ⭐ CRITICAL
 - [ ] Run SQL test A5 (Quotas)
@@ -280,11 +293,13 @@ Today (30-90 min total):
 - [ ] Review verification report (`docs/hardening/verification_report.md`)
 
 This Week:
+
 - [ ] Manual UI testing (different tenants/roles)
 - [ ] Test marketing visibility guards
 - [ ] Verify cross-tenant isolation in UI
 
 This Month:
+
 - [ ] Create E2E tests for Section B (CRM core)
 - [ ] Create E2E tests for Sections C-D
 - [ ] Complete all 12 sections
@@ -296,25 +311,3 @@ This Month:
 **Questions?** Check `docs/hardening/verification_report.md` for detailed specifications
 
 **Good luck!** 🍀
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

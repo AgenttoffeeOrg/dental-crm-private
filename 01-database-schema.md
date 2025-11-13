@@ -15,6 +15,7 @@ This document provides a comprehensive analysis of the database schema for the m
 **Location:** Managed by Supabase (schema: `auth`)
 
 **Key Columns:**
+
 - `id` (UUID, PRIMARY KEY) - User's unique identifier
 - `email` (TEXT) - User's email address
 - `email_confirmed_at` (TIMESTAMPTZ) - When email was verified
@@ -34,41 +35,42 @@ This document provides a comprehensive analysis of the database schema for the m
 
 **Columns:**
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | - | PRIMARY KEY, REFERENCES `auth.users(id)` ON DELETE CASCADE |
-| `tenant_id` | UUID | NOT NULL | - | **Legacy field** - REFERENCES `tenants(id)` ON DELETE CASCADE |
-| `active_tenant_id` | UUID | NULLABLE | NULL | **Current session context** - which org user is viewing |
-| `default_tenant_id` | UUID | NULLABLE | NULL | User's preferred "home" organization |
-| `active_location_id` | UUID | NULLABLE | NULL | Currently active location within active tenant |
-| `default_location_id` | UUID | NULLABLE | NULL | User's preferred default location |
-| `full_name` | TEXT | NOT NULL | - | User's full name |
-| `email` | TEXT | NULLABLE | NULL | User's email (denormalized from auth.users) |
-| `role` | TEXT | NOT NULL | - | CHECK: `role IN ('owner', 'manager', 'staff')` |
-| `status` | TEXT | NULLABLE | 'active' | Account status |
-| `professional_title` | TEXT | NULLABLE | NULL | e.g., "Dr.", "DDS" |
-| `phone_mobile` | TEXT | NULLABLE | NULL | Mobile phone number |
-| `phone_office` | TEXT | NULLABLE | NULL | Office phone number |
-| `bio` | TEXT | NULLABLE | NULL | User biography |
-| `profile_photo_url` | TEXT | NULLABLE | NULL | URL to profile photo |
-| `avatar_url` | TEXT | NULLABLE | NULL | Alternative avatar URL |
-| `timezone` | TEXT | NULLABLE | 'Europe/London' | User's timezone |
-| `last_seen_at` | TIMESTAMPTZ | NULLABLE | NULL | Last activity timestamp |
-| `created_at` | TIMESTAMPTZ | NOT NULL | NOW() | Account creation timestamp |
-| `updated_at` | TIMESTAMPTZ | NULLABLE | NOW() | Last update timestamp |
-| `onboarding_completed` | BOOLEAN | NULLABLE | FALSE | Whether onboarding wizard is complete |
-| `onboarding_current_step` | TEXT | NULLABLE | NULL | Current step ID in onboarding wizard |
-| `onboarding_started_at` | TIMESTAMPTZ | NULLABLE | NULL | When onboarding wizard was first opened |
-| `onboarding_completed_at` | TIMESTAMPTZ | NULLABLE | NULL | When onboarding wizard was completed |
-| `onboarding_flow_type` | TEXT | NULLABLE | NULL | CHECK: `IN ('organization', 'solo')` |
-| `onboarding_skipped_steps` | TEXT[] | NULLABLE | ARRAY[] | Array of skipped step IDs |
-| `last_context_switch_at` | TIMESTAMPTZ | NULLABLE | NULL | Last tenant/location switch timestamp |
-| `metadata` | JSONB | NULLABLE | '{}' | Additional metadata |
-| `preferences` | JSONB | NULLABLE | '{}' | User preferences |
+| Column                     | Type        | Nullable | Default         | Description                                                   |
+| -------------------------- | ----------- | -------- | --------------- | ------------------------------------------------------------- |
+| `id`                       | UUID        | NOT NULL | -               | PRIMARY KEY, REFERENCES `auth.users(id)` ON DELETE CASCADE    |
+| `tenant_id`                | UUID        | NOT NULL | -               | **Legacy field** - REFERENCES `tenants(id)` ON DELETE CASCADE |
+| `active_tenant_id`         | UUID        | NULLABLE | NULL            | **Current session context** - which org user is viewing       |
+| `default_tenant_id`        | UUID        | NULLABLE | NULL            | User's preferred "home" organization                          |
+| `active_location_id`       | UUID        | NULLABLE | NULL            | Currently active location within active tenant                |
+| `default_location_id`      | UUID        | NULLABLE | NULL            | User's preferred default location                             |
+| `full_name`                | TEXT        | NOT NULL | -               | User's full name                                              |
+| `email`                    | TEXT        | NULLABLE | NULL            | User's email (denormalized from auth.users)                   |
+| `role`                     | TEXT        | NOT NULL | -               | CHECK: `role IN ('owner', 'manager', 'staff')`                |
+| `status`                   | TEXT        | NULLABLE | 'active'        | Account status                                                |
+| `professional_title`       | TEXT        | NULLABLE | NULL            | e.g., "Dr.", "DDS"                                            |
+| `phone_mobile`             | TEXT        | NULLABLE | NULL            | Mobile phone number                                           |
+| `phone_office`             | TEXT        | NULLABLE | NULL            | Office phone number                                           |
+| `bio`                      | TEXT        | NULLABLE | NULL            | User biography                                                |
+| `profile_photo_url`        | TEXT        | NULLABLE | NULL            | URL to profile photo                                          |
+| `avatar_url`               | TEXT        | NULLABLE | NULL            | Alternative avatar URL                                        |
+| `timezone`                 | TEXT        | NULLABLE | 'Europe/London' | User's timezone                                               |
+| `last_seen_at`             | TIMESTAMPTZ | NULLABLE | NULL            | Last activity timestamp                                       |
+| `created_at`               | TIMESTAMPTZ | NOT NULL | NOW()           | Account creation timestamp                                    |
+| `updated_at`               | TIMESTAMPTZ | NULLABLE | NOW()           | Last update timestamp                                         |
+| `onboarding_completed`     | BOOLEAN     | NULLABLE | FALSE           | Whether onboarding wizard is complete                         |
+| `onboarding_current_step`  | TEXT        | NULLABLE | NULL            | Current step ID in onboarding wizard                          |
+| `onboarding_started_at`    | TIMESTAMPTZ | NULLABLE | NULL            | When onboarding wizard was first opened                       |
+| `onboarding_completed_at`  | TIMESTAMPTZ | NULLABLE | NULL            | When onboarding wizard was completed                          |
+| `onboarding_flow_type`     | TEXT        | NULLABLE | NULL            | CHECK: `IN ('organization', 'solo')`                          |
+| `onboarding_skipped_steps` | TEXT[]      | NULLABLE | ARRAY[]         | Array of skipped step IDs                                     |
+| `last_context_switch_at`   | TIMESTAMPTZ | NULLABLE | NULL            | Last tenant/location switch timestamp                         |
+| `metadata`                 | JSONB       | NULLABLE | '{}'            | Additional metadata                                           |
+| `preferences`              | JSONB       | NULLABLE | '{}'            | User preferences                                              |
 
 **Primary Key:** `id` (references `auth.users(id)`)
 
 **Foreign Keys:**
+
 - `id` → `auth.users(id)` ON DELETE CASCADE
 - `tenant_id` → `tenants(id)` ON DELETE CASCADE (legacy)
 - `active_tenant_id` → `tenants(id)` ON DELETE SET NULL
@@ -77,12 +79,14 @@ This document provides a comprehensive analysis of the database schema for the m
 - `default_location_id` → `locations(id)` ON DELETE SET NULL
 
 **Indexes:**
+
 - `idx_app_users_tenant_id` ON `app_users(tenant_id)`
 - `idx_app_users_active_tenant` ON `app_users(active_tenant_id)` WHERE `active_tenant_id IS NOT NULL`
 - `idx_app_users_active_location` ON `app_users(active_location_id)` WHERE `active_location_id IS NOT NULL`
 - `idx_app_users_onboarding_flow` ON `app_users(onboarding_flow_type)` WHERE `onboarding_completed = false`
 
 **Constraints:**
+
 - `role` must be one of: 'owner', 'manager', 'staff'
 - `onboarding_flow_type` must be one of: 'organization', 'solo'
 
@@ -96,6 +100,7 @@ This document provides a comprehensive analysis of the database schema for the m
 
 **Q: Difference between `tenant_id` and `active_tenant_id`?**
 **A:**
+
 - `tenant_id`: **Legacy field** - Originally meant to be the user's "primary" tenant. Now kept for backward compatibility. May be NULL for new signups.
 - `active_tenant_id`: **Current session context** - Which organization the user is currently viewing. Updated when user switches orgs. This is the field used by RLS policies.
 
@@ -111,55 +116,59 @@ This document provides a comprehensive analysis of the database schema for the m
 
 **Columns:**
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | `uuid_generate_v4()` | PRIMARY KEY |
-| `name` | TEXT | NOT NULL | - | Organization name |
-| `timezone` | TEXT | NOT NULL | 'Europe/London' | Organization timezone |
-| `account_type` | TEXT | NULLABLE | NULL | CHECK: `IN ('organization', 'solo')` |
-| `is_multi_location` | BOOLEAN | NULLABLE | FALSE | Whether org has multiple locations |
-| `description` | TEXT | NULLABLE | NULL | Organization description |
-| `specialty` | TEXT | NULLABLE | NULL | Practice specialty |
-| `website_url` | TEXT | NULLABLE | NULL | Organization website |
-| `logo_url` | TEXT | NULLABLE | NULL | Organization logo URL |
-| `industry` | TEXT | NULLABLE | NULL | Industry type |
-| `company_size` | TEXT | NULLABLE | NULL | Company size category |
-| `founded_date` | DATE | NULLABLE | NULL | When organization was founded |
-| `billing_email` | TEXT | NULLABLE | NULL | Email for billing |
-| `currency_code` | TEXT | NULLABLE | 'GBP' | ISO 4217 currency code |
-| `locale` | TEXT | NULLABLE | 'en-GB' | Locale for formatting |
-| `billing_plan` | TEXT | NULLABLE | 'starter' | CHECK: `IN ('trial', 'starter', 'professional', 'enterprise')` |
-| `subscription_status` | TEXT | NULLABLE | 'trial' | CHECK: `IN ('trial', 'active', 'suspended', 'cancelled', 'past_due')` |
-| `max_users` | INTEGER | NULLABLE | 5 | Maximum users allowed |
-| `max_locations` | INTEGER | NULLABLE | 1 | Maximum locations allowed |
-| `feature_flags` | JSONB | NULLABLE | '{}' | Feature flags for this tenant |
-| `metadata` | JSONB | NULLABLE | '{}' | Additional metadata |
-| `dental_group_id` | UUID | NULLABLE | NULL | Parent group ID (for multi-location groups) |
-| `location_name` | TEXT | NULLABLE | NULL | Location name within group |
-| `subdomain` | TEXT | NULLABLE | NULL | Unique subdomain |
-| `custom_domain` | TEXT | NULLABLE | NULL | Custom domain |
-| `verified_at` | TIMESTAMPTZ | NULLABLE | NULL | Domain verification timestamp |
-| `verification_method` | TEXT | NULLABLE | NULL | Verification method |
-| `verified_by_user_id` | UUID | NULLABLE | NULL | REFERENCES `app_users(id)` |
-| `created_at` | TIMESTAMPTZ | NOT NULL | NOW() | Creation timestamp |
-| `updated_at` | TIMESTAMPTZ | NULLABLE | NOW() | Last update timestamp |
+| Column                | Type        | Nullable | Default              | Description                                                           |
+| --------------------- | ----------- | -------- | -------------------- | --------------------------------------------------------------------- |
+| `id`                  | UUID        | NOT NULL | `uuid_generate_v4()` | PRIMARY KEY                                                           |
+| `name`                | TEXT        | NOT NULL | -                    | Organization name                                                     |
+| `timezone`            | TEXT        | NOT NULL | 'Europe/London'      | Organization timezone                                                 |
+| `account_type`        | TEXT        | NULLABLE | NULL                 | CHECK: `IN ('organization', 'solo')`                                  |
+| `is_multi_location`   | BOOLEAN     | NULLABLE | FALSE                | Whether org has multiple locations                                    |
+| `description`         | TEXT        | NULLABLE | NULL                 | Organization description                                              |
+| `specialty`           | TEXT        | NULLABLE | NULL                 | Practice specialty                                                    |
+| `website_url`         | TEXT        | NULLABLE | NULL                 | Organization website                                                  |
+| `logo_url`            | TEXT        | NULLABLE | NULL                 | Organization logo URL                                                 |
+| `industry`            | TEXT        | NULLABLE | NULL                 | Industry type                                                         |
+| `company_size`        | TEXT        | NULLABLE | NULL                 | Company size category                                                 |
+| `founded_date`        | DATE        | NULLABLE | NULL                 | When organization was founded                                         |
+| `billing_email`       | TEXT        | NULLABLE | NULL                 | Email for billing                                                     |
+| `currency_code`       | TEXT        | NULLABLE | 'GBP'                | ISO 4217 currency code                                                |
+| `locale`              | TEXT        | NULLABLE | 'en-GB'              | Locale for formatting                                                 |
+| `billing_plan`        | TEXT        | NULLABLE | 'starter'            | CHECK: `IN ('trial', 'starter', 'professional', 'enterprise')`        |
+| `subscription_status` | TEXT        | NULLABLE | 'trial'              | CHECK: `IN ('trial', 'active', 'suspended', 'cancelled', 'past_due')` |
+| `max_users`           | INTEGER     | NULLABLE | 5                    | Maximum users allowed                                                 |
+| `max_locations`       | INTEGER     | NULLABLE | 1                    | Maximum locations allowed                                             |
+| `feature_flags`       | JSONB       | NULLABLE | '{}'                 | Feature flags for this tenant                                         |
+| `metadata`            | JSONB       | NULLABLE | '{}'                 | Additional metadata                                                   |
+| `dental_group_id`     | UUID        | NULLABLE | NULL                 | Parent group ID (for multi-location groups)                           |
+| `location_name`       | TEXT        | NULLABLE | NULL                 | Location name within group                                            |
+| `subdomain`           | TEXT        | NULLABLE | NULL                 | Unique subdomain                                                      |
+| `custom_domain`       | TEXT        | NULLABLE | NULL                 | Custom domain                                                         |
+| `verified_at`         | TIMESTAMPTZ | NULLABLE | NULL                 | Domain verification timestamp                                         |
+| `verification_method` | TEXT        | NULLABLE | NULL                 | Verification method                                                   |
+| `verified_by_user_id` | UUID        | NULLABLE | NULL                 | REFERENCES `app_users(id)`                                            |
+| `created_at`          | TIMESTAMPTZ | NOT NULL | NOW()                | Creation timestamp                                                    |
+| `updated_at`          | TIMESTAMPTZ | NULLABLE | NOW()                | Last update timestamp                                                 |
 
 **Primary Key:** `id`
 
 **Foreign Keys:**
+
 - `dental_group_id` → `tenants(id)` (self-reference for groups)
 - `verified_by_user_id` → `app_users(id)` ON DELETE SET NULL
 
 **Indexes:**
+
 - Unique index on `subdomain` (if exists)
 - Unique index on `custom_domain` (if exists)
 
 **Constraints:**
+
 - `account_type` must be 'organization' or 'solo'
 - `billing_plan` must be one of: 'trial', 'starter', 'professional', 'enterprise'
 - `subscription_status` must be one of: 'trial', 'active', 'suspended', 'cancelled', 'past_due'
 
 **Triggers:**
+
 - `update_tenants_updated_at` - Auto-updates `updated_at` on UPDATE
 
 ---
@@ -172,52 +181,56 @@ This document provides a comprehensive analysis of the database schema for the m
 
 **Columns:**
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | `gen_random_uuid()` | PRIMARY KEY |
-| `tenant_id` | UUID | NOT NULL | - | REFERENCES `tenants(id)` ON DELETE CASCADE |
-| `name` | TEXT | NOT NULL | - | Location name (unique per tenant) |
-| `display_name` | TEXT | NULLABLE | NULL | Display name for UI |
-| `code` | TEXT | NULLABLE | NULL | Short code (e.g., "DT, WEST") |
-| `address` | TEXT | NULLABLE | NULL | Street address |
-| `address_line1` | TEXT | NULLABLE | NULL | Alternative address field |
-| `address_line2` | TEXT | NULLABLE | NULL | Address line 2 |
-| `city` | TEXT | NULLABLE | NULL | City |
-| `state` | TEXT | NULLABLE | NULL | State/Province |
-| `postal_code` | TEXT | NULLABLE | NULL | Postal/ZIP code |
-| `country` | TEXT | NULLABLE | 'UK' | Country code |
-| `phone` | TEXT | NULLABLE | NULL | Phone number |
-| `phone_number` | TEXT | NULLABLE | NULL | Alternative phone field |
-| `email` | TEXT | NULLABLE | NULL | Location email |
-| `website_url` | TEXT | NULLABLE | NULL | Location website |
-| `timezone` | TEXT | NOT NULL | 'Europe/London' | Location timezone |
-| `currency` | TEXT | NULLABLE | 'GBP' | Currency code |
-| `language` | TEXT | NULLABLE | 'en' | Language code |
-| `location_type` | TEXT | NULLABLE | NULL | CHECK: `IN ('headquarters', 'branch', 'clinic', 'mobile')` |
-| `is_active` | BOOLEAN | NOT NULL | TRUE | Whether location is active |
-| `is_primary` | BOOLEAN | NOT NULL | FALSE | Whether this is the primary location |
-| `operating_hours` | JSONB | NULLABLE | '{}' | Operating hours (structured) |
-| `settings` | JSONB | NULLABLE | '{}' | Location-specific settings |
-| `settings_overrides` | JSONB | NULLABLE | '{}' | Settings that override org defaults |
-| `metadata` | JSONB | NULLABLE | '{}' | Additional metadata |
-| `created_by` | UUID | NULLABLE | NULL | REFERENCES `app_users(id)` ON DELETE SET NULL |
-| `created_at` | TIMESTAMPTZ | NOT NULL | NOW() | Creation timestamp |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | NOW() | Last update timestamp |
+| Column               | Type        | Nullable | Default             | Description                                                |
+| -------------------- | ----------- | -------- | ------------------- | ---------------------------------------------------------- |
+| `id`                 | UUID        | NOT NULL | `gen_random_uuid()` | PRIMARY KEY                                                |
+| `tenant_id`          | UUID        | NOT NULL | -                   | REFERENCES `tenants(id)` ON DELETE CASCADE                 |
+| `name`               | TEXT        | NOT NULL | -                   | Location name (unique per tenant)                          |
+| `display_name`       | TEXT        | NULLABLE | NULL                | Display name for UI                                        |
+| `code`               | TEXT        | NULLABLE | NULL                | Short code (e.g., "DT, WEST")                              |
+| `address`            | TEXT        | NULLABLE | NULL                | Street address                                             |
+| `address_line1`      | TEXT        | NULLABLE | NULL                | Alternative address field                                  |
+| `address_line2`      | TEXT        | NULLABLE | NULL                | Address line 2                                             |
+| `city`               | TEXT        | NULLABLE | NULL                | City                                                       |
+| `state`              | TEXT        | NULLABLE | NULL                | State/Province                                             |
+| `postal_code`        | TEXT        | NULLABLE | NULL                | Postal/ZIP code                                            |
+| `country`            | TEXT        | NULLABLE | 'UK'                | Country code                                               |
+| `phone`              | TEXT        | NULLABLE | NULL                | Phone number                                               |
+| `phone_number`       | TEXT        | NULLABLE | NULL                | Alternative phone field                                    |
+| `email`              | TEXT        | NULLABLE | NULL                | Location email                                             |
+| `website_url`        | TEXT        | NULLABLE | NULL                | Location website                                           |
+| `timezone`           | TEXT        | NOT NULL | 'Europe/London'     | Location timezone                                          |
+| `currency`           | TEXT        | NULLABLE | 'GBP'               | Currency code                                              |
+| `language`           | TEXT        | NULLABLE | 'en'                | Language code                                              |
+| `location_type`      | TEXT        | NULLABLE | NULL                | CHECK: `IN ('headquarters', 'branch', 'clinic', 'mobile')` |
+| `is_active`          | BOOLEAN     | NOT NULL | TRUE                | Whether location is active                                 |
+| `is_primary`         | BOOLEAN     | NOT NULL | FALSE               | Whether this is the primary location                       |
+| `operating_hours`    | JSONB       | NULLABLE | '{}'                | Operating hours (structured)                               |
+| `settings`           | JSONB       | NULLABLE | '{}'                | Location-specific settings                                 |
+| `settings_overrides` | JSONB       | NULLABLE | '{}'                | Settings that override org defaults                        |
+| `metadata`           | JSONB       | NULLABLE | '{}'                | Additional metadata                                        |
+| `created_by`         | UUID        | NULLABLE | NULL                | REFERENCES `app_users(id)` ON DELETE SET NULL              |
+| `created_at`         | TIMESTAMPTZ | NOT NULL | NOW()               | Creation timestamp                                         |
+| `updated_at`         | TIMESTAMPTZ | NOT NULL | NOW()               | Last update timestamp                                      |
 
 **Primary Key:** `id`
 
 **Foreign Keys:**
+
 - `tenant_id` → `tenants(id)` ON DELETE CASCADE
 - `created_by` → `app_users(id)` ON DELETE SET NULL
 
 **Unique Constraints:**
+
 - `locations_tenant_id_name_key`: UNIQUE(`tenant_id`, `name`) - One location name per tenant
 
 **Check Constraints:**
+
 - `locations_name_check`: `length(trim(name)) > 0` - Name cannot be empty
 - `location_type` must be one of: 'headquarters', 'branch', 'clinic', 'mobile'
 
 **Indexes:**
+
 - `idx_locations_tenant` ON `locations(tenant_id)`
 - `idx_locations_tenant_active` ON `locations(tenant_id, is_active)` WHERE `is_active = true`
 - `idx_locations_tenant_primary_unique` ON `locations(tenant_id)` WHERE `is_primary = true` (UNIQUE)
@@ -228,6 +241,7 @@ This document provides a comprehensive analysis of the database schema for the m
 - `idx_locations_created_at` ON `locations(created_at DESC)`
 
 **Triggers:**
+
 - `trigger_locations_updated_at` - Auto-updates `updated_at` on UPDATE
 
 **Critical Analysis:**
@@ -251,38 +265,43 @@ This document provides a comprehensive analysis of the database schema for the m
 
 **Columns:**
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | `gen_random_uuid()` | PRIMARY KEY |
-| `user_id` | UUID | NOT NULL | - | REFERENCES `auth.users(id)` ON DELETE CASCADE |
-| `tenant_id` | UUID | NOT NULL | - | REFERENCES `tenants(id)` ON DELETE CASCADE |
-| `role` | `membership_role` | NOT NULL | - | ENUM: `('owner', 'admin', 'manager', 'staff', 'viewer')` |
-| `status` | `membership_status` | NOT NULL | 'active' | ENUM: `('active', 'inactive', 'suspended')` |
-| `all_locations` | BOOLEAN | NULLABLE | NULL | Whether user has access to all locations |
-| `invited_by` | UUID | NULLABLE | NULL | REFERENCES `app_users(id)` ON DELETE SET NULL |
-| `invited_at` | TIMESTAMPTZ | NULLABLE | NULL | When invitation was sent |
-| `joined_at` | TIMESTAMPTZ | NOT NULL | NOW() | When user joined the organization |
-| `created_at` | TIMESTAMPTZ | NOT NULL | NOW() | Creation timestamp |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | NOW() | Last update timestamp |
+| Column          | Type                | Nullable | Default             | Description                                              |
+| --------------- | ------------------- | -------- | ------------------- | -------------------------------------------------------- |
+| `id`            | UUID                | NOT NULL | `gen_random_uuid()` | PRIMARY KEY                                              |
+| `user_id`       | UUID                | NOT NULL | -                   | REFERENCES `auth.users(id)` ON DELETE CASCADE            |
+| `tenant_id`     | UUID                | NOT NULL | -                   | REFERENCES `tenants(id)` ON DELETE CASCADE               |
+| `role`          | `membership_role`   | NOT NULL | -                   | ENUM: `('owner', 'admin', 'manager', 'staff', 'viewer')` |
+| `status`        | `membership_status` | NOT NULL | 'active'            | ENUM: `('active', 'inactive', 'suspended')`              |
+| `all_locations` | BOOLEAN             | NULLABLE | NULL                | Whether user has access to all locations                 |
+| `invited_by`    | UUID                | NULLABLE | NULL                | REFERENCES `app_users(id)` ON DELETE SET NULL            |
+| `invited_at`    | TIMESTAMPTZ         | NULLABLE | NULL                | When invitation was sent                                 |
+| `joined_at`     | TIMESTAMPTZ         | NOT NULL | NOW()               | When user joined the organization                        |
+| `created_at`    | TIMESTAMPTZ         | NOT NULL | NOW()               | Creation timestamp                                       |
+| `updated_at`    | TIMESTAMPTZ         | NOT NULL | NOW()               | Last update timestamp                                    |
 
 **Primary Key:** `id`
 
 **Foreign Keys:**
+
 - `user_id` → `auth.users(id)` ON DELETE CASCADE
 - `tenant_id` → `tenants(id)` ON DELETE CASCADE
 - `invited_by` → `app_users(id)` ON DELETE SET NULL
 
 **Unique Constraints:**
+
 - UNIQUE(`user_id`, `tenant_id`) - User can only have one membership per organization
 
 **Check Constraints:**
+
 - `invited_at IS NULL OR joined_at >= invited_at` - User must join after invitation
 
 **Custom Types:**
+
 - `membership_role` ENUM: 'owner', 'admin', 'manager', 'staff', 'viewer'
 - `membership_status` ENUM: 'active', 'inactive', 'suspended'
 
 **Indexes:**
+
 - `idx_memberships_user_id` ON `user_tenant_memberships(user_id)`
 - `idx_memberships_tenant_id` ON `user_tenant_memberships(tenant_id)`
 - `idx_memberships_user_tenant` ON `user_tenant_memberships(user_id, tenant_id)`
@@ -292,6 +311,7 @@ This document provides a comprehensive analysis of the database schema for the m
 - `idx_memberships_tenant_status` ON `user_tenant_memberships(tenant_id, status)`
 
 **Triggers:**
+
 - `trigger_memberships_updated_at` - Auto-updates `updated_at` on UPDATE
 
 **Critical Analysis:**
@@ -315,32 +335,35 @@ This document provides a comprehensive analysis of the database schema for the m
 
 **Columns:**
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | `gen_random_uuid()` | PRIMARY KEY |
-| `user_id` | UUID | NOT NULL | - | REFERENCES `app_users(id)` ON DELETE CASCADE |
-| `tenant_id` | UUID | NOT NULL | - | REFERENCES `tenants(id)` ON DELETE CASCADE |
-| `step_name` | TEXT | NOT NULL | - | Step ID (e.g., 'profile_setup', 'organization_setup') |
-| `completed` | BOOLEAN | NOT NULL | FALSE | Whether step is marked complete |
-| `completed_at` | TIMESTAMPTZ | NULLABLE | NULL | When step was completed |
-| `skipped` | BOOLEAN | NOT NULL | FALSE | Whether user skipped this step |
-| `skipped_at` | TIMESTAMPTZ | NULLABLE | NULL | When step was skipped |
-| `is_required` | BOOLEAN | NOT NULL | TRUE | Whether step is required |
-| `field_data` | JSONB | NOT NULL | '{}' | Saved field data for this step |
-| `data` | JSONB | NOT NULL | '{}' | Legacy field (same as field_data) |
-| `validation_errors` | JSONB | NOT NULL | '[]' | Validation errors for this step |
-| `created_at` | TIMESTAMPTZ | NOT NULL | NOW() | Creation timestamp |
+| Column              | Type        | Nullable | Default             | Description                                           |
+| ------------------- | ----------- | -------- | ------------------- | ----------------------------------------------------- |
+| `id`                | UUID        | NOT NULL | `gen_random_uuid()` | PRIMARY KEY                                           |
+| `user_id`           | UUID        | NOT NULL | -                   | REFERENCES `app_users(id)` ON DELETE CASCADE          |
+| `tenant_id`         | UUID        | NOT NULL | -                   | REFERENCES `tenants(id)` ON DELETE CASCADE            |
+| `step_name`         | TEXT        | NOT NULL | -                   | Step ID (e.g., 'profile_setup', 'organization_setup') |
+| `completed`         | BOOLEAN     | NOT NULL | FALSE               | Whether step is marked complete                       |
+| `completed_at`      | TIMESTAMPTZ | NULLABLE | NULL                | When step was completed                               |
+| `skipped`           | BOOLEAN     | NOT NULL | FALSE               | Whether user skipped this step                        |
+| `skipped_at`        | TIMESTAMPTZ | NULLABLE | NULL                | When step was skipped                                 |
+| `is_required`       | BOOLEAN     | NOT NULL | TRUE                | Whether step is required                              |
+| `field_data`        | JSONB       | NOT NULL | '{}'                | Saved field data for this step                        |
+| `data`              | JSONB       | NOT NULL | '{}'                | Legacy field (same as field_data)                     |
+| `validation_errors` | JSONB       | NOT NULL | '[]'                | Validation errors for this step                       |
+| `created_at`        | TIMESTAMPTZ | NOT NULL | NOW()               | Creation timestamp                                    |
 
 **Primary Key:** `id`
 
 **Foreign Keys:**
+
 - `user_id` → `app_users(id)` ON DELETE CASCADE
 - `tenant_id` → `tenants(id)` ON DELETE CASCADE
 
 **Unique Constraints:**
+
 - UNIQUE(`user_id`, `step_name`) - One progress record per user per step
 
 **Indexes:**
+
 - `idx_onboarding_progress_user` ON `onboarding_progress(user_id)`
 
 **Critical Analysis:**
@@ -433,6 +456,7 @@ This document provides a comprehensive analysis of the database schema for the m
 ## Circular Dependencies
 
 **None identified.** The schema follows a clear hierarchy:
+
 1. `auth.users` (top-level, no dependencies)
 2. `app_users` (depends on `auth.users`)
 3. `tenants` (independent)
@@ -447,6 +471,7 @@ This document provides a comprehensive analysis of the database schema for the m
 ### Invites/Invitations
 
 There are multiple invitation-related tables mentioned in migrations:
+
 - `user_invitations` - Pending invitations
 - `pending_invites` - Alternative invitation tracking
 
@@ -471,19 +496,8 @@ These are not fully documented here but are part of the user onboarding flow.
 ## Migration Notes
 
 The schema has evolved through multiple migrations. Key changes:
+
 - `app_users.tenant_id` was originally NOT NULL, but signup flow now creates users without tenant
 - `active_tenant_id` was added later to support multi-org switching
 - `user_tenant_memberships` was added to support multiple org memberships
 - `onboarding_progress` was added to track wizard state
-
-
-
-
-
-
-
-
-
-
-
-

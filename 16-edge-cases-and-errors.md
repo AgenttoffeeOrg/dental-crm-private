@@ -12,16 +12,14 @@
 **Pattern:** All API routes wrap handlers in try/catch
 
 **Example:**
+
 ```typescript
 export async function POST(request: Request) {
   try {
     // Handler logic
   } catch (error: any) {
-    console.error('[API] Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('[API] Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 ```
@@ -33,6 +31,7 @@ export async function POST(request: Request) {
 **Found 20+ instances** of `.catch()` on async operations
 
 **Pattern:**
+
 ```typescript
 await supabase.from('audits').insert(...).catch(err => {
   console.error('[AUDIT] Failed:', err)
@@ -53,6 +52,7 @@ await supabase.from('audits').insert(...).catch(err => {
 **Library:** Zod schemas
 
 **Examples:**
+
 - `src/app/api/invites/create/route.ts:39-56` - CreateInviteSchema
 - `src/app/api/invites/accept/route.ts:40-50` - AcceptInviteSchema
 
@@ -61,13 +61,15 @@ await supabase.from('audits').insert(...).catch(err => {
 **Pattern:** Zod schema validation in API routes
 
 **Example:**
+
 ```typescript
-const body = CreateInviteSchema.parse(await request.json())
+const body = CreateInviteSchema.parse(await request.json());
 ```
 
 ### Database Constraints
 
 **Found:**
+
 - NOT NULL constraints
 - CHECK constraints (role IN (...))
 - FOREIGN KEY constraints
@@ -82,6 +84,7 @@ const body = CreateInviteSchema.parse(await request.json())
 **Pattern:** `__tests__/**/*.test.ts`, `tests/**/*.spec.ts`
 
 **Edge Cases Covered:**
+
 - Tenant isolation
 - Location access
 - Permission checks
@@ -90,6 +93,7 @@ const body = CreateInviteSchema.parse(await request.json())
 ### Edge Cases NOT Covered
 
 **Missing:**
+
 - Concurrent wizard saves
 - Race conditions in org switching
 - Data loss scenarios
@@ -108,15 +112,3 @@ const body = CreateInviteSchema.parse(await request.json())
 
 **Document Status:** ✅ COMPLETE  
 **Last Updated:** December 2024
-
-
-
-
-
-
-
-
-
-
-
-

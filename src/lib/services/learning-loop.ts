@@ -1,45 +1,45 @@
-import { endOfDay, formatISO, startOfDay, subDays } from 'date-fns'
-import { createServiceClient } from '@/lib/supabase-server'
+import { endOfDay, formatISO, startOfDay, subDays } from 'date-fns';
+import { createServiceClient } from '@/lib/supabase-server';
 
 type LearningLoopRunOptions = {
-  tenantId: string
-  targetDate?: Date
-}
+  tenantId: string;
+  targetDate?: Date;
+};
 
 type ScriptMetricAccumulator = {
-  scriptVersionId: string
-  scriptId?: string
-  usages: number
-  impressions: number
-  helpful: number
-  outcomes: number
-  revenueCents: number
-}
+  scriptVersionId: string;
+  scriptId?: string;
+  usages: number;
+  impressions: number;
+  helpful: number;
+  outcomes: number;
+  revenueCents: number;
+};
 
 export async function runLearningLoop(options: LearningLoopRunOptions) {
-  const supabase = createServiceClient()
-  const targetDate = options.targetDate ? new Date(options.targetDate) : subDays(new Date(), 1)
-  const dayStart = startOfDay(targetDate)
-  const dayEnd = endOfDay(targetDate)
-  const metricDate = formatISO(dayStart, { representation: 'date' })
+  const supabase = createServiceClient();
+  const targetDate = options.targetDate ? new Date(options.targetDate) : subDays(new Date(), 1);
+  const dayStart = startOfDay(targetDate);
+  const dayEnd = endOfDay(targetDate);
+  const metricDate = formatISO(dayStart, { representation: 'date' });
 
   const { data: scriptUsages, error: usageError } = await supabase
     .from('sales_script_usages')
     .select('id, script_id, script_version_id, helpful, metadata')
     .eq('tenant_id', options.tenantId)
     .gte('used_at', dayStart.toISOString())
-    .lt('used_at', dayEnd.toISOString())
+    .lt('used_at', dayEnd.toISOString());
 
   if (usageError) {
-    throw usageError
+    throw usageError;
   }
 
-  const accumulator = new Map<string, ScriptMetricAccumulator>()
-  const usageById = new Map<string, { scriptVersionId: string; scriptId?: string }>()
+  const accumulator = new Map<string, ScriptMetricAccumulator>();
+  const usageById = new Map<string, { scriptVersionId: string; scriptId?: string }>();
 
   for (const usage of scriptUsages ?? []) {
     if (!usage.script_version_id) {
-      continue
+      continue;
     }
 
     const existing = accumulator.get(usage.script_version_id) ?? {
@@ -50,22 +50,24 @@ export async function runLearningLoop(options: LearningLoopRunOptions) {
       helpful: 0,
       outcomes: 0,
       revenueCents: 0,
-    }
+    };
 
-    existing.usages += 1
+    existing.usages += 1;
     const impressions =
-      typeof usage.metadata?.impressions === 'number' ? usage.metadata.impressions : existing.impressions + 1
-    existing.impressions = impressions
+      typeof usage.metadata?.impressions === 'number'
+        ? usage.metadata.impressions
+        : existing.impressions + 1;
+    existing.impressions = impressions;
 
     if (usage.helpful) {
-      existing.helpful += 1
+      existing.helpful += 1;
     }
 
-    accumulator.set(usage.script_version_id, existing)
+    accumulator.set(usage.script_version_id, existing);
     usageById.set(usage.id, {
       scriptVersionId: usage.script_version_id,
       scriptId: usage.script_id ?? undefined,
-    })
+    });
   }
 
   const { data: outcomes, error: outcomeError } = await supabase
@@ -80,32 +82,32 @@ export async function runLearningLoop(options: LearningLoopRunOptions) {
     )
     .eq('tenant_id', options.tenantId)
     .gte('occurred_at', dayStart.toISOString())
-    .lt('occurred_at', dayEnd.toISOString())
+    .lt('occurred_at', dayEnd.toISOString());
 
   if (outcomeError) {
-    throw outcomeError
+    throw outcomeError;
   }
 
   for (const outcome of outcomes ?? []) {
     if (!outcome.usage_id) {
-      continue
+      continue;
     }
 
-    const linkage = usageById.get(outcome.usage_id)
+    const linkage = usageById.get(outcome.usage_id);
     if (!linkage) {
-      continue
+      continue;
     }
 
-    const metrics = accumulator.get(linkage.scriptVersionId)
+    const metrics = accumulator.get(linkage.scriptVersionId);
     if (!metrics) {
-      continue
+      continue;
     }
 
     if (outcome.outcome_type === 'deal_won' || outcome.outcome_type === 'appointment_booked') {
-      metrics.outcomes += 1
+      metrics.outcomes += 1;
     }
-    metrics.revenueCents += outcome.revenue_cents ?? 0
-    accumulator.set(linkage.scriptVersionId, metrics)
+    metrics.revenueCents += outcome.revenue_cents ?? 0;
+    accumulator.set(linkage.scriptVersionId, metrics);
   }
 
   const rows = Array.from(accumulator.values()).map((metrics) => ({
@@ -121,15 +123,15 @@ export async function runLearningLoop(options: LearningLoopRunOptions) {
     sentiment_shift: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  }))
+  }));
 
   if (rows.length > 0) {
     const { error: upsertError } = await supabase
       .from('sales_script_metrics')
-      .upsert(rows, { onConflict: 'tenant_id,script_version_id,metric_date' })
+      .upsert(rows, { onConflict: 'tenant_id,script_version_id,metric_date' });
 
     if (upsertError) {
-      throw upsertError
+      throw upsertError;
     }
   }
 
@@ -137,9 +139,5 @@ export async function runLearningLoop(options: LearningLoopRunOptions) {
     tenantId: options.tenantId,
     metricDate,
     processedScripts: rows.length,
-  }
+  };
 }
-
-
-
-

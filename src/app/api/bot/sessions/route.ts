@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { botService } from '@/lib/engagement/bot-service'
-import { registerEngagementQueue } from '@/lib/queues/engagement-queue'
+import { NextRequest, NextResponse } from 'next/server';
+import { botService } from '@/lib/engagement/bot-service';
+import { registerEngagementQueue } from '@/lib/queues/engagement-queue';
 
-registerEngagementQueue()
+registerEngagementQueue();
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json();
     const {
       tenant_id: tenantId,
       contact_id: contactId,
@@ -14,13 +14,13 @@ export async function POST(request: NextRequest) {
       channel,
       user_id: userId,
       metadata,
-    } = body || {}
+    } = body || {};
 
     if (!tenantId) {
-      return NextResponse.json({ error: 'tenant_id is required' }, { status: 400 })
+      return NextResponse.json({ error: 'tenant_id is required' }, { status: 400 });
     }
     if (!channel) {
-      return NextResponse.json({ error: 'channel is required' }, { status: 400 })
+      return NextResponse.json({ error: 'channel is required' }, { status: 400 });
     }
 
     const session = await botService.getOrCreateSession({
@@ -30,19 +30,14 @@ export async function POST(request: NextRequest) {
       channel,
       userId,
       metadata,
-    })
+    });
 
-    return NextResponse.json({ success: true, session })
+    return NextResponse.json({ success: true, session });
   } catch (error: any) {
-    console.error('[BOT] Failed to create session', error)
+    console.error('[BOT] Failed to create session', error);
     return NextResponse.json(
       { error: error?.message || 'Internal server error' },
       { status: error?.status || 500 }
-    )
+    );
   }
 }
-
-
-
-
-

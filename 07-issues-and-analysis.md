@@ -15,20 +15,22 @@ This document identifies all issues, race conditions, data source conflicts, and
 **Answer:** **No.**
 
 **Code Analysis:**
+
 ```typescript
 // src/contexts/wizard-context.tsx (line 98-100)
 useEffect(() => {
-  initializeWizard()
-}, [])
+  initializeWizard();
+}, []);
 
 // initializeWizard() is async but steps array starts empty
-const [steps, setSteps] = useState<WizardStep[]>([])
+const [steps, setSteps] = useState<WizardStep[]>([]);
 
 // Component may render before steps are loaded
-const currentStepId = steps[currentStep - 1]?.stepId || ''
+const currentStepId = steps[currentStep - 1]?.stepId || '';
 ```
 
 **Problem:**
+
 - `steps` array is empty initially
 - Components that use `currentStepId` may render before `steps` is populated
 - Optional chaining (`?.`) handles this, but `currentStepId` will be empty string initially
@@ -44,8 +46,9 @@ const currentStepId = steps[currentStep - 1]?.stepId || ''
 **Answer:** **No.**
 
 **Code:**
+
 ```typescript
-const currentStepId = steps[currentStep - 1]?.stepId || ''
+const currentStepId = steps[currentStep - 1]?.stepId || '';
 ```
 
 **Problem:** If `steps` is empty, `currentStepId = ''`
@@ -63,15 +66,17 @@ const currentStepId = steps[currentStep - 1]?.stepId || ''
 **Found:**
 
 1. **PersonalInfoStep** (line 38):
+
    ```typescript
    useEffect(() => {
-     loadExistingProfile()
-   }, [])  // ❌ Empty array
+     loadExistingProfile();
+   }, []); // ❌ Empty array
    ```
 
 2. **Other steps** use `[currentStepId]` - ✅ Better
 
-**Problem:** 
+**Problem:**
+
 - `loadExistingProfile()` runs only once on mount
 - If step is navigated away and back, data won't reload
 - Should re-run when step becomes active
@@ -79,15 +84,17 @@ const currentStepId = steps[currentStep - 1]?.stepId || ''
 **Should they have `[currentStepId]` instead?**
 
 **Yes.** Pattern should be:
+
 ```typescript
 useEffect(() => {
   if (currentStepId === 'profile_setup') {
-    loadExistingProfile()
+    loadExistingProfile();
   }
-}, [currentStepId])  // ✅ Re-run when step changes
+}, [currentStepId]); // ✅ Re-run when step changes
 ```
 
 **Examples of Good Pattern:**
+
 - **CompanyInfoStep** (line 44): Uses `[currentStepId]` ✅
 - **FirstLocationStep** (line 32): Uses `[currentStepId]` ✅
 
@@ -98,13 +105,14 @@ useEffect(() => {
 **Issue:** Are multiple async calls happening in parallel?
 
 **Yes, in wizard initialization:**
+
 ```typescript
 // Config API call
-const configResponse = await fetch('/api/onboarding/config')
+const configResponse = await fetch('/api/onboarding/config');
 // ... process config
 
 // Resume API call (sequential, not parallel)
-const resumeResponse = await fetch('/api/onboarding/resume')
+const resumeResponse = await fetch('/api/onboarding/resume');
 ```
 
 **Current:** Sequential (await each call) - ✅ Safe
@@ -112,6 +120,7 @@ const resumeResponse = await fetch('/api/onboarding/resume')
 **Could they overwrite each other?**
 
 **Possible scenario:**
+
 1. User navigates away from wizard
 2. Another component calls `saveStepData` while initialization is running
 3. `formData` state updates could conflict
@@ -158,11 +167,12 @@ const resumeResponse = await fetch('/api/onboarding/resume')
 
 ```typescript
 if (tenant.name && (!existingStepData.name || existingStepData.name === '')) {
-  updateFieldValue('name', tenant.name)
+  updateFieldValue('name', tenant.name);
 }
 ```
 
 **Condition Analysis:**
+
 - `tenant.name`: Database value exists (e.g., "ABC Dental")
 - `existingStepData.name`: From saved progress (e.g., "")
 - Condition: `tenant.name && (!existingStepData.name || existingStepData.name === '')`
@@ -170,9 +180,10 @@ if (tenant.name && (!existingStepData.name || existingStepData.name === '')) {
 - **Result:** DB data IS pre-filled ✅
 
 **However:** The condition is confusing. Better logic:
+
 ```typescript
 if (tenant.name && !existingStepData?.name?.trim()) {
-  updateFieldValue('name', tenant.name)
+  updateFieldValue('name', tenant.name);
 }
 ```
 
@@ -181,16 +192,18 @@ if (tenant.name && !existingStepData?.name?.trim()) {
 **Show the actual code that decides:**
 
 **CompanyInfoStep** (line 86):
+
 ```typescript
 if (tenant.name && (!existingStepData.name || existingStepData.name === '')) {
-  updateFieldValue('name', tenant.name)
+  updateFieldValue('name', tenant.name);
 }
 ```
 
 **FirstLocationStep** (line 77):
+
 ```typescript
 if (location.name && (!existingStepData.name || existingStepData.name === '')) {
-  updateFieldValue('name', location.name)
+  updateFieldValue('name', location.name);
 }
 ```
 
@@ -203,16 +216,22 @@ if (location.name && (!existingStepData.name || existingStepData.name === '')) {
 **Issue:** How is empty data stored in saved progress?
 
 **Storage:**
+
 ```typescript
 // When saving
-fieldData: { name: '' }  // Empty string
+fieldData: {
+  name: '';
+} // Empty string
 // OR
-fieldData: { name: undefined }  // Undefined (omitted)
+fieldData: {
+  name: undefined;
+} // Undefined (omitted)
 ```
 
 **How does `!stepData.name` behave for each?**
 
 **Test Cases:**
+
 1. `{ name: '' }` → `!stepData.name` = `!''` = `true`
 2. `{ name: undefined }` → `!stepData.name` = `!undefined` = `true`
 3. `{ }` (missing) → `!stepData.name` = `!undefined` = `true`
@@ -224,9 +243,10 @@ fieldData: { name: undefined }  // Undefined (omitted)
 **Current logic:** `existingStepData.name === ''` is `false`, so DB data is NOT pre-filled ❌
 
 **Fix:** Use `.trim()` check:
+
 ```typescript
 if (tenant.name && !existingStepData?.name?.trim()) {
-  updateFieldValue('name', tenant.name)
+  updateFieldValue('name', tenant.name);
 }
 ```
 
@@ -242,7 +262,8 @@ if (tenant.name && !existingStepData?.name?.trim()) {
 
 **Action:** Navigates to `/onboarding` or clicks "Complete Setup"
 
-**State:** 
+**State:**
+
 - `app_users.active_tenant_id` = `tenant-abc` ✅
 - `tenants.name` = "ABC Dental" ✅
 - `locations.name` = "Main Office" ✅
@@ -254,14 +275,16 @@ if (tenant.name && !existingStepData?.name?.trim()) {
 **File:** `src/contexts/wizard-context.tsx` (line 102)
 
 **What happens:**
+
 ```typescript
-setLoading(true)
+setLoading(true);
 // Calls GET /api/onboarding/config
 // Calls GET /api/onboarding/resume
-setLoading(false)
+setLoading(false);
 ```
 
 **State after initialization:**
+
 - `steps` = `[{ stepId: 'email_verification' }, { stepId: 'profile_setup' }, { stepId: 'organization_setup' }, { stepId: 'location_setup' }]`
 - `formData` = `{}` (from resume API, if no saved progress)
 - `currentStep` = `1` (or resume step index)
@@ -275,11 +298,13 @@ setLoading(false)
 **What returns based on DB state:**
 
 **User has tenant:**
+
 ```typescript
-const tenantId = appUser.active_tenant_id || appUser.tenant_id  // = "tenant-abc"
+const tenantId = appUser.active_tenant_id || appUser.tenant_id; // = "tenant-abc"
 ```
 
 **Response:**
+
 ```json
 {
   "accountType": "organization",
@@ -296,6 +321,7 @@ const tenantId = appUser.active_tenant_id || appUser.tenant_id  // = "tenant-abc
 ```
 
 **State after config:**
+
 - `steps` = `[4 steps]` ✅
 - `accountType` = `'organization'` ✅
 
@@ -308,13 +334,14 @@ const tenantId = appUser.active_tenant_id || appUser.tenant_id  // = "tenant-abc
 **What returns:**
 
 **If user has saved progress:**
+
 ```json
 {
   "canResume": true,
   "resumeFromStep": "organization_setup",
   "savedData": {
     "organization_setup": {
-      "name": ""  // ❌ Empty string from previous save
+      "name": "" // ❌ Empty string from previous save
     }
   },
   "completedSteps": ["email_verification", "profile_setup"],
@@ -323,6 +350,7 @@ const tenantId = appUser.active_tenant_id || appUser.tenant_id  // = "tenant-abc
 ```
 
 **If user has NO saved progress:**
+
 ```json
 {
   "canResume": false,
@@ -334,6 +362,7 @@ const tenantId = appUser.active_tenant_id || appUser.tenant_id  // = "tenant-abc
 ```
 
 **State after resume:**
+
 - `formData` = `{ organization_setup: { name: '' } }` (if saved progress exists) ❌
 - OR `formData` = `{}` (if no saved progress) ✅
 
@@ -344,10 +373,11 @@ const tenantId = appUser.active_tenant_id || appUser.tenant_id  // = "tenant-abc
 **File:** `src/contexts/wizard-context.tsx` (line 131)
 
 ```typescript
-setFormData(resumeData.savedData || {})  // = { organization_setup: { name: '' } }
+setFormData(resumeData.savedData || {}); // = { organization_setup: { name: '' } }
 ```
 
 **State:**
+
 - `formData['organization_setup']` = `{ name: '' }` ❌ (empty string)
 
 ---
@@ -357,11 +387,13 @@ setFormData(resumeData.savedData || {})  // = { organization_setup: { name: '' }
 **File:** `src/components/onboarding/steps/company-info-step.tsx`
 
 **What happens:**
+
 ```typescript
-const stepData = formData[currentStepId] || {}  // = { name: '' }
+const stepData = formData[currentStepId] || {}; // = { name: '' }
 ```
 
 **State:**
+
 - `stepData.name` = `''` (empty string)
 
 ---
@@ -371,15 +403,17 @@ const stepData = formData[currentStepId] || {}  // = { name: '' }
 **File:** `src/components/onboarding/steps/company-info-step.tsx` (line 52)
 
 **What queries:**
+
 ```typescript
 const { data: tenant } = await supabase
   .from('tenants')
   .select('name, description, specialty, ...')
   .eq('id', tenantId)
-  .single()
+  .single();
 ```
 
 **Returns:**
+
 ```typescript
 tenant = { name: 'ABC Dental', description: '...', ... }  // ✅ DB has data
 ```
@@ -389,8 +423,9 @@ tenant = { name: 'ABC Dental', description: '...', ... }  // ✅ DB has data
 ### 8. `currentStepId` value
 
 **At this point:**
+
 ```typescript
-currentStepId = 'organization_setup'  // ✅ Correct
+currentStepId = 'organization_setup'; // ✅ Correct
 ```
 
 ---
@@ -398,30 +433,34 @@ currentStepId = 'organization_setup'  // ✅ Correct
 ### 9. `updateFieldValue('name', 'ABC Dental')` called
 
 **Condition check (line 86):**
+
 ```typescript
 if (tenant.name && (!existingStepData.name || existingStepData.name === '')) {
-  updateFieldValue('name', tenant.name)
+  updateFieldValue('name', tenant.name);
 }
 ```
 
 **Evaluation:**
+
 - `tenant.name` = `'ABC Dental'` ✅
 - `existingStepData.name` = `''` (from saved progress) ✅
 - Condition: `'ABC Dental' && (!'' || '' === '')` = `'ABC Dental' && (true || true)` = `true` ✅
 - **Should call:** `updateFieldValue('name', 'ABC Dental')` ✅
 
 **What happens:**
+
 ```typescript
-setFormData(prev => ({
+setFormData((prev) => ({
   ...prev,
   ['organization_setup']: {
     ...prev['organization_setup'],
-    name: 'ABC Dental'  // ✅ Should update
-  }
-}))
+    name: 'ABC Dental', // ✅ Should update
+  },
+}));
 ```
 
 **State after update:**
+
 - `formData['organization_setup'].name` = `'ABC Dental'` ✅
 
 ---
@@ -429,6 +468,7 @@ setFormData(prev => ({
 ### 10. Form shows
 
 **What value:**
+
 ```typescript
 <Input
   value={stepData.name || ''}  // = 'ABC Dental' (from formData)
@@ -444,6 +484,7 @@ setFormData(prev => ({
 **Analysis of trace above:**
 
 **The logic SHOULD work:**
+
 1. DB has `name = 'ABC Dental'` ✅
 2. Saved progress has `name = ''` ❌
 3. Condition checks `!existingStepData.name || existingStepData.name === ''` ✅
@@ -452,6 +493,7 @@ setFormData(prev => ({
 **BUT:** There may be a **timing issue**:
 
 **Race condition:**
+
 1. Component mounts with `formData['organization_setup'] = { name: '' }`
 2. Input renders with `value={stepData.name}` = `''`
 3. `useEffect` runs `loadExistingData()` (async)
@@ -461,12 +503,13 @@ setFormData(prev => ({
 **OR:** The `useEffect` dependency might be wrong:
 
 **Current:**
+
 ```typescript
 useEffect(() => {
   if (currentStepId === 'organization_setup') {
-    loadExistingData()
+    loadExistingData();
   }
-}, [currentStepId])  // ✅ Good dependency
+}, [currentStepId]); // ✅ Good dependency
 ```
 
 **BUT:** `formData` is not in dependency array, so if `formData` changes after mount, `loadExistingData` won't re-run.
@@ -474,6 +517,7 @@ useEffect(() => {
 **Issue:** If `formData` is set AFTER component mounts, the pre-fill logic runs with stale `formData`.
 
 **Timeline:**
+
 ```
 T0: Component mounts, formData = {}
 T1: useEffect runs, checks formData['organization_setup'] = {} (empty)
@@ -543,6 +587,7 @@ T6: Input shows empty string
 **Code:** `src/app/(auth)/sign-up/page.tsx` (line 168-176)
 
 **However:** `tenant_id` is NOT set during signup, which may violate NOT NULL constraint unless:
+
 - Database migration makes `tenant_id` nullable, OR
 - Trigger auto-creates tenant (migration `20251027_003_auto_create_tenant_for_users.sql`)
 
@@ -553,6 +598,7 @@ T6: Input shows empty string
 **Answer:** **Enrichment and confirmation.**
 
 **Evidence:**
+
 - Steps are marked `isSkippable: true` (except email and profile)
 - User can complete signup and create org without wizard
 - Wizard pre-fills from database (confirmation)
@@ -567,6 +613,7 @@ T6: Input shows empty string
 **Answer:** **Yes, saved and resumable.**
 
 **Where stored:**
+
 1. **`onboarding_progress` table:**
    - `field_data` JSONB: All form field values
    - `completed`: Boolean flag
@@ -586,6 +633,7 @@ T6: Input shows empty string
 **Answer:** **Not in `tenants` table.**
 
 **Likely tables:**
+
 - `pending_invites` (referenced in codebase)
 - `user_invitations` (referenced in migrations)
 
@@ -596,6 +644,7 @@ T6: Input shows empty string
 ### 5. What fields are "personal" vs "organizational"?
 
 **Personal (stored in `app_users`):**
+
 - `full_name`
 - `professional_title`
 - `phone_mobile`
@@ -605,6 +654,7 @@ T6: Input shows empty string
 - `timezone`
 
 **Organizational (stored in `tenants`):**
+
 - `name` (organization name)
 - `description`
 - `specialty`
@@ -614,6 +664,7 @@ T6: Input shows empty string
 - `company_size`
 
 **Location (stored in `locations`):**
+
 - `name` (location name)
 - `address`
 - `city`
@@ -627,14 +678,17 @@ T6: Input shows empty string
 **Answer:** **Yes, partially.**
 
 **Skippable steps:**
+
 - `organization_setup`: `isSkippable: true`
 - `location_setup`: `isSkippable: true`
 
 **Required steps:**
+
 - `email_verification`: `isSkippable: false`
 - `profile_setup`: `isSkippable: false`
 
 **User can:**
+
 - Skip org and location steps
 - Complete email and profile only
 - Create org later from settings
@@ -644,15 +698,18 @@ T6: Input shows empty string
 ### 7. What data does wizard collect that wasn't in signup/org creation?
 
 **Signup collects:**
+
 - `full_name`
 - `email`
 - `password`
 
 **Org creation collects:**
+
 - `name` (organization)
 - `location_name` (default location)
 
 **Wizard collects additional:**
+
 - `professional_title`
 - `phone_mobile`, `phone_office`
 - `bio`
@@ -747,15 +804,3 @@ T6: Input shows empty string
 ## Conclusion
 
 The architecture is **solid** but has **several race conditions and data precedence issues** that can cause the "empty forms" problem. The primary issue is **timing** - data loading runs before saved progress is loaded, causing conflicts. Fixing the useEffect dependencies and adding proper synchronization will resolve most issues.
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,7 +1,7 @@
 /**
  * Progressive Profiling System
  * Hides fields that are already known about a contact
- * 
+ *
  * Features:
  * - Detects returning visitors by email
  * - Hides fields already collected
@@ -9,14 +9,14 @@
  * - Smart field ordering (most valuable first)
  */
 
-import { createClient } from '@/lib/supabase-client'
-import type { FormField } from '@/hooks/use-marketing-forms'
+import { createClient } from '@/lib/supabase-client';
+import type { FormField } from '@/hooks/use-marketing-forms';
 
 export interface ContactData {
-  email?: string
-  phone?: string
-  full_name?: string
-  [key: string]: any
+  email?: string;
+  phone?: string;
+  full_name?: string;
+  [key: string]: any;
 }
 
 /**
@@ -26,18 +26,18 @@ export async function getContactByEmail(
   email: string,
   tenantId: string
 ): Promise<ContactData | null> {
-  if (!email) return null
+  if (!email) return null;
 
-  const supabase = createClient()
+  const supabase = createClient();
 
   const { data: contact } = await supabase
     .from('contacts')
     .select('*')
     .eq('tenant_id', tenantId)
     .eq('primary_email', email.toLowerCase().trim())
-    .single()
+    .single();
 
-  if (!contact) return null
+  if (!contact) return null;
 
   return {
     email: contact.primary_email,
@@ -45,7 +45,7 @@ export async function getContactByEmail(
     full_name: contact.full_name,
     // Include any other contact fields
     ...contact,
-  }
+  };
 }
 
 /**
@@ -58,7 +58,7 @@ export function filterFieldsForProgressiveProfiling(
   enabled: boolean = true
 ): FormField[] {
   if (!enabled || !knownData) {
-    return fields
+    return fields;
   }
 
   // Field mapping: form field name → contact field name
@@ -71,30 +71,30 @@ export function filterFieldsForProgressiveProfiling(
     name: 'full_name',
     full_name: 'full_name',
     fullname: 'full_name',
-  }
+  };
 
-  return fields.filter(field => {
+  return fields.filter((field) => {
     // Never hide required fields
     if (field.required) {
-      return true
+      return true;
     }
 
     // Never hide hidden fields (they're meant to be hidden)
     if ((field as any).hidden) {
-      return true
+      return true;
     }
 
     // Check if field value is already known
-    const fieldName = (field as any).field_name || field.id
-    const contactFieldName = fieldMapping[fieldName.toLowerCase()] || fieldName.toLowerCase()
+    const fieldName = (field as any).field_name || field.id;
+    const contactFieldName = fieldMapping[fieldName.toLowerCase()] || fieldName.toLowerCase();
 
     // If we have this data, hide the field
     if (knownData[contactFieldName] && knownData[contactFieldName].toString().trim() !== '') {
-      return false
+      return false;
     }
 
-    return true
-  })
+    return true;
+  });
 }
 
 /**
@@ -103,19 +103,19 @@ export function filterFieldsForProgressiveProfiling(
  */
 export function getFieldPriority(field: FormField): number {
   // Required fields always have highest priority
-  if (field.required) return 100
+  if (field.required) return 100;
 
   // Email and phone are high priority
-  if (field.type === 'email' || field.type === 'phone') return 90
+  if (field.type === 'email' || field.type === 'phone') return 90;
 
   // Name fields are high priority
-  if (field.id.includes('name') || (field as any).field_name?.includes('name')) return 85
+  if (field.id.includes('name') || (field as any).field_name?.includes('name')) return 85;
 
   // Contact info fields
-  if (['text', 'textarea'].includes(field.type)) return 50
+  if (['text', 'textarea'].includes(field.type)) return 50;
 
   // Other fields
-  return 10
+  return 10;
 }
 
 /**
@@ -123,10 +123,10 @@ export function getFieldPriority(field: FormField): number {
  */
 export function sortFieldsByPriority(fields: FormField[]): FormField[] {
   return [...fields].sort((a, b) => {
-    const priorityA = getFieldPriority(a)
-    const priorityB = getFieldPriority(b)
-    return priorityB - priorityA
-  })
+    const priorityA = getFieldPriority(a);
+    const priorityB = getFieldPriority(b);
+    return priorityB - priorityA;
+  });
 }
 
 /**
@@ -134,7 +134,5 @@ export function sortFieldsByPriority(fields: FormField[]): FormField[] {
  */
 export function shouldEnableProgressiveProfiling(form: { fields_json: FormField[] }): boolean {
   // Enable if form has more than 3 fields (otherwise no point)
-  return form.fields_json.length > 3
+  return form.fields_json.length > 3;
 }
-
-

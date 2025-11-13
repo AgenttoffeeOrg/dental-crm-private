@@ -14,6 +14,7 @@
 ## 2. What to Look For
 
 ### In the Issues List:
+
 - **Error Title**: Should show the error message
 - **Count**: Number of times the error occurred
 - **Users**: Number of users affected
@@ -21,6 +22,7 @@
 - **Environment**: Should show "development"
 
 ### In Error Details:
+
 - **Stack Trace**: Shows where the error occurred
 - **Breadcrumbs**: Shows user actions leading to the error
 - **User Context**: Browser, OS, device info
@@ -29,12 +31,14 @@
 ## 3. Local Verification
 
 ### Check Browser Console:
+
 - Open DevTools (F12)
 - Go to Console tab
 - Look for Sentry debug messages (if `NEXT_PUBLIC_SENTRY_DEBUG=true`)
 - Should see messages like: `[Sentry] [Debug] Sending event...`
 
 ### Check Terminal:
+
 - Look at your dev server terminal
 - Should see Sentry initialization messages
 - May see debug logs about events being sent
@@ -52,6 +56,7 @@
 ### Debug Steps:
 
 1. Check `.env.local`:
+
    ```bash
    cat .env.local | grep SENTRY
    ```
@@ -70,14 +75,15 @@
 ## 5. Verify Sentry is Working
 
 ### Quick Test:
+
 1. Open browser console (F12)
 2. Run this command:
    ```javascript
-   Sentry.captureMessage("Manual test from console", "info");
+   Sentry.captureMessage('Manual test from console', 'info');
    ```
 3. Check Sentry dashboard immediately
 
 ### Expected Result:
+
 - Event appears in Sentry within 5-10 seconds
 - Shows up in Issues or can be found via search
-

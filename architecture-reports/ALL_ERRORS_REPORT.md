@@ -12,16 +12,19 @@
 **File:** `src/components/deals/deal-detail-view-modal.tsx`
 
 **Error 1:**
+
 ```
 Line 409: error TS17008: JSX element 'div' has no corresponding closing tag.
 ```
 
 **Error 2:**
+
 ```
 Line 1096: error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
 ```
 
 **Error 3:**
+
 ```
 Line 1097: error TS1005: '</' expected.
 ```
@@ -37,6 +40,7 @@ Line 1097: error TS1005: '</' expected.
 ### 1. npm Security Vulnerabilities: **19 VULNERABILITIES**
 
 **Severity Breakdown:**
+
 - 🔴 **High:** 11 vulnerabilities
 - 🟡 **Moderate:** 4 vulnerabilities
 - 🟢 **Low:** 4 vulnerabilities
@@ -44,41 +48,49 @@ Line 1097: error TS1005: '</' expected.
 #### Critical Vulnerabilities:
 
 **1. playwright <1.55.1 (HIGH)**
+
 - **Issue:** SSL certificate verification bypass
 - **Location:** `node_modules/artillery-engine-playwright/node_modules/playwright`
 - **Fix:** `npm audit fix --force` (may cause breaking changes)
 
-**2. xlsx * (HIGH)**
+**2. xlsx \* (HIGH)**
+
 - **Issue:** Prototype Pollution & ReDoS
 - **Location:** `node_modules/xlsx`
 - **Status:** ⚠️ **NO FIX AVAILABLE** - Consider alternative library
 
 **3. tar-fs 2.0.0 - 2.1.3 (HIGH)**
+
 - **Issue:** Symlink validation bypass, path traversal
 - **Location:** `node_modules/tar-fs`
 - **Fix:** `npm audit fix --force`
 
 **4. ws 8.0.0 - 8.17.0 (HIGH)**
+
 - **Issue:** DoS vulnerability
 - **Location:** `node_modules/puppeteer/node_modules/ws`
 - **Fix:** `npm audit fix --force`
 
 **5. dompurify <3.2.4 (MODERATE)**
+
 - **Issue:** XSS vulnerability
 - **Location:** `node_modules/mermaid/node_modules/dompurify`
 - **Fix:** `npm audit fix`
 
 **6. tar 7.5.1 (MODERATE)**
+
 - **Issue:** Race condition, uninitialized memory exposure
 - **Location:** `node_modules/tar`
 - **Fix:** `npm audit fix`
 
 **7. tmp <=0.2.3 (HIGH)**
+
 - **Issue:** Arbitrary file write via symlink
 - **Location:** `node_modules/tmp`
 - **Fix:** `npm audit fix --force`
 
 **Fix Commands:**
+
 ```bash
 # Safe fixes (non-breaking)
 npm audit fix
@@ -94,11 +106,13 @@ npm audit fix --force
 **Total Files Affected:** 648 files
 
 **Top Error Types:**
+
 1. `@typescript-eslint/no-explicit-any` - Using `any` type
 2. `react-hooks/exhaustive-deps` - Missing useEffect dependencies
 3. `react/no-unescaped-entities` - Unescaped JSX entities
 
 **Most Affected Files:**
+
 - `/src/app/api/ai-assistant/chat/route.ts` - 10 errors
 - `/src/app/api/ai-assistant/action/route.ts` - 9 errors
 - `/src/app/(auth)/sign-in/page.tsx` - 5 errors
@@ -106,6 +120,7 @@ npm audit fix --force
 - `/src/app/(auth)/auth/callback/route.ts` - 1 error
 
 **Fix Command:**
+
 ```bash
 npm run lint -- --fix
 ```
@@ -122,6 +137,7 @@ npm run lint -- --fix
 #### Critical Dependency Errors:
 
 **1. Unresolvable Dependencies (12 errors):**
+
 - `src/server/middleware/entitlements.ts → @trpc/server` - Package not found
 - `src/server/middleware/entitlements.ts → ../trpc` - Path not found
 - `src/lib/security.ts → isomorphic-dompurify` - Package not found
@@ -135,6 +151,7 @@ npm run lint -- --fix
 - `src/components/analytics/custom-date-range-picker.tsx → @/components/ui/calendar` - Path not found
 
 **2. Circular Dependency (1 error):**
+
 ```
 src/components/guards/index.ts →
   src/components/guards/no-org-empty-state.tsx →
@@ -142,6 +159,7 @@ src/components/guards/index.ts →
 ```
 
 **3. Orphaned Modules (91 warnings):**
+
 - Files that are never imported/used
 - Examples:
   - `src/middleware-rate-limit.ts`
@@ -154,6 +172,7 @@ src/components/guards/index.ts →
   - And 84 more...
 
 **Fix Required:**
+
 1. Install missing packages or remove unused imports
 2. Fix circular dependency in guards
 3. Remove or use orphaned modules
@@ -162,27 +181,29 @@ src/components/guards/index.ts →
 
 ## 📊 Summary Statistics
 
-| Category | Count | Severity |
-|----------|-------|----------|
-| **TypeScript Errors** | 3 | 🔴 CRITICAL |
-| **Security Vulnerabilities** | 19 | ⚠️ HIGH |
-| **ESLint Errors** | 648 files | ⚠️ MEDIUM |
-| **Dependency Errors** | 12 | ⚠️ HIGH |
-| **Dependency Warnings** | 91 | 🟡 LOW |
-| **Circular Dependencies** | 1 | ⚠️ MEDIUM |
-| **Orphaned Modules** | 91 | 🟡 LOW |
+| Category                     | Count     | Severity    |
+| ---------------------------- | --------- | ----------- |
+| **TypeScript Errors**        | 3         | 🔴 CRITICAL |
+| **Security Vulnerabilities** | 19        | ⚠️ HIGH     |
+| **ESLint Errors**            | 648 files | ⚠️ MEDIUM   |
+| **Dependency Errors**        | 12        | ⚠️ HIGH     |
+| **Dependency Warnings**      | 91        | 🟡 LOW      |
+| **Circular Dependencies**    | 1         | ⚠️ MEDIUM   |
+| **Orphaned Modules**         | 91        | 🟡 LOW      |
 
 ---
 
 ## 🎯 Action Plan (Priority Order)
 
 ### Step 1: Fix Critical TypeScript Errors (URGENT)
+
 ```bash
 # Fix JSX structure in:
 src/components/deals/deal-detail-view-modal.tsx
 ```
 
 ### Step 2: Fix Security Vulnerabilities
+
 ```bash
 # Safe fixes first
 npm audit fix
@@ -192,6 +213,7 @@ npm audit fix --force  # Review changes first!
 ```
 
 ### Step 3: Fix Dependency Errors
+
 ```bash
 # Install missing packages:
 npm install @trpc/server isomorphic-dompurify next-themes @heroicons/react @headlessui/react
@@ -200,12 +222,14 @@ npm install @trpc/server isomorphic-dompurify next-themes @heroicons/react @head
 ```
 
 ### Step 4: Fix Circular Dependency
+
 ```bash
 # Fix: src/components/guards/index.ts
 # Break the circular import
 ```
 
 ### Step 5: Fix ESLint Issues
+
 ```bash
 # Auto-fix what can be fixed
 npm run lint -- --fix
@@ -214,6 +238,7 @@ npm run lint -- --fix
 ```
 
 ### Step 6: Clean Up Orphaned Modules
+
 - Review 91 orphaned modules
 - Remove unused code or add imports
 
@@ -257,4 +282,3 @@ npm run lint
 
 **Report Generated:** ${new Date().toISOString()}
 **Next Steps:** Start with Step 1 (TypeScript errors) - they block production builds!
-

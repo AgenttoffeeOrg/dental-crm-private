@@ -3,6 +3,7 @@
 Date: 2025-11-11
 
 ## Coverage
+
 - Verified navigation entry (`Headset` icon) opens `/reception` workspace under `DashboardLayout`.
 - Reception workspace loads contacts via Supabase search, queue alerts (`/api/system/queues/alerts`), and feature flags API.
 - Communication actions reuse existing dialer and composer panels with sanitized phone numbers and contact metadata.
@@ -10,6 +11,7 @@ Date: 2025-11-11
 - Left sidebar uses `ScrollArea` for independent scrolling and debounced search to keep the list responsive.
 
 ## Smoke Checklist
+
 1. Search for contact name, phone, or email and confirm the list updates while the first result auto-selects.
 2. Open a contact with a phone or email and launch Call/SMS/Email/WhatsApp actions to ensure drawers open and prefill.
 3. Select a contact without tasks, deals, or persona data to confirm empty states render without errors.
@@ -18,9 +20,6 @@ Date: 2025-11-11
 6. Use the quick links to open Reliability and Feature Flag settings in a new tab and confirm navigation succeeds.
 
 ## Follow-ups
+
 - Add live presence updates via websockets for active call queue and worker status.
 - Include quick-create actions (task, appointment) inline so reception can log follow-ups without leaving the workspace.
-
-
-
-

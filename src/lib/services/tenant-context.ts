@@ -1,6 +1,6 @@
 /**
  * Tenant Context Service
- * 
+ *
  * Manages tenant context for the current user, including:
  * - Single vs multi-location detection
  * - Accessible locations
@@ -8,39 +8,39 @@
  * - Performance optimization (dual-path architecture)
  */
 
-import type { NextRequest } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { getSupabaseAuthContext } from '@/lib/api/auth'
-import { cache } from 'react'
+import type { NextRequest } from 'next/server';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { getSupabaseAuthContext } from '@/lib/api/auth';
+import { cache } from 'react';
 
 export interface TenantInfo {
-  id: string
-  name: string
-  website_url: string | null
-  website_host: string | null
-  is_multi_location: boolean
-  dental_group_id: string | null
-  location_name: string | null
+  id: string;
+  name: string;
+  website_url: string | null;
+  website_host: string | null;
+  is_multi_location: boolean;
+  dental_group_id: string | null;
+  location_name: string | null;
 }
 
 export interface UserTenantContext {
   /** User's primary tenant */
-  primaryTenant: TenantInfo
-  
+  primaryTenant: TenantInfo;
+
   /** All accessible tenants (includes primary) */
-  accessibleTenants: TenantInfo[]
-  
+  accessibleTenants: TenantInfo[];
+
   /** Is this user multi-location? */
-  isMultiLocation: boolean
-  
+  isMultiLocation: boolean;
+
   /** Total accessible locations */
-  locationCount: number
-  
+  locationCount: number;
+
   /** Dental group info (if multi-location) */
   dentalGroup: {
-    id: string
-    name: string
-  } | null
+    id: string;
+    name: string;
+  } | null;
 }
 
 /**
@@ -48,37 +48,42 @@ export interface UserTenantContext {
  * Cached per request for performance
  */
 export const getTenantContext = cache(async (): Promise<UserTenantContext | null> => {
-  const supabase = await createServerSupabaseClient()
-  
+  const supabase = await createServerSupabaseClient();
+
   // Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
   if (userError || !user) {
-    return null
+    return null;
   }
-  
+
   // Get user's primary tenant from app_users
   const { data: appUser, error: appUserError } = await supabase
     .from('app_users')
     .select('active_tenant_id')
     .eq('id', user.id)
-    .single()
-  
+    .single();
+
   if (appUserError || !appUser || !appUser.active_tenant_id) {
-    return null
+    return null;
   }
-  
+
   // Get primary tenant info
   const { data: primaryTenant, error: tenantError } = await supabase
     .from('tenants')
-    .select('id, name, website_url, website_host, is_multi_location, dental_group_id, location_name')
+    .select(
+      'id, name, website_url, website_host, is_multi_location, dental_group_id, location_name'
+    )
     .eq('id', appUser.active_tenant_id)
-    .single()
-  
+    .single();
+
   if (tenantError || !primaryTenant) {
-    return null
+    return null;
   }
-  
+
   // FAST PATH: Single-location user
   if (!primaryTenant.is_multi_location) {
     return {
@@ -87,13 +92,14 @@ export const getTenantContext = cache(async (): Promise<UserTenantContext | null
       isMultiLocation: false,
       locationCount: 1,
       dentalGroup: null,
-    }
+    };
   }
-  
+
   // MULTI-LOCATION PATH: Get all accessible locations
   const { data: locationAccess, error: accessError } = await supabase
     .from('user_location_access')
-    .select(`
+    .select(
+      `
       tenant_id,
       tenants (
         id,
@@ -104,12 +110,13 @@ export const getTenantContext = cache(async (): Promise<UserTenantContext | null
         dental_group_id,
         location_name
       )
-    `)
+    `
+    )
     .eq('user_id', user.id)
-    .eq('is_active', true)
-  
+    .eq('is_active', true);
+
   if (accessError) {
-    console.error('Error fetching location access:', accessError)
+    console.error('Error fetching location access:', accessError);
     // Fallback to primary tenant only
     return {
       primaryTenant,
@@ -117,236 +124,239 @@ export const getTenantContext = cache(async (): Promise<UserTenantContext | null
       isMultiLocation: false,
       locationCount: 1,
       dentalGroup: null,
-    }
+    };
   }
-  
+
   // Extract tenant info from join results
-  const accessibleTenants: TenantInfo[] = [primaryTenant]
-  
+  const accessibleTenants: TenantInfo[] = [primaryTenant];
+
   if (locationAccess) {
     for (const access of locationAccess) {
       if (access.tenants && access.tenant_id !== primaryTenant.id) {
-        const tenant = Array.isArray(access.tenants) ? access.tenants[0] : access.tenants
+        const tenant = Array.isArray(access.tenants) ? access.tenants[0] : access.tenants;
         if (tenant) {
-          accessibleTenants.push(tenant as TenantInfo)
+          accessibleTenants.push(tenant as TenantInfo);
         }
       }
     }
   }
-  
+
   // Get dental group info if exists
-  let dentalGroup = null
+  let dentalGroup = null;
   if (primaryTenant.dental_group_id) {
     const { data: group } = await supabase
       .from('dental_groups')
       .select('id, name')
       .eq('id', primaryTenant.dental_group_id)
-      .single()
-    
+      .single();
+
     if (group) {
-      dentalGroup = group
+      dentalGroup = group;
     }
   }
-  
+
   return {
     primaryTenant,
     accessibleTenants,
     isMultiLocation: true,
     locationCount: accessibleTenants.length,
     dentalGroup,
-  }
-})
+  };
+});
 
 /**
  * Get accessible tenant IDs for current user
  * Lightweight version for permission checks
  */
 export const getAccessibleTenantIds = cache(async (): Promise<string[]> => {
-  const context = await getTenantContext()
-  
+  const context = await getTenantContext();
+
   if (!context) {
-    return []
+    return [];
   }
-  
-  return context.accessibleTenants.map(t => t.id)
-})
+
+  return context.accessibleTenants.map((t) => t.id);
+});
 
 /**
  * Check if user has access to a specific tenant
  */
 export async function hasAccessToTenant(tenantId: string): Promise<boolean> {
-  const accessibleIds = await getAccessibleTenantIds()
-  return accessibleIds.includes(tenantId)
+  const accessibleIds = await getAccessibleTenantIds();
+  return accessibleIds.includes(tenantId);
 }
 
 /**
  * Get user's primary tenant ID
  */
 export async function getPrimaryTenantId(): Promise<string | null> {
-  const context = await getTenantContext()
-  return context?.primaryTenant.id || null
+  const context = await getTenantContext();
+  return context?.primaryTenant.id || null;
 }
 
 /**
  * Check if current user is multi-location
  */
 export async function isMultiLocationUser(): Promise<boolean> {
-  const context = await getTenantContext()
-  return context?.isMultiLocation || false
+  const context = await getTenantContext();
+  return context?.isMultiLocation || false;
 }
 
 /**
  * Get location count for current user
  */
 export async function getLocationCount(): Promise<number> {
-  const context = await getTenantContext()
-  return context?.locationCount || 0
+  const context = await getTenantContext();
+  return context?.locationCount || 0;
 }
 
 /**
  * Get dental group for current user (if multi-location)
  */
 export async function getDentalGroup(): Promise<{ id: string; name: string } | null> {
-  const context = await getTenantContext()
-  return context?.dentalGroup || null
+  const context = await getTenantContext();
+  return context?.dentalGroup || null;
 }
 
 /**
  * Switch active location (for multi-location users)
  * This updates the user's session to use a different tenant as primary
- * 
+ *
  * NOTE: This requires updating app_users.tenant_id, which affects RLS
  * Use with caution and ensure user has access to target tenant
  */
 export async function switchActiveLocation(
   targetTenantId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createServerSupabaseClient()
-  
+  const supabase = await createServerSupabaseClient();
+
   // Verify user has access to target tenant
-  const hasAccess = await hasAccessToTenant(targetTenantId)
-  
+  const hasAccess = await hasAccessToTenant(targetTenantId);
+
   if (!hasAccess) {
     return {
       success: false,
       error: 'You do not have access to this location',
-    }
+    };
   }
-  
+
   // Get current user
-  const { data: { user } } = await supabase.auth.getUser()
-  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
     return {
       success: false,
       error: 'Not authenticated',
-    }
+    };
   }
-  
+
   // Update app_user's primary tenant
   const { error } = await supabase
     .from('app_users')
     .update({ tenant_id: targetTenantId })
-    .eq('id', user.id)
-  
+    .eq('id', user.id);
+
   if (error) {
-    console.error('Error switching location:', error)
+    console.error('Error switching location:', error);
     return {
       success: false,
       error: 'Failed to switch location',
-    }
+    };
   }
-  
-  return { success: true }
+
+  return { success: true };
 }
 
 /**
  * Get locations for dropdown/switcher UI
  * Returns actual locations from the locations table, not tenants
  */
-export async function getLocationsForSwitcher(request: NextRequest): Promise<Array<{
-  id: string
-  name: string
-  locationName: string | null
-  isPrimary: boolean
-}>> {
-  const { supabase, user } = await getSupabaseAuthContext(request)
+export async function getLocationsForSwitcher(request: NextRequest): Promise<
+  Array<{
+    id: string;
+    name: string;
+    locationName: string | null;
+    isPrimary: boolean;
+  }>
+> {
+  const { supabase, user } = await getSupabaseAuthContext(request);
 
   if (!user) {
-    return []
+    return [];
   }
-  
+
   // Get user's active tenant, location, and role
   const { data: appUser } = await supabase
     .from('app_users')
     .select('active_tenant_id, active_location_id, role')
     .eq('id', user.id)
-    .single()
-  
+    .single();
+
   if (!appUser?.active_tenant_id) {
-    return []
+    return [];
   }
-  
-  const isSuperAdmin = appUser.role === 'super_admin' || appUser.role === 'owner'
-  
-  let locations: any[] = []
-  
+
+  const isSuperAdmin = appUser.role === 'super_admin' || appUser.role === 'owner';
+
+  let locations: any[] = [];
+
   if (isSuperAdmin) {
     // Super admins can access all locations in the active tenant
     const { data: allLocations, error: locationsError } = await supabase
       .from('locations')
       .select('id, name')
       .eq('tenant_id', appUser.active_tenant_id)
-      .eq('is_active', true)
-    
+      .eq('is_active', true);
+
     if (locationsError) {
-      console.error('Error fetching locations for super admin:', locationsError)
-      return []
+      console.error('Error fetching locations for super admin:', locationsError);
+      return [];
     }
-    
-    locations = allLocations || []
+
+    locations = allLocations || [];
   } else {
     // Regular users: Get accessible locations via RPC function
     const { data: accessibleLocations, error } = await supabase.rpc(
       'get_user_accessible_locations',
       {
         p_user_id: user.id,
-        p_tenant_id: appUser.active_tenant_id
+        p_tenant_id: appUser.active_tenant_id,
       }
-    )
-    
+    );
+
     if (error) {
-      console.error('Error fetching accessible locations:', error)
-      return []
+      console.error('Error fetching accessible locations:', error);
+      return [];
     }
-    
-    locations = accessibleLocations || []
+
+    locations = accessibleLocations || [];
   }
-  
+
   return locations.map((loc: any) => ({
     id: loc.id,
     name: loc.name,
     locationName: loc.name,
     isPrimary: loc.id === appUser.active_location_id,
-  }))
+  }));
 }
 
 /**
  * Performance monitoring: Log context fetch time
  */
 export async function measureTenantContextPerformance(): Promise<{
-  durationMs: number
-  isMultiLocation: boolean
-  locationCount: number
+  durationMs: number;
+  isMultiLocation: boolean;
+  locationCount: number;
 }> {
-  const start = performance.now()
-  const context = await getTenantContext()
-  const end = performance.now()
-  
+  const start = performance.now();
+  const context = await getTenantContext();
+  const end = performance.now();
+
   return {
     durationMs: end - start,
     isMultiLocation: context?.isMultiLocation || false,
     locationCount: context?.locationCount || 0,
-  }
+  };
 }
-

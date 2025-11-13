@@ -12,6 +12,7 @@ Complete guide to hosting a dummy practice website with your CRM form on **denta
 ## 🎯 What We'll Build
 
 A simple, professional dummy dental practice website that:
+
 - Looks professional and modern
 - Embeds your CRM form
 - Can be hosted for free
@@ -44,6 +45,7 @@ A simple, professional dummy dental practice website that:
 ### Step 2: Prepare the Website Files
 
 The dummy website is already created at:
+
 ```
 public/dummy-practice-website/index.html
 ```
@@ -51,30 +53,34 @@ public/dummy-practice-website/index.html
 **Edit the form section** in `index.html`:
 
 Find this section (around line 150):
+
 ```html
 <div id="dentalcrm-form-container">
-    <!-- Your form will appear here when you embed it -->
+  <!-- Your form will appear here when you embed it -->
 </div>
 ```
 
 Replace it with one of these options:
 
 #### Option A: Simple iframe (Recommended)
+
 ```html
-<iframe 
-    src="https://YOUR-CRM-DOMAIN.com/f/YOUR-FORM-SLUG" 
-    width="100%" 
-    height="600" 
-    frameborder="0" 
-    style="border: none; border-radius: 8px;">
+<iframe
+  src="https://YOUR-CRM-DOMAIN.com/f/YOUR-FORM-SLUG"
+  width="100%"
+  height="600"
+  frameborder="0"
+  style="border: none; border-radius: 8px;"
+>
 </iframe>
 ```
 
 #### Option B: JavaScript Embed
+
 ```html
 <div id="dentalcrm-form-container"></div>
 <script>
-  (function() {
+  (function () {
     var iframe = document.createElement('iframe');
     iframe.src = 'https://YOUR-CRM-DOMAIN.com/f/YOUR-FORM-SLUG';
     iframe.width = '100%';
@@ -88,6 +94,7 @@ Replace it with one of these options:
 ```
 
 **Replace:**
+
 - `YOUR-CRM-DOMAIN.com` with your actual CRM domain
 - `YOUR-FORM-SLUG` with your form's slug
 
@@ -96,6 +103,7 @@ Replace it with one of these options:
 #### 🥇 Option 1: Vercel (Recommended - Easiest)
 
 **Why Vercel?**
+
 - ✅ Free forever
 - ✅ Automatic HTTPS
 - ✅ Fast global CDN
@@ -105,20 +113,24 @@ Replace it with one of these options:
 **Setup:**
 
 1. **Install Vercel CLI**:
+
    ```bash
    npm install -g vercel
    ```
 
 2. **Login to Vercel**:
+
    ```bash
    vercel login
    ```
 
 3. **Deploy**:
+
    ```bash
    cd public/dummy-practice-website
    vercel
    ```
+
    - Follow prompts
    - Choose default settings
    - Your site will be live at `your-site.vercel.app`
@@ -152,6 +164,7 @@ Replace it with one of these options:
 #### 🥈 Option 2: Netlify (Also Great)
 
 **Why Netlify?**
+
 - ✅ Free tier
 - ✅ Drag-and-drop deployment
 - ✅ Easy domain setup
@@ -160,16 +173,19 @@ Replace it with one of these options:
 **Setup:**
 
 1. **Install Netlify CLI**:
+
    ```bash
    npm install -g netlify-cli
    ```
 
 2. **Login**:
+
    ```bash
    netlify login
    ```
 
 3. **Deploy**:
+
    ```bash
    cd public/dummy-practice-website
    netlify deploy --prod
@@ -188,6 +204,7 @@ Replace it with one of these options:
 #### 🥉 Option 3: GitHub Pages (Free)
 
 **Why GitHub Pages?**
+
 - ✅ Completely free
 - ✅ Easy to update (just push to GitHub)
 - ✅ Good for static sites
@@ -200,6 +217,7 @@ Replace it with one of these options:
    - Make it public
 
 2. **Upload files**:
+
    ```bash
    cd public/dummy-practice-website
    git init
@@ -232,6 +250,7 @@ Replace it with one of these options:
 #### Option 4: Cloudflare Pages (Free)
 
 **Why Cloudflare Pages?**
+
 - ✅ Free
 - ✅ Fast CDN
 - ✅ Easy setup
@@ -251,12 +270,14 @@ Replace it with one of these options:
 ### Step 4: Configure DNS
 
 **Where to update DNS:**
+
 - Go to where you bought `dentalcrmtest.com` (GoDaddy, Namecheap, etc.)
 - Find DNS management section
 
 **What to add:**
 
 **For Vercel:**
+
 ```
 Type: CNAME
 Name: @
@@ -264,6 +285,7 @@ Value: cname.vercel-dns.com
 ```
 
 **For Netlify:**
+
 ```
 Type: CNAME
 Name: @
@@ -271,6 +293,7 @@ Value: your-site.netlify.app
 ```
 
 **For GitHub Pages:**
+
 ```
 Type: CNAME
 Name: @
@@ -294,6 +317,7 @@ Value: your-username.github.io
 ### Form Not Showing
 
 **Check:**
+
 - ✅ Form URL is correct in `index.html`
 - ✅ Form is published in CRM (`is_published = true`)
 - ✅ Form status is `active`
@@ -301,23 +325,27 @@ Value: your-username.github.io
 - ✅ Browser console for errors (F12)
 
 **Try:**
+
 - Open form URL directly: `https://your-crm-domain.com/f/form-slug`
 - If that works, the embed should work too
 
 ### Domain Not Working
 
 **Check:**
+
 - ✅ DNS records are correct
 - ✅ DNS has propagated (use whatsmydns.net)
 - ✅ SSL certificate is active (should auto-generate)
 
 **Wait:**
+
 - DNS can take up to 48 hours (usually much faster)
 - SSL certificate generates automatically (5-10 minutes)
 
 ### Form Submissions Not Appearing
 
 **Check:**
+
 - ✅ Form is active and published
 - ✅ CRM API endpoint is accessible
 - ✅ Check CRM logs/console for errors
@@ -325,12 +353,12 @@ Value: your-username.github.io
 
 ## 💰 Cost Breakdown
 
-| Item | Cost |
-|------|------|
-| Domain (dentalcrmtest.com) | Already owned ✅ |
-| Hosting (Vercel/Netlify/GitHub) | FREE ✅ |
-| SSL Certificate | FREE (auto) ✅ |
-| **Total Monthly Cost** | **$0** 🎉 |
+| Item                            | Cost             |
+| ------------------------------- | ---------------- |
+| Domain (dentalcrmtest.com)      | Already owned ✅ |
+| Hosting (Vercel/Netlify/GitHub) | FREE ✅          |
+| SSL Certificate                 | FREE (auto) ✅   |
+| **Total Monthly Cost**          | **$0** 🎉        |
 
 ## 🎨 Customization Ideas
 
@@ -375,6 +403,3 @@ Once your website is live:
 ---
 
 **You're all set!** Your dummy practice website should be live at `dentalcrmtest.com` with your CRM form embedded and ready to test! 🎉
-
-
-

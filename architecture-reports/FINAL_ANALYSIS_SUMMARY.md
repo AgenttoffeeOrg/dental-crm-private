@@ -27,6 +27,7 @@ Your codebase is well-structured with **1,070 source files**, but there are seve
 **Status:** ❌ **BLOCKING**
 
 **Errors:**
+
 ```
 src/components/deals/deal-detail-view-modal.tsx(409,6): error TS17008: JSX element 'div' has no corresponding closing tag.
 src/components/deals/deal-detail-view-modal.tsx(1096,1): error TS1381: Unexpected token.
@@ -34,7 +35,8 @@ src/components/deals/deal-detail-view-modal.tsx(1096,1): error TS1381: Unexpecte
 
 **Impact:** Prevents production builds
 
-**Fix:** 
+**Fix:**
+
 ```bash
 # Open the file and fix the JSX structure
 src/components/deals/deal-detail-view-modal.tsx
@@ -49,15 +51,18 @@ src/components/deals/deal-detail-view-modal.tsx
 **Status:** ⚠️ **19 Vulnerabilities Found**
 
 **Breakdown:**
+
 - 🔴 **High:** 11 vulnerabilities
-- 🟡 **Moderate:** 4 vulnerabilities  
+- 🟡 **Moderate:** 4 vulnerabilities
 - 🟢 **Low:** 4 vulnerabilities
 
 **Top Issues:**
+
 - `dompurify` <3.2.4 - XSS vulnerability (moderate)
 - `playwright` <1.55.1 - SSL certificate verification issue (high)
 
 **Fix:**
+
 ```bash
 npm audit fix
 # For breaking changes:
@@ -71,17 +76,20 @@ npm audit fix --force  # Review changes first!
 **Status:** ⚠️ **664 Files Affected**
 
 **Top Issues:**
+
 1. **`@typescript-eslint/no-explicit-any`** - Using `any` type instead of proper types
 2. **`react-hooks/exhaustive-deps`** - Missing dependencies in useEffect
 3. **`react/no-unescaped-entities`** - Unescaped entities in JSX
 
 **Most Affected Files:**
+
 - `/src/app/api/ai-assistant/chat/route.ts` - 10 errors
 - `/src/app/api/ai-assistant/action/route.ts` - 9 errors
 - `/src/app/(auth)/sign-in/page.tsx` - 5 errors
 - `/src/app/(auth)/invite/[token]/page.tsx` - 4 errors
 
 **Fix:**
+
 ```bash
 # Auto-fix what can be fixed
 npm run lint -- --fix
@@ -110,14 +118,14 @@ npm run lint -- --fix
 
 ## 📈 Metrics Summary
 
-| Metric | Status | Count |
-|--------|--------|-------|
-| **Source Files** | ✅ | 1,070 |
-| **TypeScript Errors** | ❌ | 3 (blocking) |
-| **ESLint Issues** | ⚠️ | 664 files |
-| **Security Vulnerabilities** | ⚠️ | 19 (11 high) |
-| **Circular Dependencies** | ✅ | 0 |
-| **Orphaned Modules** | ✅ | 0 |
+| Metric                       | Status | Count        |
+| ---------------------------- | ------ | ------------ |
+| **Source Files**             | ✅     | 1,070        |
+| **TypeScript Errors**        | ❌     | 3 (blocking) |
+| **ESLint Issues**            | ⚠️     | 664 files    |
+| **Security Vulnerabilities** | ⚠️     | 19 (11 high) |
+| **Circular Dependencies**    | ✅     | 0            |
+| **Orphaned Modules**         | ✅     | 0            |
 
 ---
 
@@ -130,6 +138,7 @@ npm run lint -- --fix
    - Priority: **CRITICAL** (blocks builds)
 
 2. ✅ **Fix npm security vulnerabilities**
+
    ```bash
    npm audit fix
    ```
@@ -164,6 +173,7 @@ npm run lint -- --fix
 ## 🛠️ Tools & Commands
 
 ### Run Analysis
+
 ```bash
 # Comprehensive analysis
 npm run analyze:architecture
@@ -176,6 +186,7 @@ npm run analyze:dependencies # Dependencies
 ```
 
 ### Fix Issues
+
 ```bash
 # Auto-fix ESLint
 npm run lint -- --fix
@@ -212,16 +223,19 @@ All reports saved in `architecture-reports/`:
 ## 💡 Recommendations
 
 ### Code Quality
+
 - ✅ Eliminate all `any` types gradually
 - ✅ Fix React Hook dependencies
 - ✅ Use proper TypeScript types everywhere
 
 ### Security
+
 - ✅ Update vulnerable dependencies
 - ✅ Review `npm audit` weekly
 - ✅ Consider using Dependabot for auto-updates
 
 ### Architecture
+
 - ✅ Continue modular structure
 - ✅ Regular dependency reviews
 - ✅ Monitor for circular dependencies
@@ -239,4 +253,3 @@ All reports saved in `architecture-reports/`:
 - **Dependency-Cruiser:** https://github.com/sverweij/dependency-cruiser
 - **npm audit:** Built into npm
 - **ESLint:** https://eslint.org/docs/latest/
-

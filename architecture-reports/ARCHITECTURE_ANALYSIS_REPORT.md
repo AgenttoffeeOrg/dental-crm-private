@@ -17,6 +17,7 @@ This report provides a comprehensive analysis of your Dental CRM architecture, c
 **Errors Found:** 3 critical errors
 
 **Issues:**
+
 - `src/components/deals/deal-detail-view-modal.tsx` - Missing closing tag (line 409)
 - Syntax errors in JSX structure
 
@@ -31,18 +32,21 @@ This report provides a comprehensive analysis of your Dental CRM architecture, c
 **Files with Issues:** 10+ files
 
 **Top Issues:**
+
 - `@typescript-eslint/no-explicit-any` - Use of `any` type (should use `unknown` or proper types)
 - `react-hooks/exhaustive-deps` - Missing dependencies in useEffect hooks
 - `react/no-unescaped-entities` - Unescaped entities in JSX
 
 **Files Affected:**
+
 - `/src/app/(auth)/auth/callback/route.ts` - 1 error
 - `/src/app/(auth)/invite/[token]/page.tsx` - 4 errors, 1 warning
 - `/src/app/(auth)/login/page.tsx` - 3 errors
 - `/src/app/api/ai-assistant/chat/route.ts` - 10 errors
 - And more...
 
-**Recommendation:** 
+**Recommendation:**
+
 1. Replace all `any` types with proper TypeScript types
 2. Fix React Hook dependencies
 3. Escape JSX entities
@@ -56,6 +60,7 @@ This report provides a comprehensive analysis of your Dental CRM architecture, c
 **Vulnerabilities:** See `npm-audit.json` for details
 
 **To check:**
+
 ```bash
 npm audit
 npm audit fix
@@ -68,6 +73,7 @@ npm audit fix
 **Status:** ⚠️ **Graphviz not installed**
 
 **To generate dependency graph:**
+
 ```bash
 # Install graphviz
 brew install graphviz  # macOS
@@ -79,6 +85,7 @@ npm run analyze:dependencies
 ```
 
 **Dependency Rules Configured:**
+
 - ✅ Circular dependency detection
 - ✅ Orphaned module detection
 - ✅ No dev dependencies in production code
@@ -91,10 +98,12 @@ npm run analyze:dependencies
 **Total Source Files:** 1,070 files
 
 **Breakdown:**
+
 - TypeScript/JavaScript files in `src/` directory
 - Excludes: `node_modules`, `.next`, test files
 
 **Structure:**
+
 ```
 src/
 ├── app/              # Next.js App Router pages
@@ -140,14 +149,17 @@ src/
 ## 📈 Code Quality Metrics
 
 ### TypeScript
+
 - **Type Coverage:** Needs improvement (due to `any` usage)
 - **Compilation:** ❌ Failing (3 errors)
 
 ### Code Style
+
 - **ESLint Errors:** 10+ files affected
 - **Common Issues:** Type safety, React hooks
 
 ### Architecture
+
 - **File Count:** 1,070 source files
 - **Structure:** Well-organized by feature
 
@@ -251,4 +263,3 @@ npm run analyze:dependencies
 
 **Report Generated:** ${new Date().toLocaleString()}
 **Next Analysis:** Run `npm run analyze:architecture` weekly
-

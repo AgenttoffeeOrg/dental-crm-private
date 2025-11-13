@@ -17,6 +17,7 @@ This deep-dive report examines 10 critical areas beyond the initial architecture
 ## 1. Complete Organization Creation Flow (Manual)
 
 ### Current State ✅
+
 **Status:** Excellent implementation
 
 The manual organization creation flow in `/src/app/api/orgs/create/route.ts` is **properly architected** with:
@@ -28,9 +29,11 @@ The manual organization creation flow in `/src/app/api/orgs/create/route.ts` is 
 5. **Audit Logging**: Non-blocking audit trail
 
 **Key Files:**
+
 - `src/app/api/orgs/create/route.ts` (Lines 59-469)
 
 **Sequential Operations:**
+
 ```typescript
 1. Create tenant with unique UUID
 2. Create default location (rollback tenant if fails)
@@ -44,12 +47,14 @@ The manual organization creation flow in `/src/app/api/orgs/create/route.ts` is 
 **If we disable `trigger_auto_create_tenant_for_new_user`:**
 
 ✅ **What Works:**
+
 - Sign-up flow creates app_users without tenant
 - Users reach onboarding flow
 - Manual org creation via `/api/orgs/create` works perfectly
 - Integrated onboarding flow detects no org and shows decision modal
 
 ❌ **Potential Issues:**
+
 - None identified - the manual flow is complete and robust
 
 **Risk Level:** 🟢 **LOW**
@@ -61,6 +66,7 @@ The manual organization creation flow in `/src/app/api/orgs/create/route.ts` is 
 ## 2. Navigation Guards & Access Control
 
 ### Current State ❌
+
 **Status:** CRITICAL GAP - NOT IMPLEMENTED
 
 **Risk Level:** 💀 **CRITICAL**
@@ -151,14 +157,7 @@ export async function middleware(request: NextRequest) {
 The documentation describes middleware that SHOULD exist:
 
 ```typescript
-const ALLOWED_WITHOUT_ORG = [
-  '/sign-in',
-  '/sign-up',
-  '/onboarding',
-  '/settings',
-  '/api',
-  '/_next',
-]
+const ALLOWED_WITHOUT_ORG = ['/sign-in', '/sign-up', '/onboarding', '/settings', '/api', '/_next'];
 
 export async function middleware(request: NextRequest) {
   // Check if user has active_tenant_id
@@ -166,14 +165,12 @@ export async function middleware(request: NextRequest) {
     .from('app_users')
     .select('active_tenant_id')
     .eq('id', user.id)
-    .single()
-  
+    .single();
+
   if (!appUser?.active_tenant_id) {
     // Redirect to onboarding if trying to access protected pages
-    if (!ALLOWED_WITHOUT_ORG.some(route => pathname.startsWith(route))) {
-      return NextResponse.redirect(
-        new URL('/onboarding?reason=no-org', request.url)
-      )
+    if (!ALLOWED_WITHOUT_ORG.some((route) => pathname.startsWith(route))) {
+      return NextResponse.redirect(new URL('/onboarding?reason=no-org', request.url));
     }
   }
 }
@@ -189,7 +186,7 @@ export async function middleware(request: NextRequest) {
   const hasOrg = Boolean(appUser?.active_tenant_id)
   const activeTenantId = appUser?.active_tenant_id || null
   const activeLocationId = appUser?.active_location_id || null
-  
+
   /**
    * Check if org is required and show modal if not
    */
@@ -209,6 +206,7 @@ export async function middleware(request: NextRequest) {
 ### Pages That SHOULD Be Blocked
 
 **Critical Routes:**
+
 - `/dashboard` - Main dashboard
 - `/contacts` - Contact management
 - `/deals` - Deal pipeline
@@ -222,11 +220,13 @@ export async function middleware(request: NextRequest) {
 ### Impact
 
 **Security Risk:**
+
 - Users can access dashboard without organization
 - API calls may fail with cryptic errors instead of clear messaging
 - Data leakage potential if API routes lack proper filtering (they likely do have tenant filtering, but UX is poor)
 
 **User Experience:**
+
 - Users see error states instead of friendly redirects
 - No clear path to create organization
 - Confusing empty states
@@ -236,6 +236,7 @@ export async function middleware(request: NextRequest) {
 **Complexity:** Simple
 
 **Action Required:**
+
 1. Implement the middleware described in documentation
 2. Add organization check to middleware in `middleware.ts`
 3. Redirect users without `active_tenant_id` to `/onboarding?reason=no-org`
@@ -247,6 +248,7 @@ export async function middleware(request: NextRequest) {
 ## 3. Settings Architecture Deep-Dive
 
 ### Current State ⚠️
+
 **Status:** MIXED - Some location-scoped, some not
 
 **Risk Level:** 🔴 **HIGH**
@@ -256,6 +258,7 @@ export async function middleware(request: NextRequest) {
 #### Settings Tables Analysis
 
 **1. Pipeline Settings**
+
 - **Table:** `pipeline_settings`
 - **Tenant Scope:** ✅ Has `tenant_id`
 - **Location Scope:** ❌ **NOT location-specific**
@@ -266,38 +269,38 @@ CREATE TABLE IF NOT EXISTS pipeline_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   pipeline_id UUID NOT NULL REFERENCES pipelines(id) ON DELETE CASCADE,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  
+
   -- General Settings
   icon TEXT,
   color TEXT,
   visibility TEXT DEFAULT 'everyone', -- "everyone", "admins_only", "specific_roles"
   visible_to_role_ids UUID[], -- Array of role IDs if visibility is "specific_roles"
-  
+
   -- Automation Settings
   auto_assignment_enabled BOOLEAN DEFAULT false,
   auto_assignment_rules JSONB, -- Rules for auto-assigning deals
-  
+
   -- Stage Settings
   enforce_stage_order BOOLEAN DEFAULT false, -- Prevent skipping stages
   stage_time_limits JSONB, -- SLA per stage: { "stage_id": days }
   required_fields_per_stage JSONB, -- { "stage_id": ["field1", "field2"] }
-  
+
   -- Notifications
   notify_on_stage_change BOOLEAN DEFAULT false,
   notify_on_stuck_deal BOOLEAN DEFAULT true,
   stuck_deal_threshold_days INTEGER DEFAULT 14,
   email_templates_per_stage JSONB, -- { "stage_id": "template_id" }
-  
+
   -- Deal Rules
   duplicate_prevention BOOLEAN DEFAULT true,
   value_min_threshold_cents INTEGER,
   value_max_threshold_cents INTEGER,
   require_treatment_tags BOOLEAN DEFAULT false,
-  
+
   -- Integrations
   webhook_url TEXT,
   webhook_events TEXT[], -- Which events trigger webhook
-  
+
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(pipeline_id)
@@ -309,16 +312,19 @@ CREATE TABLE IF NOT EXISTS pipeline_settings (
 **Recommendation:** Multi-location orgs may want different pipelines per location (e.g., "High-Volume Implants" at Clinic A vs "Cosmetic" at Clinic B). Current design forces all locations to share pipelines.
 
 **2. Deal Settings**
+
 - **Table:** `deal_settings`
 - **Tenant Scope:** ✅ Has `tenant_id`
 - **Location Scope:** ❌ **NOT location-specific**
 
 **3. Contact Settings**
+
 - **Table:** `contact_settings`
 - **Tenant Scope:** ✅ Has `tenant_id`
 - **Location Scope:** ❌ **NOT location-specific**
 
 **4. Treatment Tags** ✅ **Location-Scoped!**
+
 - **Table:** `treatment_tags`
 - **Tenant Scope:** ✅ Has `tenant_id`
 - **Location Scope:** ✅ **HAS location_id**
@@ -329,43 +335,43 @@ CREATE TABLE IF NOT EXISTS treatment_tags (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   location_id UUID, -- References practice_locations(id) - FK added later if table exists
-  
+
   -- Tag Details
   name TEXT NOT NULL, -- "Dental Implant", "Invisalign", "Emergency Care"
   description TEXT, -- Optional description for team clarity
   keywords TEXT[] NOT NULL DEFAULT '{}', -- ["implant", "crown", "restoration"]
-  
+
   -- Visual Customization
   color TEXT DEFAULT '#6366f1', -- Hex color for UI display
   icon TEXT DEFAULT '🦷', -- Emoji or icon name
-  
+
   -- Categorization
   category TEXT, -- "high_value", "emergency", "cosmetic", "orthodontic", "general", "custom"
-  
+
   -- Routing Configuration
   min_value_cents INTEGER, -- Minimum deal value for this tag (optional filter)
   priority INTEGER DEFAULT 0, -- Higher priority = checked first in routing
-  
+
   -- Status
   is_active BOOLEAN DEFAULT true,
   is_system_tag BOOLEAN DEFAULT false, -- System tags cannot be deleted (e.g., "Emergency")
-  
+
   -- Multi-location scope
   scope TEXT NOT NULL DEFAULT 'location' CHECK (scope IN ('organization', 'location')),
   -- 'organization' = available to all locations
   -- 'location' = specific to one location
-  
+
   -- Usage stats (updated by triggers)
   usage_count INTEGER DEFAULT 0, -- How many deals have this tag
   conversion_rate DECIMAL(5,2), -- % of deals with this tag that close-won
   avg_deal_value_cents INTEGER, -- Average value of deals with this tag
-  
+
   -- Audit
   created_by_user_id UUID REFERENCES app_users(id) ON DELETE SET NULL,
   updated_by_user_id UUID REFERENCES app_users(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
+
   -- Constraints
   CONSTRAINT tag_name_unique_per_location UNIQUE(tenant_id, location_id, name),
   CONSTRAINT tag_name_not_empty CHECK (length(trim(name)) > 0),
@@ -377,6 +383,7 @@ CREATE TABLE IF NOT EXISTS treatment_tags (
 ✅ **Treatment tags properly support both organization-wide and location-specific scoping**
 
 **5. Locations Table Has Settings Override**
+
 - **File:** `supabase/migrations/20250116_settings_versioning.sql` (Lines 40-41)
 
 ```40:41:supabase/migrations/20250116_settings_versioning.sql
@@ -389,6 +396,7 @@ CREATE TABLE IF NOT EXISTS treatment_tags (
 ### Pipeline & Pipeline Stages
 
 **Pipeline Stages**
+
 - **Table:** `pipeline_stages`
 - **Tenant Scope:** ✅ Has `tenant_id`
 - **Location Scope:** ❌ **NOT location-specific**
@@ -410,24 +418,26 @@ CREATE TABLE pipeline_stages (
 
 ### Summary Table
 
-| Setting Type | Table | Has tenant_id? | Has location_id? | Multi-Location Ready? |
-|--------------|-------|----------------|------------------|-----------------------|
-| Pipeline Settings | pipeline_settings | ✅ Yes | ❌ No | ❌ No |
-| Pipeline Stages | pipeline_stages | ✅ Yes | ❌ No | ❌ No |
-| Deal Settings | deal_settings | ✅ Yes | ❌ No | ❌ No |
-| Contact Settings | contact_settings | ✅ Yes | ❌ No | ❌ No |
-| Treatment Tags | treatment_tags | ✅ Yes | ✅ Yes | ✅ Yes |
-| Location Overrides | locations (JSONB) | N/A | N/A | ✅ Yes |
+| Setting Type       | Table             | Has tenant_id? | Has location_id? | Multi-Location Ready? |
+| ------------------ | ----------------- | -------------- | ---------------- | --------------------- |
+| Pipeline Settings  | pipeline_settings | ✅ Yes         | ❌ No            | ❌ No                 |
+| Pipeline Stages    | pipeline_stages   | ✅ Yes         | ❌ No            | ❌ No                 |
+| Deal Settings      | deal_settings     | ✅ Yes         | ❌ No            | ❌ No                 |
+| Contact Settings   | contact_settings  | ✅ Yes         | ❌ No            | ❌ No                 |
+| Treatment Tags     | treatment_tags    | ✅ Yes         | ✅ Yes           | ✅ Yes                |
+| Location Overrides | locations (JSONB) | N/A            | N/A              | ✅ Yes                |
 
 ### Impact
 
 **High Risk Issue:**
+
 - Multi-location organizations **cannot have different**:
   - Pipelines per location
   - Deal workflows per location
   - Contact validation rules per location
 
 **Business Impact:**
+
 - All locations forced to use identical workflows
 - Cannot customize per location based on specialization
 - Settings overrides via JSONB are a workaround, not a solution
@@ -439,11 +449,13 @@ CREATE TABLE pipeline_stages (
 **Options:**
 
 **Option A - Add location_id to critical settings:**
+
 1. Add `location_id` column to `pipeline_settings`, `deal_settings`, `contact_settings`
 2. Make NULL = org-wide default, NOT NULL = location override
 3. Update queries to prefer location settings over org defaults
 
 **Option B - Keep current JSONB approach:**
+
 1. Document location settings overrides usage
 2. Create UI for managing location-specific overrides
 3. Accept limitations for multi-location organizations
@@ -455,26 +467,28 @@ CREATE TABLE pipeline_stages (
 ## 4. Complete Data Model Audit
 
 ### Current State ✅
+
 **Status:** GOOD - Core tables properly configured
 
 **Risk Level:** 🟢 **LOW**
 
 ### Complete Table Audit
 
-| Table Name | Has tenant_id? | Has location_id? | Direct user_id? | Notes |
-|------------|----------------|------------------|-----------------|-------|
-| contacts | ✅ Yes | ✅ Yes (nullable) | ❌ No | ✅ Correct |
-| deals | ✅ Yes | ✅ Yes (nullable) | ✅ owner_user_id (OK) | ✅ Correct |
-| tasks | ✅ Yes | ✅ Yes (nullable) | ✅ assignee_user_id (OK) | ✅ Correct |
-| activities | ✅ Yes | ✅ Yes (nullable) | ✅ agent_user_id (OK) | ✅ Correct |
-| pipelines | ✅ Yes | ❌ No | ❌ No | ⚠️ Org-wide only |
-| pipeline_stages | ✅ Yes | ❌ No | ❌ No | ⚠️ Org-wide only |
-| treatment_tags | ✅ Yes | ✅ Yes | ❌ No | ✅ Correct |
-| treatment_plans | ✅ Yes | ❌ No | ❌ No | ✅ Org-wide OK |
-| files | ✅ Yes | ✅ Yes (nullable) | ❌ No | ✅ Correct |
-| audits | ✅ Yes | ✅ Yes (nullable) | ❌ No | ✅ Correct |
+| Table Name      | Has tenant_id? | Has location_id?  | Direct user_id?          | Notes            |
+| --------------- | -------------- | ----------------- | ------------------------ | ---------------- |
+| contacts        | ✅ Yes         | ✅ Yes (nullable) | ❌ No                    | ✅ Correct       |
+| deals           | ✅ Yes         | ✅ Yes (nullable) | ✅ owner_user_id (OK)    | ✅ Correct       |
+| tasks           | ✅ Yes         | ✅ Yes (nullable) | ✅ assignee_user_id (OK) | ✅ Correct       |
+| activities      | ✅ Yes         | ✅ Yes (nullable) | ✅ agent_user_id (OK)    | ✅ Correct       |
+| pipelines       | ✅ Yes         | ❌ No             | ❌ No                    | ⚠️ Org-wide only |
+| pipeline_stages | ✅ Yes         | ❌ No             | ❌ No                    | ⚠️ Org-wide only |
+| treatment_tags  | ✅ Yes         | ✅ Yes            | ❌ No                    | ✅ Correct       |
+| treatment_plans | ✅ Yes         | ❌ No             | ❌ No                    | ✅ Org-wide OK   |
+| files           | ✅ Yes         | ✅ Yes (nullable) | ❌ No                    | ✅ Correct       |
+| audits          | ✅ Yes         | ✅ Yes (nullable) | ❌ No                    | ✅ Correct       |
 
 **Analysis:**
+
 - ✅ All data tables have `tenant_id`
 - ✅ Most data tables have `location_id` (nullable for org-wide records)
 - ✅ No improper direct user_id relationships (except audit fields)
@@ -487,11 +501,13 @@ CREATE TABLE pipeline_stages (
 ## 5. Race Conditions & Edge Cases
 
 ### Current State ⚠️
+
 **Status:** Partially addressed
 
 ### Edge Case Analysis
 
 #### 1. Concurrent Organization Creation
+
 **Status:** ✅ Protected by database UNIQUE constraints
 
 **File:** `src/app/api/orgs/create/route.ts`
@@ -501,11 +517,13 @@ CREATE TABLE pipeline_stages (
 - No race condition issues
 
 #### 2. Invite Code Race Condition
+
 **Need to verify:** What happens if two users join with same code simultaneously?
 
 **Unknown without examining invite acceptance code**
 
 #### 3. Page Refresh During Org Creation
+
 **Status:** ❌ No progress saving
 
 **Issue:** User creates org via API → Page refresh → User has org but wizard resets
@@ -515,6 +533,7 @@ CREATE TABLE pipeline_stages (
 **Recommendation:** Store onboarding progress in database
 
 #### 4. Network Failure During Multi-Step Creation
+
 **Status:** ✅ Handled with rollback
 
 **File:** `src/app/api/orgs/create/route.ts` (Lines 258-300)
@@ -527,13 +546,13 @@ CREATE TABLE pipeline_stages (
           details: locationError.details,
           hint: locationError.hint
         })
-        
+
         // Rollback: Delete tenant
         console.log('[ORGS] Rolling back tenant creation...')
         await serviceClient.from('tenants').delete().eq('id', tenant.id)
-        
+
         return NextResponse.json(
-          { 
+          {
             error: 'Failed to create default location',
             message: locationError.message || 'Unknown error',
             details: locationError.details || locationError.hint
@@ -546,6 +565,7 @@ CREATE TABLE pipeline_stages (
 ✅ **Proper rollback implemented**
 
 #### 5. Spam Protection
+
 **Unknown:** Need to check for rate limiting on org creation
 
 **Recommendation:** Add rate limiting to `/api/orgs/create`
@@ -557,13 +577,16 @@ CREATE TABLE pipeline_stages (
 ## 6. Invite System Edge Cases
 
 ### Current State ⚠️
+
 **Status:** Need to examine implementation
 
 **Files to Check:**
+
 - `src/app/api/invites/accept/route.ts`
 - `supabase/migrations/20251025_006a_enhanced_invitations.sql`
 
 **Need to verify:**
+
 - ✅ Expired invite rejection
 - ✅ Already-registered user handling
 - ✅ Multiple locations/roles in one invite
@@ -577,6 +600,7 @@ CREATE TABLE pipeline_stages (
 ## 7. Data Migration Concerns
 
 ### Current State ⚠️
+
 **Status:** Need migration plan
 
 ### Key Questions
@@ -595,7 +619,8 @@ CREATE TABLE pipeline_stages (
    - Code appears to handle both active_tenant_id and legacy tenant_id
    - Need to verify fallback logic
 
-**Recommendation:** 
+**Recommendation:**
+
 1. Run query to assess existing data
 2. Create migration script to fix any orphaned users
 3. Test trigger disable in staging environment
@@ -607,6 +632,7 @@ CREATE TABLE pipeline_stages (
 ## 8. Performance & Scalability Checks
 
 ### Current State ✅
+
 **Status:** Generally good
 
 ### Index Analysis
@@ -644,6 +670,7 @@ CREATE INDEX idx_audits_created_at ON audits(created_at DESC);
 ✅ **Comprehensive indexing on tenant_id and foreign keys**
 
 **Composite Indexes Added Later:**
+
 - From `supabase/migrations/20251025_phase1_critical_fixes.sql`:
   - `idx_contacts_tenant_location` on `contacts(tenant_id, location_id)`
   - `idx_deals_tenant_location` on `deals(tenant_id, location_id)`
@@ -654,7 +681,8 @@ CREATE INDEX idx_audits_created_at ON audits(created_at DESC);
 
 ### Potential N+1 Query Issues
 
-**Need to verify:** 
+**Need to verify:**
+
 - API routes fetch related entities efficiently
 - Pipeline queries include stages in single query
 - Deal queries include contact in single query
@@ -684,6 +712,7 @@ CREATE INDEX idx_audits_created_at ON audits(created_at DESC);
 9. ❓ Team member joins and has correct access → **Need to verify**
 
 **Blockers:**
+
 - Navigation guards not implemented
 - Cannot test full flow until guards are in place
 
@@ -694,12 +723,15 @@ CREATE INDEX idx_audits_created_at ON audits(created_at DESC);
 ## 10. Specific Code Quality Issues
 
 ### Current State ⚠️
+
 **Status:** Some issues found
 
 ### Issues Found
 
 #### 1. Duplicate Middleware Files
+
 **Files:**
+
 - `middleware.ts` (root) - Session check only
 - `src/middleware.ts` - Security headers only
 
@@ -708,7 +740,9 @@ CREATE INDEX idx_audits_created_at ON audits(created_at DESC);
 **Fix:** Merge and implement org checking in merged file
 
 #### 2. Documentation vs Reality Gap
+
 **Files:**
+
 - `CONFIRMED_REQUIREMENTS_AND_PLAN.md` describes middleware that doesn't exist
 - `NEW_ONBOARDING_WORKFLOW_IMPLEMENTATION.md` describes middleware that doesn't exist
 
@@ -717,13 +751,17 @@ CREATE INDEX idx_audits_created_at ON audits(created_at DESC);
 **Fix:** Either update code to match docs, or update docs to match code
 
 #### 3. TODO Comments
+
 **Need to grep for TODOs:** Unknown
 
 #### 4. Commented-Out Code
+
 **Need to grep for commented sections:** Unknown
 
 #### 5. console.log Statements
+
 **Files:** Many
+
 - `src/app/(auth)/sign-up/page.tsx` has many console.log
 - `src/app/api/orgs/create/route.ts` has many console.log
 
@@ -737,14 +775,14 @@ CREATE INDEX idx_audits_created_at ON audits(created_at DESC);
 
 ## Summary of Critical Issues
 
-| Issue | Section | Risk Level | Fix Complexity | Priority |
-|-------|---------|------------|----------------|----------|
-| Navigation guards missing | #2 | 💀 CRITICAL | Simple | P0 |
-| Settings not location-scoped | #3 | 🔴 HIGH | Complex | P1 |
-| Pipeline org-wide only | #3, #4 | 🔴 HIGH | Complex | P1 |
-| Edge cases unverified | #5, #6 | 🟡 MEDIUM | Moderate | P2 |
-| Migration plan missing | #7 | 🟡 MEDIUM | Simple | P2 |
-| Code quality issues | #10 | 🟡 MEDIUM | Simple | P3 |
+| Issue                        | Section | Risk Level  | Fix Complexity | Priority |
+| ---------------------------- | ------- | ----------- | -------------- | -------- |
+| Navigation guards missing    | #2      | 💀 CRITICAL | Simple         | P0       |
+| Settings not location-scoped | #3      | 🔴 HIGH     | Complex        | P1       |
+| Pipeline org-wide only       | #3, #4  | 🔴 HIGH     | Complex        | P1       |
+| Edge cases unverified        | #5, #6  | 🟡 MEDIUM   | Moderate       | P2       |
+| Migration plan missing       | #7      | 🟡 MEDIUM   | Simple         | P2       |
+| Code quality issues          | #10     | 🟡 MEDIUM   | Simple         | P3       |
 
 ---
 
@@ -801,13 +839,3 @@ The system has **excellent organizational setup architecture** with proper atomi
 
 **Fix Complexity:** Simple (few hours of work)
 **Risk if Not Fixed:** 💀 **CRITICAL** - Security and UX issues
-
-
-
-
-
-
-
-
-
-

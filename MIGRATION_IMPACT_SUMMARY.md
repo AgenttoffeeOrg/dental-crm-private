@@ -8,7 +8,8 @@
 ## 🚨 STOP - DO NOT RUN THESE MIGRATIONS YET
 
 Your planned migrations have **critical issues** that will cause:
-1. **Schema inconsistency** confusion  
+
+1. **Schema inconsistency** confusion
 2. **Application crashes** if code isn't updated
 3. **Migration failures** if columns already exist
 4. **Typo** that would corrupt the activities table
@@ -22,6 +23,7 @@ Your planned migrations have **critical issues** that will cause:
 **You have TWO different schemas in your migrations:**
 
 **Old Schema:**
+
 ```sql
 CREATE TABLE locations (
   address TEXT,
@@ -30,6 +32,7 @@ CREATE TABLE locations (
 ```
 
 **New Schema:**
+
 ```sql
 CREATE TABLE locations (
   address_line1 TEXT,
@@ -52,12 +55,14 @@ CREATE TABLE locations (
 **These files will break:**
 
 #### File: `src/app/api/onboarding/save-progress/route.ts`
+
 **Lines: 212, 216**
 
 **Current:**
+
 ```typescript
-if (fieldData.address_line1 !== undefined) locationUpdate.address = fieldData.address_line1 || null
-if (fieldData.phone_number !== undefined) locationUpdate.phone = fieldData.phone_number || null
+if (fieldData.address_line1 !== undefined) locationUpdate.address = fieldData.address_line1 || null;
+if (fieldData.phone_number !== undefined) locationUpdate.phone = fieldData.phone_number || null;
 ```
 
 **Problem:** Code assigns to `locationUpdate.address` - column no longer exists after rename
@@ -67,9 +72,11 @@ if (fieldData.phone_number !== undefined) locationUpdate.phone = fieldData.phone
 ---
 
 #### File: `src/components/onboarding/steps/first-location-step.tsx`
+
 **Lines: 65, 81, 91, 102, 120, 130**
 
 **Current:**
+
 ```typescript
 // Line 65 - SELECT statement
 .select('name, address, city, postal_code, phone')
@@ -80,7 +87,8 @@ if (location.address && (!existingStepData.address_line1 || existingStepData.add
 }
 ```
 
-**Problem:** 
+**Problem:**
+
 1. SQL SELECT returns `address` column that no longer exists
 2. JavaScript reads `location.address` property that won't exist
 
@@ -89,16 +97,18 @@ if (location.address && (!existingStepData.address_line1 || existingStepData.add
 ---
 
 #### File: `src/lib/hooks/use-locations.ts`
+
 **Line: 8**
 
 **Current:**
+
 ```typescript
 export interface Location {
-  id: string
-  tenant_id: string
-  name: string
-  address?: string          // ❌ Wrong after migration
-  is_primary?: boolean
+  id: string;
+  tenant_id: string;
+  name: string;
+  address?: string; // ❌ Wrong after migration
+  is_primary?: boolean;
 }
 ```
 
@@ -114,7 +124,7 @@ export interface Location {
 
 ```sql
 ALTER TABLE deals ADD COLUMN location_id
-ALTER TABLE tasks ADD COLUMN location_id  
+ALTER TABLE tasks ADD COLUMN location_id
 ALTER TABLE activities ADD COLUMN location_id
 ```
 
@@ -127,6 +137,7 @@ ALTER TABLE activities ADD COLUMN location_id
 ### 4. Critical Typo 💀 CRITICAL
 
 **Planned migration:**
+
 ```sql
 ALTER TABLE activities ADD COLUMN location_id UUID REFERENCES activities(id)
                                                             ^^^^^^^^^^^^
@@ -135,6 +146,7 @@ ALTER TABLE activities ADD COLUMN location_id UUID REFERENCES activities(id)
 **WRONG:** References `activities(id)` (circular reference)
 
 **Correct:**
+
 ```sql
 ALTER TABLE activities ADD COLUMN location_id UUID REFERENCES locations(id)
 ```
@@ -147,14 +159,14 @@ ALTER TABLE activities ADD COLUMN location_id UUID REFERENCES locations(id)
 
 ### Before Running Migrations, Update These Files:
 
-| File | Lines | Required Change | Risk if Missed |
-|------|-------|-----------------|----------------|
-| `src/lib/hooks/use-locations.ts` | 8 | Change `address?: string` to `address_line1?: string` | App crashes |
-| `src/app/api/onboarding/save-progress/route.ts` | 212 | Change `locationUpdate.address` to `locationUpdate.address_line1` | Onboarding breaks |
-| `src/app/api/onboarding/save-progress/route.ts` | 216 | Change `locationUpdate.phone` to `locationUpdate.phone_number` | Onboarding breaks |
-| `src/components/onboarding/steps/first-location-step.tsx` | 65 | Change `.select('name, address, ...')` to `.select('name, address_line1, ...')` | Wizard breaks |
-| `src/components/onboarding/steps/first-location-step.tsx` | 81, 120 | Change `location.address` to `location.address_line1` | Wizard breaks |
-| `src/components/onboarding/steps/first-location-step.tsx` | 91, 130 | Change `location.phone` to `location.phone_number` | Wizard breaks |
+| File                                                      | Lines   | Required Change                                                                 | Risk if Missed    |
+| --------------------------------------------------------- | ------- | ------------------------------------------------------------------------------- | ----------------- |
+| `src/lib/hooks/use-locations.ts`                          | 8       | Change `address?: string` to `address_line1?: string`                           | App crashes       |
+| `src/app/api/onboarding/save-progress/route.ts`           | 212     | Change `locationUpdate.address` to `locationUpdate.address_line1`               | Onboarding breaks |
+| `src/app/api/onboarding/save-progress/route.ts`           | 216     | Change `locationUpdate.phone` to `locationUpdate.phone_number`                  | Onboarding breaks |
+| `src/components/onboarding/steps/first-location-step.tsx` | 65      | Change `.select('name, address, ...')` to `.select('name, address_line1, ...')` | Wizard breaks     |
+| `src/components/onboarding/steps/first-location-step.tsx` | 81, 120 | Change `location.address` to `location.address_line1`                           | Wizard breaks     |
+| `src/components/onboarding/steps/first-location-step.tsx` | 91, 130 | Change `location.phone` to `location.phone_number`                              | Wizard breaks     |
 
 ---
 
@@ -182,6 +194,7 @@ DIAGNOSTIC_SCHEMA_CHECK.sql
 ```
 
 **Determine:**
+
 1. Does `locations.address` exist?
 2. Does `locations.address_line1` exist?
 3. Does `locations.phone` exist?
@@ -192,7 +205,7 @@ DIAGNOSTIC_SCHEMA_CHECK.sql
 **A. Only old columns exist** → Safe to migrate, update code first  
 **B. Only new columns exist** → Migrations wrong, don't run  
 **C. Both exist** → Database corruption, cleanup needed  
-**D. Neither exist** → Locations table missing or renamed  
+**D. Neither exist** → Locations table missing or renamed
 
 ### Phase 2: Fix Code (If Schema A)
 
@@ -204,14 +217,14 @@ Update the 6 files listed above before running migrations.
 
 ```sql
 -- Safe, idempotent migration
-DO $$ 
+DO $$
 BEGIN
   -- Only rename if old column exists and new doesn't
   IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
+    SELECT 1 FROM information_schema.columns
     WHERE table_name = 'locations' AND column_name = 'address'
   ) AND NOT EXISTS (
-    SELECT 1 FROM information_schema.columns 
+    SELECT 1 FROM information_schema.columns
     WHERE table_name = 'locations' AND column_name = 'address_line1'
   ) THEN
     ALTER TABLE locations RENAME COLUMN address TO address_line1;
@@ -219,13 +232,13 @@ BEGIN
   ELSE
     RAISE NOTICE 'address column already migrated or missing';
   END IF;
-  
+
   -- Same for phone
   IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
+    SELECT 1 FROM information_schema.columns
     WHERE table_name = 'locations' AND column_name = 'phone'
   ) AND NOT EXISTS (
-    SELECT 1 FROM information_schema.columns 
+    SELECT 1 FROM information_schema.columns
     WHERE table_name = 'locations' AND column_name = 'phone_number'
   ) THEN
     ALTER TABLE locations RENAME COLUMN phone TO phone_number;
@@ -256,12 +269,12 @@ END $$;
 ❌ **Unknown:** Which schema is active in your database  
 ❌ **Will break:** 6 TypeScript files if migrations run  
 ❌ **Typo:** Wrong foreign key reference in planned migration  
-❌ **Redundant:** Trying to add columns that already exist  
+❌ **Redundant:** Trying to add columns that already exist
 
 ### Required Actions
 
 1. ✅ **Diagnose first** - Run `DIAGNOSTIC_SCHEMA_CHECK.sql`
-2. ✅ **Fix code** - Update 6 TypeScript files  
+2. ✅ **Fix code** - Update 6 TypeScript files
 3. ✅ **Fix typo** - Correct activities reference
 4. ✅ **Make safe** - Use idempotent migration pattern
 5. ✅ **Test** - Run in staging environment
@@ -291,13 +304,3 @@ END $$;
 6. Then run safe migrations
 
 **Only proceed after completing all steps above.**
-
-
-
-
-
-
-
-
-
-

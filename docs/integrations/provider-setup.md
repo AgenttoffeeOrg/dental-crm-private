@@ -7,24 +7,24 @@ This checklist captures every credential we need to enable live communications i
 
 ## 1. Twilio Account (Voice/SMS/WhatsApp)
 
-| Setting | Description | Notes |
-| --- | --- | --- |
-| `TWILIO_ACCOUNT_SID` | Primary account identifier | Available in Twilio Console |
-| `TWILIO_AUTH_TOKEN` | Secret token for REST API | Store encrypted via backend helper |
-| `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_PHONE_NUMBER` | Default sender for SMS | Messaging Service preferred |
-| `TWILIO_WHATSAPP_SENDER` | `whatsapp:+1234567890` format | Must be WhatsApp-approved |
-| `TWILIO_VOICE_CALLER_ID` | Caller ID used for outbound calls | Needs voice capabilities |
-| Voice Webhook URL | `/api/webhooks/voice/stream` once deployed | Configure in Twilio Console |
-| SMS Webhook URL | `/api/webhooks/sms` | Already hardened; confirm signature secret |
-| WhatsApp Webhook URL | `/api/webhooks/whatsapp` | Confirm sandbox vs production |
+| Setting                                                 | Description                                | Notes                                      |
+| ------------------------------------------------------- | ------------------------------------------ | ------------------------------------------ |
+| `TWILIO_ACCOUNT_SID`                                    | Primary account identifier                 | Available in Twilio Console                |
+| `TWILIO_AUTH_TOKEN`                                     | Secret token for REST API                  | Store encrypted via backend helper         |
+| `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_PHONE_NUMBER` | Default sender for SMS                     | Messaging Service preferred                |
+| `TWILIO_WHATSAPP_SENDER`                                | `whatsapp:+1234567890` format              | Must be WhatsApp-approved                  |
+| `TWILIO_VOICE_CALLER_ID`                                | Caller ID used for outbound calls          | Needs voice capabilities                   |
+| Voice Webhook URL                                       | `/api/webhooks/voice/stream` once deployed | Configure in Twilio Console                |
+| SMS Webhook URL                                         | `/api/webhooks/sms`                        | Already hardened; confirm signature secret |
+| WhatsApp Webhook URL                                    | `/api/webhooks/whatsapp`                   | Confirm sandbox vs production              |
 
 ## 2. SendGrid (Email Provider)
 
-| Setting | Description | Notes |
-| --- | --- | --- |
-| `SENDGRID_API_KEY` | API key with Mail Send scope | Store encrypted |
-| Default from email | e.g. `no-reply@yourdomain.com` | Domain must be verified |
-| Default reply-to | Optional | |
+| Setting                  | Description                    | Notes                         |
+| ------------------------ | ------------------------------ | ----------------------------- |
+| `SENDGRID_API_KEY`       | API key with Mail Send scope   | Store encrypted               |
+| Default from email       | e.g. `no-reply@yourdomain.com` | Domain must be verified       |
+| Default reply-to         | Optional                       |                               |
 | Event webhook (optional) | `/api/webhooks/email` (future) | For bounce/complaint insights |
 
 ## 3. Optional Email Providers
@@ -97,7 +97,3 @@ DEFAULT_REPLY_TO_EMAIL=
 ---
 
 Once these items are in place we can move into Phase 3 and wire the live credentials into the communication services and queues.
-
-
-
-

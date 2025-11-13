@@ -17,6 +17,7 @@ This document traces the complete flow of organization (tenant) creation, includ
 **Authentication:** Required (user must be authenticated)
 
 **Request Body:**
+
 ```typescript
 {
   name: string,              // Required, 2-100 chars
@@ -25,6 +26,7 @@ This document traces the complete flow of organization (tenant) creation, includ
 ```
 
 **Response:**
+
 ```typescript
 {
   success: true,
@@ -47,10 +49,13 @@ This document traces the complete flow of organization (tenant) creation, includ
 ### Step 1: Authentication (Lines 67-75)
 
 ```typescript
-const { data: { user }, error: authError } = await supabase.auth.getUser()
+const {
+  data: { user },
+  error: authError,
+} = await supabase.auth.getUser();
 
 if (authError || !user) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
 ```
 
@@ -65,7 +70,7 @@ const { data: appUser, error: appUserError } = await supabase
   .from('app_users')
   .select('id, full_name, active_tenant_id')
   .eq('id', user.id)
-  .single()
+  .single();
 ```
 
 **Purpose:** Fetch user's app_users record to check if they already have an organization.
@@ -77,10 +82,11 @@ const { data: appUser, error: appUserError } = await supabase
 ### Step 3: Create Service Client (Lines 97-111)
 
 ```typescript
-serviceClient = createServiceClient()
+serviceClient = createServiceClient();
 ```
 
 **Purpose:** Create Supabase service client that bypasses RLS. This is necessary because:
+
 - Creating a tenant requires INSERT permission on `tenants` table
 - RLS policies may block regular user from creating tenants
 - Service client uses `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS
@@ -92,11 +98,12 @@ serviceClient = createServiceClient()
 ### Step 4: Validate Request Body (Lines 127-150)
 
 ```typescript
-const rawBody = await request.json()
-body = CreateOrgSchema.parse(rawBody)
+const rawBody = await request.json();
+body = CreateOrgSchema.parse(rawBody);
 ```
 
 **Validation Schema (Lines 36-52):**
+
 - `name`: 2-100 characters, no special chars (`<>{}[]\/`)
 - `location_name`: Optional, 2-100 characters, defaults to "Main Office"
 
@@ -107,21 +114,23 @@ body = CreateOrgSchema.parse(rawBody)
 ### Step 5: Create Tenant (Organization) (Lines 161-228)
 
 **Code:**
+
 ```typescript
 const { data: tenantData, error: tenantError } = await serviceClient
   .from('tenants')
   .insert({
     name: body.name,
-    is_multi_location: false,  // Start as single-location
-    account_type: 'organization',  // Required by constraint
+    is_multi_location: false, // Start as single-location
+    account_type: 'organization', // Required by constraint
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   })
   .select('id, name')
-  .single()
+  .single();
 ```
 
 **Database Operations:**
+
 1. **INSERT INTO `tenants`:**
    - `name`: Organization name from request
    - `is_multi_location`: `false` (can be enabled later)
@@ -129,6 +138,7 @@ const { data: tenantData, error: tenantError } = await serviceClient
    - `created_at`, `updated_at`: Current timestamp
 
 **Error Handling:**
+
 - Duplicate name (code `23505`): Returns 409 Conflict (lines 182-189)
 - Other errors: Returns 500 with error details (lines 192-199)
 
@@ -139,20 +149,22 @@ const { data: tenantData, error: tenantError } = await serviceClient
 ### Step 6: Create Default Location (Lines 239-301)
 
 **Code:**
+
 ```typescript
 const { data: locationData, error: locationError } = await serviceClient
   .from('locations')
   .insert({
     tenant_id: tenant.id,
-    name: body.location_name,  // "Main Office" by default
+    name: body.location_name, // "Main Office" by default
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   })
   .select('id, name')
-  .single()
+  .single();
 ```
 
 **Database Operations:**
+
 1. **INSERT INTO `locations`:**
    - `tenant_id`: Newly created tenant ID
    - `name`: From request (defaults to "Main Office")
@@ -168,21 +180,23 @@ const { data: locationData, error: locationError } = await serviceClient
 ### Step 7: Create Owner Membership (Lines 312-378)
 
 **Code:**
+
 ```typescript
 const { data: membershipData, error: membershipError } = await serviceClient
   .from('user_tenant_memberships')
   .insert({
     user_id: user.id,
     tenant_id: tenant.id,
-    role: 'owner',  // ✅ Creator becomes owner
-    all_locations: true,  // ✅ Owner has access to all locations
-    status: 'active'
+    role: 'owner', // ✅ Creator becomes owner
+    all_locations: true, // ✅ Owner has access to all locations
+    status: 'active',
   })
   .select('id, role')
-  .single()
+  .single();
 ```
 
 **Database Operations:**
+
 1. **INSERT INTO `user_tenant_memberships`:**
    - `user_id`: Creator's user ID
    - `tenant_id`: Newly created tenant ID
@@ -200,24 +214,27 @@ const { data: membershipData, error: membershipError } = await serviceClient
 ### Step 8: Update User's Active Context (Lines 384-398)
 
 **Code:**
+
 ```typescript
 const { error: updateUserError } = await serviceClient
   .from('app_users')
   .update({
     active_tenant_id: tenant.id,
     active_location_id: location.id,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   })
-  .eq('id', user.id)
+  .eq('id', user.id);
 ```
 
 **Database Operations:**
+
 1. **UPDATE `app_users`:**
    - `active_tenant_id`: New tenant ID (sets current session context)
    - `active_location_id`: New location ID (sets current location context)
    - `updated_at`: Current timestamp
 
-**Purpose:** 
+**Purpose:**
+
 - Sets the newly created org as the user's active context
 - Ensures RLS policies work correctly (they check `active_tenant_id`)
 - User immediately sees the new org when redirected to dashboard
@@ -229,6 +246,7 @@ const { error: updateUserError } = await serviceClient
 ### Step 9: Audit Log (Lines 403-426)
 
 **Code:**
+
 ```typescript
 await supabase.from('audits').insert({
   user_id: user.id,
@@ -240,10 +258,10 @@ await supabase.from('audits').insert({
   metadata: {
     organization_name: body.name,
     location_name: body.location_name,
-    creator_name: appUser.full_name
+    creator_name: appUser.full_name,
   },
-  severity: 'info'
-})
+  severity: 'info',
+});
 ```
 
 **Purpose:** Log organization creation for audit trail. Error is non-fatal (lines 420-425).
@@ -257,33 +275,33 @@ await supabase.from('audits').insert({
 ```
 1. AUTHENTICATION
    └─ Get authenticated user
-   
+
 2. GET APP_USER
    └─ Fetch app_users record
    └─ Check if active_tenant_id exists (warn if yes)
-   
+
 3. CREATE SERVICE CLIENT
    └─ Bypass RLS for tenant creation
-   
+
 4. VALIDATE REQUEST
    └─ Validate name and location_name
-   
+
 5. CREATE TENANT
    └─ INSERT INTO tenants (name, is_multi_location, account_type)
    └─ Returns: tenant.id
-   
+
 6. CREATE DEFAULT LOCATION
    └─ INSERT INTO locations (tenant_id, name)
    └─ Returns: location.id
    └─ ROLLBACK if fails: DELETE tenants WHERE id = tenant.id
-   
+
 7. CREATE OWNER MEMBERSHIP
    └─ INSERT INTO user_tenant_memberships (user_id, tenant_id, role='owner')
    └─ ROLLBACK if fails: DELETE locations, DELETE tenants
-   
+
 8. UPDATE USER CONTEXT
    └─ UPDATE app_users SET active_tenant_id, active_location_id
-   
+
 9. AUDIT LOG
    └─ INSERT INTO audits (organization.created)
 ```
@@ -309,6 +327,7 @@ name: body.location_name,  // Defaults to "Main Office" per schema
 ### What fields are populated?
 
 **Initially Populated:**
+
 - `id`: UUID (auto-generated)
 - `tenant_id`: New tenant ID
 - `name`: "Main Office" (or custom name from request)
@@ -316,6 +335,7 @@ name: body.location_name,  // Defaults to "Main Office" per schema
 - `updated_at`: Current timestamp
 
 **Initially NULL:**
+
 - `address`, `city`, `postal_code`, `phone`, `email`, etc.
 - `is_primary`: `false` (not set during creation)
 - `is_active`: `true` (default from schema)
@@ -323,6 +343,7 @@ name: body.location_name,  // Defaults to "Main Office" per schema
 ### Is it marked as "default"?
 
 **No explicit "default" flag.** However:
+
 - It's the first location created for the tenant
 - It can be marked as `is_primary = true` later (only one primary per tenant)
 
@@ -331,6 +352,7 @@ name: body.location_name,  // Defaults to "Main Office" per schema
 ### Can it be deleted?
 
 **Yes.** Locations can be deleted by:
+
 - Tenant owners (via RLS policy)
 - Service client (for admin operations)
 
@@ -363,6 +385,7 @@ role: 'owner',  // ✅ Creator becomes owner
 **Yes.** The membership record is created in Step 7 (lines 312-323).
 
 **Complete Record:**
+
 ```sql
 INSERT INTO user_tenant_memberships (
   user_id,
@@ -387,12 +410,14 @@ INSERT INTO user_tenant_memberships (
 ### How is it generated?
 
 **Not shown in organization creation flow.** Invite codes are likely generated when:
+
 - Admin creates an invitation
 - User invites another user to join their organization
 
 **Likely Pattern:**
+
 ```typescript
-const inviteCode = randomBytes(8).toString('hex').toUpperCase()
+const inviteCode = randomBytes(8).toString('hex').toUpperCase();
 ```
 
 ### Where is the "join with code" endpoint?
@@ -400,6 +425,7 @@ const inviteCode = randomBytes(8).toString('hex').toUpperCase()
 **Likely Route:** `/api/invites/accept` or `/api/orgs/join`
 
 **File Search:** Could be in:
+
 - `src/app/api/invites/create/route.ts`
 - `src/app/api/invites/accept/route.ts`
 
@@ -408,6 +434,7 @@ const inviteCode = randomBytes(8).toString('hex').toUpperCase()
 ### Show the join flow code
 
 **Not Available in Current Codebase Search.** The join flow would likely:
+
 1. Validate invite code
 2. Check if code is expired
 3. Create `user_tenant_memberships` record with role from invitation
@@ -416,12 +443,14 @@ const inviteCode = randomBytes(8).toString('hex').toUpperCase()
 ### What happens when someone joins vs creates?
 
 **Creating Org:**
+
 - User becomes `owner`
 - Creates new tenant
 - Creates default location
 - Sets `active_tenant_id` to new tenant
 
 **Joining Org:**
+
 - User receives role from invitation (likely `staff`, `manager`, etc.)
 - Links to existing tenant
 - Sets `active_tenant_id` to existing tenant (if first org)
@@ -524,6 +553,7 @@ const inviteCode = randomBytes(8).toString('hex').toUpperCase()
 ### Issue 1: No Database Transaction
 
 **Problem:** Steps 5-7 are not wrapped in a transaction. If step 8 fails, steps 5-7 have succeeded, leaving:
+
 - Tenant created ✅
 - Location created ✅
 - Membership created ✅
@@ -552,15 +582,3 @@ const inviteCode = randomBytes(8).toString('hex').toUpperCase()
 5. **User Context:** `active_tenant_id` and `active_location_id` are set immediately
 6. **No Transaction:** Operations are not atomic (manual rollback)
 7. **Service Client:** Used to bypass RLS for tenant creation
-
-
-
-
-
-
-
-
-
-
-
-

@@ -19,6 +19,7 @@ Your planned migrations contain **irreversible column renames** that will **BREA
 Your database has **TWO DIFFERENT SCHEMAS** for the `locations` table:
 
 ### Schema A: `supabase/migrations/20251025_phase1_critical_fixes.sql`
+
 ```sql
 CREATE TABLE IF NOT EXISTS locations (
   -- Address information
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS locations (
 ```
 
 ### Schema B: `supabase/migrations/20250116_settings_versioning.sql` AND `APPLY_ALL_MIGRATIONS*.sql`
+
 ```sql
 CREATE TABLE IF NOT EXISTS locations (
   -- Address
@@ -43,6 +45,7 @@ CREATE TABLE IF NOT EXISTS locations (
 ```
 
 **This means:**
+
 1. Your database may already have `address_line1` and `phone_number`
 2. Your code references BOTH `address` AND `address_line1`
 3. Renaming `address` → `address_line1` will fail if `address_line1` already exists
@@ -55,6 +58,7 @@ CREATE TABLE IF NOT EXISTS locations (
 ### Current State
 
 **Files that reference the trigger:**
+
 - `supabase/migrations/20251027_003_auto_create_tenant_for_users.sql` (Lines 107-194)
 - `supabase/migrations/20251027_003_auto_create_tenant_for_users_SAFE.sql` (Lines 29-112)
 - Documentation files (DEEP_DIVE_VERIFICATION_REPORT.md, ARCHITECTURE_VERIFICATION_REPORT.md)
@@ -64,6 +68,7 @@ CREATE TABLE IF NOT EXISTS locations (
 ✅ **NOTHING** - The trigger only runs on new user INSERT
 
 **Files that depend on the trigger:**
+
 - None in application code
 - Only documentation mentions it
 
@@ -82,12 +87,14 @@ CREATE TABLE IF NOT EXISTS locations (
 **CRITICAL:** You have inconsistent schemas!
 
 **Schema A files (using `address`):**
+
 - `supabase/migrations/20251025_phase1_critical_fixes.sql` (Line 73)
 - `src/app/api/onboarding/save-progress/route.ts` (Lines 212, 234, 236)
 - `src/components/onboarding/steps/first-location-step.tsx` (Lines 65, 81, 91, 102, 120, 130)
 - `src/lib/hooks/use-locations.ts` (Line 8)
 
 **Schema B files (using `address_line1`):**
+
 - `supabase/migrations/20250116_settings_versioning.sql` (Line 25)
 - `APPLY_ALL_MIGRATIONS*.sql` (Line 3970)
 - `supabase/sql/70_demo_seed_schema.sql`
@@ -108,6 +115,7 @@ CREATE TABLE IF NOT EXISTS locations (
 **Lines 212, 234, 236:**
 
 **Current Code:**
+
 ```typescript
 // Line 212
 if (fieldData.address_line1 !== undefined) locationUpdate.address = fieldData.address_line1 || null
@@ -122,8 +130,10 @@ updated_at: new Date().toISOString()
 **What breaks:** Assignment to `locationUpdate.address` - column renamed
 
 **Needs change:**
+
 ```typescript
-if (fieldData.address_line1 !== undefined) locationUpdate.address_line1 = fieldData.address_line1 || null
+if (fieldData.address_line1 !== undefined)
+  locationUpdate.address_line1 = fieldData.address_line1 || null;
 ```
 
 **Risk Level:** 🔴 **HIGH** - Core onboarding flow
@@ -135,6 +145,7 @@ if (fieldData.address_line1 !== undefined) locationUpdate.address_line1 = fieldD
 **Lines 65, 81, 91, 102, 120, 130:**
 
 **Current Code:**
+
 ```typescript
 // Line 65 - SELECT statement
 .select('name, address, city, postal_code, phone')
@@ -152,11 +163,13 @@ if (location.phone && (!existingStepData.phone_number || existingStepData.phone_
 // Lines 102, 120, 130 - Same pattern repeated
 ```
 
-**What breaks:** 
+**What breaks:**
+
 1. SQL SELECT statement returns `address` column that no longer exists
 2. JavaScript reads `location.address` property that won't exist
 
 **Needs change:**
+
 ```typescript
 // SELECT statement
 .select('name, address_line1, city, postal_code, phone_number')
@@ -176,24 +189,26 @@ if (location.address_line1 && (!existingStepData.address_line1 || existingStepDa
 **Line 8:**
 
 **Current Code:**
+
 ```typescript
 export interface Location {
-  id: string
-  tenant_id: string
-  name: string
-  address?: string          // ❌ Will break
-  is_primary?: boolean
+  id: string;
+  tenant_id: string;
+  name: string;
+  address?: string; // ❌ Will break
+  is_primary?: boolean;
 }
 ```
 
 **Needs change:**
+
 ```typescript
 export interface Location {
-  id: string
-  tenant_id: string
-  name: string
-  address_line1?: string    // ✅ Updated
-  is_primary?: boolean
+  id: string;
+  tenant_id: string;
+  name: string;
+  address_line1?: string; // ✅ Updated
+  is_primary?: boolean;
 }
 ```
 
@@ -206,6 +221,7 @@ export interface Location {
 These files already expect `address_line1`, so they'll work after migration:
 
 **File:** `src/components/settings/locations-settings-tab.tsx`
+
 - Line 128: `address_line1: newLocation.address?.line1`
 - Lines 228, 230: Form field references
 - ✅ **No changes needed**
@@ -235,13 +251,16 @@ Same inconsistency as `address` field.
 **Line 216:**
 
 **Current Code:**
+
 ```typescript
-if (fieldData.phone_number !== undefined) locationUpdate.phone = fieldData.phone_number || null
+if (fieldData.phone_number !== undefined) locationUpdate.phone = fieldData.phone_number || null;
 ```
 
 **Needs change:**
+
 ```typescript
-if (fieldData.phone_number !== undefined) locationUpdate.phone_number = fieldData.phone_number || null
+if (fieldData.phone_number !== undefined)
+  locationUpdate.phone_number = fieldData.phone_number || null;
 ```
 
 **Risk Level:** 🔴 **HIGH**
@@ -253,6 +272,7 @@ if (fieldData.phone_number !== undefined) locationUpdate.phone_number = fieldDat
 **Lines 65, 91, 102, 130:**
 
 **Current Code:**
+
 ```typescript
 // Line 65
 .select('name, address, city, postal_code, phone')
@@ -264,6 +284,7 @@ if (location.phone && (!existingStepData.phone_number || existingStepData.phone_
 ```
 
 **Needs change:**
+
 ```typescript
 .select('name, address_line1, city, postal_code, phone_number')
 
@@ -279,6 +300,7 @@ if (location.phone_number && (!existingStepData.phone_number || existingStepData
 ### Files Already Using `phone_number` (Will Work ✅)
 
 **File:** `src/components/settings/locations-settings-tab.tsx`
+
 - Line 134: `phone_number: newLocation.phone`
 - ✅ **No changes needed**
 
@@ -294,23 +316,23 @@ if (location.phone_number && (!existingStepData.phone_number || existingStepData
 
 ```379:400:supabase/migrations/20251025_phase1_critical_fixes.sql
 -- Contacts
-ALTER TABLE contacts 
+ALTER TABLE contacts
   ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS idx_contacts_tenant_location 
+CREATE INDEX IF NOT EXISTS idx_contacts_tenant_location
   ON contacts(tenant_id, location_id);
 
-COMMENT ON COLUMN contacts.location_id IS 
+COMMENT ON COLUMN contacts.location_id IS
   'Physical location where this contact is managed. NULL = organization-wide contact.';
 
 -- Deals
-ALTER TABLE deals 
+ALTER TABLE deals
   ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS idx_deals_tenant_location 
+CREATE INDEX IF NOT EXISTS idx_deals_tenant_location
   ON deals(tenant_id, location_id);
 
-COMMENT ON COLUMN deals.location_id IS 
+COMMENT ON COLUMN deals.location_id IS
   'Location where this deal is being managed. Determines location-based reporting.';
 ```
 
@@ -338,13 +360,13 @@ COMMENT ON COLUMN deals.location_id IS
 
 ```403:411:supabase/migrations/20251025_phase1_critical_fixes.sql
 -- Tasks
-ALTER TABLE tasks 
+ALTER TABLE tasks
   ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS idx_tasks_tenant_location 
+CREATE INDEX IF NOT EXISTS idx_tasks_tenant_location
   ON tasks(tenant_id, location_id);
 
-COMMENT ON COLUMN tasks.location_id IS 
+COMMENT ON COLUMN tasks.location_id IS
   'Location for this task. Used for location-based task assignment and filtering.';
 ```
 
@@ -364,13 +386,13 @@ COMMENT ON COLUMN tasks.location_id IS
 
 ```413:421:supabase/migrations/20251025_phase1_critical_fixes.sql
 -- Activities
-ALTER TABLE activities 
+ALTER TABLE activities
   ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS idx_activities_tenant_location 
+CREATE INDEX IF NOT EXISTS idx_activities_tenant_location
   ON activities(tenant_id, location_id);
 
-COMMENT ON COLUMN activities.location_id IS 
+COMMENT ON COLUMN activities.location_id IS
   'Location where this activity occurred. NULL = organization-wide activity.';
 ```
 
@@ -397,14 +419,15 @@ export interface Location {
 ```
 
 **Needs update:**
+
 ```typescript
 export interface Location {
-  id: string
-  tenant_id: string
-  name: string
-  address_line1?: string    // ✅ Updated
-  phone_number?: string     // ✅ Added (if missing)
-  is_primary?: boolean
+  id: string;
+  tenant_id: string;
+  name: string;
+  address_line1?: string; // ✅ Updated
+  phone_number?: string; // ✅ Added (if missing)
+  is_primary?: boolean;
 }
 ```
 
@@ -421,9 +444,10 @@ export interface Location {
 **Lines affected:** 212, 216
 
 **Current:**
+
 ```typescript
-if (fieldData.address_line1 !== undefined) locationUpdate.address = fieldData.address_line1 || null
-if (fieldData.phone_number !== undefined) locationUpdate.phone = fieldData.phone_number || null
+if (fieldData.address_line1 !== undefined) locationUpdate.address = fieldData.address_line1 || null;
+if (fieldData.phone_number !== undefined) locationUpdate.phone = fieldData.phone_number || null;
 ```
 
 **After migration:** Will try to assign to non-existent columns
@@ -446,14 +470,14 @@ No RLS policies found that reference `locations.address` or `locations.phone` di
 
 ## Summary of Breaking Changes
 
-| Migration | Status | Breaking Changes | Risk Level |
-|-----------|--------|------------------|------------|
-| Drop trigger | ✅ Safe | None | 🟢 LOW |
-| Rename address | ❌ Will break | 3 files, 15+ locations | 💀 CRITICAL |
-| Rename phone | ❌ Will break | 3 files, 15+ locations | 💀 CRITICAL |
-| Add deals.location_id | ⚠️ Already exists | None | 🟢 LOW |
-| Add tasks.location_id | ⚠️ Already exists | None | 🟢 LOW |
-| Add activities.location_id | ⚠️ Already exists | None | 🟢 LOW |
+| Migration                  | Status            | Breaking Changes       | Risk Level  |
+| -------------------------- | ----------------- | ---------------------- | ----------- |
+| Drop trigger               | ✅ Safe           | None                   | 🟢 LOW      |
+| Rename address             | ❌ Will break     | 3 files, 15+ locations | 💀 CRITICAL |
+| Rename phone               | ❌ Will break     | 3 files, 15+ locations | 💀 CRITICAL |
+| Add deals.location_id      | ⚠️ Already exists | None                   | 🟢 LOW      |
+| Add tasks.location_id      | ⚠️ Already exists | None                   | 🟢 LOW      |
+| Add activities.location_id | ⚠️ Already exists | None                   | 🟢 LOW      |
 
 ---
 
@@ -469,26 +493,30 @@ No RLS policies found that reference `locations.address` or `locations.phone` di
 ### Scenarios
 
 **Scenario A:** Database has OLD schema
+
 - Has `address` and `phone` columns
 - Your new migrations try to RENAME them
 - Result: ✅ Works, but need to update 15+ code locations
 
-**Scenario B:** Database has NEW schema  
+**Scenario B:** Database has NEW schema
+
 - Already has `address_line1` and `phone_number` columns
 - Your new migrations try to RENAME non-existent columns
 - Result: ❌ **MIGRATION FAILS**
 
 **Scenario C:** Database has BOTH schemas (somehow)
+
 - Has duplicate columns
 - Result: ❌ **DATABASE CORRUPTION**
 
 ### How to Determine Current State
 
 **Run this SQL:**
+
 ```sql
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'locations' 
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'locations'
   AND column_name IN ('address', 'address_line1', 'phone', 'phone_number')
 ORDER BY column_name;
 ```
@@ -510,16 +538,19 @@ ORDER BY column_name;
 ### Step 2: Choose Your Path
 
 **If database has `address` and `phone`:**
+
 1. ✅ Migration is correct
 2. But you MUST update all TypeScript code FIRST
 3. See files list below
 
 **If database has `address_line1` and `phone_number`:**
+
 1. ❌ DO NOT run these migrations
 2. Your migrations are for the wrong schema
 3. Some other migration already ran
 
 **If database has BOTH:**
+
 1. 💀 CRITICAL: Database corruption
 2. Need to clean up duplicate columns
 3. Cannot proceed until resolved
@@ -529,22 +560,24 @@ ORDER BY column_name;
 **Update these files BEFORE running migrations:**
 
 1. ✅ `src/lib/hooks/use-locations.ts` - Update interface
-2. ✅ `src/app/api/onboarding/save-progress/route.ts` - Fix column references  
+2. ✅ `src/app/api/onboarding/save-progress/route.ts` - Fix column references
 3. ✅ `src/components/onboarding/steps/first-location-step.tsx` - Fix SELECT and access
 
 ### Step 4: Make Migrations Idempotent
 
 **Current migrations:**
+
 ```sql
 ALTER TABLE locations RENAME COLUMN address TO address_line1;
 ```
 
 **Better (idempotent):**
+
 ```sql
-DO $$ 
+DO $$
 BEGIN
   IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
+    SELECT 1 FROM information_schema.columns
     WHERE table_name = 'locations' AND column_name = 'address'
   ) THEN
     ALTER TABLE locations RENAME COLUMN address TO address_line1;
@@ -558,11 +591,11 @@ END $$;
 
 ### Critical (Must Fix)
 
-| File | Lines | Change Type | Risk if Missed |
-|------|-------|-------------|----------------|
-| `src/lib/hooks/use-locations.ts` | 8 | Interface update | App crashes |
-| `src/app/api/onboarding/save-progress/route.ts` | 212, 216 | Column names | Onboarding breaks |
-| `src/components/onboarding/steps/first-location-step.tsx` | 65, 81, 91, 102, 120, 130 | SELECT + access | Wizard breaks |
+| File                                                      | Lines                     | Change Type      | Risk if Missed    |
+| --------------------------------------------------------- | ------------------------- | ---------------- | ----------------- |
+| `src/lib/hooks/use-locations.ts`                          | 8                         | Interface update | App crashes       |
+| `src/app/api/onboarding/save-progress/route.ts`           | 212, 216                  | Column names     | Onboarding breaks |
+| `src/components/onboarding/steps/first-location-step.tsx` | 65, 81, 91, 102, 120, 130 | SELECT + access  | Wizard breaks     |
 
 ### Already Compatible (No Changes)
 
@@ -625,6 +658,7 @@ END $$;
 ## What You Need Now
 
 **Information:**
+
 1. What columns currently exist in your `locations` table?
 2. What columns exist in `deals`, `tasks`, `activities`?
 3. Which migration files have actually run in your database?
@@ -632,13 +666,3 @@ END $$;
 **Only after answering these questions can you safely plan migrations.**
 
 **Next Step:** Run the diagnostic query and report back.
-
-
-
-
-
-
-
-
-
-

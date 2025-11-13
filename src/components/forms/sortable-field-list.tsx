@@ -1,50 +1,70 @@
-'use client'
+'use client';
 
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { GripVertical, Trash2, Settings, ChevronDown, ChevronUp, Zap } from 'lucide-react'
-import { useState } from 'react'
-import type { FormField } from '@/hooks/use-marketing-forms'
-import { ConditionalLogicBuilder, type ConditionalRule } from '@/components/forms/conditional-logic-builder'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { GripVertical, Trash2, Settings, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { useState } from 'react';
+import type { FormField } from '@/hooks/use-marketing-forms';
+import {
+  ConditionalLogicBuilder,
+  type ConditionalRule,
+} from '@/components/forms/conditional-logic-builder';
 
 interface SortableFieldProps {
-  field: FormField
-  onUpdate: (field: FormField) => void
-  onDelete: () => void
-  onSelect?: (field: FormField) => void
-  isSelected?: boolean
-  allFields?: FormField[] // For conditional logic
+  field: FormField;
+  onUpdate: (field: FormField) => void;
+  onDelete: () => void;
+  onSelect?: (field: FormField) => void;
+  isSelected?: boolean;
+  allFields?: FormField[]; // For conditional logic
 }
 
-function SortableField({ field, onUpdate, onDelete, onSelect, isSelected, allFields = [] }: SortableFieldProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: field.id })
+function SortableField({
+  field,
+  onUpdate,
+  onDelete,
+  onSelect,
+  isSelected,
+  allFields = [],
+}: SortableFieldProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: field.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-  }
+  };
 
   return (
-    <Card 
-      ref={setNodeRef} 
-      style={style} 
+    <Card
+      ref={setNodeRef}
+      style={style}
       className={`${isDragging ? 'ring-2 ring-blue-500' : ''} ${isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : ''} cursor-pointer`}
       onClick={() => onSelect?.(field)}
     >
@@ -70,16 +90,8 @@ function SortableField({ field, onUpdate, onDelete, onSelect, isSelected, allFie
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsExpanded(!isExpanded)}
-            >
-              {isExpanded ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
+            <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)}>
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
             <Button
               variant="ghost"
@@ -131,10 +143,12 @@ function SortableField({ field, onUpdate, onDelete, onSelect, isSelected, allFie
                   className="w-full mt-1 p-2 border rounded-md text-sm"
                   rows={4}
                   value={(field.options || []).join('\n')}
-                  onChange={(e) => onUpdate({
-                    ...field,
-                    options: e.target.value.split('\n').filter(o => o.trim())
-                  })}
+                  onChange={(e) =>
+                    onUpdate({
+                      ...field,
+                      options: e.target.value.split('\n').filter((o) => o.trim()),
+                    })
+                  }
                   placeholder="Option 1\nOption 2\nOption 3"
                 />
               </div>
@@ -147,13 +161,15 @@ function SortableField({ field, onUpdate, onDelete, onSelect, isSelected, allFie
                   <Input
                     type="number"
                     value={field.validation?.min || 0}
-                    onChange={(e) => onUpdate({
-                      ...field,
-                      validation: {
-                        ...field.validation,
-                        min: parseInt(e.target.value) || 0
-                      }
-                    })}
+                    onChange={(e) =>
+                      onUpdate({
+                        ...field,
+                        validation: {
+                          ...field.validation,
+                          min: parseInt(e.target.value) || 0,
+                        },
+                      })
+                    }
                   />
                 </div>
                 <div>
@@ -161,13 +177,15 @@ function SortableField({ field, onUpdate, onDelete, onSelect, isSelected, allFie
                   <Input
                     type="number"
                     value={field.validation?.max || 10}
-                    onChange={(e) => onUpdate({
-                      ...field,
-                      validation: {
-                        ...field.validation,
-                        max: parseInt(e.target.value) || 10
-                      }
-                    })}
+                    onChange={(e) =>
+                      onUpdate({
+                        ...field,
+                        validation: {
+                          ...field.validation,
+                          max: parseInt(e.target.value) || 10,
+                        },
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -243,53 +261,53 @@ function SortableField({ field, onUpdate, onDelete, onSelect, isSelected, allFie
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
 
 interface SortableFieldListProps {
-  fields: FormField[]
-  onReorder: (fields: FormField[]) => void
-  onUpdateField: (fieldId: string, field: FormField) => void
-  onDeleteField: (fieldId: string) => void
-  selectedFieldId?: string | null
-  onSelectField?: (field: FormField) => void
+  fields: FormField[];
+  onReorder: (fields: FormField[]) => void;
+  onUpdateField: (fieldId: string, field: FormField) => void;
+  onDeleteField: (fieldId: string) => void;
+  selectedFieldId?: string | null;
+  onSelectField?: (field: FormField) => void;
 }
 
-export function SortableFieldList({ 
-  fields, 
-  onReorder, 
-  onUpdateField, 
+export function SortableFieldList({
+  fields,
+  onReorder,
+  onUpdateField,
   onDeleteField,
   selectedFieldId,
-  onSelectField
+  onSelectField,
 }: SortableFieldListProps) {
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
-  )
+  );
 
   function handleDragStart(event: DragStartEvent) {
-    setActiveId(event.active.id as string)
+    setActiveId(event.active.id as string);
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    setActiveId(null)
+    const { active, over } = event;
+    setActiveId(null);
 
     if (over && active.id !== over.id) {
-      const oldIndex = fields.findIndex((f) => f.id === active.id)
-      const newIndex = fields.findIndex((f) => f.id === over.id)
+      const oldIndex = fields.findIndex((f) => f.id === active.id);
+      const newIndex = fields.findIndex((f) => f.id === over.id);
 
       const newFields = arrayMove(fields, oldIndex, newIndex).map((field, index) => ({
         ...field,
         order: index,
-      }))
+      }));
 
-      onReorder(newFields)
+      onReorder(newFields);
     }
   }
 
@@ -299,7 +317,7 @@ export function SortableFieldList({
         <p className="text-gray-500 mb-2">No fields yet</p>
         <p className="text-sm text-gray-400">Drag fields from the palette or click to add</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -309,7 +327,7 @@ export function SortableFieldList({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-3">
           {fields.map((field) => (
             <SortableField
@@ -333,7 +351,7 @@ export function SortableFieldList({
                 <GripVertical className="h-5 w-5 text-gray-400" />
                 <div className="flex-1">
                   <div className="font-medium text-sm">
-                    {fields.find(f => f.id === activeId)?.label || 'Untitled Field'}
+                    {fields.find((f) => f.id === activeId)?.label || 'Untitled Field'}
                   </div>
                 </div>
               </div>
@@ -342,6 +360,5 @@ export function SortableFieldList({
         ) : null}
       </DragOverlay>
     </DndContext>
-  )
+  );
 }
-

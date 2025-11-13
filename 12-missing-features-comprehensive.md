@@ -10,6 +10,7 @@
 **Status:** Many features are **partially implemented**. Backend infrastructure exists but UI/UX is often missing or incomplete.
 
 **Critical Gaps:**
+
 1. Location assignment UI (backend exists, no UI)
 2. Location role management (table exists, no UI)
 3. Invite management (create works, no cancel/resend)
@@ -27,6 +28,7 @@
 **File:** `src/components/multi-location/location-switcher.tsx`
 
 **Features:**
+
 - Dropdown with accessible locations
 - Current location badge
 - Switch location with full page refresh
@@ -35,6 +37,7 @@
 **Rendered In:** Dashboard layout (when `isMultiLocation === true`)
 
 **Code:**
+
 ```typescript
 export function LocationSwitcher({
   currentLocationId,
@@ -44,9 +47,9 @@ export function LocationSwitcher({
 }: LocationSwitcherProps) {
   // Only renders if isMultiLocation === true
   if (!isMultiLocation) {
-    return null
+    return null;
   }
-  
+
   // Loads locations from /api/locations/accessible
   // Switches via /api/locations/switch
 }
@@ -55,7 +58,7 @@ export function LocationSwitcher({
 **Parent Component:** `src/components/layout/dashboard-layout.tsx:46`
 
 ```typescript
-import { LocationSwitcher } from '@/components/multi-location/location-switcher'
+import { LocationSwitcher } from '@/components/multi-location/location-switcher';
 ```
 
 ### B. Location Creation
@@ -65,16 +68,19 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **UI Component:** `src/components/settings/locations-settings-tab.tsx`
 
 **Features:**
+
 - Can view locations
 - Can create new locations
 - Can edit existing locations
 - Can set primary location
 
 **API Endpoints:**
+
 - ❌ No dedicated `/api/locations/create` found
 - ✅ Uses direct Supabase client in component
 
 **Missing:**
+
 - Validation at API level
 - Audit logging for location creation
 - Bulk location import
@@ -88,6 +94,7 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **UI Component:** `src/components/settings/locations-settings-tab.tsx`
 
 **Available Settings:**
+
 - Location name
 - Display name
 - Address (full address fields)
@@ -100,6 +107,7 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 - Custom settings (JSONB)
 
 **Settings Inheritance:**
+
 - ❌ **NOT IMPLEMENTED** - No inheritance from organization settings
 
 ### D. Location Deletion
@@ -107,18 +115,21 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **Status:** ⚠️ **PARTIAL**
 
 **Can Locations Be Deleted?**
+
 - ✅ Schema supports deletion (ON DELETE CASCADE on foreign keys)
 - ❌ No UI for deletion found
 - ❌ No API endpoint for deletion found
 - ⚠️ RLS policy allows owners to delete (see file `20251025_003a_locations_table.sql`)
 
 **What Happens to Linked Data?**
+
 - Contacts: `location_id` set to NULL (CASCADE SET NULL)
 - Deals: `location_id` set to NULL
 - Tasks: `location_id` set to NULL
 - Activities: `location_id` set to NULL
 
 **Missing:**
+
 - Deletion confirmation UI
 - Bulk location delete
 - Archive option (soft delete)
@@ -136,6 +147,7 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **UI Component:** `src/components/settings/organization-profile-editor.tsx`
 
 **Available Settings:**
+
 - Organization name
 - Description
 - Specialty
@@ -158,6 +170,7 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **Status:** ❌ **NOT IMPLEMENTED**
 
 **Missing Features:**
+
 - ❌ Bulk settings update (apply to multiple locations)
 - ❌ Settings templates
 - ❌ Settings export/import
@@ -174,6 +187,7 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **Component:** `src/components/settings/user-management-dashboard.tsx`
 
 **Shows:**
+
 - User name
 - Email
 - Role
@@ -190,6 +204,7 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **Component:** `src/components/settings/user-management-dashboard.tsx:395-475`
 
 **Features:**
+
 - Dropdown to change role
 - Role descriptions
 - Can change to: owner, manager, staff, viewer
@@ -197,6 +212,7 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **API:** Direct Supabase update (no dedicated endpoint)
 
 **Missing:**
+
 - Role change history/audit
 - Role change approval workflow
 - Temporary role assignments
@@ -208,10 +224,12 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **Component:** `src/components/settings/user-management-dashboard.tsx:395`
 
 **Features:**
+
 - Remove button (owner only)
 - Removes from `user_tenant_memberships` (sets status to 'inactive' or deletes)
 
 **Missing:**
+
 - Soft delete option
 - Data transfer on removal
 - Bulk user removal
@@ -229,6 +247,7 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **Component:** `src/app/dashboard/page.tsx`
 
 **Shows:**
+
 - Welcome message
 - Quick stats
 - Recent activity
@@ -247,6 +266,7 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **File:** `src/components/layout/org-switcher.tsx`
 
 **Features:**
+
 - Dropdown with all organizations
 - Search functionality
 - Pin/unpin organizations (max 5)
@@ -269,10 +289,12 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 **Status:** ⚠️ **PARTIAL**
 
 **Found Components:**
+
 1. `src/components/deals/enterprise-deals-table.tsx` - Has location filter
 2. `src/components/contacts/contacts-list-enterprise.tsx` - Has location filter
 
 **Features:**
+
 - Location dropdown filter
 - Status filter
 - Source filter
@@ -280,6 +302,7 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 - Search query
 
 **Missing:**
+
 - "All Locations" option in filter (only shows if `all_locations=true`)
 - Date range filters
 - Advanced filter builder
@@ -296,13 +319,13 @@ import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 ```typescript
 // If user doesn't have all_locations, filter by accessible locations
 if (!membership.all_locations) {
-  const { data: accessibleLocations } = await supabase.rpc(
-    'get_user_accessible_locations',
-    { p_user_id: user.id, p_tenant_id: appUser.active_tenant_id }
-  )
-  
-  const locationIds = accessibleLocations.map(l => l.id)
-  dbQuery = dbQuery.in('location_id', locationIds)
+  const { data: accessibleLocations } = await supabase.rpc('get_user_accessible_locations', {
+    p_user_id: user.id,
+    p_tenant_id: appUser.active_tenant_id,
+  });
+
+  const locationIds = accessibleLocations.map((l) => l.id);
+  dbQuery = dbQuery.in('location_id', locationIds);
 }
 // If all_locations=true, no location filter is applied
 ```
@@ -313,7 +336,7 @@ if (!membership.all_locations) {
 
 ```typescript
 // Filter by accessible location IDs only
-dbQuery = dbQuery.in('location_id', locationIds)
+dbQuery = dbQuery.in('location_id', locationIds);
 ```
 
 **Found in:** Contacts API (complete), Deals API (partial), Tasks/Activities (not verified)
@@ -354,6 +377,7 @@ CREATE TABLE audits (
 5. **Org Switched:** `src/app/api/org/switch/route.ts` (if exists)
 
 **Action Types Found:**
+
 - `invite.created`
 - `invite.accepted`
 - `org.created`
@@ -361,6 +385,7 @@ CREATE TABLE audits (
 - `user.tenant_switched`
 
 **Missing:**
+
 - User login (not found)
 - Role changes (not found)
 - Settings changes (not found)
@@ -377,6 +402,7 @@ CREATE TABLE audits (
 **Component:** `src/components/onboarding/steps/email-verification-step.tsx`
 
 **Features:**
+
 - Shows verification status
 - Resend verification email
 - Skip option (if allowed)
@@ -386,17 +412,22 @@ CREATE TABLE audits (
 **Found 10+ Instances:**
 
 **Pattern:**
+
 ```typescript
-const { data: { user } } = await supabase.auth.getUser()
-const emailVerified = user?.email_confirmed_at !== null
+const {
+  data: { user },
+} = await supabase.auth.getUser();
+const emailVerified = user?.email_confirmed_at !== null;
 ```
 
 **Usage:**
+
 - Onboarding wizard (checks before allowing completion)
 - Protected routes (some require verified email)
 - API routes (some require verified email)
 
 **Missing:**
+
 - Consistent enforcement across all APIs
 - Email verification reminder system
 
@@ -409,6 +440,7 @@ const emailVerified = user?.email_confirmed_at !== null
 **Status:** ✅ **SUPPORTED**
 
 **What Happens:**
+
 - Progress saved to `onboarding_progress.field_data`
 - Current step saved to `app_users.onboarding_current_step`
 - Wizard resumes from saved step on next visit
@@ -424,6 +456,7 @@ const emailVerified = user?.email_confirmed_at !== null
 **File:** `src/app/api/onboarding/complete/route.ts`
 
 **What's Marked Complete:**
+
 - `app_users.onboarding_completed = true`
 - `app_users.onboarding_completed_at = NOW()`
 - All steps marked as completed in `onboarding_progress`
@@ -439,11 +472,13 @@ const emailVerified = user?.email_confirmed_at !== null
 **File:** `src/app/api/onboarding/skip-step/route.ts`
 
 **Tracking:**
+
 - Steps marked as `skipped = true` in `onboarding_progress`
 - `skipped_at` timestamp recorded
 - `onboarding_skipped_steps` array updated in `app_users`
 
 **Can User Return to Skipped?**
+
 - ⚠️ **NOT CLEAR** - Logic exists but behavior not verified
 
 ---
@@ -502,9 +537,9 @@ CREATE POLICY "Users can view tenant locations"
   FOR SELECT
   USING (
     tenant_id IN (
-      SELECT tenant_id 
-      FROM user_tenant_memberships 
-      WHERE user_id = auth.uid() 
+      SELECT tenant_id
+      FROM user_tenant_memberships
+      WHERE user_id = auth.uid()
         AND status = 'active'::membership_status
     )
   );
@@ -523,11 +558,13 @@ CREATE POLICY "Users can view tenant locations"
 **Status:** ✅ **EXISTS**
 
 **What It Does:**
+
 - Request ID generation
 - Auth token validation (for some routes)
 - Redirect logic
 
 **Protected Routes:**
+
 - `/dashboard` - Requires auth
 - `/settings/*` - Requires auth
 - `/pipeline` - Requires auth
@@ -537,11 +574,14 @@ CREATE POLICY "Users can view tenant locations"
 **Pattern Used:**
 
 ```typescript
-const supabase = await createServerSupabaseClient()
-const { data: { user }, error: authError } = await supabase.auth.getUser()
+const supabase = await createServerSupabaseClient();
+const {
+  data: { user },
+  error: authError,
+} = await supabase.auth.getUser();
 
 if (authError || !user) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
 
 // Get tenant context
@@ -549,9 +589,9 @@ const { data: appUser } = await supabase
   .from('app_users')
   .select('active_tenant_id, tenant_id')
   .eq('id', user.id)
-  .single()
+  .single();
 
-const tenantId = appUser.active_tenant_id || appUser.tenant_id
+const tenantId = appUser.active_tenant_id || appUser.tenant_id;
 ```
 
 **Found in:** All API routes (consistent pattern)
@@ -561,10 +601,12 @@ const tenantId = appUser.active_tenant_id || appUser.tenant_id
 **Status:** ⚠️ **PARTIAL**
 
 **Pattern:**
+
 - Uses `useAuth()` hook client-side
 - Redirects to `/sign-in` if not authenticated
 
 **Missing:**
+
 - Server-side page protection middleware
 - Role-based page access control
 
@@ -585,15 +627,17 @@ const tenantId = appUser.active_tenant_id || appUser.tenant_id
 **Library:** `sonner` (imported as `toast`)
 
 **Usage Examples (10+ found):**
+
 1. `src/components/settings/invite-user-dialog.tsx:52`
 2. `src/components/onboarding/wizard-footer.tsx`
 3. Multiple API error handlers
 
 **Pattern:**
+
 ```typescript
-toast.success('Success message')
-toast.error('Error message')
-toast.info('Info message')
+toast.success('Success message');
+toast.error('Error message');
+toast.info('Info message');
 ```
 
 ### C. User-Friendly Errors
@@ -601,12 +645,16 @@ toast.info('Info message')
 **Status:** ✅ **IMPLEMENTED**
 
 **Pattern:**
+
 ```typescript
-return NextResponse.json({
-  error: 'User-friendly message',
-  message: 'Detailed explanation',
-  details: error.errors  // Technical details (dev only)
-}, { status: 400 })
+return NextResponse.json(
+  {
+    error: 'User-friendly message',
+    message: 'Detailed explanation',
+    details: error.errors, // Technical details (dev only)
+  },
+  { status: 400 }
+);
 ```
 
 **Technical errors:** Hidden from users, logged to console
@@ -615,30 +663,30 @@ return NextResponse.json({
 
 ## 12. FEATURE COMPLETENESS SCORECARD
 
-| Feature | Required? | Status | % Complete | Notes |
-|---------|-----------|--------|------------|-------|
-| Multi-org support | YES | ✅ Done | 100% | Works |
-| Org switching | YES | ✅ Done | 100% | Works |
-| Location-based roles | YES | ⚠️ Partial | 70% | Backend done, UI missing |
-| Location assignment UI | YES | ❌ Missing | 0% | Backend exists, no UI |
-| Location switcher | YES | ✅ Done | 100% | Works |
-| Invite system | YES | ⚠️ Partial | 80% | Create/accept work, cancel/resend missing |
-| Invite management UI | YES | ⚠️ Partial | 60% | Create form exists, list/cancel missing |
-| User management | YES | ✅ Done | 90% | List/edit works, bulk ops missing |
-| Role management | YES | ✅ Done | 85% | Change roles works, history missing |
-| Location creation | YES | ✅ Done | 80% | UI exists, API validation missing |
-| Location deletion | YES | ⚠️ Partial | 40% | Schema supports, no UI/API |
-| Settings inheritance | NO | ❌ Missing | 0% | Not implemented |
-| Bulk operations | NO | ❌ Missing | 0% | Not implemented |
-| Audit logging | YES | ⚠️ Partial | 70% | Some actions logged, many missing |
-| Email verification | YES | ✅ Done | 85% | Step exists, enforcement inconsistent |
-| Onboarding resume | YES | ✅ Done | 100% | Works |
-| Step skipping | YES | ✅ Done | 100% | Works |
-| RLS policies | YES | ✅ Done | 95% | Most tables covered |
-| API protection | YES | ✅ Done | 90% | Most routes protected |
-| Error handling | YES | ⚠️ Partial | 70% | Toast works, error boundary missing |
-| Dashboard | YES | ✅ Done | 90% | Works, some stats missing |
-| Data filtering | YES | ⚠️ Partial | 75% | Basic filters work, advanced missing |
+| Feature                | Required? | Status     | % Complete | Notes                                     |
+| ---------------------- | --------- | ---------- | ---------- | ----------------------------------------- |
+| Multi-org support      | YES       | ✅ Done    | 100%       | Works                                     |
+| Org switching          | YES       | ✅ Done    | 100%       | Works                                     |
+| Location-based roles   | YES       | ⚠️ Partial | 70%        | Backend done, UI missing                  |
+| Location assignment UI | YES       | ❌ Missing | 0%         | Backend exists, no UI                     |
+| Location switcher      | YES       | ✅ Done    | 100%       | Works                                     |
+| Invite system          | YES       | ⚠️ Partial | 80%        | Create/accept work, cancel/resend missing |
+| Invite management UI   | YES       | ⚠️ Partial | 60%        | Create form exists, list/cancel missing   |
+| User management        | YES       | ✅ Done    | 90%        | List/edit works, bulk ops missing         |
+| Role management        | YES       | ✅ Done    | 85%        | Change roles works, history missing       |
+| Location creation      | YES       | ✅ Done    | 80%        | UI exists, API validation missing         |
+| Location deletion      | YES       | ⚠️ Partial | 40%        | Schema supports, no UI/API                |
+| Settings inheritance   | NO        | ❌ Missing | 0%         | Not implemented                           |
+| Bulk operations        | NO        | ❌ Missing | 0%         | Not implemented                           |
+| Audit logging          | YES       | ⚠️ Partial | 70%        | Some actions logged, many missing         |
+| Email verification     | YES       | ✅ Done    | 85%        | Step exists, enforcement inconsistent     |
+| Onboarding resume      | YES       | ✅ Done    | 100%       | Works                                     |
+| Step skipping          | YES       | ✅ Done    | 100%       | Works                                     |
+| RLS policies           | YES       | ✅ Done    | 95%        | Most tables covered                       |
+| API protection         | YES       | ✅ Done    | 90%        | Most routes protected                     |
+| Error handling         | YES       | ⚠️ Partial | 70%        | Toast works, error boundary missing       |
+| Dashboard              | YES       | ✅ Done    | 90%        | Works, some stats missing                 |
+| Data filtering         | YES       | ⚠️ Partial | 75%        | Basic filters work, advanced missing      |
 
 **Total Features Analyzed:** 22  
 **Fully Complete:** 11 (50%)  
@@ -677,15 +725,3 @@ return NextResponse.json({
 
 **Document Status:** ✅ COMPLETE  
 **Last Updated:** December 2024
-
-
-
-
-
-
-
-
-
-
-
-

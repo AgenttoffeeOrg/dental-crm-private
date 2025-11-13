@@ -8,6 +8,7 @@
 ## EXECUTIVE SUMMARY
 
 **Status:** Security is **well-implemented** with multiple layers:
+
 1. ✅ Authentication (Supabase Auth)
 2. ✅ Authorization (Role-based + RLS)
 3. ✅ API route protection
@@ -27,16 +28,16 @@
 ```typescript
 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
   email,
-  password
-})
+  password,
+});
 
 if (authError) {
   // Handle error
-  return
+  return;
 }
 
 // Redirect to dashboard
-router.push('/dashboard')
+router.push('/dashboard');
 ```
 
 **Step 2: Session Management**
@@ -112,7 +113,7 @@ export const PERMISSIONS = {
     viewTeam: ['owner', 'manager'],
     viewAll: ['owner'],
   },
-}
+};
 ```
 
 ### Pattern 2: Ownership-Based Checks
@@ -123,15 +124,15 @@ export const PERMISSIONS = {
 export function canViewDeal(check: PermissionCheck): boolean {
   // Owners/managers can view all
   if (hasPermission('deals', 'viewAll', check.userRole)) {
-    return true
+    return true;
   }
-  
+
   // Staff/viewers can view their own
   if (check.resourceOwnerId === check.userId && hasPermission('deals', 'viewOwn', check.userRole)) {
-    return true
+    return true;
   }
-  
-  return false
+
+  return false;
 }
 ```
 
@@ -147,10 +148,10 @@ const { data: membership } = await supabase
   .eq('user_id', user.id)
   .eq('tenant_id', targetTenantId)
   .eq('status', 'active')
-  .single()
+  .single();
 
 if (!membership) {
-  return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+  return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 }
 ```
 
@@ -216,11 +217,14 @@ if (!membership) {
 **Standard Pattern:**
 
 ```typescript
-const supabase = await createServerSupabaseClient()
-const { data: { user }, error: authError } = await supabase.auth.getUser()
+const supabase = await createServerSupabaseClient();
+const {
+  data: { user },
+  error: authError,
+} = await supabase.auth.getUser();
 
 if (authError || !user) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
 ```
 
@@ -235,12 +239,12 @@ const { data: appUser } = await supabase
   .from('app_users')
   .select('active_tenant_id, tenant_id')
   .eq('id', user.id)
-  .single()
+  .single();
 
-const tenantId = appUser.active_tenant_id || appUser.tenant_id
+const tenantId = appUser.active_tenant_id || appUser.tenant_id;
 
 // Use tenantId in queries
-query = query.eq('tenant_id', tenantId)
+query = query.eq('tenant_id', tenantId);
 ```
 
 **Found in:** Contacts, Deals, Tasks APIs
@@ -248,11 +252,13 @@ query = query.eq('tenant_id', tenantId)
 ### Secure vs Insecure Patterns
 
 **✅ SECURE:**
+
 - Get tenant from user's context (not client-supplied)
 - Use `active_tenant_id` for current context
 - Validate membership before operations
 
 **❌ INSECURE:**
+
 - Accepting `tenant_id` from client without validation
 - Using client-supplied IDs without checks
 
@@ -264,7 +270,8 @@ query = query.eq('tenant_id', tenantId)
 
 **Search:** `dangerouslySetInnerHTML`, `eval`, `innerHTML`
 
-**Results:** 
+**Results:**
+
 - ❌ No `dangerouslySetInnerHTML` found
 - ❌ No `eval` found
 - ⚠️ Some `innerHTML` usage found (need to verify context)
@@ -296,15 +303,17 @@ query = query.eq('tenant_id', tenantId)
 **Implementation:** In-memory Map (should use Redis)
 
 ```typescript
-const RATE_LIMIT_MAX = 10 // Max invites per hour
-const rateLimit = checkRateLimit(user.id)
+const RATE_LIMIT_MAX = 10; // Max invites per hour
+const rateLimit = checkRateLimit(user.id);
 ```
 
 **Limits:**
+
 - 10 invites/hour per user
 - Returns 429 with headers
 
 **Other Rate Limiting:**
+
 - Form submissions: 10/hour per IP
 - Integration APIs: Configurable per integration
 
@@ -331,15 +340,3 @@ const rateLimit = checkRateLimit(user.id)
 
 **Document Status:** ✅ COMPLETE  
 **Last Updated:** December 2024
-
-
-
-
-
-
-
-
-
-
-
-

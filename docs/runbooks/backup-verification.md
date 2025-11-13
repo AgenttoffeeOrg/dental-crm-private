@@ -93,8 +93,3 @@ jobs:
 - Rotate access keys quarterly.
 - Audit S3 lifecycle policies (retain 30 days of verified backups).
 - Update smoke tests when new critical tables are introduced (e.g., `conversation_sessions`, `competitors`).
-
-
-
-
-

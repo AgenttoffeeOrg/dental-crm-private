@@ -1,34 +1,34 @@
-import twilio, { Twilio } from 'twilio'
+import twilio, { Twilio } from 'twilio';
 
 export interface VoiceCallOptions {
-  to: string
-  from: string
-  url: string
-  statusCallback?: string
-  statusCallbackEvent?: ('initiated' | 'ringing' | 'answered' | 'completed')[]
-  record?: boolean
-  timeoutSeconds?: number
-  machineDetection?: 'Enable' | 'DetectMessageEnd'
+  to: string;
+  from: string;
+  url: string;
+  statusCallback?: string;
+  statusCallbackEvent?: ('initiated' | 'ringing' | 'answered' | 'completed')[];
+  record?: boolean;
+  timeoutSeconds?: number;
+  machineDetection?: 'Enable' | 'DetectMessageEnd';
 }
 
 interface VoiceInitConfig {
-  accountSid: string
-  authToken: string
-  defaultFrom: string
+  accountSid: string;
+  authToken: string;
+  defaultFrom: string;
 }
 
 export interface VoiceCallResult {
-  success: boolean
-  callSid?: string
-  status?: string
-  providerResponse?: Record<string, any>
-  error?: string
+  success: boolean;
+  callSid?: string;
+  status?: string;
+  providerResponse?: Record<string, any>;
+  error?: string;
 }
 
 export class VoiceService {
-  private client: Twilio | null = null
-  private accountSid: string | null = null
-  private defaultFrom: string | null = null
+  private client: Twilio | null = null;
+  private accountSid: string | null = null;
+  private defaultFrom: string | null = null;
 
   async initialize(config: VoiceInitConfig) {
     if (
@@ -36,17 +36,17 @@ export class VoiceService {
       this.accountSid === config.accountSid &&
       this.defaultFrom === config.defaultFrom
     ) {
-      return
+      return;
     }
 
-    this.client = twilio(config.accountSid, config.authToken)
-    this.accountSid = config.accountSid
-    this.defaultFrom = config.defaultFrom
+    this.client = twilio(config.accountSid, config.authToken);
+    this.accountSid = config.accountSid;
+    this.defaultFrom = config.defaultFrom;
   }
 
   async initiateCall(options: VoiceCallOptions): Promise<VoiceCallResult> {
     if (!this.client) {
-      throw new Error('Voice service not initialized. Configure in Settings → Voice')
+      throw new Error('Voice service not initialized. Configure in Settings → Voice');
     }
 
     const {
@@ -58,7 +58,7 @@ export class VoiceService {
       record = true,
       timeoutSeconds = 45,
       machineDetection = 'Enable',
-    } = options
+    } = options;
 
     try {
       const response = await this.client.calls.create({
@@ -72,7 +72,7 @@ export class VoiceService {
         timeout: timeoutSeconds,
         machineDetection,
         trim: 'do-not-trim',
-      })
+      });
 
       return {
         success: true,
@@ -86,20 +86,15 @@ export class VoiceService {
           from: response.from,
           direction: response.direction,
         },
-      }
+      };
     } catch (error: any) {
-      console.error('Voice call error:', error)
+      console.error('Voice call error:', error);
       return {
         success: false,
         error: error?.message || 'Failed to initiate voice call',
-      }
+      };
     }
   }
 }
 
-export const voiceService = new VoiceService()
-
-
-
-
-
+export const voiceService = new VoiceService();
