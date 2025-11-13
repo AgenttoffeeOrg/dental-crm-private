@@ -7,8 +7,8 @@ module.exports = {
       comment: 'Circular dependencies can cause issues',
       from: {},
       to: {
-        circular: true
-      }
+        circular: true,
+      },
     },
     {
       name: 'no-orphans',
@@ -16,13 +16,9 @@ module.exports = {
       comment: 'Orphaned modules might indicate dead code',
       from: {
         orphan: true,
-        pathNot: [
-          '\\.d\\.ts$',
-          '^src/app/',
-          '^src/components/ui/'
-        ]
+        pathNot: ['\\.d\\.ts$', '^src/app/', '^src/components/ui/'],
       },
-      to: {}
+      to: {},
     },
     {
       name: 'no-deprecated-core',
@@ -31,8 +27,8 @@ module.exports = {
       from: {},
       to: {
         dependencyTypes: ['core'],
-        path: ['^(punycode|domain|constants|sys|_linklist)$']
-      }
+        path: ['^(punycode|domain|constants|sys|_linklist)$'],
+      },
     },
     {
       name: 'not-to-unresolvable',
@@ -40,8 +36,8 @@ module.exports = {
       comment: 'Unresolvable dependencies should be fixed',
       from: {},
       to: {
-        couldNotResolve: true
-      }
+        couldNotResolve: true,
+      },
     },
     {
       name: 'no-non-package-json',
@@ -50,26 +46,19 @@ module.exports = {
       from: {},
       to: {
         dependencyTypes: ['npm', 'npm-no-pkg'],
-        pathNot: [
-          '^node_modules/'
-        ]
-      }
+        pathNot: ['^node_modules/'],
+      },
     },
     {
       name: 'not-to-dev-dep',
       severity: 'warn',
       comment: 'Production code should not depend on dev dependencies',
       from: {
-        pathNot: [
-          '\\.test\\.(js|ts|tsx)$',
-          '\\.spec\\.(js|ts|tsx)$',
-          '^tests/',
-          '^scripts/'
-        ]
+        pathNot: ['\\.test\\.(js|ts|tsx)$', '\\.spec\\.(js|ts|tsx)$', '^tests/', '^scripts/'],
       },
       to: {
-        dependencyTypes: ['npm-dev']
-      }
+        dependencyTypes: ['npm-dev'],
+      },
     },
     {
       name: 'no-optional-deps',
@@ -77,18 +66,13 @@ module.exports = {
       comment: 'Optional dependencies can cause issues',
       from: {},
       to: {
-        dependencyTypes: ['npm-optional']
-      }
-    }
+        dependencyTypes: ['npm-optional'],
+      },
+    },
   ],
   options: {
     doNotFollow: {
-      path: [
-        'node_modules',
-        '.next',
-        'dist',
-        'build'
-      ]
+      path: ['node_modules', '.next', 'dist', 'build'],
     },
     exclude: {
       path: [
@@ -100,27 +84,26 @@ module.exports = {
         'tests',
         '__tests__',
         '\\.test\\.(js|ts|tsx)$',
-        '\\.spec\\.(js|ts|tsx)$'
-      ]
+        '\\.spec\\.(js|ts|tsx)$',
+      ],
     },
     tsPreCompilationDeps: true,
     tsConfig: {
-      fileName: 'tsconfig.json'
+      fileName: 'tsconfig.json',
     },
     enhancedResolveOptions: {
       exportsFields: ['exports'],
-      conditionNames: ['import', 'require', 'node', 'default']
+      conditionNames: ['import', 'require', 'node', 'default'],
     },
     reporterOptions: {
       dot: {
         collapsePattern: '^node_modules/[^/]+',
         theme: {
           graph: {
-            splines: 'ortho'
-          }
-        }
-      }
-    }
-  }
+            splines: 'ortho',
+          },
+        },
+      },
+    },
+  },
 };
-

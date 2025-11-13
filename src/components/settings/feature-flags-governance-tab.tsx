@@ -1,20 +1,14 @@
-'use client'
+'use client';
 
-import { useEffect, useMemo, useState } from 'react'
-import { formatDistanceToNow } from 'date-fns'
-import { ShieldAlert, Loader2, RefreshCcw } from 'lucide-react'
-import { toast } from 'sonner'
+import { useEffect, useMemo, useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { ShieldAlert, Loader2, RefreshCcw } from 'lucide-react';
+import { toast } from 'sonner';
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
-import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -22,94 +16,94 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+} from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface GovernanceFlag {
-  key: string
-  name: string
-  description?: string | null
-  category: string
-  rolloutType: string
-  defaultEnabled: boolean
-  allowTenantOverride: boolean
-  effectiveEnabled: boolean
-  variant?: string | null
-  source: 'default' | 'global' | 'tenant'
-  reason?: string | null
-  updatedAt?: string | null
-  metadata?: Record<string, any>
+  key: string;
+  name: string;
+  description?: string | null;
+  category: string;
+  rolloutType: string;
+  defaultEnabled: boolean;
+  allowTenantOverride: boolean;
+  effectiveEnabled: boolean;
+  variant?: string | null;
+  source: 'default' | 'global' | 'tenant';
+  reason?: string | null;
+  updatedAt?: string | null;
+  metadata?: Record<string, any>;
   lastAudit?: {
-    action: string
-    context?: Record<string, any> | null
-    performed_at: string
-    performed_by_user_id?: string | null
-  } | null
+    action: string;
+    context?: Record<string, any> | null;
+    performed_at: string;
+    performed_by_user_id?: string | null;
+  } | null;
 }
 
 interface FetchResponse {
-  tenantId: string
-  flags: GovernanceFlag[]
+  tenantId: string;
+  flags: GovernanceFlag[];
 }
 
 export function FeatureFlagsGovernanceTab() {
-  const [flags, setFlags] = useState<GovernanceFlag[]>([])
-  const [loading, setLoading] = useState(true)
-  const [updating, setUpdating] = useState<Record<string, boolean>>({})
+  const [flags, setFlags] = useState<GovernanceFlag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<Record<string, boolean>>({});
 
   const sourceBadgeColor: Record<GovernanceFlag['source'], string> = {
     default: 'bg-gray-100 text-gray-700',
     global: 'bg-blue-100 text-blue-700',
     tenant: 'bg-emerald-100 text-emerald-700',
-  }
+  };
 
   const groupedFlags = useMemo(() => {
-    const groups = new Map<string, GovernanceFlag[]>()
+    const groups = new Map<string, GovernanceFlag[]>();
     flags.forEach((flag) => {
-      const key = flag.category || 'general'
+      const key = flag.category || 'general';
       if (!groups.has(key)) {
-        groups.set(key, [])
+        groups.set(key, []);
       }
-      groups.get(key)!.push(flag)
-    })
+      groups.get(key)!.push(flag);
+    });
     return Array.from(groups.entries())
       .map(([category, items]) => ({
         category,
         items: items.sort((a, b) => a.name.localeCompare(b.name)),
       }))
-      .sort((a, b) => a.category.localeCompare(b.category))
-  }, [flags])
+      .sort((a, b) => a.category.localeCompare(b.category));
+  }, [flags]);
 
   const loadFlags = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       const response = await fetch('/api/system/feature-flags', {
         credentials: 'include',
-      })
+      });
       if (!response.ok) {
-        throw new Error(await response.text())
+        throw new Error(await response.text());
       }
-      const data = (await response.json()) as FetchResponse
-      setFlags(data.flags)
+      const data = (await response.json()) as FetchResponse;
+      setFlags(data.flags);
     } catch (error) {
-      console.error('[FeatureFlags] Failed to load governance flags', error)
-      toast.error('Failed to load feature flags')
+      console.error('[FeatureFlags] Failed to load governance flags', error);
+      toast.error('Failed to load feature flags');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    loadFlags()
-  }, [])
+    loadFlags();
+  }, []);
 
   const toggleFlag = async (flag: GovernanceFlag, nextState: boolean) => {
     if (!flag.allowTenantOverride) {
-      toast.error('This feature flag cannot be overridden for your tenant.')
-      return
+      toast.error('This feature flag cannot be overridden for your tenant.');
+      return;
     }
 
-    setUpdating((prev) => ({ ...prev, [flag.key]: true }))
+    setUpdating((prev) => ({ ...prev, [flag.key]: true }));
     try {
       const response = await fetch('/api/system/feature-flags', {
         method: 'POST',
@@ -120,23 +114,23 @@ export function FeatureFlagsGovernanceTab() {
           enabled: nextState,
           reason: 'Toggled via settings',
         }),
-      })
+      });
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}))
-        throw new Error(errorBody?.error || 'Failed to update flag')
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody?.error || 'Failed to update flag');
       }
 
-      const data = (await response.json()) as { flags: GovernanceFlag[] }
-      setFlags(data.flags)
-      toast.success(`${flag.name} ${nextState ? 'enabled' : 'disabled'}`)
+      const data = (await response.json()) as { flags: GovernanceFlag[] };
+      setFlags(data.flags);
+      toast.success(`${flag.name} ${nextState ? 'enabled' : 'disabled'}`);
     } catch (error) {
-      console.error('[FeatureFlags] Failed to toggle flag', error)
-      toast.error('Failed to update flag')
+      console.error('[FeatureFlags] Failed to toggle flag', error);
+      toast.error('Failed to update flag');
     } finally {
-      setUpdating((prev) => ({ ...prev, [flag.key]: false }))
+      setUpdating((prev) => ({ ...prev, [flag.key]: false }));
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -146,7 +140,7 @@ export function FeatureFlagsGovernanceTab() {
           Loading feature flags…
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -156,7 +150,8 @@ export function FeatureFlagsGovernanceTab() {
           <div>
             <CardTitle className="text-lg">Feature Flag Governance</CardTitle>
             <CardDescription>
-              Control phased rollouts, tenant overrides, and capture audit history for critical features.
+              Control phased rollouts, tenant overrides, and capture audit history for critical
+              features.
             </CardDescription>
           </div>
           <Button
@@ -176,9 +171,7 @@ export function FeatureFlagsGovernanceTab() {
             <p className="mt-2 text-3xl font-bold text-gray-900">
               {flags.filter((flag) => flag.effectiveEnabled).length}
             </p>
-            <p className="mt-1 text-xs text-gray-500">
-              of {flags.length} flags currently enabled
-            </p>
+            <p className="mt-1 text-xs text-gray-500">of {flags.length} flags currently enabled</p>
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -186,9 +179,7 @@ export function FeatureFlagsGovernanceTab() {
             <p className="mt-2 text-3xl font-bold text-gray-900">
               {flags.filter((flag) => flag.source === 'tenant').length}
             </p>
-            <p className="mt-1 text-xs text-gray-500">
-              overrides applied for this tenant
-            </p>
+            <p className="mt-1 text-xs text-gray-500">overrides applied for this tenant</p>
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -196,9 +187,7 @@ export function FeatureFlagsGovernanceTab() {
             <p className="mt-2 text-3xl font-bold text-gray-900">
               {flags.filter((flag) => Boolean(flag.lastAudit)).length}
             </p>
-            <p className="mt-1 text-xs text-gray-500">
-              flags with recorded audit entries
-            </p>
+            <p className="mt-1 text-xs text-gray-500">flags with recorded audit entries</p>
           </div>
         </CardContent>
       </Card>
@@ -246,9 +235,7 @@ export function FeatureFlagsGovernanceTab() {
                           <p className="text-xs text-gray-500">{flag.description}</p>
                         )}
                         {flag.reason && (
-                          <p className="text-xs text-gray-400">
-                            Reason: {flag.reason}
-                          </p>
+                          <p className="text-xs text-gray-400">Reason: {flag.reason}</p>
                         )}
                       </div>
                     </TableCell>
@@ -305,7 +292,8 @@ export function FeatureFlagsGovernanceTab() {
                                   <p>Reason: {flag.lastAudit.context.reason}</p>
                                 )}
                                 <p className="text-gray-500 mt-1">
-                                  Recorded at {new Date(flag.lastAudit.performed_at).toLocaleString()}
+                                  Recorded at{' '}
+                                  {new Date(flag.lastAudit.performed_at).toLocaleString()}
                                 </p>
                               </div>
                             </TooltipContent>
@@ -323,10 +311,5 @@ export function FeatureFlagsGovernanceTab() {
         </Card>
       ))}
     </div>
-  )
+  );
 }
-
-
-
-
-

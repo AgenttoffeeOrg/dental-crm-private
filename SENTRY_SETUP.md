@@ -5,7 +5,7 @@ This document describes the Sentry error monitoring setup for the Dental CRM app
 ## Configuration Files
 
 - `sentry.client.config.ts` - Client-side Sentry configuration
-- `sentry.server.config.ts` - Server-side Sentry configuration  
+- `sentry.server.config.ts` - Server-side Sentry configuration
 - `sentry.edge.config.ts` - Edge runtime Sentry configuration
 - `.sentryclirc` - Sentry CLI configuration (for releases and source maps)
 - `next.config.js` - Updated with Sentry webpack plugin
@@ -52,7 +52,7 @@ SENTRY_DEBUG=false
 
 ## Development vs Production
 
-- **Development**: 
+- **Development**:
   - Sentry is disabled by default (set `NEXT_PUBLIC_SENTRY_DEBUG=true` to enable)
   - 100% trace and replay sampling for testing
   - Debug mode enabled
@@ -86,4 +86,3 @@ To test Sentry integration:
 - [Sentry Next.js Documentation](https://docs.sentry.io/platforms/javascript/guides/nextjs/)
 - [Sentry Session Replay](https://docs.sentry.io/platforms/javascript/session-replay/)
 - [Sentry Performance Monitoring](https://docs.sentry.io/product/performance/)
-

@@ -1,6 +1,7 @@
 # Architecture & DevOps
 
 ## Architecture Overview
+
 ```mermaid
 flowchart LR
   Users((Users)) -->|App Router| NextJS[Next.js 14 App]
@@ -23,24 +24,28 @@ flowchart LR
 - Edge function handles heavy AI pipelines; other integrations use direct API clients from route handlers/lib services.
 
 ## Environments & Deployment
+
 - **Local Dev:** `npm run dev` for Next.js, Supabase config (ports 54321/54322) for local DB/auth, CLI scripts for migrations (`supabase db lint/push`).
 - **Testing:** Package scripts cover Jest unit/integration, Playwright E2E, accessibility, load (Artillery), Lighthouse, and type-checking.
 - **Deployment:** Railway Nixpacks builder (`npm install --legacy-peer-deps && npm run build`) with restart-on-failure up to 10 retries; `deploy-to-railway.sh` seeds variables and triggers `railway up`.
 - **Feature Flags:** env-based toggles plus Supabase feature flag table enable progressive rollout across environments.
 
 ## Observability & Operations
+
 - **Logging:** Pino-based logger with PII redaction; automation listener/governance emit structured console logs; audit table persists entity-level actions.
 - **Analytics:** PostHog integration stub indicates planned telemetry; analytics SDK + dashboards handle KPI/anomaly detection.
 - **Cron & Jobs:** `/api/cron/scheduled-audits` endpoint secured via bearer secret triggers scheduled audits; `deal-sla-monitor` intended for cron invocation.
 - **Rate Limiting:** Security lib implements in-memory per-IP limiter for request throttling; automation governance enforces execution quotas.
 
 ## Performance & Capacity
+
 - **Database Indexing:** Core tables (contacts, deals, tasks, activities, audits, files) include tenant, status, and timestamp indexes; treatment routing tables add GIN indexes for keywords + trigram search.
 - **Caching & Headers:** Next.js config adjusts cache headers for static assets vs API routes, enables compression, disables powered-by header.
 - **Automation Scaling:** Rate limit records track hourly/daily counts, queue pause flags, email/SMS quotas; scheduled audits cap concurrency via batching.
 - **Resource Limits:** Supabase storage capped at 50 MiB per file; JWT expiry enforced at 1 hour with refresh rotation.
 
 ## Evidence
+
 - package.json:5-47,49-143
 - supabase/config.toml:5-125
 - railway.json:1-11
@@ -54,9 +59,3 @@ flowchart LR
 - supabase/sql/01_initial_schema.sql:148-173
 - supabase/sql/45_treatment_routing.sql:83-153
 - next.config.js:5-88
-
-
-
-
-
-

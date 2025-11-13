@@ -1,12 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase-server'
-import { enqueueEngagementEnrollment, registerEngagementQueue } from '@/lib/queues/engagement-queue'
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase-server';
+import {
+  enqueueEngagementEnrollment,
+  registerEngagementQueue,
+} from '@/lib/queues/engagement-queue';
 
-registerEngagementQueue()
+registerEngagementQueue();
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json();
     const {
       tenant_id: tenantId,
       campaign_id: campaignId,
@@ -14,13 +17,16 @@ export async function POST(request: NextRequest) {
       deal_id: dealId,
       context,
       user_id: userId,
-    } = body || {}
+    } = body || {};
 
     if (!tenantId || !campaignId) {
-      return NextResponse.json({ error: 'tenant_id and campaign_id are required' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'tenant_id and campaign_id are required' },
+        { status: 400 }
+      );
     }
 
-    const supabase = createServiceClient()
+    const supabase = createServiceClient();
     const { data, error } = await supabase
       .from('engagement_enrollments')
       .insert({
@@ -35,25 +41,20 @@ export async function POST(request: NextRequest) {
         },
       })
       .select()
-      .single()
+      .single();
 
     if (error || !data) {
-      throw error || new Error('Failed to create enrollment')
+      throw error || new Error('Failed to create enrollment');
     }
 
-    await enqueueEngagementEnrollment(data.id, 0)
+    await enqueueEngagementEnrollment(data.id, 0);
 
-    return NextResponse.json({ success: true, enrollment: data })
+    return NextResponse.json({ success: true, enrollment: data });
   } catch (error: any) {
-    console.error('[ENGAGEMENT] Failed to create enrollment', error)
+    console.error('[ENGAGEMENT] Failed to create enrollment', error);
     return NextResponse.json(
       { error: error?.message || 'Internal server error' },
       { status: error?.status || 500 }
-    )
+    );
   }
 }
-
-
-
-
-

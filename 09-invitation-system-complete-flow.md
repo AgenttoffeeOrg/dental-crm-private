@@ -9,6 +9,7 @@
 ## EXECUTIVE SUMMARY
 
 The invitation system is **fully implemented** with two table systems:
+
 1. **`pending_invites`** - Modern system with 6-character codes, role pre-assignment
 2. **`user_invitations`** - Legacy system with token-based invites
 
@@ -29,27 +30,27 @@ CREATE TABLE IF NOT EXISTS pending_invites (
   -- Identity
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   invite_code TEXT UNIQUE NOT NULL,
-  
+
   -- Invite Details
   invited_email TEXT NOT NULL,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  
+
   -- ✅ CRITICAL: Role is assigned BY INVITER, NOT on accept
   assigned_role TEXT NOT NULL CHECK (assigned_role IN ('owner', 'admin', 'manager', 'staff', 'viewer')),
-  
+
   -- Inviter Info
   invited_by UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   personal_message TEXT, -- Optional message from inviter
-  
+
   -- Status & Timestamps
   status invite_status DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '7 days',
-  
+
   -- Acceptance Tracking
   accepted_at TIMESTAMPTZ,
   accepted_by UUID REFERENCES app_users(id) ON DELETE SET NULL,
-  
+
   -- Metadata
   metadata JSONB DEFAULT '{}'::jsonb
 );
@@ -57,21 +58,21 @@ CREATE TABLE IF NOT EXISTS pending_invites (
 
 #### All Columns Explained
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | `gen_random_uuid()` | Primary key |
-| `invite_code` | TEXT | NOT NULL | - | 6-character alphanumeric code (UNIQUE) |
-| `invited_email` | TEXT | NOT NULL | - | Email address of invitee |
-| `tenant_id` | UUID | NOT NULL | - | FK to `tenants(id)` ON DELETE CASCADE |
-| `assigned_role` | TEXT | NOT NULL | - | Role assigned by inviter: 'owner', 'admin', 'manager', 'staff', 'viewer' |
-| `invited_by` | UUID | NOT NULL | - | FK to `app_users(id)` - who sent the invite |
-| `personal_message` | TEXT | NULLABLE | NULL | Optional message from inviter |
-| `status` | `invite_status` ENUM | NOT NULL | 'pending' | 'pending', 'accepted', 'expired', 'cancelled' |
-| `created_at` | TIMESTAMPTZ | NOT NULL | NOW() | When invite was created |
-| `expires_at` | TIMESTAMPTZ | NOT NULL | NOW() + 7 days | Expiration timestamp |
-| `accepted_at` | TIMESTAMPTZ | NULLABLE | NULL | When invite was accepted |
-| `accepted_by` | UUID | NULLABLE | NULL | FK to `app_users(id)` - who accepted |
-| `metadata` | JSONB | NOT NULL | '{}' | Additional metadata |
+| Column             | Type                 | Nullable | Default             | Description                                                              |
+| ------------------ | -------------------- | -------- | ------------------- | ------------------------------------------------------------------------ |
+| `id`               | UUID                 | NOT NULL | `gen_random_uuid()` | Primary key                                                              |
+| `invite_code`      | TEXT                 | NOT NULL | -                   | 6-character alphanumeric code (UNIQUE)                                   |
+| `invited_email`    | TEXT                 | NOT NULL | -                   | Email address of invitee                                                 |
+| `tenant_id`        | UUID                 | NOT NULL | -                   | FK to `tenants(id)` ON DELETE CASCADE                                    |
+| `assigned_role`    | TEXT                 | NOT NULL | -                   | Role assigned by inviter: 'owner', 'admin', 'manager', 'staff', 'viewer' |
+| `invited_by`       | UUID                 | NOT NULL | -                   | FK to `app_users(id)` - who sent the invite                              |
+| `personal_message` | TEXT                 | NULLABLE | NULL                | Optional message from inviter                                            |
+| `status`           | `invite_status` ENUM | NOT NULL | 'pending'           | 'pending', 'accepted', 'expired', 'cancelled'                            |
+| `created_at`       | TIMESTAMPTZ          | NOT NULL | NOW()               | When invite was created                                                  |
+| `expires_at`       | TIMESTAMPTZ          | NOT NULL | NOW() + 7 days      | Expiration timestamp                                                     |
+| `accepted_at`      | TIMESTAMPTZ          | NULLABLE | NULL                | When invite was accepted                                                 |
+| `accepted_by`      | UUID                 | NULLABLE | NULL                | FK to `app_users(id)` - who accepted                                     |
+| `metadata`         | JSONB                | NOT NULL | '{}'                | Additional metadata                                                      |
 
 #### Indexes
 
@@ -134,23 +135,23 @@ BEGIN
     v_code := UPPER(
       SUBSTRING(MD5(gen_random_uuid()::TEXT) FROM 1 FOR 6)
     );
-    
+
     -- Replace numbers with letters for readability (avoid 0/O, 1/I confusion)
     v_code := TRANSLATE(v_code, '0123456789', 'ABCDEFGHJK');
-    
+
     -- Check if code already exists
     SELECT EXISTS(
       SELECT 1 FROM pending_invites WHERE invite_code = v_code
     ) INTO v_exists;
-    
+
     EXIT WHEN NOT v_exists;
-    
+
     v_attempts := v_attempts + 1;
     IF v_attempts >= v_max_attempts THEN
       RAISE EXCEPTION 'Failed to generate unique invite code after % attempts', v_max_attempts;
     END IF;
   END LOOP;
-  
+
   RETURN v_code;
 END;
 $$;
@@ -187,18 +188,21 @@ $$;
 // Line 100-378: Main POST handler
 export async function POST(request: NextRequest) {
   // 1. AUTHENTICATION (lines 107-114)
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
   if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   // 2. GET USER CONTEXT (lines 119-131)
   const { data: appUser } = await supabase
     .from('app_users')
     .select('active_tenant_id, full_name')
     .eq('id', user.id)
-    .single()
-  
+    .single();
+
   // 3. VERIFY PERMISSIONS (lines 136-160)
   // Only owners/admins can create invites
   const { data: membership } = await supabase
@@ -207,23 +211,23 @@ export async function POST(request: NextRequest) {
     .eq('user_id', user.id)
     .eq('tenant_id', appUser.active_tenant_id)
     .eq('status', 'active')
-    .single()
-  
+    .single();
+
   if (!['owner', 'admin'].includes(membership.role)) {
-    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
   }
-  
+
   // 4. RATE LIMITING (lines 165-184)
   // Max 10 invites/hour per user
-  const rateLimit = checkRateLimit(user.id)
+  const rateLimit = checkRateLimit(user.id);
   if (!rateLimit.allowed) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
-  
+
   // 5. PARSE & VALIDATE REQUEST (lines 189-212)
   // Email validation, role must be explicit
-  const body = CreateInviteSchema.parse(await request.json())
-  
+  const body = CreateInviteSchema.parse(await request.json());
+
   // 6. CHECK DUPLICATE INVITE (lines 217-238)
   // Same email + tenant + pending status
   const { data: existingInvite } = await supabase
@@ -233,12 +237,12 @@ export async function POST(request: NextRequest) {
     .eq('tenant_id', appUser.active_tenant_id)
     .eq('status', 'pending')
     .gt('expires_at', new Date().toISOString())
-    .single()
-  
+    .single();
+
   if (existingInvite) {
-    return NextResponse.json({ error: 'Duplicate invite' }, { status: 409 })
+    return NextResponse.json({ error: 'Duplicate invite' }, { status: 409 });
   }
-  
+
   // 7. CHECK IF ALREADY MEMBER (lines 243-264)
   // Prevents inviting existing members
   const { data: existingMember } = await supabase
@@ -246,12 +250,14 @@ export async function POST(request: NextRequest) {
     .select('id')
     .eq('tenant_id', appUser.active_tenant_id)
     .eq('status', 'active')
-    .in('user_id', [/* subquery for email */])
-    .single()
-  
+    .in('user_id', [
+      /* subquery for email */
+    ])
+    .single();
+
   // 8. GENERATE INVITE CODE (lines 269-278)
-  const { data: inviteCode } = await supabase.rpc('generate_invite_code')
-  
+  const { data: inviteCode } = await supabase.rpc('generate_invite_code');
+
   // 9. CREATE INVITE (lines 283-311)
   const { data: invite } = await supabase
     .from('pending_invites')
@@ -259,22 +265,22 @@ export async function POST(request: NextRequest) {
       invite_code: inviteCode,
       invited_email: body.email,
       tenant_id: appUser.active_tenant_id,
-      assigned_role: body.role,  // ✅ Pre-assigned by inviter
+      assigned_role: body.role, // ✅ Pre-assigned by inviter
       invited_by: user.id,
       personal_message: body.personal_message || null,
-      status: 'pending'
+      status: 'pending',
     })
     .select()
-    .single()
-  
+    .single();
+
   // 10. AUDIT LOG (lines 316-339)
   await supabase.from('audits').insert({
     action: 'invite.created',
     resource_type: 'invite',
     resource_id: invite.id,
-    metadata: { invited_email, assigned_role, invite_code }
-  })
-  
+    metadata: { invited_email, assigned_role, invite_code },
+  });
+
   // 11. SUCCESS RESPONSE (lines 344-366)
   return NextResponse.json({
     success: true,
@@ -283,15 +289,16 @@ export async function POST(request: NextRequest) {
       invite_code: invite.invite_code,
       invited_email: invite.invited_email,
       assigned_role: invite.assigned_role,
-      expires_at: invite.expires_at
-    }
-  })
+      expires_at: invite.expires_at,
+    },
+  });
 }
 ```
 
 ### Data Stored
 
 **INSERT Query:**
+
 ```sql
 INSERT INTO pending_invites (
   invite_code,
@@ -323,8 +330,8 @@ INSERT INTO pending_invites (
 ```typescript
 // src/app/api/invites/create/route.ts:48-50
 role: z.enum(['owner', 'admin', 'manager', 'staff', 'viewer'], {
-  errorMap: () => ({ message: 'Role must be explicitly specified' })
-})
+  errorMap: () => ({ message: 'Role must be explicitly specified' }),
+});
 ```
 
 ### Can Admin Specify Location(s)?
@@ -335,13 +342,11 @@ role: z.enum(['owner', 'admin', 'manager', 'staff', 'viewer'], {
 
 ```typescript
 // On accept, user gets access to DEFAULT location only
-const { error: locationAccessError } = await supabase
-  .from('membership_locations')
-  .insert({
-    membership_id: membership.id,
-    location_id: defaultLocation.id,  // Default location, not specified by inviter
-    role: invite.assigned_role
-  })
+const { error: locationAccessError } = await supabase.from('membership_locations').insert({
+  membership_id: membership.id,
+  location_id: defaultLocation.id, // Default location, not specified by inviter
+  role: invite.assigned_role,
+});
 ```
 
 ### Default Values
@@ -360,6 +365,7 @@ const { error: locationAccessError } = await supabase
 **File:** `src/lib/services/email-service.ts`
 
 **Supported Providers:**
+
 - Resend (primary)
 - SendGrid (alternative)
 - Console (development - logs to console)
@@ -391,14 +397,14 @@ export async function sendInvitationEmail(
       <p>This invitation link will expire in 7 days.</p>
     </body>
     </html>
-  `
-  
+  `;
+
   return sendEmail({
     to,
     subject: `You've been invited to join ${organizationName}`,
     html,
-    template: EmailTemplates.INVITATION
-  })
+    template: EmailTemplates.INVITATION,
+  });
 }
 ```
 
@@ -427,47 +433,52 @@ export async function sendInvitationEmail(
 ```typescript
 export async function POST(request: NextRequest) {
   // 1. AUTHENTICATION (lines 64-71)
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
   // 2. PARSE & VALIDATE REQUEST (lines 76-99)
   // Accepts either invite_id or invite_code
-  const body = AcceptInviteSchema.parse(await request.json())
-  
+  const body = AcceptInviteSchema.parse(await request.json());
+
   // 3. FETCH & VALIDATE INVITE (lines 104-137)
   let inviteQuery = supabase
     .from('pending_invites')
-    .select('id, invite_code, invited_email, tenant_id, assigned_role, status, expires_at, tenants!inner(name)')
-  
+    .select(
+      'id, invite_code, invited_email, tenant_id, assigned_role, status, expires_at, tenants!inner(name)'
+    );
+
   if ('invite_id' in body) {
-    inviteQuery = inviteQuery.eq('id', body.invite_id)
+    inviteQuery = inviteQuery.eq('id', body.invite_id);
   } else {
-    inviteQuery = inviteQuery.eq('invite_code', body.invite_code)
+    inviteQuery = inviteQuery.eq('invite_code', body.invite_code);
   }
-  
-  const { data: invite } = await inviteQuery.single()
-  
+
+  const { data: invite } = await inviteQuery.single();
+
   // 4. VALIDATE INVITE STATUS (lines 143-185)
-  
+
   // 4a. Email match check
   if (invite.invited_email.toLowerCase() !== user.email.toLowerCase()) {
-    return NextResponse.json({ error: 'Email mismatch' }, { status: 403 })
+    return NextResponse.json({ error: 'Email mismatch' }, { status: 403 });
   }
-  
+
   // 4b. Already accepted check
   if (invite.status === 'accepted') {
-    return NextResponse.json({ error: 'Invite already accepted' }, { status: 409 })
+    return NextResponse.json({ error: 'Invite already accepted' }, { status: 409 });
   }
-  
+
   // 4c. Expired check
   if (invite.status === 'expired' || new Date(invite.expires_at) < new Date()) {
-    return NextResponse.json({ error: 'Invite expired' }, { status: 410 })
+    return NextResponse.json({ error: 'Invite expired' }, { status: 410 });
   }
-  
+
   // 4d. Cancelled check
   if (invite.status === 'cancelled') {
-    return NextResponse.json({ error: 'Invite cancelled' }, { status: 410 })
+    return NextResponse.json({ error: 'Invite cancelled' }, { status: 410 });
   }
-  
+
   // 5. CHECK IF ALREADY MEMBER (lines 190-217)
   const { data: existingMembership } = await supabase
     .from('user_tenant_memberships')
@@ -475,14 +486,14 @@ export async function POST(request: NextRequest) {
     .eq('user_id', user.id)
     .eq('tenant_id', invite.tenant_id)
     .eq('status', 'active')
-    .single()
-  
+    .single();
+
   if (existingMembership) {
     // Mark invite as accepted anyway
-    await supabase.from('pending_invites').update({ status: 'accepted' }).eq('id', invite.id)
-    return NextResponse.json({ error: 'Already a member' }, { status: 409 })
+    await supabase.from('pending_invites').update({ status: 'accepted' }).eq('id', invite.id);
+    return NextResponse.json({ error: 'Already a member' }, { status: 409 });
   }
-  
+
   // 6. GET DEFAULT LOCATION (lines 222-236)
   const { data: defaultLocation } = await supabase
     .from('locations')
@@ -490,63 +501,63 @@ export async function POST(request: NextRequest) {
     .eq('tenant_id', invite.tenant_id)
     .order('created_at', { ascending: true })
     .limit(1)
-    .single()
-  
+    .single();
+
   // 7. CREATE MEMBERSHIP (lines 241-259)
   const { data: membership } = await supabase
     .from('user_tenant_memberships')
     .insert({
       user_id: user.id,
       tenant_id: invite.tenant_id,
-      role: invite.assigned_role,  // ✅ Use pre-assigned role
+      role: invite.assigned_role, // ✅ Use pre-assigned role
       all_locations: false,
-      status: 'active'
+      status: 'active',
     })
     .select('id, role')
-    .single()
-  
+    .single();
+
   // 8. GRANT ACCESS TO DEFAULT LOCATION (lines 264-275)
   await supabase.from('membership_locations').insert({
     membership_id: membership.id,
     location_id: defaultLocation.id,
-    role: invite.assigned_role
-  })
-  
+    role: invite.assigned_role,
+  });
+
   // 9. UPDATE USER'S ACTIVE CONTEXT (lines 280-292)
   await supabase
     .from('app_users')
     .update({
       active_tenant_id: invite.tenant_id,
-      active_location_id: defaultLocation.id
+      active_location_id: defaultLocation.id,
     })
-    .eq('id', user.id)
-  
+    .eq('id', user.id);
+
   // 10. MARK INVITE AS ACCEPTED (lines 297-309)
   await supabase
     .from('pending_invites')
     .update({
       status: 'accepted',
       accepted_at: new Date().toISOString(),
-      accepted_by: user.id
+      accepted_by: user.id,
     })
-    .eq('id', invite.id)
-  
+    .eq('id', invite.id);
+
   // 11. AUDIT LOG (lines 314-327)
   await supabase.from('audits').insert({
     action: 'invite.accepted',
     resource_type: 'invite',
-    resource_id: invite.id
-  })
-  
+    resource_id: invite.id,
+  });
+
   // 12. SUCCESS RESPONSE (lines 332-346)
   return NextResponse.json({
     success: true,
     membership: {
       tenant: { id: invite.tenant_id, name: invite.tenants.name },
       role: invite.assigned_role,
-      location: { id: defaultLocation.id, name: defaultLocation.name }
-    }
-  })
+      location: { id: defaultLocation.id, name: defaultLocation.name },
+    },
+  });
 }
 ```
 
@@ -589,14 +600,14 @@ INSERT INTO membership_locations (
 
 -- Step 3: Update user context
 UPDATE app_users
-SET 
+SET
   active_tenant_id = '<tenant_id>',
   active_location_id = '<default_location_id>'
 WHERE id = '<user_id>';
 
 -- Step 4: Mark invite accepted
 UPDATE pending_invites
-SET 
+SET
   status = 'accepted',
   accepted_at = NOW(),
   accepted_by = '<user_id>'
@@ -619,8 +630,8 @@ role: invite.assigned_role,  // ✅ Use pre-assigned role from invite
 
 ```typescript
 setTimeout(() => {
-  router.push('/pipeline')  // Redirects to pipeline page
-}, 1500)
+  router.push('/pipeline'); // Redirects to pipeline page
+}, 1500);
 ```
 
 **Note:** Legacy invite page redirects to `/pipeline`. Modern invite acceptance via `/api/invites/accept` doesn't specify redirect (client handles it).
@@ -643,24 +654,24 @@ export function JoinWithCodeModal({
   onError
 }: JoinWithCodeModalProps) {
   const [formData, setFormData] = useState({ invite_code: '' })
-  
+
   // Auto-submit when 6 characters entered
   const handleCodeChange = (value: string) => {
     const formatted = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6)
     setFormData({ invite_code: formatted })
-    
+
     if (formatted.length === 6) {
       setTimeout(() => handleSubmit(formatted), 300)
     }
   }
-  
+
   const handleSubmit = async (code: string) => {
     const response = await fetch('/api/invites/accept', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invite_code: code })
     })
-    
+
     if (response.ok) {
       const data = await response.json()
       onSuccess(data)
@@ -670,7 +681,7 @@ export function JoinWithCodeModal({
       setSubmitError(errorData.message)
     }
   }
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -721,21 +732,21 @@ export function JoinWithCodeModal({
 export function InviteUserDialog({ open, onOpenChange, tenantId }: InviteUserDialogProps) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'manager' | 'staff' | 'viewer'>('staff')
-  
+
   const handleInvite = async () => {
     const response = await fetch('/api/users/invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, role, tenant_id: tenantId })
     })
-    
+
     if (response.ok) {
       const data = await response.json()
       setInvitationLink(data.invitationLink)
       toast.success(`Invitation sent to ${email}!`)
     }
   }
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -770,6 +781,7 @@ export function InviteUserDialog({ open, onOpenChange, tenantId }: InviteUserDia
 **File:** `src/components/invites/invite-detection-banner.tsx`
 
 **Shows:**
+
 - Inviter name
 - Organization name
 - Assigned role
@@ -778,6 +790,7 @@ export function InviteUserDialog({ open, onOpenChange, tenantId }: InviteUserDia
 - Accept/Maybe Later buttons
 
 **Features:**
+
 - Auto-detects pending invites on mount
 - One-click accept
 - Dismissible
@@ -786,6 +799,7 @@ export function InviteUserDialog({ open, onOpenChange, tenantId }: InviteUserDia
 ### Can Invites Be Cancelled/Resent?
 
 **Status:** ❌ **NOT FOUND** - No UI or API endpoint found for:
+
 - Cancelling invites
 - Resending invites
 - Viewing all pending invites for a tenant
@@ -806,17 +820,20 @@ const { data: existingMembership } = await supabase
   .eq('user_id', user.id)
   .eq('tenant_id', invite.tenant_id)
   .eq('status', 'active')
-  .single()
+  .single();
 
 if (existingMembership) {
   // Mark invite as accepted anyway
-  await supabase.from('pending_invites').update({ status: 'accepted' }).eq('id', invite.id)
-  
-  return NextResponse.json({
-    error: 'Already a member',
-    message: `You are already a member of ${tenant.name}`,
-    current_role: existingMembership.role
-  }, { status: 409 })
+  await supabase.from('pending_invites').update({ status: 'accepted' }).eq('id', invite.id);
+
+  return NextResponse.json(
+    {
+      error: 'Already a member',
+      message: `You are already a member of ${tenant.name}`,
+      current_role: existingMembership.role,
+    },
+    { status: 409 }
+  );
 }
 ```
 
@@ -827,10 +844,13 @@ if (existingMembership) {
 ```typescript
 // Email must match
 if (invite.invited_email.toLowerCase() !== user.email.toLowerCase()) {
-  return NextResponse.json({
-    error: 'Email mismatch',
-    message: 'This invite was sent to a different email address'
-  }, { status: 403 })
+  return NextResponse.json(
+    {
+      error: 'Email mismatch',
+      message: 'This invite was sent to a different email address',
+    },
+    { status: 403 }
+  );
 }
 ```
 
@@ -840,10 +860,13 @@ if (invite.invited_email.toLowerCase() !== user.email.toLowerCase()) {
 
 ```typescript
 if (invite.status === 'expired' || new Date(invite.expires_at) < new Date()) {
-  return NextResponse.json({
-    error: 'Invite expired',
-    message: 'This invite has expired. Please request a new one.'
-  }, { status: 410 })
+  return NextResponse.json(
+    {
+      error: 'Invite expired',
+      message: 'This invite has expired. Please request a new one.',
+    },
+    { status: 410 }
+  );
 }
 ```
 
@@ -869,10 +892,13 @@ if (invite.status === 'expired' || new Date(invite.expires_at) < new Date()) {
 
 ```typescript
 if (invite.status === 'accepted') {
-  return NextResponse.json({
-    error: 'Invite already accepted',
-    message: 'This invite has already been used'
-  }, { status: 409 })
+  return NextResponse.json(
+    {
+      error: 'Invite already accepted',
+      message: 'This invite has already been used',
+    },
+    { status: 409 }
+  );
 }
 ```
 
@@ -882,7 +908,7 @@ if (invite.status === 'accepted') {
 
 ```sql
 IF NOT FOUND THEN
-  RETURN QUERY SELECT 
+  RETURN QUERY SELECT
     FALSE, NULL, NULL, NULL, NULL, NULL, NULL,
     'Invalid invite code'::TEXT;
   RETURN;
@@ -906,23 +932,24 @@ const RATE_LIMIT_MAX = 10 // Max invites per hour
 function checkRateLimit(userId: string): { allowed: boolean, remaining: number, resetAt: number } {
   // In-memory store
   const record = rateLimitStore.get(`invite:${userId}`)
-  
+
   if (record && Date.now() > record.resetAt) {
     rateLimitStore.delete(`invite:${userId}`)
   }
-  
+
   // Check current count
   if (!record || record.count < RATE_LIMIT_MAX) {
     // Allow
     return { allowed: true, remaining: RATE_LIMIT_MAX - (record?.count || 0), resetAt: ... }
   }
-  
+
   // Block
   return { allowed: false, remaining: 0, resetAt: record.resetAt }
 }
 ```
 
 **Limits:**
+
 - 10 invites per hour per user
 - Returns 429 status with headers:
   - `X-RateLimit-Limit`
@@ -941,9 +968,9 @@ await supabase
   .update({
     status: 'accepted',
     accepted_at: new Date().toISOString(),
-    accepted_by: user.id
+    accepted_by: user.id,
   })
-  .eq('id', invite.id)
+  .eq('id', invite.id);
 ```
 
 ### Email Verification Required?
@@ -1083,6 +1110,7 @@ await supabase
 ### ✅ System Status: FULLY IMPLEMENTED (Backend)
 
 The invitation system is **fully functional** at the API level:
+
 - ✅ Invite creation with role pre-assignment
 - ✅ 6-character code generation
 - ✅ Complete acceptance flow
@@ -1107,15 +1135,3 @@ The invitation system is **fully functional** at the API level:
 
 **Document Status:** ✅ COMPLETE  
 **Last Updated:** December 2024
-
-
-
-
-
-
-
-
-
-
-
-

@@ -24,12 +24,7 @@ Get your dummy practice website live on **dentalcrmtest.com** in 5 minutes!
 3. Replace the placeholder with:
 
 ```html
-<iframe 
-    src="YOUR-FORM-URL-HERE" 
-    width="100%" 
-    height="600" 
-    frameborder="0" 
-    style="border: none;">
+<iframe src="YOUR-FORM-URL-HERE" width="100%" height="600" frameborder="0" style="border: none;">
 </iframe>
 ```
 
@@ -44,6 +39,7 @@ vercel --prod
 ```
 
 Then:
+
 1. Go to https://vercel.com/dashboard
 2. Click your project → **Settings** → **Domains**
 3. Add `dentalcrmtest.com`
@@ -63,20 +59,20 @@ Then:
 ## 🆘 Quick Troubleshooting
 
 **Form not showing?**
+
 - Check form URL is correct
 - Make sure form is published in CRM
 
 **Domain not working?**
+
 - Wait 5 min - 2 hours for DNS
 - Check DNS records are correct
 
 **Need more help?**
+
 - See `README.md` for detailed instructions
 - See `../FORM_HOSTING_GUIDE.md` for complete guide
 
 ---
 
 **Total Cost:** $0/month (completely free!)
-
-
-

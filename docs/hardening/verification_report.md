@@ -18,6 +18,7 @@
 ### Key Findings
 
 ✅ **STRENGTHS:**
+
 - All 12 hardening migrations applied successfully
 - 256+ RLS policies active across all tenant-scoped tables
 - Entitlement system implemented with 3-layer guards (UI, API, DB)
@@ -25,12 +26,14 @@
 - FK tenant guards prevent cross-tenant data linkage
 
 ⚠️ **AREAS REQUIRING VERIFICATION:**
+
 - Marketing module visibility gates (needs E2E testing)
 - Automations engine (DLQ, replay, loop guards need integration testing)
 - Privacy/GDPR workflows (erasure, export need manual testing)
 - Performance under load (needs load testing with 10k+ records)
 
 🔴 **CRITICAL GAPS:**
+
 - None identified (all P0 security issues resolved)
 
 ### Security Grade
@@ -50,12 +53,14 @@
 **Status:** ✅ Created | ⏳ Awaiting execution in Supabase
 
 **Expected Results:**
+
 - All tenant-scoped tables (with `tenant_id` column) should have RLS enabled
 - Each table should have 4+ policies (SELECT, INSERT, UPDATE, DELETE)
 - SELECT policies should include soft delete filter: `is_not_deleted(deleted_at)`
 - Service role should have bypass policies
 
 **Test Coverage:**
+
 ```sql
 ✅ Part 1: List all tables with RLS status
 ✅ Part 2: List all RLS policies with details
@@ -68,6 +73,7 @@
 ```
 
 **Manual Execution Required:**
+
 1. Open Supabase SQL Editor
 2. Copy contents of `tests/verification/sql/a1_rls_inventory.sql`
 3. Execute all 8 parts
@@ -88,12 +94,14 @@
 **Status:** ✅ Created | ⏳ Awaiting execution
 
 **Test Plan:**
+
 1. Create test tenants (T1, T2) and users (U1, U2)
 2. Create data in each tenant (contacts, deals, campaigns, automations)
 3. Verify U1 cannot see/modify T2 data
 4. Verify cross-tenant mutation attempts affect 0 rows
 
 **Test Coverage:**
+
 ```sql
 ✅ TEST 1: Contacts Isolation
 ✅ TEST 2: Deals Isolation
@@ -110,6 +118,7 @@
 **Status:** ✅ Created | ⏳ Awaiting execution
 
 **Test Coverage:**
+
 ```sql
 ✅ TEST 1: Soft Delete on Contacts
 ✅ TEST 2: updated_at Trigger
@@ -119,6 +128,7 @@
 ```
 
 **Expected Results:**
+
 - ✅ Soft-deleted contacts have `deleted_at` timestamp
 - ✅ `is_not_deleted()` correctly identifies soft-deleted records
 - ✅ RLS policies hide soft-deleted records
@@ -133,16 +143,19 @@
 **Status:** ✅ Created | ⏳ Awaiting execution
 
 **Critical Security Test:**
+
 ```sql
 ✅ TEST 2: Verify check_entitlement() does NOT accept tenant_id parameter
 ```
 
 **Expected Result:**
+
 ```
 ✅ PASS: Tenant ID derived from auth context only
 ```
 
 **Other Tests:**
+
 ```sql
 ✅ TEST 1: Feature hierarchy validation
 ✅ TEST 3: Base entitlement (crm_base)
@@ -162,6 +175,7 @@
 **Status:** ✅ Created | ⏳ Awaiting execution
 
 **Test Coverage:**
+
 ```sql
 ✅ TEST 1: enforce_quota_and_increment() function exists
 ✅ TEST 2: Set quota limit
@@ -173,6 +187,7 @@
 ```
 
 **Expected Behavior:**
+
 1. Set quota to 3 emails
 2. Send emails 1, 2, 3 → Success (quota incremented)
 3. Send email 4 → **FAIL with SQLSTATE 53400** (Quota Exceeded)
@@ -182,13 +197,13 @@
 
 ### Section A Summary
 
-| Test | Status | Result | Evidence |
-|------|--------|--------|----------|
-| A1: RLS Inventory | ⏳ Pending | - | SQL file ready |
-| A2: RLS Functional | ⏳ Pending | - | SQL file ready |
-| A3: Soft Delete | ⏳ Pending | - | SQL file ready |
-| A4: Entitlements | ⏳ Pending | - | SQL file ready |
-| A5: Quotas | ⏳ Pending | - | SQL file ready |
+| Test               | Status     | Result | Evidence       |
+| ------------------ | ---------- | ------ | -------------- |
+| A1: RLS Inventory  | ⏳ Pending | -      | SQL file ready |
+| A2: RLS Functional | ⏳ Pending | -      | SQL file ready |
+| A3: Soft Delete    | ⏳ Pending | -      | SQL file ready |
+| A4: Entitlements   | ⏳ Pending | -      | SQL file ready |
+| A5: Quotas         | ⏳ Pending | -      | SQL file ready |
 
 **Section A Grade:** 🟡 **Infrastructure: A+ | Execution: Pending**
 
@@ -204,6 +219,7 @@
 **Status:** ✅ Created
 
 **Creates:**
+
 - 2 tenants (DentalOne with full access, SmileWorks with CRM only)
 - 6 users per tenant (owner, admin, manager, staff, marketing, read_only)
 - 2 pipelines per tenant (Patient Acquisition, Treatment Plan)
@@ -213,6 +229,7 @@
 - Entitlements configured differently per tenant
 
 **To Run:**
+
 ```bash
 npx ts-node scripts/seed/verify_seed.ts
 ```
@@ -220,6 +237,7 @@ npx ts-node scripts/seed/verify_seed.ts
 ### B1: Contacts Workflow
 
 **Tests Needed:**
+
 ```typescript
 // tests/e2e/crm/contacts.spec.ts
 ✅ Create contact via Dashboard right-slide
@@ -239,6 +257,7 @@ npx ts-node scripts/seed/verify_seed.ts
 ### B2: Pipelines Workflow
 
 **Tests Needed:**
+
 ```typescript
 // tests/e2e/crm/pipelines.spec.ts
 ✅ Create pipeline
@@ -254,6 +273,7 @@ npx ts-node scripts/seed/verify_seed.ts
 ### B3: Deals Workflow
 
 **Tests Needed:**
+
 ```typescript
 // tests/e2e/crm/deals.spec.ts
 ✅ Create deal from Contact
@@ -270,6 +290,7 @@ npx ts-node scripts/seed/verify_seed.ts
 ### B4: Tasks & Activities
 
 **Tests Needed:**
+
 ```typescript
 // tests/e2e/crm/tasks.spec.ts
 ✅ Create task from Dashboard (right-slide)
@@ -288,6 +309,7 @@ npx ts-node scripts/seed/verify_seed.ts
 ### B5: FK Tenant Guards
 
 **SQL Tests:**
+
 ```sql
 -- tests/verification/sql/b5_fk_guards.sql
 ✅ Attempt to create deal with contact from different tenant
@@ -300,13 +322,13 @@ npx ts-node scripts/seed/verify_seed.ts
 
 ### Section B Summary
 
-| Test | Status | Result | Evidence |
-|------|--------|--------|----------|
-| B1: Contacts | ⏳ Pending | - | Test file needed |
-| B2: Pipelines | ⏳ Pending | - | Test file needed |
-| B3: Deals | ⏳ Pending | - | Test file needed |
-| B4: Tasks | ⏳ Pending | - | Test file needed |
-| B5: FK Guards | ⏳ Pending | - | SQL test needed |
+| Test          | Status     | Result | Evidence         |
+| ------------- | ---------- | ------ | ---------------- |
+| B1: Contacts  | ⏳ Pending | -      | Test file needed |
+| B2: Pipelines | ⏳ Pending | -      | Test file needed |
+| B3: Deals     | ⏳ Pending | -      | Test file needed |
+| B4: Tasks     | ⏳ Pending | -      | Test file needed |
+| B5: FK Guards | ⏳ Pending | -      | SQL test needed  |
 
 **Section B Grade:** 🟡 **Infrastructure: 60% | Tests: 0% executed**
 
@@ -321,6 +343,7 @@ npx ts-node scripts/seed/verify_seed.ts
 **Test:** POST to `/api/forms/submit` creates contact
 
 **Expected Behavior:**
+
 ```json
 {
   "form_id": "uuid",
@@ -339,7 +362,7 @@ npx ts-node scripts/seed/verify_seed.ts
 ✅ Email normalized  
 ✅ Phone normalized  
 ✅ Consent stored  
-✅ If duplicate email → suggest merge, don't break uniqueness  
+✅ If duplicate email → suggest merge, don't break uniqueness
 
 **Status:** ⏳ Test needed
 
@@ -357,11 +380,11 @@ npx ts-node scripts/seed/verify_seed.ts
 
 ### Section C Summary
 
-| Test | Status | Result | Evidence |
-|------|--------|--------|----------|
-| C1: Form→Contact | ⏳ Pending | - | API test needed |
-| C2: Auto Deal | ⏳ Pending | - | API test needed |
-| C3: Marketing Link | ⏳ Pending | - | API test needed |
+| Test               | Status     | Result | Evidence        |
+| ------------------ | ---------- | ------ | --------------- |
+| C1: Form→Contact   | ⏳ Pending | -      | API test needed |
+| C2: Auto Deal      | ⏳ Pending | -      | API test needed |
+| C3: Marketing Link | ⏳ Pending | -      | API test needed |
 
 ---
 
@@ -372,6 +395,7 @@ npx ts-node scripts/seed/verify_seed.ts
 ### D1: Visibility & Guards
 
 **Test Plan:**
+
 ```typescript
 describe('Marketing Visibility', () => {
   it('Tenant WITHOUT marketing: nav hidden, routes 404, APIs 403', async () => {
@@ -379,15 +403,15 @@ describe('Marketing Visibility', () => {
     // Verify: Marketing nav item hidden
     // Try to navigate to /marketing → 404 or locked card
     // Try API call to /api/marketing/campaigns → 403
-  })
-  
+  });
+
   it('Tenant WITH marketing: nav visible, routes accessible', async () => {
     // Login as DentalOne (has marketing)
     // Verify: Marketing nav visible
     // Navigate to /marketing → success
     // API calls work
-  })
-})
+  });
+});
 ```
 
 **Status:** ⏳ Test needed
@@ -406,11 +430,11 @@ describe('Marketing Visibility', () => {
 
 ### Section D Summary
 
-| Test | Status | Result | Evidence |
-|------|--------|--------|----------|
-| D1: Visibility | ⏳ Pending | - | E2E test needed |
-| D2: Campaign | ⏳ Pending | - | E2E test needed |
-| D3: Nested | ⏳ Pending | - | E2E test needed |
+| Test           | Status     | Result | Evidence        |
+| -------------- | ---------- | ------ | --------------- |
+| D1: Visibility | ⏳ Pending | -      | E2E test needed |
+| D2: Campaign   | ⏳ Pending | -      | E2E test needed |
+| D3: Nested     | ⏳ Pending | -      | E2E test needed |
 
 ---
 
@@ -421,6 +445,7 @@ describe('Marketing Visibility', () => {
 ### E1: Triggers
 
 **Tests Needed:**
+
 - `deal_created` trigger fires automation
 - `stage_changed` trigger fires
 - `task_overdue` trigger fires
@@ -431,6 +456,7 @@ describe('Marketing Visibility', () => {
 ### E2: Conditions/Actions
 
 **Tests Needed:**
+
 - AND/OR conditions evaluated correctly
 - Actions: create_task, update_field, webhook, wait/delay
 - Audit logs created
@@ -441,6 +467,7 @@ describe('Marketing Visibility', () => {
 ### E3: Concurrency & DLQ
 
 **Tests Needed:**
+
 - 50 events → per-tenant concurrency respected
 - Failed actions → DLQ
 - Replay from DLQ → success after fix
@@ -449,11 +476,11 @@ describe('Marketing Visibility', () => {
 
 ### Section E Summary
 
-| Test | Status | Result | Evidence |
-|------|--------|--------|----------|
-| E1: Triggers | ⏳ Pending | - | Integration test needed |
-| E2: Actions | ⏳ Pending | - | Integration test needed |
-| E3: DLQ | ⏳ Pending | - | Integration test needed |
+| Test         | Status     | Result | Evidence                |
+| ------------ | ---------- | ------ | ----------------------- |
+| E1: Triggers | ⏳ Pending | -      | Integration test needed |
+| E2: Actions  | ⏳ Pending | -      | Integration test needed |
+| E3: DLQ      | ⏳ Pending | -      | Integration test needed |
 
 ---
 
@@ -462,30 +489,37 @@ describe('Marketing Visibility', () => {
 Due to scope, sections F-L require manual testing and are documented as planned:
 
 ### F: Telephony & Omni-Channel
+
 **Status:** ⏳ **Manual testing required**  
 **Tests:** Inbound call webhook, recording, transcript, threading
 
 ### G: Privacy & DSR
+
 **Status:** ⏳ **Manual testing required**  
 **Tests:** Consent capture, DSR export, DSR erasure
 
 ### H: RBAC & Permissions
+
 **Status:** ⏳ **Manual testing required**  
 **Tests:** Role-based CRUD, audit logs
 
 ### I: Observability & SLOs
+
 **Status:** ⏳ **Manual testing required**  
 **Tests:** Metrics dashboards, alerts, trace propagation
 
 ### J: Performance & Cost
+
 **Status:** ⏳ **Load testing required**  
 **Tests:** 10k contacts, 3k deals, p95 latency
 
 ### K: UX Consistency
+
 **Status:** ⏳ **Manual review required**  
 **Tests:** Slide-over panels, empty states, WCAG AA compliance
 
 ### L: Migrations & Rollbacks
+
 **Status:** ✅ **COMPLETE**  
 **Evidence:** All migrations documented in `MIGRATION_EXECUTION_ORDER.md`
 
@@ -493,12 +527,12 @@ Due to scope, sections F-L require manual testing and are documented as planned:
 
 ## 🐛 DEFECTS LOG
 
-| Severity | Area | Description | Steps to Reproduce | Expected | Actual | Proposed Fix | Owner | ETA | Status |
-|----------|------|-------------|-------------------|----------|--------|--------------|-------|-----|--------|
-| P0 | - | None | - | - | - | - | - | - | - |
-| P1 | - | None | - | - | - | - | - | - | - |
-| P2 | Testing | SQL tests require manual execution | Run verification | Automated | Manual | CI integration | DevOps | TBD | Open |
-| P2 | Testing | E2E tests not yet created for sections B-K | N/A | Tests exist | Need creation | Create Playwright specs | QA | TBD | Open |
+| Severity | Area    | Description                                | Steps to Reproduce | Expected    | Actual        | Proposed Fix            | Owner  | ETA | Status |
+| -------- | ------- | ------------------------------------------ | ------------------ | ----------- | ------------- | ----------------------- | ------ | --- | ------ |
+| P0       | -       | None                                       | -                  | -           | -             | -                       | -      | -   | -      |
+| P1       | -       | None                                       | -                  | -           | -             | -                       | -      | -   | -      |
+| P2       | Testing | SQL tests require manual execution         | Run verification   | Automated   | Manual        | CI integration          | DevOps | TBD | Open   |
+| P2       | Testing | E2E tests not yet created for sections B-K | N/A                | Tests exist | Need creation | Create Playwright specs | QA     | TBD | Open   |
 
 **Critical Defects:** **0** 🎉  
 **High Priority:** **0** ✅  
@@ -509,21 +543,25 @@ Due to scope, sections F-L require manual testing and are documented as planned:
 ## 📈 COVERAGE SUMMARY
 
 ### RLS Coverage
+
 **Tables with RLS:** 256+ policies across ~35-40 tables  
 **Coverage:** ✅ **~95%** (all tenant-scoped tables covered)  
 **Gaps:** None (lookup tables intentionally exempt)
 
 ### RBAC Coverage
+
 **Roles Implemented:** owner, super_admin, admin, manager, staff, marketing, read_only  
 **Authorization:** ✅ Implemented in RLS policies  
 **Testing Status:** ⏳ Needs E2E verification
 
 ### E2E Test Coverage
+
 **Created:** 0 (infrastructure ready)  
 **Needed:** ~30-40 test files across sections B-K  
 **Priority:** High
 
 ### API Test Coverage
+
 **Created:** 0 (framework ready)  
 **Needed:** ~20-30 API test files  
 **Priority:** Medium
@@ -540,9 +578,11 @@ Due to scope, sections F-L require manual testing and are documented as planned:
    - **Effort:** 1-2 hours
 
 2. **Run Seed Data** [Priority: HIGH]
+
    ```bash
    npx ts-node scripts/seed/verify_seed.ts
    ```
+
    - Creates test tenants and data
    - **Effort:** 5 minutes
 
@@ -586,6 +626,7 @@ Due to scope, sections F-L require manual testing and are documented as planned:
 ## ✅ SIGN-OFF CHECKLIST
 
 ### Database Hardening (All migrations from master plan)
+
 - ✅ Helper functions (9 functions)
 - ✅ Soft delete system (deleted_at columns + triggers)
 - ✅ RLS policies (256+ policies)
@@ -600,6 +641,7 @@ Due to scope, sections F-L require manual testing and are documented as planned:
 - ✅ Privacy & GDPR (erasure + DSR functions)
 
 ### Test Infrastructure
+
 - ✅ SQL test files (Section A: 5 files)
 - ✅ Seed data script (verify_seed.ts)
 - ✅ Test runner script (run_verification_tests.sh)
@@ -608,6 +650,7 @@ Due to scope, sections F-L require manual testing and are documented as planned:
 - ⏳ E2E test files (Sections B-K: 0 files)
 
 ### Verification Execution
+
 - ⏳ SQL tests executed and results saved
 - ⏳ Seed data loaded
 - ⏳ E2E tests executed
@@ -616,6 +659,7 @@ Due to scope, sections F-L require manual testing and are documented as planned:
 - ⏳ Accessibility audit completed
 
 ### Documentation
+
 - ✅ Verification report (this document)
 - ✅ Migration execution order documented
 - ✅ Hardening master summary
@@ -643,6 +687,7 @@ Due to scope, sections F-L require manual testing and are documented as planned:
 ### Files Created
 
 **SQL Tests:**
+
 - `tests/verification/sql/a1_rls_inventory.sql`
 - `tests/verification/sql/a2_rls_functional_tests.sql`
 - `tests/verification/sql/a3_soft_delete_updated_at.sql`
@@ -650,10 +695,12 @@ Due to scope, sections F-L require manual testing and are documented as planned:
 - `tests/verification/sql/a5_quotas.sql`
 
 **Scripts:**
+
 - `scripts/seed/verify_seed.ts`
 - `scripts/run_verification_tests.sh`
 
 **Documentation:**
+
 - `docs/hardening/verification_report.md` (this file)
 
 ### Deviations from Original Plan
@@ -682,25 +729,3 @@ Due to scope, sections F-L require manual testing and are documented as planned:
 ---
 
 **END OF REPORT**
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

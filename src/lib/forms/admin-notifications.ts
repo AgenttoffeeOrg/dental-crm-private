@@ -1,7 +1,7 @@
 /**
  * Admin Notification System for Form Submissions
  * Sends email notifications to admins/staff when forms are submitted
- * 
+ *
  * Features:
  * - Per-form notification configuration
  * - Tenant-level admin discovery
@@ -9,19 +9,19 @@
  * - Multiple recipient support
  */
 
-import { createServiceClient } from '@/lib/supabase-server'
-import { sendAdminNotification } from './email-notifications'
+import { createServiceClient } from '@/lib/supabase-server';
+import { sendAdminNotification } from './email-notifications';
 
 export interface NotificationConfig {
-  enabled: boolean
-  recipients?: string[] // Specific email addresses
-  notifyAdmins?: boolean // Auto-discover tenant admins
-  notifyManagers?: boolean // Auto-discover managers
-  notifyAssignedUser?: boolean // Notify assigned user if deal created
+  enabled: boolean;
+  recipients?: string[]; // Specific email addresses
+  notifyAdmins?: boolean; // Auto-discover tenant admins
+  notifyManagers?: boolean; // Auto-discover managers
+  notifyAssignedUser?: boolean; // Notify assigned user if deal created
   conditions?: {
-    minLeadScore?: number
-    excludeSpam?: boolean
-  }
+    minLeadScore?: number;
+    excludeSpam?: boolean;
+  };
 }
 
 /**
@@ -32,7 +32,7 @@ export async function getFormNotificationConfig(
   formId: string,
   tenantId: string
 ): Promise<NotificationConfig> {
-  const supabase = createServiceClient()
+  const supabase = createServiceClient();
 
   // Try to get form-specific settings (stored in form metadata or tenant_settings)
   const { data: formSettings } = await supabase
@@ -40,10 +40,10 @@ export async function getFormNotificationConfig(
     .select('value')
     .eq('key', `form:${formId}:notifications`)
     .eq('tenant_id', tenantId)
-    .single()
+    .single();
 
   if (formSettings?.value) {
-    return formSettings.value as NotificationConfig
+    return formSettings.value as NotificationConfig;
   }
 
   // Fall back to tenant-level form notification settings
@@ -52,10 +52,10 @@ export async function getFormNotificationConfig(
     .select('value')
     .eq('key', 'forms:notifications:default')
     .eq('tenant_id', tenantId)
-    .single()
+    .single();
 
   if (tenantSettings?.value) {
-    return tenantSettings.value as NotificationConfig
+    return tenantSettings.value as NotificationConfig;
   }
 
   // Default configuration: notify admins, exclude spam
@@ -65,7 +65,7 @@ export async function getFormNotificationConfig(
     conditions: {
       excludeSpam: true,
     },
-  }
+  };
 }
 
 /**
@@ -75,11 +75,9 @@ export async function getTenantAdminEmails(
   tenantId: string,
   includeManagers: boolean = false
 ): Promise<string[]> {
-  const supabase = createServiceClient()
+  const supabase = createServiceClient();
 
-  const roles = includeManagers
-    ? ['owner', 'admin', 'manager']
-    : ['owner', 'admin']
+  const roles = includeManagers ? ['owner', 'admin', 'manager'] : ['owner', 'admin'];
 
   const { data: users, error } = await supabase
     .from('app_users')
@@ -87,30 +85,30 @@ export async function getTenantAdminEmails(
     .eq('tenant_id', tenantId)
     .in('role', roles)
     .eq('is_active', true)
-    .not('email', 'is', null)
+    .not('email', 'is', null);
 
   if (error) {
-    console.error('[AdminNotifications] Error fetching admin emails:', error)
-    return []
+    console.error('[AdminNotifications] Error fetching admin emails:', error);
+    return [];
   }
 
-  return users?.map(u => u.email).filter(Boolean) || []
+  return users?.map((u) => u.email).filter(Boolean) || [];
 }
 
 /**
  * Send admin notifications for a form submission
  */
 export async function sendFormSubmissionNotifications(params: {
-  formId: string
-  formName: string
-  tenantId: string
-  submissionData: Record<string, any>
-  submittedAt: string
-  isSpam: boolean
-  spamScore?: number
-  leadScore?: number
-  leadCategory?: string
-  assignedUserId?: string
+  formId: string;
+  formName: string;
+  tenantId: string;
+  submissionData: Record<string, any>;
+  submittedAt: string;
+  isSpam: boolean;
+  spamScore?: number;
+  leadScore?: number;
+  leadCategory?: string;
+  assignedUserId?: string;
 }): Promise<void> {
   const {
     formId,
@@ -123,68 +121,68 @@ export async function sendFormSubmissionNotifications(params: {
     leadScore,
     leadCategory,
     assignedUserId,
-  } = params
+  } = params;
 
   // Get notification configuration
-  const config = await getFormNotificationConfig(formId, tenantId)
+  const config = await getFormNotificationConfig(formId, tenantId);
 
   if (!config.enabled) {
-    return
+    return;
   }
 
   // Check conditions
   if (config.conditions?.excludeSpam && isSpam) {
-    return
+    return;
   }
 
   if (config.conditions?.minLeadScore && (leadScore || 0) < config.conditions.minLeadScore) {
-    return
+    return;
   }
 
   // Collect all recipients
-  const recipients: string[] = []
+  const recipients: string[] = [];
 
   // Add specific recipients
   if (config.recipients) {
-    recipients.push(...config.recipients)
+    recipients.push(...config.recipients);
   }
 
   // Add admins
   if (config.notifyAdmins) {
-    const adminEmails = await getTenantAdminEmails(tenantId, false)
-    recipients.push(...adminEmails)
+    const adminEmails = await getTenantAdminEmails(tenantId, false);
+    recipients.push(...adminEmails);
   }
 
   // Add managers
   if (config.notifyManagers) {
-    const managerEmails = await getTenantAdminEmails(tenantId, true)
-    recipients.push(...managerEmails)
+    const managerEmails = await getTenantAdminEmails(tenantId, true);
+    recipients.push(...managerEmails);
   }
 
   // Add assigned user if deal was created
   if (config.notifyAssignedUser && assignedUserId) {
-    const supabase = createServiceClient()
+    const supabase = createServiceClient();
     const { data: user } = await supabase
       .from('app_users')
       .select('email')
       .eq('id', assignedUserId)
-      .single()
+      .single();
 
     if (user?.email) {
-      recipients.push(user.email)
+      recipients.push(user.email);
     }
   }
 
   // Remove duplicates
-  const uniqueRecipients = [...new Set(recipients)]
+  const uniqueRecipients = [...new Set(recipients)];
 
   if (uniqueRecipients.length === 0) {
-    console.log('[AdminNotifications] No recipients configured for form submission')
-    return
+    console.log('[AdminNotifications] No recipients configured for form submission');
+    return;
   }
 
   // Send notifications to all recipients
-  const notificationPromises = uniqueRecipients.map(email =>
+  const notificationPromises = uniqueRecipients.map((email) =>
     sendAdminNotification({
       adminEmail: email,
       formName,
@@ -192,14 +190,12 @@ export async function sendFormSubmissionNotifications(params: {
       submittedAt,
       leadScore,
       leadCategory,
-    }).catch(error => {
-      console.error(`[AdminNotifications] Failed to send to ${email}:`, error)
+    }).catch((error) => {
+      console.error(`[AdminNotifications] Failed to send to ${email}:`, error);
     })
-  )
+  );
 
-  await Promise.allSettled(notificationPromises)
+  await Promise.allSettled(notificationPromises);
 
-  console.log(`[AdminNotifications] Sent notifications to ${uniqueRecipients.length} recipients`)
+  console.log(`[AdminNotifications] Sent notifications to ${uniqueRecipients.length} recipients`);
 }
-
-

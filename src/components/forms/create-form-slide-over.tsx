@@ -1,10 +1,10 @@
-'use client'
+'use client';
 
 /**
  * Create/Edit Form Slide-Over Panel
  * Enterprise-style right-side slide-over for creating and editing marketing forms
  * Matches CreateContactSlideOver and CreateDealSlideOver patterns
- * 
+ *
  * Features:
  * - Comprehensive form builder with tabs (Fields, Settings, Integrations, Analytics)
  * - Visual field palette and drag-drop
@@ -17,40 +17,55 @@
  * - Live preview
  */
 
-import { useState, useEffect } from 'react'
-import { 
-  X, Save, Plus, Trash2, Copy, Eye, Share2, 
-  Settings, Link2, Zap, BarChart3, Shield, 
-  FileText, Mail, Globe, Code, QrCode, Clock
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useState, useEffect } from 'react';
+import {
+  X,
+  Save,
+  Plus,
+  Trash2,
+  Copy,
+  Eye,
+  Share2,
+  Settings,
+  Link2,
+  Zap,
+  BarChart3,
+  Shield,
+  FileText,
+  Mail,
+  Globe,
+  Code,
+  QrCode,
+  Clock,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { createClient } from '@/lib/supabase-client'
-import { toast } from 'sonner'
-import { useAuth } from '@/lib/auth'
-import type { MarketingForm, FormField } from '@/hooks/use-marketing-forms'
-import { SortableFieldList } from '@/components/forms/sortable-field-list'
-import { useMarketingForms } from '@/hooks/use-marketing-forms'
-import { VersionHistory } from '@/components/forms/version-history'
+} from '@/components/ui/select';
+import { createClient } from '@/lib/supabase-client';
+import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth';
+import type { MarketingForm, FormField } from '@/hooks/use-marketing-forms';
+import { SortableFieldList } from '@/components/forms/sortable-field-list';
+import { useMarketingForms } from '@/hooks/use-marketing-forms';
+import { VersionHistory } from '@/components/forms/version-history';
 
 interface CreateFormSlideOverProps {
-  open: boolean
-  onClose: () => void
-  onFormSaved?: () => void
-  form?: MarketingForm | null
-  mode?: 'create' | 'edit'
+  open: boolean;
+  onClose: () => void;
+  onFormSaved?: () => void;
+  form?: MarketingForm | null;
+  mode?: 'create' | 'edit';
 }
 
 const FIELD_TYPES = [
@@ -66,7 +81,7 @@ const FIELD_TYPES = [
   { value: 'rating', label: 'Star Rating', icon: '⭐' },
   { value: 'scale', label: 'Scale (1-10)', icon: '📊' },
   { value: 'signature', label: 'Signature', icon: '✍️' },
-]
+];
 
 const CRM_FIELD_MAPPING = [
   { crm: 'full_name', label: 'Contact Name', type: 'contact' },
@@ -76,7 +91,7 @@ const CRM_FIELD_MAPPING = [
   { crm: 'deal_title', label: 'Deal Title', type: 'deal' },
   { crm: 'deal_value', label: 'Deal Value', type: 'deal' },
   { crm: 'deal_stage', label: 'Deal Stage', type: 'deal' },
-]
+];
 
 export function CreateFormSlideOver({
   open,
@@ -85,11 +100,11 @@ export function CreateFormSlideOver({
   form,
   mode = 'create',
 }: CreateFormSlideOverProps) {
-  const { appUser } = useAuth()
-  const { createForm, updateForm } = useMarketingForms()
-  const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('fields')
-  
+  const { appUser } = useAuth();
+  const { createForm, updateForm } = useMarketingForms();
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('fields');
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -97,17 +112,17 @@ export function CreateFormSlideOver({
     fields_json: [] as FormField[],
     theme: 'light',
     button_text: 'Submit',
-    success_message: 'Thank you! We\'ll be in touch soon.',
+    success_message: "Thank you! We'll be in touch soon.",
     redirect_url: '',
     auto_add_tags: [] as string[],
     enable_recaptcha: true,
     enable_honeypot: true,
     is_published: false,
     public_url_slug: '',
-  })
+  });
 
-  const [selectedField, setSelectedField] = useState<FormField | null>(null)
-  const [showPreview, setShowPreview] = useState(false)
+  const [selectedField, setSelectedField] = useState<FormField | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Load form data if editing
   useEffect(() => {
@@ -119,16 +134,16 @@ export function CreateFormSlideOver({
         fields_json: form.fields_json || [],
         theme: form.theme || 'light',
         button_text: form.button_text || 'Submit',
-        success_message: form.success_message || 'Thank you! We\'ll be in touch soon.',
+        success_message: form.success_message || "Thank you! We'll be in touch soon.",
         redirect_url: form.redirect_url || '',
         auto_add_tags: form.auto_add_tags || [],
         enable_recaptcha: form.enable_recaptcha || false,
         enable_honeypot: form.enable_honeypot || false,
         is_published: form.is_published || false,
         public_url_slug: form.public_url_slug || '',
-      })
+      });
     }
-  }, [mode, form])
+  }, [mode, form]);
 
   // Reset on close
   useEffect(() => {
@@ -140,18 +155,18 @@ export function CreateFormSlideOver({
         fields_json: [],
         theme: 'light',
         button_text: 'Submit',
-        success_message: 'Thank you! We\'ll be in touch soon.',
+        success_message: "Thank you! We'll be in touch soon.",
         redirect_url: '',
         auto_add_tags: [],
         enable_recaptcha: true,
         enable_honeypot: true,
         is_published: false,
         public_url_slug: '',
-      })
-      setActiveTab('fields')
-      setSelectedField(null)
+      });
+      setActiveTab('fields');
+      setSelectedField(null);
     }
-  }, [open])
+  }, [open]);
 
   const addField = (type: string) => {
     const newField: FormField = {
@@ -161,121 +176,118 @@ export function CreateFormSlideOver({
       placeholder: '',
       required: false,
       order: formData.fields_json.length,
-    }
-    setFormData(prev => ({
+    };
+    setFormData((prev) => ({
       ...prev,
-      fields_json: [...prev.fields_json, newField]
-    }))
-    setSelectedField(newField)
-  }
+      fields_json: [...prev.fields_json, newField],
+    }));
+    setSelectedField(newField);
+  };
 
   const updateField = (fieldId: string, updates: Partial<FormField>) => {
-    setFormData(prev => {
-      const updatedFields = prev.fields_json.map(f =>
+    setFormData((prev) => {
+      const updatedFields = prev.fields_json.map((f) =>
         f.id === fieldId ? { ...f, ...updates } : f
-      )
+      );
       // Update selectedField if it's the one being edited
       if (selectedField?.id === fieldId) {
-        const updatedField = updatedFields.find(f => f.id === fieldId)
+        const updatedField = updatedFields.find((f) => f.id === fieldId);
         if (updatedField) {
-          setSelectedField(updatedField)
+          setSelectedField(updatedField);
         }
       }
       return {
         ...prev,
-        fields_json: updatedFields
-      }
-    })
-  }
+        fields_json: updatedFields,
+      };
+    });
+  };
 
   const deleteField = (fieldId: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      fields_json: prev.fields_json.filter(f => f.id !== fieldId)
-    }))
+      fields_json: prev.fields_json.filter((f) => f.id !== fieldId),
+    }));
     // Clear selected field if it was deleted
     if (selectedField?.id === fieldId) {
-      setSelectedField(null)
+      setSelectedField(null);
     }
-  }
+  };
 
   const handleReorderFields = (reorderedFields: FormField[]) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      fields_json: reorderedFields
-    }))
-  }
+      fields_json: reorderedFields,
+    }));
+  };
 
   const handleUpdateField = (fieldId: string, field: FormField) => {
-    updateField(fieldId, field)
+    updateField(fieldId, field);
     // Update selectedField if it's the one being updated
     if (selectedField?.id === fieldId) {
-      setSelectedField(field)
+      setSelectedField(field);
     }
-  }
+  };
 
   const handleSave = async () => {
     // Validation
     if (!formData.name.trim()) {
-      toast.error('Please enter a form name')
-      return
+      toast.error('Please enter a form name');
+      return;
     }
 
     if (formData.fields_json.length === 0) {
-      toast.error('Please add at least one field to your form')
-      return
+      toast.error('Please add at least one field to your form');
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
     try {
       // Ensure fields have order property
       const fieldsWithOrder = formData.fields_json.map((field, index) => ({
         ...field,
-        order: field.order ?? index
-      }))
+        order: field.order ?? index,
+      }));
 
       const formDataToSave = {
         ...formData,
-        fields_json: fieldsWithOrder
-      }
+        fields_json: fieldsWithOrder,
+      };
 
       if (mode === 'create') {
         // Create new form using hook
-        const result = await createForm(formDataToSave)
+        const result = await createForm(formDataToSave);
         if (!result) {
-          throw new Error('Failed to create form')
+          throw new Error('Failed to create form');
         }
       } else {
         // Update existing form using hook
         if (!form?.id) {
-          toast.error('Form ID not found')
-          return
+          toast.error('Form ID not found');
+          return;
         }
-        const result = await updateForm(form.id, formDataToSave)
+        const result = await updateForm(form.id, formDataToSave);
         if (!result) {
-          throw new Error('Failed to update form')
+          throw new Error('Failed to update form');
         }
       }
 
-      onFormSaved?.()
-      onClose()
+      onFormSaved?.();
+      onClose();
     } catch (error: any) {
-      console.error('Error saving form:', error)
-      toast.error(error.message || `Failed to ${mode === 'create' ? 'create' : 'update'} form`)
+      console.error('Error saving form:', error);
+      toast.error(error.message || `Failed to ${mode === 'create' ? 'create' : 'update'} form`);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  if (!open) return null
+  if (!open) return null;
 
   return (
     <>
       {/* Overlay */}
-      <div 
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={onClose} />
 
       {/* Preview Modal */}
       {showPreview && (
@@ -289,9 +301,7 @@ export function CreateFormSlideOver({
             </div>
             <div className="p-8">
               <h2 className="text-2xl font-bold mb-2">{formData.name || 'Untitled Form'}</h2>
-              {formData.description && (
-                <p className="text-gray-600 mb-6">{formData.description}</p>
-              )}
+              {formData.description && <p className="text-gray-600 mb-6">{formData.description}</p>}
               {formData.fields_json.length === 0 ? (
                 <p className="text-center text-gray-500 py-12">
                   No fields added yet. Add fields to see them here.
@@ -367,19 +377,9 @@ export function CreateFormSlideOver({
                           ))}
                         </div>
                       ) : field.type === 'date' ? (
-                        <Input
-                          type="date"
-                          required={field.required}
-                          className="mt-1"
-                          disabled
-                        />
+                        <Input type="date" required={field.required} className="mt-1" disabled />
                       ) : field.type === 'file' ? (
-                        <Input
-                          type="file"
-                          required={field.required}
-                          className="mt-1"
-                          disabled
-                        />
+                        <Input type="file" required={field.required} className="mt-1" disabled />
                       ) : field.type === 'rating' ? (
                         <div className="flex gap-1 mt-2">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -432,11 +432,7 @@ export function CreateFormSlideOver({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPreview(!showPreview)}
-            >
+            <Button variant="outline" size="sm" onClick={() => setShowPreview(!showPreview)}>
               <Eye className="h-4 w-4 mr-2" />
               Preview
             </Button>
@@ -455,7 +451,7 @@ export function CreateFormSlideOver({
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g., Contact Request, Consultation Booking"
                 className="mt-1"
               />
@@ -465,7 +461,7 @@ export function CreateFormSlideOver({
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Internal description of this form"
                 rows={2}
                 className="mt-1"
@@ -501,7 +497,7 @@ export function CreateFormSlideOver({
                 <div>
                   <h3 className="text-sm font-semibold mb-3">Add Fields</h3>
                   <div className="grid grid-cols-2 gap-2">
-                    {FIELD_TYPES.map(type => (
+                    {FIELD_TYPES.map((type) => (
                       <Button
                         key={type.value}
                         variant="outline"
@@ -531,7 +527,6 @@ export function CreateFormSlideOver({
                   />
                 </div>
               </div>
-
             </TabsContent>
 
             {/* SETTINGS TAB */}
@@ -541,7 +536,9 @@ export function CreateFormSlideOver({
                   <Label>Submit Button Text</Label>
                   <Input
                     value={formData.button_text}
-                    onChange={(e) => setFormData(prev => ({ ...prev, button_text: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, button_text: e.target.value }))
+                    }
                     placeholder="Submit"
                   />
                 </div>
@@ -549,7 +546,9 @@ export function CreateFormSlideOver({
                   <Label>Success Message</Label>
                   <Textarea
                     value={formData.success_message}
-                    onChange={(e) => setFormData(prev => ({ ...prev, success_message: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, success_message: e.target.value }))
+                    }
                     placeholder="Thank you! We'll be in touch soon."
                     rows={3}
                   />
@@ -558,7 +557,9 @@ export function CreateFormSlideOver({
                   <Label>Redirect URL (optional)</Label>
                   <Input
                     value={formData.redirect_url}
-                    onChange={(e) => setFormData(prev => ({ ...prev, redirect_url: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, redirect_url: e.target.value }))
+                    }
                     placeholder="https://yoursite.com/thank-you"
                   />
                 </div>
@@ -577,7 +578,9 @@ export function CreateFormSlideOver({
                       </div>
                       <Switch
                         checked={formData.enable_recaptcha}
-                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enable_recaptcha: checked }))}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({ ...prev, enable_recaptcha: checked }))
+                        }
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -587,7 +590,9 @@ export function CreateFormSlideOver({
                       </div>
                       <Switch
                         checked={formData.enable_honeypot}
-                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enable_honeypot: checked }))}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({ ...prev, enable_honeypot: checked }))
+                        }
                       />
                     </div>
                   </div>
@@ -607,7 +612,9 @@ export function CreateFormSlideOver({
                       </div>
                       <Switch
                         checked={formData.is_published}
-                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_published: checked }))}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({ ...prev, is_published: checked }))
+                        }
                       />
                     </div>
                     {formData.is_published && (
@@ -615,7 +622,9 @@ export function CreateFormSlideOver({
                         <Label>Custom URL Slug</Label>
                         <Input
                           value={formData.public_url_slug}
-                          onChange={(e) => setFormData(prev => ({ ...prev, public_url_slug: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, public_url_slug: e.target.value }))
+                          }
                           placeholder="contact-us"
                         />
                         <p className="text-xs text-gray-500 mt-1">
@@ -641,7 +650,7 @@ export function CreateFormSlideOver({
                     Map form fields to Contact and Deal fields
                   </p>
                   <div className="space-y-2">
-                    {formData.fields_json.slice(0, 3).map(field => (
+                    {formData.fields_json.slice(0, 3).map((field) => (
                       <div key={field.id} className="flex items-center gap-2">
                         <span className="text-sm flex-1">{field.label}</span>
                         <span className="text-sm text-gray-400">→</span>
@@ -650,9 +659,11 @@ export function CreateFormSlideOver({
                             <SelectValue placeholder="Select CRM field" />
                           </SelectTrigger>
                           <SelectContent>
-                            {CRM_FIELD_MAPPING.map(crm => (
+                            {CRM_FIELD_MAPPING.map((crm) => (
                               <SelectItem key={crm.crm} value={crm.crm}>
-                                <Badge variant="outline" className="mr-2">{crm.type}</Badge>
+                                <Badge variant="outline" className="mr-2">
+                                  {crm.type}
+                                </Badge>
                                 {crm.label}
                               </SelectItem>
                             ))}
@@ -700,9 +711,7 @@ export function CreateFormSlideOver({
                     <Code className="h-4 w-4" />
                     Webhooks
                   </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Send form data to external services
-                  </p>
+                  <p className="text-sm text-gray-600 mb-4">Send form data to external services</p>
                   <Button variant="outline" size="sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Webhook
@@ -726,16 +735,17 @@ export function CreateFormSlideOver({
                         fields_json: form.fields_json || [],
                         theme: form.theme || 'light',
                         button_text: form.button_text || 'Submit',
-                        success_message: form.success_message || 'Thank you! We\'ll be in touch soon.',
+                        success_message:
+                          form.success_message || "Thank you! We'll be in touch soon.",
                         redirect_url: form.redirect_url || '',
                         auto_add_tags: form.auto_add_tags || [],
                         enable_recaptcha: form.enable_recaptcha || false,
                         enable_honeypot: form.enable_honeypot || false,
                         is_published: form.is_published || false,
                         public_url_slug: form.public_url_slug || '',
-                      })
+                      });
                     }
-                    toast.success('Form rolled back successfully')
+                    toast.success('Form rolled back successfully');
                   }}
                 />
               ) : (
@@ -755,9 +765,7 @@ export function CreateFormSlideOver({
                     <Globe className="h-4 w-4" />
                     Hosted Form Link
                   </h4>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Share this direct link to your form
-                  </p>
+                  <p className="text-sm text-gray-600 mb-3">Share this direct link to your form</p>
                   <div className="flex gap-2">
                     <Input
                       value={`https://yoursite.com/f/${formData.public_url_slug || 'form-slug'}`}
@@ -776,9 +784,7 @@ export function CreateFormSlideOver({
                     <Code className="h-4 w-4" />
                     Embed Code
                   </h4>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Add this code to your website
-                  </p>
+                  <p className="text-sm text-gray-600 mb-3">Add this code to your website</p>
                   <div className="bg-gray-900 text-gray-100 p-3 rounded text-xs font-mono overflow-x-auto">
                     {`<script src="https://yoursite.com/embed.js"></script>
 <div data-form-id="${form?.id || 'form-id'}"></div>`}
@@ -795,9 +801,7 @@ export function CreateFormSlideOver({
                     <QrCode className="h-4 w-4" />
                     QR Code
                   </h4>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Generate a QR code for offline use
-                  </p>
+                  <p className="text-sm text-gray-600 mb-3">Generate a QR code for offline use</p>
                   <Button variant="outline" size="sm">
                     <QrCode className="h-4 w-4 mr-2" />
                     Generate QR Code
@@ -835,6 +839,5 @@ export function CreateFormSlideOver({
         </div>
       </div>
     </>
-  )
+  );
 }
-

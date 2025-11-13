@@ -8,6 +8,7 @@ npm run analyze:architecture
 ```
 
 This will:
+
 - ✅ Check TypeScript types
 - ✅ Run ESLint
 - ✅ Check npm vulnerabilities
@@ -37,6 +38,7 @@ sonar-scanner
 **View results:** https://sonarcloud.io
 
 **What you get:**
+
 - Code quality score
 - Security vulnerabilities
 - Code smells
@@ -62,6 +64,7 @@ depcruise --validate .dependency-cruiser.js src/
 **Output:** `architecture-reports/dependency-graph.svg`
 
 **What you get:**
+
 - Visual dependency graph
 - Circular dependency warnings
 - Orphaned modules
@@ -90,6 +93,7 @@ npm run type-check
 ```
 
 **What you get:**
+
 - All TypeScript errors across codebase
 - Type coverage insights
 
@@ -114,6 +118,7 @@ npm run test:coverage
 ```
 
 **What you get:**
+
 - Coverage percentages
 - Uncovered lines
 - Coverage report HTML
@@ -128,6 +133,7 @@ ANALYZE=true npm run build
 ```
 
 **What you get:**
+
 - Bundle size breakdown
 - Dependency impact
 - Code splitting opportunities
@@ -137,6 +143,7 @@ ANALYZE=true npm run build
 ## 📋 Recommended Workflow
 
 1. **Run comprehensive analysis:**
+
    ```bash
    npm run analyze:architecture
    ```
@@ -147,14 +154,17 @@ ANALYZE=true npm run build
    - Fix critical issues first
 
 3. **Analyze dependencies:**
+
    ```bash
    npm run analyze:dependencies
    ```
+
    - Review dependency graph
    - Fix circular dependencies
    - Remove orphaned modules
 
 4. **Security audit:**
+
    ```bash
    npm audit
    npm audit fix
@@ -169,14 +179,14 @@ ANALYZE=true npm run build
 
 ## 🎯 What Each Tool Catches
 
-| Tool | Code Quality | Security | Dependencies | Performance | Architecture |
-|------|-------------|----------|--------------|-------------|--------------|
-| **SonarCloud** | ✅✅✅ | ✅✅✅ | ✅ | ✅ | ✅✅ |
-| **Dependency-Cruiser** | ✅ | ❌ | ✅✅✅ | ✅ | ✅✅✅ |
-| **npm audit** | ❌ | ✅✅✅ | ✅✅ | ❌ | ❌ |
-| **TypeScript** | ✅✅ | ✅ | ❌ | ❌ | ✅ |
-| **ESLint** | ✅✅ | ✅ | ❌ | ✅ | ❌ |
-| **Semgrep** | ✅ | ✅✅✅ | ❌ | ❌ | ❌ |
+| Tool                   | Code Quality | Security | Dependencies | Performance | Architecture |
+| ---------------------- | ------------ | -------- | ------------ | ----------- | ------------ |
+| **SonarCloud**         | ✅✅✅       | ✅✅✅   | ✅           | ✅          | ✅✅         |
+| **Dependency-Cruiser** | ✅           | ❌       | ✅✅✅       | ✅          | ✅✅✅       |
+| **npm audit**          | ❌           | ✅✅✅   | ✅✅         | ❌          | ❌           |
+| **TypeScript**         | ✅✅         | ✅       | ❌           | ❌          | ✅           |
+| **ESLint**             | ✅✅         | ✅       | ❌           | ✅          | ❌           |
+| **Semgrep**            | ✅           | ✅✅✅   | ❌           | ❌          | ❌           |
 
 ---
 
@@ -240,4 +250,3 @@ jobs:
 - **SonarCloud:** https://sonarcloud.io/docs
 - **Dependency-Cruiser:** https://github.com/sverweij/dependency-cruiser
 - **Semgrep:** https://semgrep.dev/docs
-

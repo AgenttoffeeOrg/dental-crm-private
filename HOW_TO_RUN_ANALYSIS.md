@@ -3,6 +3,7 @@
 ## Quick Commands
 
 ### Run All Analysis
+
 ```bash
 npm run analyze:architecture
 ```
@@ -10,12 +11,14 @@ npm run analyze:architecture
 ### Individual Tools
 
 #### 1. TypeScript Type Check
+
 ```bash
 npm run type-check
 # Saves to: architecture-reports/typescript-errors.txt
 ```
 
 #### 2. ESLint Code Quality
+
 ```bash
 npm run lint
 # Or with auto-fix:
@@ -24,6 +27,7 @@ npm run lint -- --fix
 ```
 
 #### 3. npm Security Audit
+
 ```bash
 npm audit
 # Or with JSON output:
@@ -33,12 +37,14 @@ npm audit fix
 ```
 
 #### 4. Dependency Analysis
+
 ```bash
 npm run analyze:dependencies
 # Saves to: architecture-reports/dependency-issues.txt
 ```
 
 #### 5. Test Coverage
+
 ```bash
 npm run test:coverage
 ```
@@ -48,15 +54,18 @@ npm run test:coverage
 ## 📊 Current Error Summary
 
 ### 🔴 Critical (Fix Now)
+
 - **3 TypeScript errors** - Blocks production builds
 - File: `src/components/deals/deal-detail-view-modal.tsx`
 
 ### ⚠️ High Priority
+
 - **19 security vulnerabilities** (11 high severity)
 - **648 files with ESLint errors**
 - **12 dependency errors** (missing packages)
 
 ### 🟡 Medium Priority
+
 - **91 orphaned modules** (unused code)
 - **1 circular dependency**
 
@@ -80,6 +89,7 @@ Check `architecture-reports/` folder:
 ## 🎯 Quick Fix Guide
 
 ### Step 1: Fix TypeScript Errors (CRITICAL)
+
 ```bash
 # Open and fix:
 src/components/deals/deal-detail-view-modal.tsx
@@ -87,22 +97,26 @@ src/components/deals/deal-detail-view-modal.tsx
 ```
 
 ### Step 2: Fix Security Issues
+
 ```bash
 npm audit fix
 npm audit fix --force  # Review changes first!
 ```
 
 ### Step 3: Install Missing Packages
+
 ```bash
 npm install @trpc/server isomorphic-dompurify next-themes @heroicons/react @headlessui/react
 ```
 
 ### Step 4: Fix ESLint Issues
+
 ```bash
 npm run lint -- --fix
 ```
 
 ### Step 5: Verify
+
 ```bash
 npm run type-check
 npm audit
@@ -127,4 +141,3 @@ npm run analyze:dependencies
 ---
 
 **Last Updated:** ${new Date().toLocaleString()}
-

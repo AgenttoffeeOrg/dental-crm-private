@@ -4,12 +4,12 @@ This guide covers the credentials required for the production-ready email, SMS, 
 
 ### Email Providers
 
-| Provider | Required Fields in `integration_settings` | Environment Variables | Notes |
-| --- | --- | --- | --- |
-| SendGrid | `email_provider = 'sendgrid'`, `email_api_key`, `email_from_address`, optional `email_from_name` | `EMAIL_FROM` (fallback only) | Uses the official `@sendgrid/mail` SDK. Returns SendGrid message id when available. |
-| Gmail | `email_provider = 'gmail'`, `email_from_address`, `email_oauth_refresh_token`, optional `email_oauth_token`, `email_oauth_expires_at` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Access tokens refresh automatically when expired. Messages are sent via Gmail REST API (`googleapis`). |
-| Outlook / Office 365 | `email_provider = 'outlook'`, `email_from_address`, `email_oauth_refresh_token`, optional `email_oauth_token`, `email_oauth_expires_at` | `MICROSOFT_CLIENT_ID` (or `AZURE_AD_CLIENT_ID`), `MICROSOFT_CLIENT_SECRET` (or `AZURE_AD_CLIENT_SECRET`), optional `MICROSOFT_TENANT_ID` | Uses Microsoft Graph `me/sendMail`. Tokens refresh automatically. |
-| Amazon SES | `email_provider = 'ses'`, `email_from_address`, optional `email_from_name` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SES_REGION` (defaults to `us-east-1`) | Uses AWS SDK v3 (`@aws-sdk/client-ses`). From address must be verified in SES. |
+| Provider             | Required Fields in `integration_settings`                                                                                               | Environment Variables                                                                                                                    | Notes                                                                                                  |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| SendGrid             | `email_provider = 'sendgrid'`, `email_api_key`, `email_from_address`, optional `email_from_name`                                        | `EMAIL_FROM` (fallback only)                                                                                                             | Uses the official `@sendgrid/mail` SDK. Returns SendGrid message id when available.                    |
+| Gmail                | `email_provider = 'gmail'`, `email_from_address`, `email_oauth_refresh_token`, optional `email_oauth_token`, `email_oauth_expires_at`   | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                                                                               | Access tokens refresh automatically when expired. Messages are sent via Gmail REST API (`googleapis`). |
+| Outlook / Office 365 | `email_provider = 'outlook'`, `email_from_address`, `email_oauth_refresh_token`, optional `email_oauth_token`, `email_oauth_expires_at` | `MICROSOFT_CLIENT_ID` (or `AZURE_AD_CLIENT_ID`), `MICROSOFT_CLIENT_SECRET` (or `AZURE_AD_CLIENT_SECRET`), optional `MICROSOFT_TENANT_ID` | Uses Microsoft Graph `me/sendMail`. Tokens refresh automatically.                                      |
+| Amazon SES           | `email_provider = 'ses'`, `email_from_address`, optional `email_from_name`                                                              | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SES_REGION` (defaults to `us-east-1`)                                                 | Uses AWS SDK v3 (`@aws-sdk/client-ses`). From address must be verified in SES.                         |
 
 All providers log request/response metadata to `integration_logs` and stamp external IDs onto CRM activities.
 
@@ -44,8 +44,3 @@ All providers log request/response metadata to `integration_logs` and stamp exte
 2. Store provider credentials per tenant in `integration_settings`.
 3. Expose the webhook endpoints to Twilio (SMS/WhatsApp) and configure the matching URLs in the Twilio console.
 4. Verify SES domains/email addresses before switching tenants to the SES provider.
-
-
-
-
-

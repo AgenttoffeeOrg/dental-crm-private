@@ -8,6 +8,7 @@
 ## EXECUTIVE SUMMARY
 
 **Key Findings:**
+
 1. Field name mismatches require manual mapping (risk of bugs)
 2. Rate limiting uses in-memory store (lost on restart)
 3. Email verification enforcement is inconsistent
@@ -23,7 +24,7 @@
 **Issue:** `src/app/api/invites/create/route.ts:66`
 
 ```typescript
-const rateLimitStore = new Map<string, { count: number, resetAt: number }>()
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 ```
 
 **Problem:** Lost on server restart, not shared across instances
@@ -43,6 +44,7 @@ const rateLimitStore = new Map<string, { count: number, resetAt: number }>()
 ### Magic Strings/Numbers
 
 **Found:**
+
 - Role strings: `'owner'`, `'admin'`, etc. (should be constants)
 - Status strings: `'pending'`, `'active'`, etc.
 - Hard-coded limits: `10` invites/hour
@@ -52,6 +54,7 @@ const rateLimitStore = new Map<string, { count: number, resetAt: number }>()
 ### Inconsistent Patterns
 
 **Found:**
+
 - Some APIs use `active_tenant_id`, others use `tenant_id || active_tenant_id`
 - Some use `createServerSupabaseClient()`, others use `createServiceClient()`
 
@@ -188,15 +191,3 @@ const rateLimitStore = new Map<string, { count: number, resetAt: number }>()
 
 **Document Status:** ✅ COMPLETE  
 **Last Updated:** December 2024
-
-
-
-
-
-
-
-
-
-
-
-

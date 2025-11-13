@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const { withSentryConfig } = require("@sentry/nextjs");
+const { withSentryConfig } = require('@sentry/nextjs');
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
@@ -11,7 +11,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true, // Disable TypeScript errors during build
   },
-  
+
   // Skip static generation for error pages
   skipTrailingSlashRedirect: true,
   skipMiddlewareUrlNormalize: true,
@@ -48,11 +48,11 @@ const nextConfig = {
       {
         source: '/_next/static/:path*',
         headers: [
-          { 
-            key: 'Cache-Control', 
-            value: isDevelopment 
-              ? 'no-cache, no-store, must-revalidate' 
-              : 'public, max-age=31536000, immutable' 
+          {
+            key: 'Cache-Control',
+            value: isDevelopment
+              ? 'no-cache, no-store, must-revalidate'
+              : 'public, max-age=31536000, immutable',
           },
         ],
       },
@@ -60,9 +60,9 @@ const nextConfig = {
       {
         source: '/api/:path*',
         headers: [
-          { 
-            key: 'Cache-Control', 
-            value: 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
           },
           { key: 'Pragma', value: 'no-cache' },
           { key: 'Expires', value: '0' },
@@ -72,11 +72,11 @@ const nextConfig = {
       {
         source: '/(dashboard|contacts|deals|pipelines|analytics)/:path*',
         headers: [
-          { 
-            key: 'Cache-Control', 
-            value: isDevelopment 
-              ? 'no-cache, no-store, must-revalidate' 
-              : 'private, max-age=0, must-revalidate'
+          {
+            key: 'Cache-Control',
+            value: isDevelopment
+              ? 'no-cache, no-store, must-revalidate'
+              : 'private, max-age=0, must-revalidate',
           },
         ],
       },
@@ -112,7 +112,7 @@ module.exports = withSentryConfig(
     // This can increase your server load as well as your hosting bill.
     // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
     // side errors will fail.
-    tunnelRoute: "/monitoring",
+    tunnelRoute: '/monitoring',
 
     // Hides source maps from generated client bundles
     hideSourceMaps: true,

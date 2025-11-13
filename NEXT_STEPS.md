@@ -61,11 +61,13 @@ npx sonarqube-scanner
 ## 📊 Run All Analysis Tools
 
 ### Comprehensive Analysis
+
 ```bash
 npm run analyze:architecture
 ```
 
 This runs:
+
 - ✅ TypeScript type checking
 - ✅ ESLint code quality
 - ✅ npm security audit
@@ -75,6 +77,7 @@ This runs:
 **Reports saved to:** `architecture-reports/`
 
 ### Individual Tools
+
 ```bash
 npm run type-check      # TypeScript errors
 npm run lint            # ESLint issues
@@ -90,6 +93,7 @@ npm run analyze:sonarcloud    # SonarCloud analysis
 Based on the analysis, here are the critical issues to fix:
 
 ### 1. TypeScript Errors (BLOCKING)
+
 ```bash
 # Fix JSX structure in:
 src/components/deals/deal-detail-view-modal.tsx
@@ -97,17 +101,20 @@ src/components/deals/deal-detail-view-modal.tsx
 ```
 
 ### 2. Security Vulnerabilities
+
 ```bash
 npm audit fix
 npm audit fix --force  # Review changes first!
 ```
 
 ### 3. Install Missing Packages
+
 ```bash
 npm install @trpc/server isomorphic-dompurify next-themes @heroicons/react @headlessui/react
 ```
 
 ### 4. ESLint Issues
+
 ```bash
 npm run lint -- --fix
 ```
@@ -117,16 +124,19 @@ npm run lint -- --fix
 ## 📁 Files Created
 
 ### Configuration Files
+
 - `.github/workflows/sonarcloud.yml` - GitHub Actions workflow
 - `.coderabbit.yaml` - CodeRabbit configuration
 - `.dependency-cruiser.js` - Dependency analysis rules
 - `.sentryclirc` - Sentry CLI config
 
 ### Scripts
+
 - `scripts/architecture-analysis.js` - Comprehensive analysis
 - `scripts/run-sonarcloud.sh` - SonarCloud runner
 
 ### Documentation
+
 - `SONARCLOUD_SETUP.md` - SonarCloud guide
 - `ARCHITECTURE_ANALYSIS_TOOLS.md` - Analysis tools guide
 - `HOW_TO_RUN_ANALYSIS.md` - Quick reference
@@ -134,6 +144,7 @@ npm run lint -- --fix
 - And more...
 
 ### Reports
+
 - `architecture-reports/` - All analysis reports
 
 ---

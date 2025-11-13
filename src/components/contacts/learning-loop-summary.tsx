@@ -1,46 +1,46 @@
-import { useEffect, useState } from 'react'
-import { formatISO, subDays } from 'date-fns'
-import { Activity, Flame, TrendingUp, Trophy } from 'lucide-react'
+import { useEffect, useState } from 'react';
+import { formatISO, subDays } from 'date-fns';
+import { Activity, Flame, TrendingUp, Trophy } from 'lucide-react';
 
-import { createClient } from '@/lib/supabase-client'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { format } from '@/lib/formatting'
+import { createClient } from '@/lib/supabase-client';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { format } from '@/lib/formatting';
 
 type ScriptSummary = {
-  title: string
-  successRate: number
-  usages: number
-  revenueCents: number
-}
+  title: string;
+  successRate: number;
+  usages: number;
+  revenueCents: number;
+};
 
 type LearningLoopSummary = {
-  topPerformer?: ScriptSummary
-  adoptionLeader?: ScriptSummary
-  revenueLeader?: ScriptSummary
-  lastMetricDate?: string | null
-}
+  topPerformer?: ScriptSummary;
+  adoptionLeader?: ScriptSummary;
+  revenueLeader?: ScriptSummary;
+  lastMetricDate?: string | null;
+};
 
 interface LearningLoopSummaryProps {
-  tenantId?: string | null
-  onOpenCoaching: () => void
+  tenantId?: string | null;
+  onOpenCoaching: () => void;
 }
 
 export function LearningLoopSummary({ tenantId, onOpenCoaching }: LearningLoopSummaryProps) {
-  const [loading, setLoading] = useState(false)
-  const [summary, setSummary] = useState<LearningLoopSummary | null>(null)
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState<LearningLoopSummary | null>(null);
 
   useEffect(() => {
-    if (!tenantId) return
-    loadSummary(tenantId)
-  }, [tenantId])
+    if (!tenantId) return;
+    loadSummary(tenantId);
+  }, [tenantId]);
 
   const loadSummary = async (tenantId: string) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const supabase = createClient()
-      const since = subDays(new Date(), 30)
+      const supabase = createClient();
+      const since = subDays(new Date(), 30);
 
       const { data, error } = await supabase
         .from('sales_script_metrics')
@@ -55,78 +55,77 @@ export function LearningLoopSummary({ tenantId, onOpenCoaching }: LearningLoopSu
           `
         )
         .eq('tenant_id', tenantId)
-        .gte('metric_date', formatISO(since, { representation: 'date' }))
+        .gte('metric_date', formatISO(since, { representation: 'date' }));
 
-      if (error) throw error
+      if (error) throw error;
       if (!data?.length) {
-        setSummary(null)
-        return
+        setSummary(null);
+        return;
       }
 
       const aggregate = new Map<
         string,
         {
-          title: string
-          usages: number
-          outcomes: number
-          revenueCents: number
+          title: string;
+          usages: number;
+          outcomes: number;
+          revenueCents: number;
         }
-      >()
-      let lastMetric: string | null = null
+      >();
+      let lastMetric: string | null = null;
 
       data.forEach((row: any) => {
-        if (!row.script_version_id) return
-        const existing =
-          aggregate.get(row.script_version_id) ?? {
-            title: row.sales_script_versions?.title ?? 'Untitled Script',
-            usages: 0,
-            outcomes: 0,
-            revenueCents: 0,
-          }
+        if (!row.script_version_id) return;
+        const existing = aggregate.get(row.script_version_id) ?? {
+          title: row.sales_script_versions?.title ?? 'Untitled Script',
+          usages: 0,
+          outcomes: 0,
+          revenueCents: 0,
+        };
 
-        existing.usages += row.usages ?? 0
-        existing.outcomes += row.successful_outcomes ?? 0
-        existing.revenueCents += row.total_revenue_cents ?? 0
+        existing.usages += row.usages ?? 0;
+        existing.outcomes += row.successful_outcomes ?? 0;
+        existing.revenueCents += row.total_revenue_cents ?? 0;
 
-        aggregate.set(row.script_version_id, existing)
+        aggregate.set(row.script_version_id, existing);
 
         if (row.metric_date) {
           if (!lastMetric || new Date(row.metric_date) > new Date(lastMetric)) {
-            lastMetric = row.metric_date
+            lastMetric = row.metric_date;
           }
         }
-      })
+      });
 
       const summaries = Array.from(aggregate.values()).map<ScriptSummary>((value) => ({
         title: value.title,
         usages: value.usages,
         successRate: value.usages > 0 ? (value.outcomes / value.usages) * 100 : 0,
         revenueCents: value.revenueCents,
-      }))
+      }));
 
       const topPerformer = summaries
         .filter((item) => item.usages >= 3)
-        .sort((a, b) => b.successRate - a.successRate)[0]
+        .sort((a, b) => b.successRate - a.successRate)[0];
 
-      const adoptionLeader = summaries.sort((a, b) => b.usages - a.usages)[0]
-      const revenueLeader = summaries.sort((a, b) => b.revenueCents - a.revenueCents)[0]
+      const adoptionLeader = summaries.sort((a, b) => b.usages - a.usages)[0];
+      const revenueLeader = summaries.sort((a, b) => b.revenueCents - a.revenueCents)[0];
 
       setSummary({
         topPerformer,
         adoptionLeader,
         revenueLeader,
         lastMetricDate: lastMetric,
-      })
+      });
     } catch (error) {
-      console.error('[LearningLoopSummary] Failed to load summary', error)
-      setSummary(null)
+      console.error('[LearningLoopSummary] Failed to load summary', error);
+      setSummary(null);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (!tenantId) {
-    return null
+    return null;
   }
 
   return (
@@ -142,7 +141,10 @@ export function LearningLoopSummary({ tenantId, onOpenCoaching }: LearningLoopSu
         </div>
         <div className="flex items-center gap-2">
           {summary?.lastMetricDate && (
-            <Badge variant="secondary" className="text-[11px] bg-blue-50 text-blue-700 border-blue-200">
+            <Badge
+              variant="secondary"
+              className="text-[11px] bg-blue-50 text-blue-700 border-blue-200"
+            >
               Updated {summary.lastMetricDate}
             </Badge>
           )}
@@ -194,15 +196,15 @@ export function LearningLoopSummary({ tenantId, onOpenCoaching }: LearningLoopSu
         />
       </div>
     </Card>
-  )
+  );
 }
 
 interface LearningChipProps {
-  icon: React.ReactNode
-  label: string
-  primary: string
-  helper: string
-  loading: boolean
+  icon: React.ReactNode;
+  label: string;
+  primary: string;
+  helper: string;
+  loading: boolean;
 }
 
 function LearningChip({ icon, label, primary, helper, loading }: LearningChipProps) {
@@ -212,14 +214,8 @@ function LearningChip({ icon, label, primary, helper, loading }: LearningChipPro
         <span>{icon}</span>
         {label}
       </div>
-      <p className="mt-2 text-sm font-semibold text-slate-900">
-        {loading ? 'Loading…' : primary}
-      </p>
+      <p className="mt-2 text-sm font-semibold text-slate-900">{loading ? 'Loading…' : primary}</p>
       <p className="text-xs text-slate-500 mt-1">{loading ? 'Just a moment' : helper}</p>
     </div>
-  )
+  );
 }
-
-
-
-

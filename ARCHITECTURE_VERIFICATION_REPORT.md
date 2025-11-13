@@ -11,6 +11,7 @@
 This report verifies the implementation of 8 core requirements for the multi-tenant CRM system. Overall, the system has **strong foundations** but contains **critical conflicts** between the intended architecture and existing auto-creation triggers.
 
 ### Key Findings
+
 - ✅ **CORRECT**: Organization creation flow properly creates tenant, location, and membership
 - ✅ **CORRECT**: Data ownership model properly links to tenant_id and location_id
 - ✅ **CORRECT**: Location-based role system is properly architected
@@ -47,10 +48,10 @@ This report verifies the implementation of 8 core requirements for the multi-ten
 
         if (appUserError) {
           console.error('[SIGNUP] Failed to create app user:', appUserError)
-          
+
           // Handle the specific case where tenant_id constraint fails
           // This means the database migration hasn't been run yet
-          if (appUserError.message?.includes('tenant_id') && 
+          if (appUserError.message?.includes('tenant_id') &&
               (appUserError.message?.includes('not-null') || appUserError.message?.includes('null value'))) {
             // This is a database configuration issue - migration needs to be run
             // User will need to delete their orphaned auth account manually or via SQL
@@ -59,7 +60,7 @@ This report verifies the implementation of 8 core requirements for the multi-ten
               'Your account was partially created. Please contact support or use the cleanup script to delete the orphaned account.'
             )
           }
-          
+
           throw new Error(`Failed to create user profile: ${appUserError.message}`)
         }
 ```
@@ -87,12 +88,12 @@ BEGIN
   IF NEW.active_tenant_id IS NOT NULL THEN
     RETURN NEW;
   END IF;
-  
+
   RAISE NOTICE 'Auto-creating tenant for new user: %', NEW.email;
-  
+
   -- Determine tenant name from user info
   v_user_name := COALESCE(NEW.full_name, SPLIT_PART(NEW.email, '@', 1));
-  
+
   -- Create tenant
   INSERT INTO tenants (
     name,
@@ -107,7 +108,7 @@ BEGIN
     NOW(),
     NOW()
   ) RETURNING id INTO v_new_tenant_id;
-  
+
   -- Create default location
   INSERT INTO locations (
     tenant_id,
@@ -122,7 +123,7 @@ BEGIN
     NOW(),
     NOW()
   ) RETURNING id INTO v_new_location_id;
-  
+
   -- Create user membership
   INSERT INTO user_tenant_memberships (
     user_id,
@@ -141,15 +142,15 @@ BEGIN
     NOW(),
     NOW()
   ) RETURNING id INTO v_membership_id;
-  
+
   -- Update the NEW record to set active context
   NEW.active_tenant_id := v_new_tenant_id;
   NEW.active_location_id := v_new_location_id;
   NEW.default_tenant_id := v_new_tenant_id;
   NEW.default_location_id := v_new_location_id;
-  
+
   RAISE NOTICE '✅ Auto-created tenant % for user %', v_new_tenant_id, NEW.email;
-  
+
   RETURN NEW;
 END;
 $$;
@@ -163,6 +164,7 @@ CREATE TRIGGER trigger_auto_create_tenant_for_new_user
 ```
 
 **This trigger directly contradicts the requirement.** It automatically creates:
+
 - A tenant named "{User}'s Practice"
 - A default "Main Office" location
 - A membership with 'owner' role
@@ -178,7 +180,7 @@ CREATE TRIGGER trigger_auto_create_tenant_for_new_user
   const hasOrg = Boolean(appUser?.active_tenant_id)
   const activeTenantId = appUser?.active_tenant_id || null
   const activeLocationId = appUser?.active_location_id || null
-  
+
   /**
    * Check if org is required and show modal if not
    */
@@ -210,6 +212,7 @@ The guard exists but **will never be triggered** because the database trigger au
 The organization creation flow properly:
 
 1. **Creates tenant with unique ID** (Lines 161-217)
+
 ```161:217:src/app/api/orgs/create/route.ts
       const { data: tenantData, error: tenantError } = await serviceClient
         .from('tenants')
@@ -222,7 +225,7 @@ The organization creation flow properly:
         })
         .select('id, name')
         .single()
-      
+
       if (tenantError) {
         console.error('[ORGS] ❌ Tenant creation error:', {
           code: tenantError.code,
@@ -230,20 +233,20 @@ The organization creation flow properly:
           details: tenantError.details,
           hint: tenantError.hint
         })
-        
+
         // Check for duplicate name
         if (tenantError.code === '23505') {
           return NextResponse.json(
-            { 
+            {
               error: 'Organization name already exists',
               message: 'Please choose a different name for your organization'
             },
             { status: 409 }
           )
         }
-        
+
         return NextResponse.json(
-          { 
+          {
             error: 'Failed to create organization',
             message: tenantError.message || 'Unknown error',
             details: tenantError.details || tenantError.hint
@@ -251,18 +254,18 @@ The organization creation flow properly:
           { status: 500 }
         )
       }
-      
+
       if (!tenantData) {
         console.error('[ORGS] ❌ Tenant creation returned no data')
         return NextResponse.json(
-          { 
+          {
             error: 'Failed to create organization',
             message: 'No tenant data returned from database'
           },
           { status: 500 }
         )
       }
-      
+
       tenant = tenantData
       console.log('[ORGS] ✅ Tenant created successfully:', {
         id: tenant.id,
@@ -271,6 +274,7 @@ The organization creation flow properly:
 ```
 
 2. **Creates default location** (Lines 239-290) with rollback
+
 ```239:290:src/app/api/orgs/create/route.ts
       const { data: locationData, error: locationError } = await serviceClient
         .from('locations')
@@ -282,7 +286,7 @@ The organization creation flow properly:
         })
         .select('id, name')
         .single()
-      
+
       if (locationError) {
         console.error('[ORGS] ❌ Location creation error:', {
           code: locationError.code,
@@ -290,13 +294,13 @@ The organization creation flow properly:
           details: locationError.details,
           hint: locationError.hint
         })
-        
+
         // Rollback: Delete tenant
         console.log('[ORGS] Rolling back tenant creation...')
         await serviceClient.from('tenants').delete().eq('id', tenant.id)
-        
+
         return NextResponse.json(
-          { 
+          {
             error: 'Failed to create default location',
             message: locationError.message || 'Unknown error',
             details: locationError.details || locationError.hint
@@ -304,20 +308,20 @@ The organization creation flow properly:
           { status: 500 }
         )
       }
-      
+
       if (!locationData) {
         console.error('[ORGS] ❌ Location creation returned no data')
         // Rollback tenant
         await serviceClient.from('tenants').delete().eq('id', tenant.id)
         return NextResponse.json(
-          { 
+          {
             error: 'Failed to create default location',
             message: 'No location data returned from database'
           },
           { status: 500 }
         )
       }
-      
+
       location = locationData
       console.log('[ORGS] ✅ Location created successfully:', {
         id: location.id,
@@ -326,6 +330,7 @@ The organization creation flow properly:
 ```
 
 3. **Creates owner membership** (Lines 312-365) with full rollback
+
 ```312:365:src/app/api/orgs/create/route.ts
       const { data: membershipData, error: membershipError } = await serviceClient
         .from('user_tenant_memberships')
@@ -338,7 +343,7 @@ The organization creation flow properly:
         })
         .select('id, role')
         .single()
-      
+
       if (membershipError) {
         console.error('[ORGS] ❌ Membership creation error:', {
           code: membershipError.code,
@@ -346,14 +351,14 @@ The organization creation flow properly:
           details: membershipError.details,
           hint: membershipError.hint
         })
-        
+
         // Rollback: Delete location and tenant
         console.log('[ORGS] Rolling back location and tenant...')
         await serviceClient.from('locations').delete().eq('id', location.id)
         await serviceClient.from('tenants').delete().eq('id', tenant.id)
-        
+
         return NextResponse.json(
-          { 
+          {
             error: 'Failed to create membership',
             message: membershipError.message || 'Unknown error',
             details: membershipError.details || membershipError.hint
@@ -361,21 +366,21 @@ The organization creation flow properly:
           { status: 500 }
         )
       }
-      
+
       if (!membershipData) {
         console.error('[ORGS] ❌ Membership creation returned no data')
         // Rollback location and tenant
         await serviceClient.from('locations').delete().eq('id', location.id)
         await serviceClient.from('tenants').delete().eq('id', tenant.id)
         return NextResponse.json(
-          { 
+          {
             error: 'Failed to create membership',
             message: 'No membership data returned from database'
           },
           { status: 500 }
         )
       }
-      
+
       membership = membershipData
       console.log('[ORGS] ✅ Membership created successfully:', {
         id: membership.id,
@@ -384,6 +389,7 @@ The organization creation flow properly:
 ```
 
 4. **Atomically updates user context** (Lines 384-398)
+
 ```384:398:src/app/api/orgs/create/route.ts
     console.log('[ORGS] Updating user active context')
     const { error: updateUserError } = await serviceClient
@@ -394,7 +400,7 @@ The organization creation flow properly:
         updated_at: new Date().toISOString()
       })
       .eq('id', user.id)
-    
+
     if (updateUserError) {
       console.error('[ORGS] Error updating user context:', updateUserError)
       // Non-fatal - user can switch manually, but log it
@@ -421,43 +427,43 @@ The migration properly adds `location_id` to all core tables:
 
 ```379:420:supabase/migrations/20251025_phase1_critical_fixes.sql
 -- Contacts
-ALTER TABLE contacts 
+ALTER TABLE contacts
   ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS idx_contacts_tenant_location 
+CREATE INDEX IF NOT EXISTS idx_contacts_tenant_location
   ON contacts(tenant_id, location_id);
 
-COMMENT ON COLUMN contacts.location_id IS 
+COMMENT ON COLUMN contacts.location_id IS
   'Physical location where this contact is managed. NULL = organization-wide contact.';
 
 -- Deals
-ALTER TABLE deals 
+ALTER TABLE deals
   ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS idx_deals_tenant_location 
+CREATE INDEX IF NOT EXISTS idx_deals_tenant_location
   ON deals(tenant_id, location_id);
 
-COMMENT ON COLUMN deals.location_id IS 
+COMMENT ON COLUMN deals.location_id IS
   'Location where this deal is being managed. Determines location-based reporting.';
 
 -- Tasks
-ALTER TABLE tasks 
+ALTER TABLE tasks
   ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS idx_tasks_tenant_location 
+CREATE INDEX IF NOT EXISTS idx_tasks_tenant_location
   ON tasks(tenant_id, location_id);
 
-COMMENT ON COLUMN tasks.location_id IS 
+COMMENT ON COLUMN tasks.location_id IS
   'Location for this task. Used for location-based task assignment and filtering.';
 
 -- Activities
-ALTER TABLE activities 
+ALTER TABLE activities
   ADD COLUMN IF NOT EXISTS location_id UUID REFERENCES locations(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS idx_activities_tenant_location 
+CREATE INDEX IF NOT EXISTS idx_activities_tenant_location
   ON activities(tenant_id, location_id);
 
-COMMENT ON COLUMN activities.location_id IS 
+COMMENT ON COLUMN activities.location_id IS
   'Location where this activity occurred. NULL = organization-wide activity.';
 ```
 
@@ -481,51 +487,52 @@ The `membership_locations` table supports location-specific roles:
 CREATE TABLE IF NOT EXISTS membership_locations (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- Foreign keys
   membership_id UUID NOT NULL REFERENCES user_tenant_memberships(id) ON DELETE CASCADE,
   location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
-  
+
   -- Role override (NULL = inherit from membership)
   -- Note: CHECK constraint not needed - ENUM type already validates values
   role_override membership_role,
-  
+
   -- Scope (how much data can they access at this location)
   scope TEXT NOT NULL DEFAULT 'location' CHECK (
     scope IN ('own', 'team', 'location', 'all')
   ),
-  
+
   -- Status
   is_active BOOLEAN DEFAULT true NOT NULL,
-  
+
   -- Audit
   assigned_by UUID REFERENCES app_users(id) ON DELETE SET NULL,
   assigned_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  
+
   -- Constraints
   UNIQUE(membership_id, location_id)  -- User can only be assigned to location once
 );
 
 -- Add comments
-COMMENT ON TABLE membership_locations IS 
+COMMENT ON TABLE membership_locations IS
   'Per-location role assignments. Enables users to have different roles at different locations.';
 
-COMMENT ON COLUMN membership_locations.membership_id IS 
+COMMENT ON COLUMN membership_locations.membership_id IS
   'Reference to user_tenant_memberships (which user, which org)';
 
-COMMENT ON COLUMN membership_locations.location_id IS 
+COMMENT ON COLUMN membership_locations.location_id IS
   'Reference to locations (which location within the org)';
 
-COMMENT ON COLUMN membership_locations.role_override IS 
+COMMENT ON COLUMN membership_locations.role_override IS
   'Overrides the base role from membership. NULL = use membership role.';
 
-COMMENT ON COLUMN membership_locations.scope IS 
+COMMENT ON COLUMN membership_locations.scope IS
   'Data access scope: own (personal), team (same location team), location (all at location), all (org-wide)';
 ```
 
 **Helper functions are provided** (Lines 133-209):
+
 - `get_user_locations()` - Returns all locations user can access with effective roles
 - `get_user_role_at_location()` - Returns user's effective role at a specific location
 
@@ -607,7 +614,7 @@ The wizard has proper detection logic:
       // Check for pending invites
       console.log('[ONBOARDING] Checking for pending invites...')
       setPhase('invite_detection')
-      
+
     } catch (error) {
       console.error('[ONBOARDING] Error initializing:', error)
       // On error, proceed to wizard (safe default)
@@ -624,12 +631,14 @@ The wizard has proper detection logic:
 4. **No opportunity to choose between create/join/skip**
 
 **The intended flow:**
+
 1. User signs up → **No tenant** → Only profile access
 2. User reaches onboarding → Sees pending invites
 3. If no invites: Show create/join/skip decision
 4. If invites: Show invite banner
 
 **Current flow:**
+
 1. User signs up → **Database trigger creates tenant** → Full access
 2. User reaches onboarding → Already has org, skips to wizard
 3. No decision flow ever appears
@@ -705,7 +714,7 @@ Both switchers are properly used:
 ```436:446:src/components/layout/dashboard-layout.tsx
               {/* Organization Switcher - Multi-Org Users */}
               <OrgSwitcher />
-              
+
               {/* Location Switcher - Multi-Location Organizations */}
               {locationContext?.isMultiLocation && (
                 <LocationSwitcher
@@ -794,13 +803,3 @@ The system has a **solid architectural foundation** with proper data ownership m
 **The core issue is architectural:** The trigger was likely created to support an earlier "solo user" model, but the current requirements call for an explicit org creation/joining flow.
 
 **Recommended Action:** Remove the trigger in `20251027_003_auto_create_tenant_for_users.sql` and verify the full signup → onboarding → org creation flow works as intended.
-
-
-
-
-
-
-
-
-
-

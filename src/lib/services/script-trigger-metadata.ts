@@ -1,4 +1,4 @@
-import { ScriptTrigger } from '@/types/database'
+import { ScriptTrigger } from '@/types/database';
 
 export const SCRIPT_TRIGGERS: ScriptTrigger[] = [
   'price_objection',
@@ -9,8 +9,8 @@ export const SCRIPT_TRIGGERS: ScriptTrigger[] = [
   'alternative_seeking',
   'pain_urgency',
   'second_opinion',
-  'universal'
-]
+  'universal',
+];
 
 export const SCRIPT_TRIGGER_LABELS: Record<ScriptTrigger, string> = {
   price_objection: 'Price objection',
@@ -21,9 +21,5 @@ export const SCRIPT_TRIGGER_LABELS: Record<ScriptTrigger, string> = {
   alternative_seeking: 'Comparing alternatives',
   pain_urgency: 'Pain & urgency',
   second_opinion: 'Second opinion',
-  universal: 'Universal touchpoints'
-}
-
-
-
-
+  universal: 'Universal touchpoints',
+};

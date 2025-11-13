@@ -5,6 +5,7 @@ Your project is already configured for SonarCloud! Here's how to run it.
 ## ✅ Current Configuration
 
 Your `sonar-project.properties` is already set up:
+
 - **Project Key:** `AgenttoffeeOrg_dental-crm-private`
 - **Organization:** `agenttoffeeorg`
 - **Sources:** `src/`
@@ -54,16 +55,19 @@ sonar-scanner
 ### Step 2: Install SonarScanner
 
 **Option A: Using npm (Recommended)**
+
 ```bash
 npm install -g sonarqube-scanner
 ```
 
 **Option B: Using Homebrew (macOS)**
+
 ```bash
 brew install sonar-scanner
 ```
 
 **Option C: Using Docker**
+
 ```bash
 docker pull sonarsource/sonar-scanner-cli
 ```
@@ -71,11 +75,13 @@ docker pull sonarsource/sonar-scanner-cli
 ### Step 3: Set Your Token
 
 **Temporary (for this session):**
+
 ```bash
 export SONAR_TOKEN=your_token_here
 ```
 
 **Permanent (add to `.env.local`):**
+
 ```bash
 echo "SONAR_TOKEN=your_token_here" >> .env.local
 ```
@@ -85,11 +91,13 @@ echo "SONAR_TOKEN=your_token_here" >> .env.local
 ### Step 4: Run Analysis
 
 **Using the script:**
+
 ```bash
 npm run analyze:sonarcloud
 ```
 
 **Or manually:**
+
 ```bash
 sonar-scanner
 ```
@@ -99,6 +107,7 @@ sonar-scanner
 ## 🔄 Automated Analysis (GitHub Actions)
 
 I've created a GitHub Actions workflow (`.github/workflows/sonarcloud.yml`) that will:
+
 - ✅ Run SonarCloud analysis on every push to `main` or `develop`
 - ✅ Run on pull requests
 - ✅ Can be triggered manually
@@ -114,6 +123,7 @@ I've created a GitHub Actions workflow (`.github/workflows/sonarcloud.yml`) that
    - Click "Add secret"
 
 2. **Push the workflow file:**
+
    ```bash
    git add .github/workflows/sonarcloud.yml
    git commit -m "Add SonarCloud GitHub Actions workflow"
@@ -144,6 +154,7 @@ After running analysis, view results at:
 **https://sonarcloud.io/project/overview?id=AgenttoffeeOrg_dental-crm-private**
 
 You'll see:
+
 - **Quality Gate Status** (Pass/Fail)
 - **Code Coverage** percentage
 - **Security Vulnerabilities**
@@ -156,6 +167,7 @@ You'll see:
 ## 🔧 Troubleshooting
 
 ### Error: "sonar-scanner: command not found"
+
 ```bash
 # Install SonarScanner
 npm install -g sonarqube-scanner
@@ -164,6 +176,7 @@ brew install sonar-scanner
 ```
 
 ### Error: "SONAR_TOKEN is not set"
+
 ```bash
 # Set the token
 export SONAR_TOKEN=your_token_here
@@ -173,11 +186,13 @@ echo "SONAR_TOKEN=your_token_here" >> .env.local
 ```
 
 ### Error: "Project not found"
+
 - Make sure your project exists at: https://sonarcloud.io
 - Check `sonar-project.properties` has correct project key
 - Verify organization name matches
 
 ### Error: "Authentication failed"
+
 - Check your token is correct
 - Make sure token hasn't expired
 - Regenerate token if needed
@@ -187,6 +202,7 @@ echo "SONAR_TOKEN=your_token_here" >> .env.local
 ## 📝 Configuration File
 
 Your `sonar-project.properties` includes:
+
 - Source directories: `src/`
 - Test directories: `tests/`, `__tests__/`
 - Exclusions: `node_modules`, `.next`, test files

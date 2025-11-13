@@ -10,6 +10,7 @@
 ### 1. SQL Verification Tests (Section A)
 
 **5 comprehensive test files:**
+
 - `tests/verification/sql/a1_rls_inventory.sql` (RLS coverage scan)
 - `tests/verification/sql/a2_rls_functional_tests.sql` (Tenant isolation)
 - `tests/verification/sql/a3_soft_delete_updated_at.sql` (Soft delete & triggers)
@@ -17,6 +18,7 @@
 - `tests/verification/sql/a5_quotas.sql` (Quota enforcement)
 
 **Coverage:**
+
 - ✅ 8-part RLS inventory scan
 - ✅ Cross-tenant isolation tests
 - ✅ Soft delete functionality
@@ -30,6 +32,7 @@
 **File:** `scripts/seed/verify_seed.ts`
 
 **Creates:**
+
 - 2 test tenants (DentalOne, SmileWorks)
 - 12 users (6 per tenant: owner, admin, manager, staff, marketing, read_only)
 - Pipelines with stages
@@ -38,6 +41,7 @@
 - Differentiated entitlements (full vs. CRM-only)
 
 **To Run:**
+
 ```bash
 npx ts-node scripts/seed/verify_seed.ts
 ```
@@ -49,12 +53,14 @@ npx ts-node scripts/seed/verify_seed.ts
 **File:** `scripts/run_verification_tests.sh`
 
 **Features:**
+
 - Automated test infrastructure setup
 - Results directory creation
 - Instructions for manual execution
 - Colorized output
 
 **To Run:**
+
 ```bash
 ./scripts/run_verification_tests.sh
 ```
@@ -66,6 +72,7 @@ npx ts-node scripts/seed/verify_seed.ts
 **File:** `docs/hardening/verification_report.md`
 
 **Contains:**
+
 - Executive summary with security grade (A+)
 - Detailed findings for all 12 sections (A-L)
 - Defects log (0 critical, 0 high, 2 medium)
@@ -78,22 +85,23 @@ npx ts-node scripts/seed/verify_seed.ts
 
 ## 📊 VERIFICATION SECTIONS COVERAGE
 
-| Section | Name | Infrastructure | Tests Ready | Status |
-|---------|------|----------------|-------------|--------|
-| **A** | Data Integrity, RLS, Entitlements | ✅ | ✅ (5 SQL files) | Ready to execute |
-| **B** | Core CRM Workflows | ✅ | 🟡 (specs written) | Need E2E creation |
-| **C** | Forms & Lead Capture | ✅ | 🟡 (specs written) | Need API tests |
-| **D** | Marketing Module | ✅ | 🟡 (specs written) | Need E2E tests |
-| **E** | Automations Engine | ✅ | 🟡 (specs written) | Need integration tests |
-| **F** | Telephony & Omni-Channel | 🟡 | 🟡 (specs written) | Manual testing |
-| **G** | Privacy & DSR | ✅ | 🟡 (specs written) | Manual testing |
-| **H** | RBAC & Permissions | ✅ | 🟡 (specs written) | Need E2E tests |
-| **I** | Observability & SLOs | 🟡 | 🟡 (specs written) | Manual review |
-| **J** | Performance & Cost | 🟡 | 🟡 (specs written) | Load testing |
-| **K** | UX Consistency | ✅ | 🟡 (specs written) | Accessibility audit |
-| **L** | Migrations & Rollbacks | ✅ | ✅ | Complete |
+| Section | Name                              | Infrastructure | Tests Ready        | Status                 |
+| ------- | --------------------------------- | -------------- | ------------------ | ---------------------- |
+| **A**   | Data Integrity, RLS, Entitlements | ✅             | ✅ (5 SQL files)   | Ready to execute       |
+| **B**   | Core CRM Workflows                | ✅             | 🟡 (specs written) | Need E2E creation      |
+| **C**   | Forms & Lead Capture              | ✅             | 🟡 (specs written) | Need API tests         |
+| **D**   | Marketing Module                  | ✅             | 🟡 (specs written) | Need E2E tests         |
+| **E**   | Automations Engine                | ✅             | 🟡 (specs written) | Need integration tests |
+| **F**   | Telephony & Omni-Channel          | 🟡             | 🟡 (specs written) | Manual testing         |
+| **G**   | Privacy & DSR                     | ✅             | 🟡 (specs written) | Manual testing         |
+| **H**   | RBAC & Permissions                | ✅             | 🟡 (specs written) | Need E2E tests         |
+| **I**   | Observability & SLOs              | 🟡             | 🟡 (specs written) | Manual review          |
+| **J**   | Performance & Cost                | 🟡             | 🟡 (specs written) | Load testing           |
+| **K**   | UX Consistency                    | ✅             | 🟡 (specs written) | Accessibility audit    |
+| **L**   | Migrations & Rollbacks            | ✅             | ✅                 | Complete               |
 
 **Legend:**
+
 - ✅ Complete
 - 🟡 Partial/Planned
 - ⏳ Pending
@@ -126,6 +134,7 @@ Creates test tenants and comprehensive data for all subsequent tests.
 ### Step 3: Create E2E Test Suite (2-5 days)
 
 **Sections B-D are the highest priority:**
+
 - B: Core CRM (Contacts, Deals, Pipelines, Tasks)
 - C: Forms & Lead Capture
 - D: Marketing Module visibility
@@ -175,12 +184,14 @@ docs/
 ### ✅ Entitlement Bypass Prevention (A4)
 
 **Before Hardening:** 🔴 Vulnerable
+
 ```typescript
 // Attacker could pass any tenant_id
 check_entitlement(tenant_id: 'victim-uuid', feature: 'marketing')
 ```
 
 **After Hardening:** ✅ Secure
+
 ```typescript
 // No tenant_id parameter - derived from auth context only
 check_entitlement(feature: 'marketing')
@@ -211,6 +222,7 @@ check_entitlement(feature: 'marketing')
 
 **Expected Execution Time:** 1-2 hours  
 **Expected Results:**
+
 - ✅ 256+ RLS policies found
 - ✅ All tenant-scoped tables have RLS enabled
 - ✅ Soft delete working correctly
@@ -296,7 +308,7 @@ check_entitlement(feature: 'marketing')
 ✅ Seed data script successfully creates test data  
 ✅ Test runner script provides clear instructions  
 ✅ Verification report documents all 12 sections  
-✅ Directory structure supports all test types  
+✅ Directory structure supports all test types
 
 **All criteria met!** 🎉
 
@@ -322,25 +334,3 @@ check_entitlement(feature: 'marketing')
 **Created:** October 17, 2025  
 **Version:** 11.0 Post-Hardening  
 **Maintainer:** Development Team
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

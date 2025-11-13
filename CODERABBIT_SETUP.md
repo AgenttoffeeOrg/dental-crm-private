@@ -45,6 +45,7 @@ This document describes the CodeRabbit AI code review setup for the Dental CRM r
 ### Custom Prompts
 
 The configuration includes custom prompts for:
+
 - Next.js 14 best practices
 - React 19 patterns
 - Database and Supabase best practices
@@ -52,6 +53,7 @@ The configuration includes custom prompts for:
 ### Ignored Paths
 
 The following paths are excluded from analysis:
+
 - `node_modules/`
 - `.next/`
 - Test files (`*.test.ts`, `*.spec.ts`)
@@ -67,6 +69,7 @@ The following paths are excluded from analysis:
 ## Usage
 
 CodeRabbit will automatically:
+
 1. Review all pull requests
 2. Comment on code changes
 3. Request changes for critical issues
@@ -75,6 +78,7 @@ CodeRabbit will automatically:
 ## Customization
 
 To modify CodeRabbit behavior, edit `.coderabbit.yaml`:
+
 - Add/remove analyzers
 - Change review thresholds
 - Modify ignore patterns
@@ -84,4 +88,3 @@ To modify CodeRabbit behavior, edit `.coderabbit.yaml`:
 
 - [CodeRabbit Documentation](https://docs.coderabbit.ai/)
 - [Configuration Reference](https://docs.coderabbit.ai/configuration)
-

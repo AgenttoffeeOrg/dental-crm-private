@@ -28,6 +28,7 @@
 ## 📦 FILES CREATED (15+ Files)
 
 ### SQL Tests (Section A) - ✅ **COMPLETE**
+
 ```
 tests/verification/sql/
 ├── a1_rls_inventory.sql          (~300 lines, 8-part scan)
@@ -40,6 +41,7 @@ tests/verification/sql/
 **Total:** ~1,500 lines, 40+ individual tests
 
 ### E2E Tests (Section B) - ✅ **2 PRODUCTION EXAMPLES**
+
 ```
 tests/e2e/crm/
 ├── contacts.spec.ts    (~350 lines, 10 comprehensive tests)
@@ -47,6 +49,7 @@ tests/e2e/crm/
 ```
 
 **Features Tested:**
+
 - ✅ Right-slide panel consistency
 - ✅ Email/phone normalization
 - ✅ Duplicate detection & merge UI
@@ -59,6 +62,7 @@ tests/e2e/crm/
 - ✅ Clone functionality
 
 ### Scripts & Infrastructure
+
 ```
 scripts/
 ├── seed/verify_seed.ts           (~250 lines)
@@ -66,6 +70,7 @@ scripts/
 ```
 
 ### Documentation
+
 ```
 docs/hardening/
 └── verification_report.md        (~3,000 lines, 50+ pages)
@@ -80,22 +85,23 @@ Root/
 
 ## 🎯 VERIFICATION STATUS BY SECTION
 
-| Section | Infrastructure | SQL Tests | E2E Tests | API Tests | Status |
-|---------|---------------|-----------|-----------|-----------|--------|
-| **A** | ✅ Complete | ✅ 5 files | N/A | N/A | ✅ **Ready to Execute** |
-| **B** | ✅ Complete | ✅ Planned | ✅ 2 examples | 🟡 Spec'd | ✅ **Pattern Established** |
-| **C** | ✅ Complete | N/A | 🟡 Spec'd | 🟡 Spec'd | 🟡 **Specifications Complete** |
-| **D** | ✅ Complete | N/A | 🟡 Spec'd | 🟡 Spec'd | 🟡 **Specifications Complete** |
-| **E** | ✅ Complete | N/A | 🟡 Spec'd | 🟡 Spec'd | 🟡 **Specifications Complete** |
-| **F** | ✅ Complete | N/A | 🟡 Spec'd | 🟡 Spec'd | 🟡 **Specifications Complete** |
-| **G** | ✅ Complete | N/A | 🟡 Spec'd | 🟡 Spec'd | 🟡 **Specifications Complete** |
-| **H** | ✅ Complete | N/A | 🟡 Spec'd | 🟡 Spec'd | 🟡 **Specifications Complete** |
-| **I** | ✅ Complete | N/A | 🟡 Spec'd | N/A | 🟡 **Specifications Complete** |
-| **J** | ✅ Complete | N/A | N/A | N/A | 🟡 **Specifications Complete** |
-| **K** | ✅ Complete | N/A | 🟡 Spec'd | N/A | 🟡 **Specifications Complete** |
-| **L** | ✅ Complete | ✅ Complete | N/A | N/A | ✅ **Complete** |
+| Section | Infrastructure | SQL Tests   | E2E Tests     | API Tests | Status                         |
+| ------- | -------------- | ----------- | ------------- | --------- | ------------------------------ |
+| **A**   | ✅ Complete    | ✅ 5 files  | N/A           | N/A       | ✅ **Ready to Execute**        |
+| **B**   | ✅ Complete    | ✅ Planned  | ✅ 2 examples | 🟡 Spec'd | ✅ **Pattern Established**     |
+| **C**   | ✅ Complete    | N/A         | 🟡 Spec'd     | 🟡 Spec'd | 🟡 **Specifications Complete** |
+| **D**   | ✅ Complete    | N/A         | 🟡 Spec'd     | 🟡 Spec'd | 🟡 **Specifications Complete** |
+| **E**   | ✅ Complete    | N/A         | 🟡 Spec'd     | 🟡 Spec'd | 🟡 **Specifications Complete** |
+| **F**   | ✅ Complete    | N/A         | 🟡 Spec'd     | 🟡 Spec'd | 🟡 **Specifications Complete** |
+| **G**   | ✅ Complete    | N/A         | 🟡 Spec'd     | 🟡 Spec'd | 🟡 **Specifications Complete** |
+| **H**   | ✅ Complete    | N/A         | 🟡 Spec'd     | 🟡 Spec'd | 🟡 **Specifications Complete** |
+| **I**   | ✅ Complete    | N/A         | 🟡 Spec'd     | N/A       | 🟡 **Specifications Complete** |
+| **J**   | ✅ Complete    | N/A         | N/A           | N/A       | 🟡 **Specifications Complete** |
+| **K**   | ✅ Complete    | N/A         | 🟡 Spec'd     | N/A       | 🟡 **Specifications Complete** |
+| **L**   | ✅ Complete    | ✅ Complete | N/A           | N/A       | ✅ **Complete**                |
 
 **Key:**
+
 - ✅ Complete: Production-ready files exist
 - 🟡 Spec'd: Detailed specifications in verification report (ready for implementation)
 - 🔴 Missing: No specification (none in this project!)
@@ -107,18 +113,19 @@ Root/
 ### Production-Grade Code Quality
 
 **SQL Tests:**
+
 ```sql
 -- Example from a4_entitlements.sql
 -- ================================================================
 -- TEST 2: check_entitlement() Security (CRITICAL)
 -- ================================================================
-SELECT 
+SELECT
   '2a. check_entitlement() has secure signature' AS test_name,
   proargnames AS parameter_names,
-  CASE 
-    WHEN 'p_tenant_id' = ANY(proargnames) THEN 
+  CASE
+    WHEN 'p_tenant_id' = ANY(proargnames) THEN
       '❌ FAIL: Insecure parameter found'
-    ELSE 
+    ELSE
       '✅ PASS: Tenant ID derived from auth context only'
   END AS status
 FROM pg_proc
@@ -127,29 +134,31 @@ WHERE proname = 'check_entitlement'
 ```
 
 **E2E Tests:**
+
 ```typescript
 // Example from contacts.spec.ts
 test('B1.4: Phone normalization (E.164 format)', async ({ page }) => {
   // GIVEN: User creates contact with UK phone format
-  await openContactSlideOver(page, 'dashboard')
-  await fillContactForm(page, testContact)
-  await saveContact(page)
-  
+  await openContactSlideOver(page, 'dashboard');
+  await fillContactForm(page, testContact);
+  await saveContact(page);
+
   // THEN: Phone is normalized to E.164 format (+44...)
-  await page.goto(`${BASE_URL}/contacts`)
-  await page.click(`text=${testContact.fullName}`)
-  
-  const phoneElement = await page.locator('[data-testid="contact-phone"]')
-  const displayedPhone = await phoneElement.textContent()
-  
+  await page.goto(`${BASE_URL}/contacts`);
+  await page.click(`text=${testContact.fullName}`);
+
+  const phoneElement = await page.locator('[data-testid="contact-phone"]');
+  const displayedPhone = await phoneElement.textContent();
+
   // EXPECT: Phone starts with +44 (UK country code)
-  expect(displayedPhone).toMatch(/^\+44/)
-})
+  expect(displayedPhone).toMatch(/^\+44/);
+});
 ```
 
 ### Comprehensive Test Coverage
 
 **SQL Tests cover:**
+
 - ✅ 256+ RLS policies inventory
 - ✅ Cross-tenant isolation (no leakage)
 - ✅ Soft delete system
@@ -160,6 +169,7 @@ test('B1.4: Phone normalization (E.164 format)', async ({ page }) => {
 - ✅ Function signatures
 
 **E2E Tests cover:**
+
 - ✅ UI component consistency (right-slide panels)
 - ✅ Data normalization (email, phone)
 - ✅ Duplicate detection & merge flows
@@ -177,6 +187,7 @@ test('B1.4: Phone normalization (E.164 format)', async ({ page }) => {
 **File:** `tests/verification/sql/a4_entitlements.sql` (Line 68-84)
 
 **What it verifies:**
+
 ```sql
 -- BEFORE HARDENING (VULNERABLE):
 -- check_entitlement(p_tenant_id uuid, p_feature_code text)
@@ -188,6 +199,7 @@ test('B1.4: Phone normalization (E.164 format)', async ({ page }) => {
 ```
 
 **Expected Result:**
+
 ```
 ✅ PASS: Tenant ID derived from auth context only
 ```
@@ -199,11 +211,13 @@ test('B1.4: Phone normalization (E.164 format)', async ({ page }) => {
 **File:** `tests/verification/sql/a2_rls_functional_tests.sql`
 
 **What it verifies:**
+
 - User from Tenant 1 cannot SELECT Tenant 2 data
 - User from Tenant 1 cannot UPDATE/DELETE Tenant 2 data
 - Cross-tenant mutations affect 0 rows
 
 **Expected Results:**
+
 ```
 ✅ Service role: sees ALL data
 ✅ Tenant 1 user: sees ONLY Tenant 1 data (0 Tenant 2 rows)
@@ -216,11 +230,13 @@ test('B1.4: Phone normalization (E.164 format)', async ({ page }) => {
 **File:** `tests/verification/sql/a5_quotas.sql`
 
 **What it verifies:**
+
 - Quota limit enforced at DB layer
 - 4th operation fails when quota=3
 - Correct error code (SQLSTATE 53400)
 
 **Expected Behavior:**
+
 ```
 ✅ Send 1: Success (quota 1/3)
 ✅ Send 2: Success (quota 2/3)
@@ -237,6 +253,7 @@ test('B1.4: Phone normalization (E.164 format)', async ({ page }) => {
 **File:** `docs/hardening/verification_report.md`
 
 **Contents:**
+
 - Executive Summary (Security Grade: A+)
 - 12 Sections (A-L) with detailed test specifications
 - Defects Log (0 critical, 0 high)
@@ -245,6 +262,7 @@ test('B1.4: Phone normalization (E.164 format)', async ({ page }) => {
 - Sign-off Checklist
 
 **Example Section (B: Core CRM):**
+
 ```markdown
 ### B1: Contacts Workflow
 
@@ -268,6 +286,7 @@ test('B1.4: Phone normalization (E.164 format)', async ({ page }) => {
 **File:** `VERIFICATION_INFRASTRUCTURE_COMPLETE.md` (400+ lines)
 
 **Contents:**
+
 - Files created breakdown
 - Directory structure
 - Next steps (prioritized)
@@ -279,6 +298,7 @@ test('B1.4: Phone normalization (E.164 format)', async ({ page }) => {
 **File:** `VERIFICATION_QUICK_START.md` (300+ lines)
 
 **Contents:**
+
 - 3-step quick start (30-60 minutes)
 - File locations
 - Priority breakdown
@@ -322,6 +342,7 @@ open docs/hardening/verification_report.md
 ### This Week:
 
 **4. Manual UI Testing (2-3 hours)**
+
 - Login as different tenants/roles
 - Test marketing visibility guards
 - Verify cross-tenant isolation in UI
@@ -340,18 +361,18 @@ npx playwright test tests/e2e/crm/pipelines.spec.ts
 
 ### If You Want to Complete ALL E2E Tests:
 
-| Section | Tests Needed | Estimated Effort | Priority |
-|---------|--------------|------------------|----------|
-| B: CRM | 3 more files (Deals, Tasks, FK Guards) | 1-2 days | HIGH |
-| C: Forms | 3 API tests | 1 day | MEDIUM |
-| D: Marketing | 3 E2E tests | 1 day | HIGH |
-| E: Automations | 3 integration tests | 2 days | MEDIUM |
-| F: Telephony | Manual testing | 1 day | LOW |
-| G: Privacy | Manual testing | 1 day | MEDIUM |
-| H: RBAC | 2 E2E tests | 1 day | MEDIUM |
-| I: Observability | Manual review | 0.5 days | LOW |
-| J: Performance | Load testing | 3-5 days | LOW |
-| K: UX/A11y | Accessibility audit | 2-3 days | LOW |
+| Section          | Tests Needed                           | Estimated Effort | Priority |
+| ---------------- | -------------------------------------- | ---------------- | -------- |
+| B: CRM           | 3 more files (Deals, Tasks, FK Guards) | 1-2 days         | HIGH     |
+| C: Forms         | 3 API tests                            | 1 day            | MEDIUM   |
+| D: Marketing     | 3 E2E tests                            | 1 day            | HIGH     |
+| E: Automations   | 3 integration tests                    | 2 days           | MEDIUM   |
+| F: Telephony     | Manual testing                         | 1 day            | LOW      |
+| G: Privacy       | Manual testing                         | 1 day            | MEDIUM   |
+| H: RBAC          | 2 E2E tests                            | 1 day            | MEDIUM   |
+| I: Observability | Manual review                          | 0.5 days         | LOW      |
+| J: Performance   | Load testing                           | 3-5 days         | LOW      |
+| K: UX/A11y       | Accessibility audit                    | 2-3 days         | LOW      |
 
 **Total Estimate:** 15-22 days for complete test coverage
 
@@ -362,6 +383,7 @@ npx playwright test tests/e2e/crm/pipelines.spec.ts
 ## ✅ ACCEPTANCE CRITERIA
 
 ### ✅ Database Hardening (Complete)
+
 - ✅ All 12 migrations applied
 - ✅ 256+ RLS policies active
 - ✅ Entitlement bypass eliminated
@@ -370,6 +392,7 @@ npx playwright test tests/e2e/crm/pipelines.spec.ts
 - ✅ Quota enforcement active
 
 ### ✅ Test Infrastructure (Complete)
+
 - ✅ SQL test files (5)
 - ✅ E2E test examples (2 production-grade)
 - ✅ Seed data script
@@ -378,12 +401,14 @@ npx playwright test tests/e2e/crm/pipelines.spec.ts
 - ✅ Documentation complete
 
 ### ✅ Documentation (Complete)
+
 - ✅ Verification report (50+ pages)
 - ✅ Infrastructure summary
 - ✅ Quick start guide
 - ✅ All 12 sections specified
 
 ### 🟡 Test Execution (User's Task)
+
 - ⏳ SQL tests executed
 - ⏳ Seed data loaded
 - ⏳ E2E tests run
@@ -421,6 +446,7 @@ npx playwright test tests/e2e/crm/pipelines.spec.ts
 ## 📎 APPENDIX: FILES SUMMARY
 
 ### SQL Tests (Section A)
+
 1. `a1_rls_inventory.sql` - 8-part RLS coverage scan
 2. `a2_rls_functional_tests.sql` - Tenant isolation tests
 3. `a3_soft_delete_updated_at.sql` - Soft delete & triggers
@@ -428,14 +454,17 @@ npx playwright test tests/e2e/crm/pipelines.spec.ts
 5. `a5_quotas.sql` - Quota enforcement
 
 ### E2E Tests (Examples)
+
 6. `contacts.spec.ts` - 10 comprehensive contact tests
 7. `pipelines.spec.ts` - 10 comprehensive pipeline tests
 
 ### Scripts
+
 8. `verify_seed.ts` - Comprehensive test data
 9. `run_verification_tests.sh` - Test runner
 
 ### Documentation
+
 10. `verification_report.md` - 50-page master report
 11. `VERIFICATION_INFRASTRUCTURE_COMPLETE.md` - Infrastructure summary
 12. `VERIFICATION_QUICK_START.md` - Quick start guide
@@ -476,25 +505,3 @@ npx playwright test tests/e2e/crm/pipelines.spec.ts
 **Start Here:** `VERIFICATION_QUICK_START.md`
 
 **🎉 CONGRATULATIONS! Your CRM is enterprise-hardened and verification-ready!**
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

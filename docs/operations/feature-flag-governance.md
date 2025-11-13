@@ -29,8 +29,8 @@ Phase 5 introduces a database-backed feature flag registry with tenant overrides
 2. **Tenant rollout**  
    Use the Feature Flags tab to enable/disable per tenant. Optional reason text is saved alongside the audit entry.
 
-3. **Monitoring**  
-   - Dashboard surfacing: the governance UI highlights enabled counts, override counts, and audit coverage.  
+3. **Monitoring**
+   - Dashboard surfacing: the governance UI highlights enabled counts, override counts, and audit coverage.
    - PostHog/metrics: `recordMetric('api', ...)` events allow dashboards to track toggles over time.
 
 4. **Cleanup**  
@@ -53,11 +53,6 @@ curl -X POST https://your-app.com/api/system/feature-flags \
 
 ## Notes
 
-- Flags fall back in this order: tenant override → global override → registry default.  
-- The UI disables toggles for flags marked `allow_tenant_override = false`.  
+- Flags fall back in this order: tenant override → global override → registry default.
+- The UI disables toggles for flags marked `allow_tenant_override = false`.
 - Script usage analytics and persona insights reference these flags for conditional rendering (see `LiveCoachPanel` on the dashboard).
-
-
-
-
-

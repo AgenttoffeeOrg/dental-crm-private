@@ -4,13 +4,13 @@
 # Language and framework settings
 language:
   - name: javascript
-    version: ">=20.0.0"
+    version: '>=20.0.0'
   - name: typescript
-    version: "^5"
+    version: '^5'
   - name: react
-    version: "19.1.0"
+    version: '19.1.0'
   - name: nextjs
-    version: "14.2.18"
+    version: '14.2.18'
 
 # Analyzers configuration
 analyzers:
@@ -36,33 +36,33 @@ analyzers:
 # Paths to include/exclude
 paths:
   include:
-    - "src/**/*.{ts,tsx,js,jsx}"
-    - "supabase/migrations/**/*.sql"
-    - "scripts/**/*.{ts,js,sh}"
+    - 'src/**/*.{ts,tsx,js,jsx}'
+    - 'supabase/migrations/**/*.sql'
+    - 'scripts/**/*.{ts,js,sh}'
   exclude:
-    - "node_modules/**"
-    - ".next/**"
-    - "dist/**"
-    - "build/**"
-    - "**/*.test.{ts,tsx,js,jsx}"
-    - "**/*.spec.{ts,tsx,js,jsx}"
-    - "tests/**"
-    - "__tests__/**"
-    - "public/**"
+    - 'node_modules/**'
+    - '.next/**'
+    - 'dist/**'
+    - 'build/**'
+    - '**/*.test.{ts,tsx,js,jsx}'
+    - '**/*.spec.{ts,tsx,js,jsx}'
+    - 'tests/**'
+    - '__tests__/**'
+    - 'public/**'
 
 # Review settings
 reviews:
   # Review all pull requests
   always_review: true
-  
+
   # Review threshold - minimum number of reviewers
   reviewers:
     min: 1
-  
+
   # Comment on pull requests
   comment:
     enabled: true
-    
+
   # Request changes on critical issues
   request_changes:
     enabled: true
@@ -80,20 +80,20 @@ rules:
     - check_for_xss: true
     - check_for_csrf: true
     - check_dependencies: true
-  
+
   # Code quality rules
   quality:
     - check_complexity: true
     - check_duplication: true
     - check_maintainability: true
     - check_test_coverage: true
-  
+
   # Performance rules
   performance:
     - check_bundle_size: true
     - check_database_queries: true
     - check_api_response_times: true
-  
+
   # Best practices
   best_practices:
     - enforce_typescript: true
@@ -105,20 +105,20 @@ rules:
 ignore:
   # Ignore certain file patterns
   files:
-    - "**/*.d.ts"
-    - "**/generated/**"
-    - "**/migrations/**"
-  
+    - '**/*.d.ts'
+    - '**/generated/**'
+    - '**/migrations/**'
+
   # Ignore certain rules for specific paths
   rules:
-    - path: "**/migrations/**"
+    - path: '**/migrations/**'
       rules:
         - check_test_coverage
         - check_complexity
 
 # Custom prompts for AI review
 prompts:
-  - name: "Next.js Best Practices"
+  - name: 'Next.js Best Practices'
     prompt: |
       Review this code for Next.js 14 best practices:
       - Proper use of Server Components vs Client Components
@@ -127,8 +127,8 @@ prompts:
       - TypeScript type safety
       - Performance optimizations
       - Security considerations
-  
-  - name: "React 19 Patterns"
+
+  - name: 'React 19 Patterns'
     prompt: |
       Review this React code for React 19 patterns:
       - Proper use of hooks
@@ -136,8 +136,8 @@ prompts:
       - State management patterns
       - Performance optimizations (useMemo, useCallback)
       - Accessibility (ARIA labels, keyboard navigation)
-  
-  - name: "Database & Supabase"
+
+  - name: 'Database & Supabase'
     prompt: |
       Review this database code for:
       - Proper use of Row Level Security (RLS)
@@ -150,10 +150,9 @@ prompts:
 notifications:
   # Comment on PRs
   comment: true
-  
+
   # Request changes on critical issues
   request_changes: true
-  
+
   # Approve if no issues found
   auto_approve: false
-

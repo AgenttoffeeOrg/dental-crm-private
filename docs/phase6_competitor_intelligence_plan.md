@@ -1,6 +1,7 @@
 # Phase 6 Implementation Blueprint – Competitor & Coverage Intelligence
 
 ## Vision Alignment
+
 - **Objective**: Equip every tenant with live competitive insight and frictionless insurance clarity so receptionists can remove objections before they surface.
 - **Guiding Principles**:
   - Tenant-first data isolation (RLS parity with existing CRM tables)
@@ -10,6 +11,7 @@
 ## Workstreams & Deliverables
 
 ### 1. Competitor Intelligence Ingestion (P6-2)
+
 - **Data Sources**
   - Manual CSV/Google Sheet uploads (MVP path for smaller clinics)
   - Scheduled HTTP scrapers (SaaS pricing pages, review feeds) using Supabase Edge Functions / queues
@@ -28,6 +30,7 @@
   - Documentation: `docs/operations/competitor-intelligence.md`
 
 ### 2. Leadership Benchmark Dashboards (P6-3)
+
 - **UI Surface**: New dashboard tab `Analytics → Competitive Insights`
 - **Components**
   - Win-rate vs competitor chart (`TopLossReasons`, pipeline stage comparison)
@@ -45,6 +48,7 @@
   - Snapshot tests (Playwright) for high-value widgets
 
 ### 3. Insurance Verification Workflow (P6-4)
+
 - **User Journey**
   1. Receptionist enters insurance provider + member ID
   2. System hits clearinghouse API (mock provider + real connectors later)
@@ -70,6 +74,7 @@
   - End-to-end test covering success + failure scenario
 
 ### 4. Compliance & RLS Hardening (P6-5)
+
 - **Scope**
   - Update RLS policies for new insurance tables (tenant scope, service-role) + competitor storage bucket policies
   - Audit logging: extend `audit_trail` to capture insurance verifications & competitor data edits
@@ -80,12 +85,14 @@
   - Performance considerations (indexes on new tables, queue metrics)
 
 ## Success Criteria
+
 - Competitor data ingestion produces actionable alerts and persists under tenant RLS
 - Competitive Insights dashboard offers leadership-ready visualisations with <2s load
 - Insurance verification workflow reduces manual calls, automatically creates follow-ups, and logs outcomes
 - All new data paths comply with RLS, audit, and retention standards; security scans clean
 
 ## Implementation Order
+
 1. **Foundation**: migrations + service scaffolding (competitor ingestion job stubs, insurance schema)
 2. **Pipelines**: implement competitor ingestion and insurance queues with observability
 3. **UX surfaces**: dashboards + insurance widgets wired to staging data
@@ -93,13 +100,12 @@
 5. **Testing & rollout**: integration tests, Playwright snapshots, ops runbooks
 
 ## Dependencies & Risks
+
 - Ensure existing queues (Phase 5) scaled for new jobs (consider dedicated Redis connections)
 - External payer APIs may vary; start with mock provider + modular connector interface
 - Competitor scraping must respect robots.txt / ToS; provide manual upload fallback to avoid legal risk
 - Leadership dashboard requires reliable data snapshots; plan nightly aggregation job to smooth ingestion noise
 
 ---
+
 This plan anchors Phase 6 while keeping downstream phases unblocked (dashboards, automation, analytics). Next step: execute migrations & services per deliverable list.
-
-
-

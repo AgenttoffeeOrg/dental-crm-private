@@ -15,7 +15,7 @@ The share modal is now working! Here's how to get your form URL to embed in your
 
 1. In the form editor, go to the **"Settings"** tab (or scroll down)
 2. Find the **"Publishing"** section
-3. **Toggle ON** "Publish Form" 
+3. **Toggle ON** "Publish Form"
 4. **Enter a URL slug** (e.g., `appointment-request`, `contact-us`, `new-patient`)
    - This will be your form's public URL: `/f/your-slug`
    - Use lowercase, no spaces (use hyphens)
@@ -42,16 +42,18 @@ The share modal is now working! Here's how to get your form URL to embed in your
 **For your dummy website, use the iframe code:**
 
 ```html
-<iframe 
-    src="https://YOUR-CRM-DOMAIN.com/f/YOUR-FORM-SLUG" 
-    width="100%" 
-    height="600" 
-    frameborder="0" 
-    style="border: none;">
+<iframe
+  src="https://YOUR-CRM-DOMAIN.com/f/YOUR-FORM-SLUG"
+  width="100%"
+  height="600"
+  frameborder="0"
+  style="border: none;"
+>
 </iframe>
 ```
 
 **Or use the Hosted Link directly:**
+
 ```
 https://YOUR-CRM-DOMAIN.com/f/YOUR-FORM-SLUG
 ```
@@ -59,21 +61,25 @@ https://YOUR-CRM-DOMAIN.com/f/YOUR-FORM-SLUG
 ## 🔧 Troubleshooting
 
 ### "Share modal coming soon!" still showing?
+
 - **Refresh your browser** (the code was just updated)
 - Make sure you're clicking the Share button, not Analytics
 
 ### Form not showing when I visit the URL?
+
 - Check that `is_published = true` in form settings
 - Check that `status = 'active'` (not 'draft')
 - Verify the `public_url_slug` is set
 - Make sure the slug matches the URL you're visiting
 
 ### Form URL not working?
+
 - Check your CRM domain is correct
 - Make sure the form route exists: `/f/[slug]`
 - Check browser console for errors
 
 ### Can't find "Publish Form" toggle?
+
 - It's in the form editor → Settings tab → Publishing section
 - Scroll down in the form editor if you don't see it
 
@@ -96,23 +102,23 @@ https://YOUR-CRM-DOMAIN.com/f/YOUR-FORM-SLUG
 **Status:** Active
 
 **Your form URL will be:**
+
 ```
 https://your-crm-domain.com/f/appointment-request
 ```
 
 **Embed code for website:**
+
 ```html
-<iframe 
-    src="https://your-crm-domain.com/f/appointment-request" 
-    width="100%" 
-    height="600" 
-    frameborder="0">
+<iframe
+  src="https://your-crm-domain.com/f/appointment-request"
+  width="100%"
+  height="600"
+  frameborder="0"
+>
 </iframe>
 ```
 
 ---
 
 **That's it!** Now you can embed your form in the dummy practice website at `dentalcrmtest.com`! 🎉
-
-
-

@@ -40,27 +40,30 @@ This document analyzes all onboarding wizard step components, their data loading
 **Function:** `loadExistingProfile()` (line 42)
 
 **Code:**
+
 ```typescript
 const loadExistingProfile = async () => {
   try {
-    const supabase = createClient()
-    
+    const supabase = createClient();
+
     // First, get user's app_user record (name from signup)
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (user) {
       const { data: appUser } = await supabase
         .from('app_users')
         .select('full_name, professional_title, phone_mobile, phone_office, bio, profile_photo_url')
         .eq('id', user.id)
-        .single()
+        .single();
 
       if (appUser) {
         // Pre-fill with data from signup (name) and existing profile data
         if (appUser.full_name && !stepData.full_name) {
-          updateFieldValue('full_name', appUser.full_name)
+          updateFieldValue('full_name', appUser.full_name);
         }
         if (appUser.professional_title && !stepData.professional_title) {
-          updateFieldValue('professional_title', appUser.professional_title)
+          updateFieldValue('professional_title', appUser.professional_title);
         }
         // ... (more fields)
       }
@@ -68,34 +71,37 @@ const loadExistingProfile = async () => {
 
     // Also try loading from /api/user/profile if it exists
     try {
-      const response = await fetch('/api/user/profile')
+      const response = await fetch('/api/user/profile');
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json();
         // Pre-fill if not already set
       }
     } catch (apiError) {
       // API endpoint might not exist - that's okay
     }
   } catch (error) {
-    console.error('Error loading profile:', error)
+    console.error('Error loading profile:', error);
   }
-}
+};
 ```
 
 **Database Queries:**
+
 1. Query `app_users` table: `full_name`, `professional_title`, `phone_mobile`, `phone_office`, `bio`, `profile_photo_url`
 2. Optional: `GET /api/user/profile` (if endpoint exists)
 
 **API Calls:**
+
 - `GET /api/user/profile` (optional, may not exist)
 
 **useEffect Hooks:**
 
 **Hook 1 (Line 38):**
+
 ```typescript
 useEffect(() => {
-  loadExistingProfile()
-}, [])
+  loadExistingProfile();
+}, []);
 ```
 
 **Dependency Array:** `[]` (empty) - Runs once on mount
@@ -107,8 +113,9 @@ useEffect(() => {
 **currentStepId Usage:**
 
 **How component gets `currentStepId`:**
+
 ```typescript
-const { updateFieldValue, formData, currentStepId, currentStepData } = useWizard()
+const { updateFieldValue, formData, currentStepId, currentStepData } = useWizard();
 ```
 
 From context via `useWizard()` hook.
@@ -116,11 +123,13 @@ From context via `useWizard()` hook.
 **Form Data Structure:**
 
 **Access Pattern:**
+
 ```typescript
-const stepData = formData[currentStepId] || {}
+const stepData = formData[currentStepId] || {};
 ```
 
 **Structure:**
+
 ```typescript
 formData['profile_setup'] = {
   full_name: string,
@@ -128,8 +137,8 @@ formData['profile_setup'] = {
   phone_mobile: string,
   phone_office: string,
   bio: string,
-  profile_photo_url: string
-}
+  profile_photo_url: string,
+};
 ```
 
 **Update Logic:**
@@ -137,28 +146,32 @@ formData['profile_setup'] = {
 **Function:** `updateFieldValue` from context (line 156 in wizard-context.tsx)
 
 **How it's called:**
+
 ```typescript
-updateFieldValue('full_name', appUser.full_name)
+updateFieldValue('full_name', appUser.full_name);
 ```
 
 **Parameters:**
+
 - `fieldName`: String (e.g., 'full_name')
 - `value`: Any (string, number, etc.)
 
 **What it does:**
+
 ```typescript
-setFormData(prev => ({
+setFormData((prev) => ({
   ...prev,
   [currentStepId]: {
     ...prev[currentStepId],
-    [fieldName]: value
-  }
-}))
+    [fieldName]: value,
+  },
+}));
 ```
 
 **Pre-fill Logic:**
 
 **Where does name/email come from?**
+
 - **Name:** From `app_users.full_name` (set during signup)
 - **Email:** Not shown in this step (handled in email verification step)
 - **Other fields:** From `app_users` table columns
@@ -176,58 +189,67 @@ setFormData(prev => ({
 **Function:** `loadExistingData()` (line 52)
 
 **Code:**
+
 ```typescript
 const loadExistingData = async () => {
   try {
-    setLoading(true)
-    const supabase = createClient()
-    
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    setLoading(true);
+    const supabase = createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
     // Get tenant_id (use active_tenant_id first, fallback to tenant_id)
     const { data: appUser } = await supabase
       .from('app_users')
       .select('tenant_id, active_tenant_id')
       .eq('id', user.id)
-      .single()
+      .single();
 
-    if (!appUser) return
+    if (!appUser) return;
 
-    const tenantId = appUser.active_tenant_id || appUser.tenant_id
-    setHasTenant(!!tenantId)
+    const tenantId = appUser.active_tenant_id || appUser.tenant_id;
+    setHasTenant(!!tenantId);
 
     if (tenantId) {
       // Load existing tenant/organization data
       const { data: tenant } = await supabase
         .from('tenants')
-        .select('name, description, specialty, website_url, logo_url, industry, company_size, founded_date')
+        .select(
+          'name, description, specialty, website_url, logo_url, industry, company_size, founded_date'
+        )
         .eq('id', tenantId)
-        .single()
+        .single();
 
       if (tenant) {
         // ✅ FIX: Always pre-fill from DB data (DB is source of truth)
-        const existingStepData = formData['organization_setup'] || {}
-        
+        const existingStepData = formData['organization_setup'] || {};
+
         // Force pre-fill from DB (DB data takes precedence over saved empty values)
         if (tenant.name && (!existingStepData.name || existingStepData.name === '')) {
-          updateFieldValue('name', tenant.name)
+          updateFieldValue('name', tenant.name);
         }
-        if (tenant.description && (!existingStepData.description || existingStepData.description === '')) {
-          updateFieldValue('description', tenant.description)
+        if (
+          tenant.description &&
+          (!existingStepData.description || existingStepData.description === '')
+        ) {
+          updateFieldValue('description', tenant.description);
         }
         // ... (more fields)
       }
     }
   } catch (error) {
-    console.error('Error loading organization data:', error)
+    console.error('Error loading organization data:', error);
   } finally {
-    setLoading(false)
+    setLoading(false);
   }
-}
+};
 ```
 
 **Database Queries:**
+
 1. Query `app_users`: `tenant_id`, `active_tenant_id`
 2. Query `tenants`: `name`, `description`, `specialty`, `website_url`, `logo_url`, etc.
 
@@ -236,12 +258,13 @@ const loadExistingData = async () => {
 **useEffect Hooks:**
 
 **Hook 1 (Line 44):**
+
 ```typescript
 useEffect(() => {
   if (currentStepId === 'organization_setup') {
-    loadExistingData()
+    loadExistingData();
   }
-}, [currentStepId])
+}, [currentStepId]);
 ```
 
 **Dependency Array:** `[currentStepId]` - Runs when step becomes active
@@ -253,14 +276,16 @@ useEffect(() => {
 **currentStepId Usage:**
 
 **From context:**
+
 ```typescript
-const { updateFieldValue, formData, currentStepId } = useWizard()
+const { updateFieldValue, formData, currentStepId } = useWizard();
 ```
 
 **Conditional loading:**
+
 ```typescript
 if (currentStepId === 'organization_setup') {
-  loadExistingData()
+  loadExistingData();
 }
 ```
 
@@ -273,7 +298,7 @@ formData['organization_setup'] = {
   specialty: string,
   logo_url: string,
   // ... (more fields)
-}
+};
 ```
 
 **Update Logic:**
@@ -283,11 +308,13 @@ Same as PersonalInfoStep - uses `updateFieldValue` from context.
 **Pre-fill Logic:**
 
 **Where does org name come from?**
+
 - From `tenants.name` column (database)
 - Only pre-fills if formData doesn't already have a non-empty value (line 86)
 - **Issue:** The condition `!existingStepData.name || existingStepData.name === ''` may cause issues if saved progress has empty string
 
 **Critical Fix Comment (Line 81):**
+
 ```typescript
 // ✅ FIX: Always pre-fill from DB data (DB is source of truth)
 // Only skip if formData already has a non-empty value (user edited it)
@@ -308,26 +335,29 @@ This suggests there was a bug where empty saved progress overwrote DB data.
 **Function:** `loadExistingData()` (line 40)
 
 **Code:**
+
 ```typescript
 const loadExistingData = async () => {
   try {
-    setLoading(true)
-    const supabase = createClient()
-    
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    setLoading(true);
+    const supabase = createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
     // Get tenant_id (use active_tenant_id first, fallback to tenant_id)
     const { data: appUser } = await supabase
       .from('app_users')
       .select('tenant_id, active_tenant_id, active_location_id')
       .eq('id', user.id)
-      .single()
+      .single();
 
-    if (!appUser) return
+    if (!appUser) return;
 
-    const tenantId = appUser.active_tenant_id || appUser.tenant_id
-    setHasTenant(!!tenantId)
+    const tenantId = appUser.active_tenant_id || appUser.tenant_id;
+    setHasTenant(!!tenantId);
 
     if (tenantId) {
       // ✅ FIRST: Try to load location by active_location_id if set
@@ -337,23 +367,26 @@ const loadExistingData = async () => {
           .select('name, address, city, postal_code, phone')
           .eq('id', appUser.active_location_id)
           .eq('tenant_id', tenantId) // Security: ensure location belongs to tenant
-          .single()
+          .single();
 
         if (location) {
           // Pre-fill from location data
           // Map database columns (address, phone) to form field names (address_line1, phone_number)
           if (location.name && (!existingStepData.name || existingStepData.name === '')) {
-            updateFieldValue('name', location.name)
+            updateFieldValue('name', location.name);
           }
-          if (location.address && (!existingStepData.address_line1 || existingStepData.address_line1 === '')) {
-            updateFieldValue('address_line1', location.address)
+          if (
+            location.address &&
+            (!existingStepData.address_line1 || existingStepData.address_line1 === '')
+          ) {
+            updateFieldValue('address_line1', location.address);
           }
           // ... (more fields)
-          return // Found location, exit early
+          return; // Found location, exit early
         }
       }
 
-      // ✅ FALLBACK: If no active_location_id or location not found, 
+      // ✅ FALLBACK: If no active_location_id or location not found,
       // load the first/default location for this tenant
       const { data: locations } = await supabase
         .from('locations')
@@ -361,22 +394,23 @@ const loadExistingData = async () => {
         .eq('tenant_id', tenantId)
         .order('is_primary', { ascending: false }) // Primary location first
         .order('created_at', { ascending: true }) // Then oldest (likely default)
-        .limit(1)
+        .limit(1);
 
       if (locations && locations.length > 0) {
-        const location = locations[0]
+        const location = locations[0];
         // Pre-fill from location data
       }
     }
   } catch (error) {
-    console.error('Error loading location data:', error)
+    console.error('Error loading location data:', error);
   } finally {
-    setLoading(false)
+    setLoading(false);
   }
-}
+};
 ```
 
 **Database Queries:**
+
 1. Query `app_users`: `tenant_id`, `active_tenant_id`, `active_location_id`
 2. Query `locations` by `active_location_id` (if set)
 3. Fallback: Query `locations` by `tenant_id`, order by `is_primary` DESC, `created_at` ASC, limit 1
@@ -386,12 +420,13 @@ const loadExistingData = async () => {
 **useEffect Hooks:**
 
 **Hook 1 (Line 32):**
+
 ```typescript
 useEffect(() => {
   if (currentStepId === 'location_setup') {
-    loadExistingData()
+    loadExistingData();
   }
-}, [currentStepId])
+}, [currentStepId]);
 ```
 
 **Dependency Array:** `[currentStepId]` - Runs when step becomes active
@@ -405,16 +440,17 @@ Same pattern as CompanyInfoStep - conditional loading based on `currentStepId ==
 ```typescript
 formData['location_setup'] = {
   name: string,
-  address_line1: string,  // Maps to locations.address
+  address_line1: string, // Maps to locations.address
   city: string,
   postal_code: string,
-  phone_number: string,  // Maps to locations.phone
-}
+  phone_number: string, // Maps to locations.phone
+};
 ```
 
 **Field Mapping:**
 
 **Database → Form:**
+
 - `locations.address` → `formData['location_setup'].address_line1`
 - `locations.phone` → `formData['location_setup'].phone_number`
 
@@ -425,10 +461,12 @@ Same as other steps - uses `updateFieldValue`.
 **Pre-fill Logic:**
 
 **Where does default location come from?**
+
 1. **First:** Try `app_users.active_location_id` (if set)
 2. **Fallback:** Query `locations` table, get first location for tenant (ordered by `is_primary` DESC, then `created_at` ASC)
 
 **Critical Fix Comment (Line 71):**
+
 ```typescript
 // ✅ FIX: Always pre-fill from DB data (DB is source of truth)
 // Map database columns (address, phone) to form field names (address_line1, phone_number)
@@ -507,9 +545,10 @@ This suggests there was a bug with field name mismatches.
 **Query:** `SELECT name FROM tenants WHERE id = tenantId`
 
 **Pre-fill condition:**
+
 ```typescript
 if (tenant.name && (!existingStepData.name || existingStepData.name === '')) {
-  updateFieldValue('name', tenant.name)
+  updateFieldValue('name', tenant.name);
 }
 ```
 
@@ -526,6 +565,7 @@ if (tenant.name && (!existingStepData.name || existingStepData.name === '')) {
 **Priority 2:** First location for tenant (ordered by `is_primary` DESC, `created_at` ASC)
 
 **Query:**
+
 ```typescript
 SELECT name, address, city, postal_code, phone
 FROM locations
@@ -549,12 +589,13 @@ LIMIT 1
 **Fix:** Use `[currentStepId]` dependency and check `currentStepId === 'profile_setup'`
 
 **Better Pattern:**
+
 ```typescript
 useEffect(() => {
   if (currentStepId === 'profile_setup') {
-    loadExistingProfile()
+    loadExistingProfile();
   }
-}, [currentStepId])
+}, [currentStepId]);
 ```
 
 ---
@@ -566,18 +607,20 @@ useEffect(() => {
 **Example:** `CompanyInfoStep` (line 86)
 
 **Current Logic:**
+
 ```typescript
 if (tenant.name && (!existingStepData.name || existingStepData.name === '')) {
-  updateFieldValue('name', tenant.name)
+  updateFieldValue('name', tenant.name);
 }
 ```
 
 **Issue:** If `formData['organization_setup'] = { name: '' }` (empty string from saved progress), the condition `existingStepData.name === ''` is true, so `!existingStepData.name || existingStepData.name === ''` evaluates to `false || true = true`, which should work. But the logic may be confusing.
 
 **Better Logic:**
+
 ```typescript
 if (tenant.name && !existingStepData?.name?.trim()) {
-  updateFieldValue('name', tenant.name)
+  updateFieldValue('name', tenant.name);
 }
 ```
 
@@ -588,6 +631,7 @@ if (tenant.name && !existingStepData?.name?.trim()) {
 **Problem:** Database columns don't match form field names.
 
 **Example:**
+
 - Database: `locations.address` → Form: `address_line1`
 - Database: `locations.phone` → Form: `phone_number`
 
@@ -605,15 +649,3 @@ if (tenant.name && !existingStepData?.name?.trim()) {
 4. **Form Data Structure:** `formData[stepId][fieldName] = value`
 5. **Pre-fill Logic:** Checks if formData is empty before pre-filling from DB
 6. **Issues:** Empty string handling, field name mismatches, dependency arrays
-
-
-
-
-
-
-
-
-
-
-
-

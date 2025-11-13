@@ -12,12 +12,14 @@ Phase 2 introduces a nightly learning loop that recalculates script performance 
 - **Queue**: `analytics:learning-loop` (BullMQ). Enable with `QUEUE_ANALYTICS=true`.
 - **Worker**: Start with `npm run workers:analytics`.
 - **Manual Trigger**:
+
   ```bash
   curl -X POST https://app.example.com/api/system/analytics/recompute \
     -H "Authorization: Bearer <token>" \
     -H "Content-Type: application/json" \
     -d '{"tenantId":"<tenant-id>","mode":"sync"}'
   ```
+
   - `targetDate` (ISO string) defaults to yesterday.
   - `mode` defaults to `async`. Use `sync` for immediate recompute (e.g., in tests).
 
@@ -33,7 +35,3 @@ curl -X POST https://app.example.com/api/system/analytics/recompute \
 ```
 
 Without queue support the endpoint runs synchronously, making it safe for local environments.
-
-
-
-

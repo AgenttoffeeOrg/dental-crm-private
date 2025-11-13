@@ -1,19 +1,13 @@
-'use client'
+'use client';
 
-import { useEffect, useMemo, useState } from 'react'
-import { formatDistanceToNow } from 'date-fns'
-import { Activity, AlertTriangle, Loader2, RefreshCcw, Repeat2, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { useEffect, useMemo, useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { Activity, AlertTriangle, Loader2, RefreshCcw, Repeat2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -21,130 +15,130 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/components/ui/table';
 
-type Severity = 'info' | 'warning' | 'critical'
+type Severity = 'info' | 'warning' | 'critical';
 
 interface QueueSnapshot {
-  counts: Record<string, number>
-  oldestWaitingAgeSeconds: number | null
-  oldestDelayedAgeSeconds: number | null
+  counts: Record<string, number>;
+  oldestWaitingAgeSeconds: number | null;
+  oldestDelayedAgeSeconds: number | null;
   workers: {
-    id: string
-    name?: string
-    addr?: string
-    age?: number
-    idle?: boolean
-  }[]
+    id: string;
+    name?: string;
+    addr?: string;
+    age?: number;
+    idle?: boolean;
+  }[];
 }
 
 interface QueueEvaluation {
-  status: 'healthy' | 'breached' | 'resolved'
-  severity: Severity
+  status: 'healthy' | 'breached' | 'resolved';
+  severity: Severity;
   breaches: {
-    metric: string
-    description: string
-    actual: number
-    threshold: number
-  }[]
+    metric: string;
+    description: string;
+    actual: number;
+    threshold: number;
+  }[];
 }
 
 interface QueueSummary {
-  name: string
-  snapshot: QueueSnapshot | null
-  severity: Severity
-  evaluations: QueueEvaluation[]
-  incidents: any[]
+  name: string;
+  snapshot: QueueSnapshot | null;
+  severity: Severity;
+  evaluations: QueueEvaluation[];
+  incidents: any[];
 }
 
 interface DeadLetterJob {
-  id: string
-  name: string
+  id: string;
+  name: string;
   data: {
-    failedQueue?: string
-    payload?: any
-    attemptsMade?: number
-    failedReason?: string
-    timestamp?: number
-  }
-  failedReason?: string
-  attemptsMade?: number
-  timestamp?: number
+    failedQueue?: string;
+    payload?: any;
+    attemptsMade?: number;
+    failedReason?: string;
+    timestamp?: number;
+  };
+  failedReason?: string;
+  attemptsMade?: number;
+  timestamp?: number;
 }
 
 interface BackupRun {
-  id: string
-  status: 'pass' | 'fail' | 'skipped'
-  environment: string
-  started_at: string
-  completed_at?: string | null
-  duration_ms?: number | null
-  details: Record<string, any>
-  log_url?: string | null
+  id: string;
+  status: 'pass' | 'fail' | 'skipped';
+  environment: string;
+  started_at: string;
+  completed_at?: string | null;
+  duration_ms?: number | null;
+  details: Record<string, any>;
+  log_url?: string | null;
 }
 
 interface AlertsResponse {
-  queues: QueueSummary[]
-  backupRuns: BackupRun[]
-  incidents: any[]
-  evaluations: QueueEvaluation[]
+  queues: QueueSummary[];
+  backupRuns: BackupRun[];
+  incidents: any[];
+  evaluations: QueueEvaluation[];
 }
 
 const DLQ_OPTIONS: { key: 'communications' | 'engagement'; label: string }[] = [
   { key: 'communications', label: 'Communications' },
   { key: 'engagement', label: 'Engagement Campaigns' },
-]
+];
 
 export function SystemReliabilityTab() {
-  const [loading, setLoading] = useState(true)
-  const [queues, setQueues] = useState<QueueSummary[]>([])
-  const [backupRuns, setBackupRuns] = useState<BackupRun[]>([])
-  const [selectedDlq, setSelectedDlq] = useState<'communications' | 'engagement'>('communications')
-  const [deadLetterJobs, setDeadLetterJobs] = useState<DeadLetterJob[]>([])
-  const [deadLetterLoading, setDeadLetterLoading] = useState(false)
+  const [loading, setLoading] = useState(true);
+  const [queues, setQueues] = useState<QueueSummary[]>([]);
+  const [backupRuns, setBackupRuns] = useState<BackupRun[]>([]);
+  const [selectedDlq, setSelectedDlq] = useState<'communications' | 'engagement'>('communications');
+  const [deadLetterJobs, setDeadLetterJobs] = useState<DeadLetterJob[]>([]);
+  const [deadLetterLoading, setDeadLetterLoading] = useState(false);
 
   const incidentCounts = useMemo(() => {
-    const critical = queues.filter((queue) => queue.severity === 'critical').length
-    const warnings = queues.filter((queue) => queue.severity === 'warning').length
-    return { critical, warnings }
-  }, [queues])
+    const critical = queues.filter((queue) => queue.severity === 'critical').length;
+    const warnings = queues.filter((queue) => queue.severity === 'warning').length;
+    return { critical, warnings };
+  }, [queues]);
 
   const loadReliability = async () => {
     try {
-      setLoading(true)
-      const response = await fetch('/api/system/queues/alerts', { credentials: 'include' })
+      setLoading(true);
+      const response = await fetch('/api/system/queues/alerts', { credentials: 'include' });
       if (!response.ok) {
-        throw new Error(await response.text())
+        throw new Error(await response.text());
       }
-      const data = (await response.json()) as AlertsResponse
-      setQueues(data.queues || [])
-      setBackupRuns(data.backupRuns || [])
+      const data = (await response.json()) as AlertsResponse;
+      setQueues(data.queues || []);
+      setBackupRuns(data.backupRuns || []);
     } catch (error) {
-      console.error('[Reliability] failed to load', error)
-      toast.error('Failed to load reliability metrics')
+      console.error('[Reliability] failed to load', error);
+      toast.error('Failed to load reliability metrics');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadDeadLetter = async (queueKey: 'communications' | 'engagement') => {
     try {
-      setDeadLetterLoading(true)
+      setDeadLetterLoading(true);
       const response = await fetch(`/api/system/queues/deadletter?queue=${queueKey}`, {
         credentials: 'include',
-      })
+      });
       if (!response.ok) {
-        throw new Error(await response.text())
+        throw new Error(await response.text());
       }
-      const data = await response.json()
-      setDeadLetterJobs(data.jobs || [])
+      const data = await response.json();
+      setDeadLetterJobs(data.jobs || []);
     } catch (error) {
-      console.error('[Reliability] failed to load dead letter queue', error)
-      toast.error('Failed to load dead-letter queue')
+      console.error('[Reliability] failed to load dead letter queue', error);
+      toast.error('Failed to load dead-letter queue');
     } finally {
-      setDeadLetterLoading(false)
+      setDeadLetterLoading(false);
     }
-  }
+  };
 
   const handleDeadLetterAction = async (
     action: 'replay' | 'discard',
@@ -161,43 +155,41 @@ export function SystemReliabilityTab() {
           jobId: job.id,
           queue: queueKey,
         }),
-      })
+      });
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}))
-        throw new Error(errorBody?.error || 'Failed to update dead-letter job')
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody?.error || 'Failed to update dead-letter job');
       }
 
       toast.success(
-        action === 'replay'
-          ? 'Job re-queued successfully'
-          : 'Job archived from dead-letter queue'
-      )
-      loadDeadLetter(queueKey)
+        action === 'replay' ? 'Job re-queued successfully' : 'Job archived from dead-letter queue'
+      );
+      loadDeadLetter(queueKey);
     } catch (error) {
-      console.error('[Reliability] dead-letter action failed', error)
-      toast.error('Dead-letter operation failed')
+      console.error('[Reliability] dead-letter action failed', error);
+      toast.error('Dead-letter operation failed');
     }
-  }
+  };
 
   useEffect(() => {
-    loadReliability()
-  }, [])
+    loadReliability();
+  }, []);
 
   useEffect(() => {
-    loadDeadLetter(selectedDlq)
-  }, [selectedDlq])
+    loadDeadLetter(selectedDlq);
+  }, [selectedDlq]);
 
   const severityBadge = (severity: Severity) => {
     switch (severity) {
       case 'critical':
-        return <Badge className="bg-red-100 text-red-700">Critical</Badge>
+        return <Badge className="bg-red-100 text-red-700">Critical</Badge>;
       case 'warning':
-        return <Badge className="bg-amber-100 text-amber-700">Warning</Badge>
+        return <Badge className="bg-amber-100 text-amber-700">Warning</Badge>;
       default:
-        return <Badge className="bg-emerald-100 text-emerald-700">Healthy</Badge>
+        return <Badge className="bg-emerald-100 text-emerald-700">Healthy</Badge>;
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -207,7 +199,7 @@ export function SystemReliabilityTab() {
           Loading reliability metrics…
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -246,16 +238,16 @@ export function SystemReliabilityTab() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {queues.map((queue) => {
-          const counts = queue.snapshot?.counts || {}
+          const counts = queue.snapshot?.counts || {};
           return (
             <Card key={queue.name} className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-base capitalize">{queue.name.replace(':', ' · ')}</CardTitle>
+                  <CardTitle className="text-base capitalize">
+                    {queue.name.replace(':', ' · ')}
+                  </CardTitle>
                   <CardDescription>
-                    Workers:{' '}
-                    {queue.snapshot?.workers?.length ?? 0}{' '}
-                    · Oldest waiting{' '}
+                    Workers: {queue.snapshot?.workers?.length ?? 0} · Oldest waiting{' '}
                     {queue.snapshot?.oldestWaitingAgeSeconds != null
                       ? `${queue.snapshot.oldestWaitingAgeSeconds}s`
                       : '—'}
@@ -272,7 +264,9 @@ export function SystemReliabilityTab() {
                 </div>
 
                 {queue.evaluations
-                  .filter((evaluation) => evaluation.status !== 'healthy' && evaluation.breaches.length)
+                  .filter(
+                    (evaluation) => evaluation.status !== 'healthy' && evaluation.breaches.length
+                  )
                   .map((evaluation, index) => (
                     <div
                       key={`${queue.name}-breach-${index}`}
@@ -306,7 +300,9 @@ export function SystemReliabilityTab() {
                         <li key={incident.id} className="flex justify-between gap-4">
                           <span>{incident.incident_type}</span>
                           <span>
-                            {formatDistanceToNow(new Date(incident.detected_at), { addSuffix: true })}
+                            {formatDistanceToNow(new Date(incident.detected_at), {
+                              addSuffix: true,
+                            })}
                           </span>
                         </li>
                       ))}
@@ -315,7 +311,7 @@ export function SystemReliabilityTab() {
                 )}
               </CardContent>
             </Card>
-          )
+          );
         })}
       </div>
 
@@ -451,8 +447,8 @@ export function SystemReliabilityTab() {
                         run.status === 'pass'
                           ? 'bg-emerald-100 text-emerald-700'
                           : run.status === 'fail'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-gray-100 text-gray-600'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-600'
                       }
                     >
                       {run.status.toUpperCase()}
@@ -474,7 +470,7 @@ export function SystemReliabilityTab() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 const MetricTile = ({ label, value }: { label: string; value: number }) => (
@@ -482,9 +478,4 @@ const MetricTile = ({ label, value }: { label: string; value: number }) => (
     <p className="text-xs uppercase text-gray-500">{label}</p>
     <p className="mt-1 text-lg font-semibold text-gray-900">{value}</p>
   </div>
-)
-
-
-
-
-
+);

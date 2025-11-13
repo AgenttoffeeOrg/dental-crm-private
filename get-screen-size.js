@@ -6,12 +6,14 @@
  */
 
 console.log('\n📺 Screen Size Information\n');
-console.log('=' .repeat(50));
+console.log('='.repeat(50));
 
 // System Resolution (from system_profiler)
 const { execSync } = require('child_process');
 try {
-  const output = execSync('system_profiler SPDisplaysDataType | grep -A 1 "Resolution"', { encoding: 'utf-8' });
+  const output = execSync('system_profiler SPDisplaysDataType | grep -A 1 "Resolution"', {
+    encoding: 'utf-8',
+  });
   const resolutionMatch = output.match(/Resolution:\s+(\d+)\s+x\s+(\d+)/);
   if (resolutionMatch) {
     console.log('\n🖥️  System Resolution:');
@@ -44,5 +46,3 @@ console.log('   • Or: 2560 x 1664 (without scaling)');
 console.log('   • Check browser DevTools to see actual viewport');
 
 console.log('\n' + '='.repeat(50) + '\n');
-
-

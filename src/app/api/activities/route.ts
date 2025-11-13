@@ -1,20 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { ApiContextError, getApiRequestContext } from '@/lib/api/context'
-import { ActivityCreateSchema, ActivityQuerySchema, safeValidateActivity } from '@/schemas/activity.schema'
+import { NextRequest, NextResponse } from 'next/server';
+import { ApiContextError, getApiRequestContext } from '@/lib/api/context';
+import {
+  ActivityCreateSchema,
+  ActivityQuerySchema,
+  safeValidateActivity,
+} from '@/schemas/activity.schema';
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getApiRequestContext()
-    const { supabase, tenantId, membership, accessibleLocationIds } = context
+    const context = await getApiRequestContext();
+    const { supabase, tenantId, membership, accessibleLocationIds } = context;
 
-    const rawParams = Object.fromEntries(request.nextUrl.searchParams)
-    const validation = safeValidateActivity(rawParams, ActivityQuerySchema)
+    const rawParams = Object.fromEntries(request.nextUrl.searchParams);
+    const validation = safeValidateActivity(rawParams, ActivityQuerySchema);
 
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Invalid query parameters', details: validation.error.errors },
         { status: 400 }
-      )
+      );
     }
 
     const {
@@ -29,7 +33,7 @@ export async function GET(request: NextRequest) {
       occurred_after,
       limit,
       offset,
-    } = validation.data
+    } = validation.data;
 
     let query = supabase
       .from('activities')
@@ -53,7 +57,7 @@ export async function GET(request: NextRequest) {
         `,
         { count: 'exact' }
       )
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', tenantId);
 
     if (!membership.all_locations) {
       if (!accessibleLocationIds || accessibleLocationIds.length === 0) {
@@ -65,36 +69,35 @@ export async function GET(request: NextRequest) {
             offset,
             hasMore: false,
           },
-        })
+        });
       }
-      query = query.in('location_id', accessibleLocationIds)
+      query = query.in('location_id', accessibleLocationIds);
     }
 
     if (location_id) {
       if (!membership.all_locations && !accessibleLocationIds?.includes(location_id)) {
-        return NextResponse.json({ error: 'Location access denied' }, { status: 403 })
+        return NextResponse.json({ error: 'Location access denied' }, { status: 403 });
       }
-      query = query.eq('location_id', location_id)
+      query = query.eq('location_id', location_id);
     }
 
-    if (type) query = query.eq('type', type)
-    if (direction) query = query.eq('direction', direction)
-    if (contact_id) query = query.eq('contact_id', contact_id)
-    if (deal_id) query = query.eq('deal_id', deal_id)
-    if (script_version_id) query = query.eq('script_version_id', script_version_id)
-    if (conversation_session_id) query = query.eq('conversation_session_id', conversation_session_id)
-    if (occurred_before) query = query.lte('occurred_at', occurred_before)
-    if (occurred_after) query = query.gte('occurred_at', occurred_after)
+    if (type) query = query.eq('type', type);
+    if (direction) query = query.eq('direction', direction);
+    if (contact_id) query = query.eq('contact_id', contact_id);
+    if (deal_id) query = query.eq('deal_id', deal_id);
+    if (script_version_id) query = query.eq('script_version_id', script_version_id);
+    if (conversation_session_id)
+      query = query.eq('conversation_session_id', conversation_session_id);
+    if (occurred_before) query = query.lte('occurred_at', occurred_before);
+    if (occurred_after) query = query.gte('occurred_at', occurred_after);
 
-    query = query
-      .range(offset, offset + limit - 1)
-      .order('occurred_at', { ascending: false })
+    query = query.range(offset, offset + limit - 1).order('occurred_at', { ascending: false });
 
-    const { data: activities, error, count } = await query
+    const { data: activities, error, count } = await query;
 
     if (error) {
-      console.error('[API:activities] Failed to fetch activities', error)
-      return NextResponse.json({ error: 'Failed to fetch activities' }, { status: 500 })
+      console.error('[API:activities] Failed to fetch activities', error);
+      return NextResponse.json({ error: 'Failed to fetch activities' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -103,34 +106,35 @@ export async function GET(request: NextRequest) {
         total: count ?? 0,
         limit,
         offset,
-        hasMore: (offset + limit) < (count ?? 0),
+        hasMore: offset + limit < (count ?? 0),
       },
-    })
+    });
   } catch (error) {
     if (error instanceof ApiContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status })
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
-    console.error('[API:activities] Unexpected error', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[API:activities] Unexpected error', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = await request.json()
-    const validation = safeValidateActivity(payload, ActivityCreateSchema)
+    const payload = await request.json();
+    const validation = safeValidateActivity(payload, ActivityCreateSchema);
 
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Validation failed', details: validation.error.errors },
         { status: 400 }
-      )
+      );
     }
 
-    const context = await getApiRequestContext()
-    const { supabase, tenantId, user, activeLocationId, membership, accessibleLocationIds } = context
-    const data = validation.data
+    const context = await getApiRequestContext();
+    const { supabase, tenantId, user, activeLocationId, membership, accessibleLocationIds } =
+      context;
+    const data = validation.data;
 
     // Verify contact belongs to tenant
     const { data: contact } = await supabase
@@ -138,13 +142,13 @@ export async function POST(request: NextRequest) {
       .select('id, location_id')
       .eq('id', data.contact_id)
       .eq('tenant_id', tenantId)
-      .single()
+      .single();
 
     if (!contact) {
-      return NextResponse.json({ error: 'Contact not found for tenant' }, { status: 404 })
+      return NextResponse.json({ error: 'Contact not found for tenant' }, { status: 404 });
     }
 
-    let resolvedLocationId = data.location_id ?? contact.location_id ?? activeLocationId ?? null
+    let resolvedLocationId = data.location_id ?? contact.location_id ?? activeLocationId ?? null;
 
     if (data.deal_id) {
       const { data: deal } = await supabase
@@ -152,18 +156,18 @@ export async function POST(request: NextRequest) {
         .select('id, location_id')
         .eq('id', data.deal_id)
         .eq('tenant_id', tenantId)
-        .single()
+        .single();
 
       if (!deal) {
-        return NextResponse.json({ error: 'Deal not found for tenant' }, { status: 404 })
+        return NextResponse.json({ error: 'Deal not found for tenant' }, { status: 404 });
       }
 
-      resolvedLocationId = resolvedLocationId ?? deal.location_id ?? null
+      resolvedLocationId = resolvedLocationId ?? deal.location_id ?? null;
     }
 
     if (resolvedLocationId && !membership.all_locations) {
       if (!accessibleLocationIds?.includes(resolvedLocationId)) {
-        return NextResponse.json({ error: 'Location access denied' }, { status: 403 })
+        return NextResponse.json({ error: 'Location access denied' }, { status: 403 });
       }
     }
 
@@ -191,31 +195,26 @@ export async function POST(request: NextRequest) {
       rich_content: data.rich_content ?? null,
       metadata: data.metadata ?? {},
       raw: data.raw ?? null,
-    }
+    };
 
     const { data: activity, error } = await supabase
       .from('activities')
       .insert([insertPayload])
       .select('*')
-      .single()
+      .single();
 
     if (error) {
-      console.error('[API:activities] Failed to create activity', error)
-      return NextResponse.json({ error: 'Failed to create activity' }, { status: 500 })
+      console.error('[API:activities] Failed to create activity', error);
+      return NextResponse.json({ error: 'Failed to create activity' }, { status: 500 });
     }
 
-    return NextResponse.json({ activity }, { status: 201 })
+    return NextResponse.json({ activity }, { status: 201 });
   } catch (error) {
     if (error instanceof ApiContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status })
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
-    console.error('[API:activities] Unexpected error creating activity', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[API:activities] Unexpected error creating activity', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-
-
-
-
