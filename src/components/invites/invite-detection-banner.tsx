@@ -1,19 +1,19 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { AlertCircle, Mail, CheckCircle, Clock, Building2, X } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
-import type { PendingInvite, InviteDetectionBannerProps } from '@/types/invites'
+import { useEffect, useState } from 'react';
+import { AlertCircle, Mail, CheckCircle, Clock, Building2, X } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { PendingInvite, InviteDetectionBannerProps } from '@/types/invites';
 
 /**
  * InviteDetectionBanner Component
- * 
+ *
  * Displays pending organization invitations to the user.
  * Auto-detects invites on mount and shows them in an elegant banner.
- * 
+ *
  * Features:
  * - Auto-detection of pending invites
  * - Shows inviter name, org name, and role
@@ -21,10 +21,10 @@ import type { PendingInvite, InviteDetectionBannerProps } from '@/types/invites'
  * - Loading and error states
  * - Dismissible
  * - Beautiful, modern UI
- * 
+ *
  * Usage:
  * ```tsx
- * <InviteDetectionBanner 
+ * <InviteDetectionBanner
  *   userEmail="user@example.com"
  *   onInvitesDetected={(invites) => console.log('Found invites:', invites)}
  *   onAcceptInvite={(invite) => handleAccept(invite)}
@@ -35,23 +35,23 @@ export function InviteDetectionBanner({
   userEmail,
   onInvitesDetected,
   onAcceptInvite,
-  className = ''
+  className = '',
 }: InviteDetectionBannerProps) {
-  const [invites, setInvites] = useState<PendingInvite[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [accepting, setAccepting] = useState<string | null>(null) // invite ID being accepted
-  const [dismissed, setDismissed] = useState(false)
+  const [invites, setInvites] = useState<PendingInvite[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [accepting, setAccepting] = useState<string | null>(null); // invite ID being accepted
+  const [dismissed, setDismissed] = useState(false);
 
   const handleDismissInvite = (inviteId: string) => {
-    setInvites(prev => {
-      const filtered = prev.filter(i => i.id !== inviteId)
+    setInvites((prev) => {
+      const filtered = prev.filter((i) => i.id !== inviteId);
       if (filtered.length === 0) {
-        setDismissed(true)
+        setDismissed(true);
       }
-      return filtered
-    })
-  }
+      return filtered;
+    });
+  };
 
   // =====================================================================================================
   // FETCH PENDING INVITES
@@ -59,76 +59,75 @@ export function InviteDetectionBanner({
   useEffect(() => {
     const fetchInvites = async () => {
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
 
         const response = await fetch('/api/invites/check-pending', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: userEmail })
-        })
+          body: JSON.stringify({ email: userEmail }),
+        });
 
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || 'Failed to check for invites')
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to check for invites');
         }
 
-        const data = await response.json()
-        
+        const data = await response.json();
+
         if (data.has_invites && data.invites.length > 0) {
-          setInvites(data.invites)
-          onInvitesDetected?.(data.invites)
+          setInvites(data.invites);
+          onInvitesDetected?.(data.invites);
         }
       } catch (err: any) {
-        console.error('[INVITE_BANNER] Error fetching invites:', err)
-        setError(err.message || 'Failed to check for pending invitations')
+        console.error('[INVITE_BANNER] Error fetching invites:', err);
+        setError(err.message || 'Failed to check for pending invitations');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     if (userEmail) {
-      fetchInvites()
+      fetchInvites();
     }
-  }, [userEmail, onInvitesDetected])
+  }, [userEmail, onInvitesDetected]);
 
   // =====================================================================================================
   // ACCEPT INVITE HANDLER
   // =====================================================================================================
   const handleAccept = async (invite: PendingInvite) => {
     try {
-      setAccepting(invite.id)
-      setError(null)
+      setAccepting(invite.id);
+      setError(null);
 
       const response = await fetch('/api/invites/accept', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invite_id: invite.id })
-      })
+        body: JSON.stringify({ invite_id: invite.id }),
+      });
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to accept invite')
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to accept invite');
       }
 
-      const data = await response.json()
-      
+      const data = await response.json();
+
       // Remove accepted invite from list
-      setInvites(prev => prev.filter(i => i.id !== invite.id))
-      
+      setInvites((prev) => prev.filter((i) => i.id !== invite.id));
+
       // Notify parent
-      onAcceptInvite?.(invite)
-      
+      onAcceptInvite?.(invite);
+
       // Show success (parent will likely redirect)
-      console.log('[INVITE_BANNER] Successfully accepted invite:', data)
-      
+      console.log('[INVITE_BANNER] Successfully accepted invite:', data);
     } catch (err: any) {
-      console.error('[INVITE_BANNER] Error accepting invite:', err)
-      setError(err.message || 'Failed to accept invitation')
+      console.error('[INVITE_BANNER] Error accepting invite:', err);
+      setError(err.message || 'Failed to accept invitation');
     } finally {
-      setAccepting(null)
+      setAccepting(null);
     }
-  }
+  };
 
   // =====================================================================================================
   // RENDER: LOADING STATE
@@ -138,14 +137,14 @@ export function InviteDetectionBanner({
       <div className={`space-y-3 ${className}`}>
         <Skeleton className="h-24 w-full" />
       </div>
-    )
+    );
   }
 
   // =====================================================================================================
   // RENDER: NO INVITES
   // =====================================================================================================
   if (invites.length === 0 || dismissed) {
-    return null
+    return null;
   }
 
   // =====================================================================================================
@@ -164,8 +163,8 @@ export function InviteDetectionBanner({
 
       {/* Invites List */}
       {invites.map((invite, index) => (
-        <Alert 
-          key={invite.id} 
+        <Alert
+          key={invite.id}
           className="relative border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
         >
           {/* Dismiss Button */}
@@ -184,11 +183,9 @@ export function InviteDetectionBanner({
           <div className="flex-1 pr-8">
             {/* Title */}
             <AlertTitle className="mb-2 text-base font-semibold text-blue-900 dark:text-blue-100">
-              {index === 0 && invites.length === 1 ? (
-                'You have a pending invitation'
-              ) : (
-                `Invitation ${index + 1} of ${invites.length}`
-              )}
+              {index === 0 && invites.length === 1
+                ? 'You have a pending invitation'
+                : `Invitation ${index + 1} of ${invites.length}`}
             </AlertTitle>
 
             {/* Organization Info */}
@@ -205,7 +202,8 @@ export function InviteDetectionBanner({
 
                   {/* Invited By */}
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <span className="font-medium">{invite.invited_by_name}</span> invited you to join as{' '}
+                    <span className="font-medium">{invite.invited_by_name}</span> invited you to
+                    join as{' '}
                     <Badge variant="secondary" className="ml-1">
                       {invite.assigned_role}
                     </Badge>
@@ -224,12 +222,13 @@ export function InviteDetectionBanner({
                   <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
                     <Clock className="h-3.5 w-3.5" />
                     <span>
-                      Expires {new Date(invite.expires_at).toLocaleDateString('en-US', {
+                      Expires{' '}
+                      {new Date(invite.expires_at).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
                         hour: 'numeric',
-                        minute: '2-digit'
+                        minute: '2-digit',
                       })}
                     </span>
                   </div>
@@ -279,6 +278,5 @@ export function InviteDetectionBanner({
         </p>
       )}
     </div>
-  )
+  );
 }
-

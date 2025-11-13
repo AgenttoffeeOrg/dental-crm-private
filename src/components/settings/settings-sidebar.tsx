@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import React from 'react'
-import { cn } from '@/lib/utils'
+import React from 'react';
+import { cn } from '@/lib/utils';
 import {
   User,
   Users,
@@ -10,14 +10,14 @@ import {
   Sparkles,
   Plug,
   Settings,
-  ChevronRight
-} from 'lucide-react'
+  ChevronRight,
+} from 'lucide-react';
 
 export interface SettingsSection {
-  id: string
-  label: string
-  icon: React.ElementType
-  description: string
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  description: string;
 }
 
 export const settingsSections: SettingsSection[] = [
@@ -25,52 +25,52 @@ export const settingsSections: SettingsSection[] = [
     id: 'account',
     label: 'Account',
     icon: User,
-    description: 'Profile, organization, locations, and billing'
+    description: 'Profile, organization, locations, and billing',
   },
   {
     id: 'team',
     label: 'Team',
     icon: Users,
-    description: 'Members, roles, and onboarding'
+    description: 'Members, roles, and onboarding',
   },
   {
     id: 'workflow',
     label: 'Workflow',
     icon: Workflow,
-    description: 'Pipelines, deals, and treatment routing'
+    description: 'Pipelines, deals, and treatment routing',
   },
   {
     id: 'communications',
     label: 'Communications',
     icon: MessageSquare,
-    description: 'Email, SMS, notifications, and calendar'
+    description: 'Email, SMS, notifications, and calendar',
   },
   {
     id: 'ai',
     label: 'AI & Automation',
     icon: Sparkles,
-    description: 'AI assistant, analytics, and marketing'
+    description: 'AI assistant, analytics, and marketing',
   },
   {
     id: 'integrations',
     label: 'Integrations',
     icon: Plug,
-    description: 'Connected apps, API, and branding'
+    description: 'Connected apps, API, and branding',
   },
   {
     id: 'system',
     label: 'System',
     icon: Settings,
-    description: 'Security, analytics, and audit trail'
-  }
-]
+    description: 'Security, analytics, and audit trail',
+  },
+];
 
 interface SettingsSidebarProps {
-  activeSection: string
-  onSectionChange: (sectionId: string) => void
-  isMobileOpen?: boolean
-  onMobileClose?: () => void
-  hasTenant?: boolean
+  activeSection: string;
+  onSectionChange: (sectionId: string) => void;
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
+  hasTenant?: boolean;
 }
 
 export function SettingsSidebar({
@@ -78,14 +78,14 @@ export function SettingsSidebar({
   onSectionChange,
   isMobileOpen = false,
   onMobileClose,
-  hasTenant = true
+  hasTenant = true,
 }: SettingsSidebarProps) {
   const handleSectionClick = (sectionId: string) => {
-    onSectionChange(sectionId)
+    onSectionChange(sectionId);
     if (onMobileClose) {
-      onMobileClose()
+      onMobileClose();
     }
-  }
+  };
 
   return (
     <>
@@ -96,8 +96,8 @@ export function SettingsSidebar({
           onClick={onMobileClose}
           onKeyDown={(e) => {
             if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onMobileClose()
+              e.preventDefault();
+              onMobileClose();
             }
           }}
           role="button"
@@ -121,17 +121,15 @@ export function SettingsSidebar({
         {/* Sidebar Header */}
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Manage your account and preferences
-          </p>
+          <p className="text-sm text-gray-600 mt-1">Manage your account and preferences</p>
         </div>
 
         {/* Navigation */}
         <nav className="p-4 space-y-1">
           {settingsSections.map((section) => {
-            const Icon = section.icon
-            const isActive = activeSection === section.id
-            const isDisabled = !hasTenant && section.id !== 'account'
+            const Icon = section.icon;
+            const isActive = activeSection === section.id;
+            const isDisabled = !hasTenant && section.id !== 'account';
 
             return (
               <button
@@ -165,11 +163,9 @@ export function SettingsSidebar({
                     {section.description}
                   </div>
                 </div>
-                {isActive && (
-                  <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0 mt-1" />
-                )}
+                {isActive && <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0 mt-1" />}
               </button>
-            )
+            );
           })}
         </nav>
 
@@ -184,6 +180,5 @@ export function SettingsSidebar({
         </div>
       </aside>
     </>
-  )
+  );
 }
-

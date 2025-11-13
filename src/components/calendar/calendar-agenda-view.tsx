@@ -1,51 +1,57 @@
-'use client'
+'use client';
 
-import { format, isSameDay, addDays } from 'date-fns'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Clock, CheckSquare, Phone, Mail, Users, DollarSign } from 'lucide-react'
-import { CalendarActivity } from '@/lib/calendar/activity-aggregator'
+import { format, isSameDay, addDays } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Clock, CheckSquare, Phone, Mail, Users, DollarSign } from 'lucide-react';
+import { CalendarActivity } from '@/lib/calendar/activity-aggregator';
 
 interface CalendarAgendaViewProps {
-  startDate: Date
-  activities: CalendarActivity[]
-  onActivityClick: (id: string, type: string) => void
+  startDate: Date;
+  activities: CalendarActivity[];
+  onActivityClick: (id: string, type: string) => void;
 }
 
 export function CalendarAgendaView({
   startDate,
   activities,
-  onActivityClick
+  onActivityClick,
 }: CalendarAgendaViewProps) {
   // Group activities by date
-  const days = Array.from({ length: 30 }, (_, i) => addDays(startDate, i))
+  const days = Array.from({ length: 30 }, (_, i) => addDays(startDate, i));
 
   const getActivitiesForDay = (day: Date) => {
-    return activities.filter(activity =>
-      isSameDay(activity.start_time, day)
-    ).sort((a, b) => a.start_time.getTime() - b.start_time.getTime())
-  }
+    return activities
+      .filter((activity) => isSameDay(activity.start_time, day))
+      .sort((a, b) => a.start_time.getTime() - b.start_time.getTime());
+  };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'task': return CheckSquare
-      case 'call': return Phone
-      case 'email': return Mail
-      case 'meeting': return Users
-      case 'deal': return DollarSign
-      default: return Clock
+      case 'task':
+        return CheckSquare;
+      case 'call':
+        return Phone;
+      case 'email':
+        return Mail;
+      case 'meeting':
+        return Users;
+      case 'deal':
+        return DollarSign;
+      default:
+        return Clock;
     }
-  }
+  };
 
   const getActivityTypeLabel = (type: string) => {
-    return type.charAt(0).toUpperCase() + type.slice(1)
-  }
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       {days.map((day) => {
-        const dayActivities = getActivitiesForDay(day)
-        if (dayActivities.length === 0) return null
+        const dayActivities = getActivitiesForDay(day);
+        if (dayActivities.length === 0) return null;
 
         return (
           <div key={day.toISOString()}>
@@ -53,9 +59,7 @@ export function CalendarAgendaView({
             <div className="sticky top-0 z-10 bg-gray-50 border-l-4 border-blue-500 px-4 py-2 mb-4 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-medium text-gray-600">
-                    {format(day, 'EEEE')}
-                  </div>
+                  <div className="text-sm font-medium text-gray-600">{format(day, 'EEEE')}</div>
                   <div className="text-lg font-bold text-gray-900">
                     {format(day, 'MMMM d, yyyy')}
                   </div>
@@ -69,7 +73,7 @@ export function CalendarAgendaView({
             {/* Activities list */}
             <div className="space-y-3">
               {dayActivities.map((activity) => {
-                const Icon = getActivityIcon(activity.type)
+                const Icon = getActivityIcon(activity.type);
 
                 return (
                   <div
@@ -77,8 +81,8 @@ export function CalendarAgendaView({
                     onClick={() => onActivityClick(activity.id, activity.type)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        onActivityClick(activity.id, activity.type)
+                        e.preventDefault();
+                        onActivityClick(activity.id, activity.type);
                       }
                     }}
                     role="button"
@@ -141,11 +145,11 @@ export function CalendarAgendaView({
                       </div>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
-        )
+        );
       })}
 
       {activities.length === 0 && (
@@ -156,6 +160,5 @@ export function CalendarAgendaView({
         </div>
       )}
     </div>
-  )
+  );
 }
-
