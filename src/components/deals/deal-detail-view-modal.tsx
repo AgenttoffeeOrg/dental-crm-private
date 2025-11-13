@@ -1091,6 +1091,7 @@ const sanitizedContactPhone = useMemo(
         dealId={dealId}
         tenantId={deal?.tenant_id}
       />
+      </div>
     </div>
   )
 }
