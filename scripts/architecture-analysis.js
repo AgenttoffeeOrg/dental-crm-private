@@ -2,7 +2,7 @@
 
 /**
  * Comprehensive Architecture Analysis Script
- * 
+ *
  * Runs multiple analysis tools and generates a combined report
  */
 
@@ -21,7 +21,7 @@ if (!fs.existsSync(REPORT_DIR)) {
 const reports = {
   timestamp,
   summary: {},
-  details: {}
+  details: {},
 };
 
 console.log('🔍 Starting Comprehensive Architecture Analysis...\n');
@@ -32,14 +32,14 @@ try {
   const typeCheckOutput = execSync('npm run type-check 2>&1', { encoding: 'utf-8' });
   reports.details.typescript = {
     status: 'success',
-    output: typeCheckOutput
+    output: typeCheckOutput,
   };
   reports.summary.typescript = '✅ No type errors';
   console.log('   ✅ TypeScript check passed\n');
 } catch (error) {
   reports.details.typescript = {
     status: 'errors',
-    output: error.stdout || error.message
+    output: error.stdout || error.message,
   };
   reports.summary.typescript = `❌ Type errors found: ${error.stdout?.split('\n').length || 0} issues`;
   console.log('   ⚠️  Type errors found\n');
@@ -51,7 +51,7 @@ try {
   const eslintOutput = execSync('npm run lint 2>&1', { encoding: 'utf-8' });
   reports.details.eslint = {
     status: 'success',
-    output: eslintOutput
+    output: eslintOutput,
   };
   reports.summary.eslint = '✅ No linting errors';
   console.log('   ✅ ESLint passed\n');
@@ -59,11 +59,11 @@ try {
   const eslintJson = execSync('npx eslint src/ --format json 2>&1', { encoding: 'utf-8' });
   const eslintData = JSON.parse(eslintJson);
   const errorCount = eslintData.reduce((sum, file) => sum + (file.errorCount || 0), 0);
-  
+
   reports.details.eslint = {
     status: 'errors',
     output: eslintJson,
-    errorCount
+    errorCount,
   };
   reports.summary.eslint = `❌ ${errorCount} linting errors`;
   console.log(`   ⚠️  Found ${errorCount} linting issues\n`);
@@ -74,22 +74,21 @@ console.log('3️⃣  Running npm audit...');
 try {
   const auditOutput = execSync('npm audit --json 2>&1', { encoding: 'utf-8' });
   const auditData = JSON.parse(auditOutput);
-  
+
   const vulnerabilities = auditData.vulnerabilities || {};
   const vulnCount = Object.keys(vulnerabilities).length;
-  
+
   reports.details.npmAudit = {
     vulnerabilities: vulnCount,
-    data: auditData
+    data: auditData,
   };
-  reports.summary.npmAudit = vulnCount > 0 
-    ? `⚠️  ${vulnCount} vulnerabilities found`
-    : '✅ No vulnerabilities';
+  reports.summary.npmAudit =
+    vulnCount > 0 ? `⚠️  ${vulnCount} vulnerabilities found` : '✅ No vulnerabilities';
   console.log(`   ${vulnCount > 0 ? '⚠️' : '✅'} ${vulnCount} vulnerabilities\n`);
 } catch (error) {
   reports.details.npmAudit = {
     status: 'error',
-    message: error.message
+    message: error.message,
   };
   reports.summary.npmAudit = '❌ Audit failed';
   console.log('   ❌ npm audit failed\n');
@@ -99,16 +98,18 @@ try {
 console.log('4️⃣  Running test coverage...');
 try {
   const coverageOutput = execSync('npm run test:coverage 2>&1', { encoding: 'utf-8' });
-  
+
   // Extract coverage percentages
-  const coverageMatch = coverageOutput.match(/All files\s+\|\s+(\d+\.\d+)%\s+\|\s+(\d+\.\d+)%\s+\|\s+(\d+\.\d+)%\s+\|\s+(\d+\.\d+)%/);
-  
+  const coverageMatch = coverageOutput.match(
+    /All files\s+\|\s+(\d+\.\d+)%\s+\|\s+(\d+\.\d+)%\s+\|\s+(\d+\.\d+)%\s+\|\s+(\d+\.\d+)%/
+  );
+
   if (coverageMatch) {
     reports.details.coverage = {
       statements: parseFloat(coverageMatch[1]),
       branches: parseFloat(coverageMatch[2]),
       functions: parseFloat(coverageMatch[3]),
-      lines: parseFloat(coverageMatch[4])
+      lines: parseFloat(coverageMatch[4]),
     };
     reports.summary.coverage = `📊 Coverage: ${coverageMatch[4]}% lines`;
   } else {
@@ -119,7 +120,7 @@ try {
 } catch (error) {
   reports.details.coverage = {
     status: 'error',
-    message: error.message
+    message: error.message,
   };
   reports.summary.coverage = '❌ Coverage check failed';
   console.log('   ⚠️  Coverage check had issues\n');
@@ -129,19 +130,21 @@ try {
 console.log('5️⃣  Analyzing bundle size...');
 try {
   const buildOutput = execSync('npm run build 2>&1', { encoding: 'utf-8' });
-  
+
   // Extract bundle sizes
-  const bundleMatch = buildOutput.match(/Route\s+\(app\)\s+Size\s+First Load JS[\s\S]*?(\d+\s+\w+)/);
-  
+  const bundleMatch = buildOutput.match(
+    /Route\s+\(app\)\s+Size\s+First Load JS[\s\S]*?(\d+\s+\w+)/
+  );
+
   reports.details.bundle = {
-    buildOutput: buildOutput.substring(0, 1000) // First 1000 chars
+    buildOutput: buildOutput.substring(0, 1000), // First 1000 chars
   };
   reports.summary.bundle = '✅ Build successful';
   console.log('   ✅ Build analysis complete\n');
 } catch (error) {
   reports.details.bundle = {
     status: 'error',
-    message: error.message.substring(0, 500)
+    message: error.message.substring(0, 500),
   };
   reports.summary.bundle = '❌ Build failed';
   console.log('   ⚠️  Build analysis skipped\n');
@@ -152,22 +155,22 @@ console.log('6️⃣  Analyzing file structure...');
 try {
   const srcDir = path.join(__dirname, '../src');
   const files = getAllFiles(srcDir);
-  
+
   const stats = {
     totalFiles: files.length,
     byExtension: {},
     byDirectory: {},
-    totalLines: 0
+    totalLines: 0,
   };
-  
-  files.forEach(file => {
+
+  files.forEach((file) => {
     const ext = path.extname(file);
     const dir = path.relative(srcDir, path.dirname(file));
     const rootDir = dir.split(path.sep)[0] || 'root';
-    
+
     stats.byExtension[ext] = (stats.byExtension[ext] || 0) + 1;
     stats.byDirectory[rootDir] = (stats.byDirectory[rootDir] || 0) + 1;
-    
+
     try {
       const content = fs.readFileSync(file, 'utf-8');
       stats.totalLines += content.split('\n').length;
@@ -175,14 +178,14 @@ try {
       // Skip if can't read
     }
   });
-  
+
   reports.details.fileStructure = stats;
   reports.summary.fileStructure = `📁 ${stats.totalFiles} files, ${stats.totalLines.toLocaleString()} lines`;
   console.log(`   ✅ Analyzed ${stats.totalFiles} files\n`);
 } catch (error) {
   reports.details.fileStructure = {
     status: 'error',
-    message: error.message
+    message: error.message,
   };
   console.log('   ⚠️  File structure analysis failed\n');
 }
@@ -211,11 +214,11 @@ console.log('='.repeat(60));
 
 function getAllFiles(dir, fileList = []) {
   const files = fs.readdirSync(dir);
-  
-  files.forEach(file => {
+
+  files.forEach((file) => {
     const filePath = path.join(dir, file);
     const stat = fs.statSync(filePath);
-    
+
     if (stat.isDirectory()) {
       // Skip node_modules, .next, etc.
       if (!['node_modules', '.next', 'dist', 'build'].includes(file)) {
@@ -228,7 +231,7 @@ function getAllFiles(dir, fileList = []) {
       }
     }
   });
-  
+
   return fileList;
 }
 
@@ -239,7 +242,9 @@ function generateMarkdownSummary(reports) {
 
 ## Summary
 
-${Object.entries(reports.summary).map(([key, value]) => `- **${key}**: ${value}`).join('\n')}
+${Object.entries(reports.summary)
+  .map(([key, value]) => `- **${key}**: ${value}`)
+  .join('\n')}
 
 ## Details
 
@@ -258,11 +263,15 @@ ${reports.details.npmAudit?.vulnerabilities ? `**Vulnerabilities:** ${reports.de
 ${reports.details.coverage?.lines ? `**Lines:** ${reports.details.coverage.lines}%` : 'Not available'}
 
 ### File Structure
-${reports.details.fileStructure ? `
+${
+  reports.details.fileStructure
+    ? `
 - **Total Files:** ${reports.details.fileStructure.totalFiles}
 - **Total Lines:** ${reports.details.fileStructure.totalLines?.toLocaleString()}
 - **By Extension:** ${JSON.stringify(reports.details.fileStructure.byExtension, null, 2)}
-` : 'Not available'}
+`
+    : 'Not available'
+}
 
 ## Next Steps
 
@@ -273,5 +282,3 @@ ${reports.details.fileStructure ? `
 5. Review bundle size optimizations
 `;
 }
-
-

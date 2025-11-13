@@ -23,11 +23,11 @@ function analyzeTestResults() {
 
   const testFiles = findTestFiles('src');
   const testCount = testFiles.length;
-  
+
   console.log(`  📝 Test Files Found: ${testCount}`);
   if (testCount > 0) {
     console.log('  Test Files:');
-    testFiles.slice(0, 10).forEach(file => {
+    testFiles.slice(0, 10).forEach((file) => {
       console.log(`    - ${file}`);
     });
     if (testCount > 10) {
@@ -76,7 +76,7 @@ function analyzeTestResults() {
       const k6 = JSON.parse(fs.readFileSync(k6Results, 'utf8'));
       console.log('  k6 Summary:');
       if (k6.metrics) {
-        Object.keys(k6.metrics).forEach(metric => {
+        Object.keys(k6.metrics).forEach((metric) => {
           const m = k6.metrics[metric];
           if (m.values) {
             console.log(`    ${metric}: ${m.values.avg || 'N/A'}`);
@@ -122,7 +122,9 @@ function analyzeTestResults() {
   console.log('');
   console.log('6. SonarCloud:');
   console.log('   - Code quality and security analysis');
-  console.log('   - View: https://sonarcloud.io/project/overview?id=AgenttoffeeOrg_dental-crm-private');
+  console.log(
+    '   - View: https://sonarcloud.io/project/overview?id=AgenttoffeeOrg_dental-crm-private'
+  );
   console.log('');
   console.log('7. CodeQL:');
   console.log('   - Security vulnerability scanning');
@@ -138,7 +140,10 @@ function findTestFiles(dir) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory() && !entry.name.includes('node_modules')) {
         files.push(...findTestFiles(fullPath));
-      } else if (entry.isFile() && (entry.name.includes('.test.') || entry.name.includes('.spec.'))) {
+      } else if (
+        entry.isFile() &&
+        (entry.name.includes('.test.') || entry.name.includes('.spec.'))
+      ) {
         files.push(fullPath);
       }
     }
@@ -149,4 +154,3 @@ function findTestFiles(dir) {
 }
 
 analyzeTestResults();
-

@@ -26,7 +26,7 @@ console.log('🔧 Accessibility Fix Script');
 console.log('This script helps identify and fix accessibility issues.');
 console.log('Manual fixes are recommended for better control.\n');
 
-filesToFix.forEach(file => {
+filesToFix.forEach((file) => {
   const filePath = path.join(process.cwd(), file);
   if (fs.existsSync(filePath)) {
     console.log(`✅ ${file}`);
@@ -37,8 +37,6 @@ filesToFix.forEach(file => {
 
 console.log('\n💡 To fix accessibility issues:');
 console.log('1. Find divs with onClick handlers');
-console.log('2. Add: onKeyDown={(e) => e.key === \'Enter\' && handleClick()}');
+console.log("2. Add: onKeyDown={(e) => e.key === 'Enter' && handleClick()}");
 console.log('3. Add: role="button" tabIndex={0}');
 console.log('4. Add: aria-label="Description of action"');
-
-
