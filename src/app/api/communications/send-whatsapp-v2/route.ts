@@ -36,18 +36,21 @@ export async function POST(request: NextRequest) {
     // Send WhatsApp
     const result = await whatsappService.send({ to, message, mediaUrl })
 
-    // Log activity
+    // Log activity using canonical activities columns: to_number/from_number/
+    // message_status. The legacy whatsapp_to/whatsapp_from/whatsapp_status
+    // names don't exist on the live table.
     await supabase.from('activities').insert({
       tenant_id,
       contact_id,
       deal_id,
       type: 'whatsapp',
-      title: 'WhatsApp Sent',
+      direction: 'outbound',
+      subject: 'WhatsApp Sent',
       description: message,
       occurred_at: new Date().toISOString(),
-      whatsapp_to: to,
-      whatsapp_from: tenant.whatsapp_phone_number,
-      whatsapp_status: 'sent',
+      to_number: to,
+      from_number: tenant.whatsapp_phone_number,
+      message_status: 'sent',
       external_id: result.messageId
     })
 

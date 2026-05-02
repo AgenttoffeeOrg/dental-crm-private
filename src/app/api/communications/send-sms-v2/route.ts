@@ -32,18 +32,21 @@ export async function POST(request: NextRequest) {
     // Send SMS
     const result = await smsService.send({ to, message })
 
-    // Log activity
+    // Log activity using canonical activities columns: to_number/from_number/
+    // message_status (the older sms_to/sms_from/sms_status names don't exist
+    // on the live table, so the previous payload silently dropped fields).
     await supabase.from('activities').insert({
       tenant_id,
       contact_id,
       deal_id,
       type: 'sms',
-      title: 'SMS Sent',
+      direction: 'outbound',
+      subject: 'SMS Sent',
       description: message,
       occurred_at: new Date().toISOString(),
-      sms_to: to,
-      sms_from: tenant.sms_from_number,
-      sms_status: 'sent',
+      to_number: to,
+      from_number: tenant.sms_from_number,
+      message_status: 'sent',
       external_id: result.messageId
     })
 
