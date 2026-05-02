@@ -96,9 +96,9 @@ export async function processFormSubmission(
   await supabase.from('activities').insert({
     tenant_id: submission.tenantId,
     contact_id: contactId,
-    activity_type: 'form_submission',
-    activity_timestamp: new Date().toISOString(),
-    notes: `Submitted form: ${submission.formName}`,
+    type: 'form_submission',
+    occurred_at: new Date().toISOString(),
+    description: `Submitted form: ${submission.formName}`,
     marketing_campaign_id: submission.formId,
     marketing_event_type: 'form_filled',
   });

@@ -44,10 +44,10 @@ export function ContactMarketingTab({ contactId, tenantId }: ContactMarketingTab
     // Get campaigns this contact received
     const { data: campaignActivities } = await supabase
       .from('activities')
-      .select('marketing_campaign_id, marketing_event_type, activity_timestamp, notes')
+      .select('marketing_campaign_id, marketing_event_type, occurred_at, description')
       .eq('contact_id', contactId)
       .not('marketing_campaign_id', 'is', null)
-      .order('activity_timestamp', { ascending: false })
+      .order('occurred_at', { ascending: false })
       .limit(10);
 
     if (campaignActivities) {
@@ -130,9 +130,9 @@ export function ContactMarketingTab({ contactId, tenantId }: ContactMarketingTab
                         {campaign.marketing_event_type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600">{campaign.notes || 'Marketing campaign interaction'}</p>
+                    <p className="text-xs text-gray-600">{campaign.description || 'Marketing campaign interaction'}</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {new Date(campaign.activity_timestamp).toLocaleDateString()}
+                      {new Date(campaign.occurred_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>

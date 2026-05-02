@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       tenant_id,
       contact_id,
       deal_id,
-      activity_type: 'sms',
+      type: 'sms',
       title: 'SMS Sent',
       description: message,
       occurred_at: new Date().toISOString(),

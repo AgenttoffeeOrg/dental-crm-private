@@ -59,10 +59,10 @@ type TaskSummary = {
 
 type ActivitySummary = {
   id: string
-  activity_type?: string | null
+  type?: string | null
   occurred_at?: string | null
-  channel?: string | null
-  summary?: string | null
+  direction?: string | null
+  snippet?: string | null
   description?: string | null
 }
 
@@ -246,7 +246,7 @@ export function ReceptionWorkspace() {
             .limit(3),
           supabase
             .from('activities')
-            .select('id, activity_type, occurred_at, channel, summary, description')
+            .select('id, type, occurred_at, direction, snippet, description')
             .eq('contact_id', contactId)
             .order('occurred_at', { ascending: false })
             .limit(1),
@@ -954,16 +954,16 @@ export function ReceptionWorkspace() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-semibold text-gray-900">
-                            {details.lastActivity.activity_type || 'Activity'}
+                            {details.lastActivity.type || 'Activity'}
                           </p>
-                          {details.lastActivity.channel && (
+                          {details.lastActivity.direction && (
                             <Badge variant="outline" className="text-xs capitalize">
-                              {details.lastActivity.channel}
+                              {details.lastActivity.direction}
                             </Badge>
                           )}
                         </div>
                         <p className="text-sm text-gray-600">
-                          {details.lastActivity.summary ||
+                          {details.lastActivity.snippet ||
                             details.lastActivity.description ||
                             'No additional notes captured.'}
                         </p>

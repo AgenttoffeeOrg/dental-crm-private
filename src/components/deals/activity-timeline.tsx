@@ -201,7 +201,8 @@ export function ActivityTimeline({
         .update({
           subject: editedSubject,
           snippet: editedSnippet,
-          updated_at: new Date().toISOString()
+          is_edited: true,
+          edited_at: new Date().toISOString()
         })
         .eq('id', activityId)
 

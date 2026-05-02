@@ -65,8 +65,8 @@ export async function moveDealToStage(
       deal_id: dealId,
       type: 'stage_change',
       occurred_at: new Date().toISOString(),
-      notes: reason || `Automatically moved to new stage`,
-      created_by: 'automation',
+      description: reason || `Automatically moved to new stage`,
+      metadata: { source: 'automation' },
     })
 
     return { success: true }
@@ -163,8 +163,8 @@ export async function assignDealToUser(
       deal_id: dealId,
       type: 'assignment',
       occurred_at: new Date().toISOString(),
-      notes: `Deal automatically assigned`,
-      created_by: 'automation',
+      description: `Deal automatically assigned`,
+      metadata: { source: 'automation' },
     })
 
     return { success: true, assignedUserId: targetUserId }

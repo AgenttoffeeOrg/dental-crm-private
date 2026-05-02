@@ -34,36 +34,14 @@ export async function POST() {
       }
     }
 
-    // Fix activities table structure
-    try {
-      await supabase.rpc('exec_sql', {
-        sql: `
-          DO $$
-          BEGIN
-            -- Add missing columns if they don't exist
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities' AND column_name='title') THEN
-              ALTER TABLE activities ADD COLUMN title TEXT;
-            END IF;
-            
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities' AND column_name='description') THEN
-              ALTER TABLE activities ADD COLUMN description TEXT;
-            END IF;
-            
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities' AND column_name='metadata') THEN
-              ALTER TABLE activities ADD COLUMN metadata JSONB;
-            END IF;
-
-            -- Rename type to activity_type if needed
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activities' AND column_name='type') THEN
-              ALTER TABLE activities RENAME COLUMN type TO activity_type;
-            END IF;
-          END $$;
-        `
-      })
-      console.log('✅ Fixed activities table structure')
-    } catch (error) {
-      console.log('Activities table fix error (may be expected):', error.message)
-    }
+    // Activities table structure: NO-OP.
+    // Historic versions of this route renamed activities.type -> activity_type,
+    // which is the OPPOSITE of what the live schema uses (canonical column is
+    // `type`; see phase 0 reconciliation migration). Calling that rename today
+    // would break every code path that writes activities. Block intentionally
+    // emptied; live schema is the source of truth and is managed via
+    // supabase/migrations/ going forward.
+    console.log('⏭️  activities table fix: skipped (handled by phase 0 reconciliation migration)')
 
     return NextResponse.json({
       success: true,

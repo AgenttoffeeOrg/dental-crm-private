@@ -250,7 +250,7 @@ export async function POST(req: Request) {
               tenant_id: effectiveTenantId,
               contact_id: contactId,
               deal_id: dealId,
-              activity_type: 'note',
+              type: 'note',
               title: 'Form Submission',
               description: `Form submitted with inquiry: "${reasonForInquiry}"${treatmentTags.length > 0 ? `\n\nTreatment interests: ${treatmentTags.join(', ')}` : ''}`,
               metadata: {

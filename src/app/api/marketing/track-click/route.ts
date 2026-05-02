@@ -38,14 +38,16 @@ export async function POST(req: NextRequest) {
 
     const tenantId = appUser.tenant_id;
 
-    // Log the click activity
+    // Log the click activity. We use the closest CHECK-allowed activity type
+    // ('email_clicked'); the original semantic ('link_click') is preserved on
+    // marketing_event_type so reporting can still distinguish channel.
     await supabase.from('activities').insert({
       tenant_id: tenantId,
       contact_id: contactId,
       deal_id: dealId,
-      activity_type: 'link_click',
-      activity_timestamp: new Date().toISOString(),
-      notes: `Clicked: ${clickedUrl}`,
+      type: 'email_clicked',
+      occurred_at: new Date().toISOString(),
+      description: `Clicked: ${clickedUrl}`,
       marketing_campaign_id: campaignId,
       marketing_event_type: 'link_clicked',
     });

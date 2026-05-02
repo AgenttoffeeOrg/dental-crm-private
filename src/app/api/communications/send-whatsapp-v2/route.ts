@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       tenant_id,
       contact_id,
       deal_id,
-      activity_type: 'whatsapp',
+      type: 'whatsapp',
       title: 'WhatsApp Sent',
       description: message,
       occurred_at: new Date().toISOString(),
