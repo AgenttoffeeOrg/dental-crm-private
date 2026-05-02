@@ -415,12 +415,23 @@ the live schema):**
   contacts_with_last_touch=**0**, backfilled_touchpoints=**0**,
   total_form_submissions=**0**, total_contacts=**50** (all manual
   seeds with no UTM context; pre-launch as expected).
-- **Smoke test:** TypeScript regeneration returned the same shape as
-  before — see §"Production application" below for the smoke-test
-  details and any new failures.
-- **TypeScript regeneration:** PASS. New tables/columns appear in
-  `src/types/supabase.ts`; pre-existing 3 errors in
-  `deal-detail-view-modal.tsx` are unchanged; no new errors.
+- **Smoke test (`npm test`):** PASS at the Phase 0 baseline.
+  31 suites failed / 7 passed; **85 tests failed / 118 passed / 203
+  total** — identical totals to the Phase 0 §8 baseline. Filtered the
+  failure log for Phase 1 keywords (`source_channel`,
+  `channel_identifier`, `attribution_touchpoint`, `lead_intent_session`,
+  `practice_booking_widget`, `practice_domain`, `lead_sla`,
+  `first_touch`, `last_touch`) — **zero matches**, i.e. zero new
+  failures introduced by Phase 1. The 85 pre-existing failures are the
+  same orchestrator-fixture / Playwright-`TransformStream` clusters
+  documented in §8.
+- **TypeScript regeneration (`tsc --noEmit`):** PASS. New tables/columns
+  appear in `src/types/supabase.ts` (verified: `source_channel_enum` is
+  referenced 5+ times, `lead_intent_sessions:` table appears as a key
+  in the generated `Tables` type, the 6 new tables are all present).
+  The 3 pre-existing errors in
+  `src/components/deals/deal-detail-view-modal.tsx` (lines 409, 1096,
+  1097) are unchanged; **no new TypeScript errors**.
 
 **Production application:**
 - Forward migration applied at: 2026-05-02T21:05:40Z (UTC) via Supabase
