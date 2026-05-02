@@ -1,12 +1,12 @@
 /**
  * DEAL AUTOMATION ACTIONS
- * 
+ *
  * Specialized actions for deal automations.
  * These extend the base automation engine with deal-specific capabilities.
  */
 
-import { createClient } from '@/lib/supabase-client'
-import { events } from '@/lib/events-unified'
+import { createClient } from '@/lib/supabase-client';
+import { events } from '@/lib/events-unified';
 
 // =====================================================
 // DEAL ACTIONS
@@ -22,20 +22,20 @@ export async function moveDealToStage(
   reason?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient()
+    const supabase = createClient();
 
     // Get current stage first
     const { data: deal } = await supabase
       .from('deals')
       .select('stage_id')
       .eq('id', dealId)
-      .single()
+      .single();
 
     if (!deal) {
-      return { success: false, error: 'Deal not found' }
+      return { success: false, error: 'Deal not found' };
     }
 
-    const fromStageId = deal.stage_id
+    const fromStageId = deal.stage_id;
 
     // Update stage
     const { error } = await supabase
@@ -45,10 +45,10 @@ export async function moveDealToStage(
         last_activity_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', dealId)
+      .eq('id', dealId);
 
     if (error) {
-      return { success: false, error: error.message }
+      return { success: false, error: error.message };
     }
 
     // Emit event
@@ -57,7 +57,7 @@ export async function moveDealToStage(
       tenantId,
       fromStageId,
       toStageId,
-    })
+    });
 
     // Log to activities
     await supabase.from('activities').insert({
@@ -65,14 +65,14 @@ export async function moveDealToStage(
       deal_id: dealId,
       type: 'stage_change',
       occurred_at: new Date().toISOString(),
-      notes: reason || `Automatically moved to new stage`,
-      created_by: 'automation',
-    })
+      description: reason || `Automatically moved to new stage`,
+      metadata: { source: 'automation' },
+    });
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('[Deal Actions] Error moving deal:', error)
-    return { success: false, error: String(error) }
+    console.error('[Deal Actions] Error moving deal:', error);
+    return { success: false, error: String(error) };
   }
 }
 
@@ -86,9 +86,9 @@ export async function assignDealToUser(
   mode: 'specific' | 'round_robin' = 'specific'
 ): Promise<{ success: boolean; assignedUserId?: string; error?: string }> {
   try {
-    const supabase = createClient()
+    const supabase = createClient();
 
-    let targetUserId = userId
+    let targetUserId = userId;
 
     // Round-robin logic
     if (mode === 'round_robin' && !userId) {
@@ -98,10 +98,10 @@ export async function assignDealToUser(
         .select('id')
         .eq('tenant_id', tenantId)
         .eq('role', 'owner') // or 'staff'
-        .order('id')
+        .order('id');
 
       if (!users || users.length === 0) {
-        return { success: false, error: 'No available users for assignment' }
+        return { success: false, error: 'No available users for assignment' };
       }
 
       // Get last assigned user
@@ -112,19 +112,19 @@ export async function assignDealToUser(
         .not('owner_user_id', 'is', null)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .single();
 
       if (lastDeal && lastDeal.owner_user_id) {
-        const lastIndex = users.findIndex(u => u.id === lastDeal.owner_user_id)
-        const nextIndex = (lastIndex + 1) % users.length
-        targetUserId = users[nextIndex].id
+        const lastIndex = users.findIndex((u) => u.id === lastDeal.owner_user_id);
+        const nextIndex = (lastIndex + 1) % users.length;
+        targetUserId = users[nextIndex].id;
       } else {
-        targetUserId = users[0].id
+        targetUserId = users[0].id;
       }
     }
 
     if (!targetUserId) {
-      return { success: false, error: 'No user ID provided' }
+      return { success: false, error: 'No user ID provided' };
     }
 
     // Get current owner
@@ -132,9 +132,9 @@ export async function assignDealToUser(
       .from('deals')
       .select('owner_user_id')
       .eq('id', dealId)
-      .single()
+      .single();
 
-    const fromUserId = deal?.owner_user_id
+    const fromUserId = deal?.owner_user_id;
 
     // Update owner
     const { error } = await supabase
@@ -143,10 +143,10 @@ export async function assignDealToUser(
         owner_user_id: targetUserId,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', dealId)
+      .eq('id', dealId);
 
     if (error) {
-      return { success: false, error: error.message }
+      return { success: false, error: error.message };
     }
 
     // Emit event
@@ -155,7 +155,7 @@ export async function assignDealToUser(
       tenantId,
       fromUserId,
       toUserId: targetUserId,
-    })
+    });
 
     // Log to activities
     await supabase.from('activities').insert({
@@ -163,14 +163,14 @@ export async function assignDealToUser(
       deal_id: dealId,
       type: 'assignment',
       occurred_at: new Date().toISOString(),
-      notes: `Deal automatically assigned`,
-      created_by: 'automation',
-    })
+      description: `Deal automatically assigned`,
+      metadata: { source: 'automation' },
+    });
 
-    return { success: true, assignedUserId: targetUserId }
+    return { success: true, assignedUserId: targetUserId };
   } catch (error) {
-    console.error('[Deal Actions] Error assigning deal:', error)
-    return { success: false, error: String(error) }
+    console.error('[Deal Actions] Error assigning deal:', error);
+    return { success: false, error: String(error) };
   }
 }
 
@@ -183,7 +183,7 @@ export async function updateDealFields(
   updates: Record<string, any>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient()
+    const supabase = createClient();
 
     const { error } = await supabase
       .from('deals')
@@ -191,10 +191,10 @@ export async function updateDealFields(
         ...updates,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', dealId)
+      .eq('id', dealId);
 
     if (error) {
-      return { success: false, error: error.message }
+      return { success: false, error: error.message };
     }
 
     // Emit event
@@ -202,12 +202,12 @@ export async function updateDealFields(
       dealId,
       tenantId,
       changes: updates,
-    })
+    });
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('[Deal Actions] Error updating deal:', error)
-    return { success: false, error: String(error) }
+    console.error('[Deal Actions] Error updating deal:', error);
+    return { success: false, error: String(error) };
   }
 }
 
@@ -221,7 +221,7 @@ export async function markDealAsWon(
   value: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient()
+    const supabase = createClient();
 
     const { error } = await supabase
       .from('deals')
@@ -230,10 +230,10 @@ export async function markDealAsWon(
         won_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', dealId)
+      .eq('id', dealId);
 
     if (error) {
-      return { success: false, error: error.message }
+      return { success: false, error: error.message };
     }
 
     // Emit event
@@ -243,12 +243,12 @@ export async function markDealAsWon(
       tenantId,
       value,
       wonAt: new Date().toISOString(),
-    })
+    });
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('[Deal Actions] Error marking deal as won:', error)
-    return { success: false, error: String(error) }
+    console.error('[Deal Actions] Error marking deal as won:', error);
+    return { success: false, error: String(error) };
   }
 }
 
@@ -262,7 +262,7 @@ export async function markDealAsLost(
   lostReason?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient()
+    const supabase = createClient();
 
     const { error } = await supabase
       .from('deals')
@@ -272,10 +272,10 @@ export async function markDealAsLost(
         lost_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', dealId)
+      .eq('id', dealId);
 
     if (error) {
-      return { success: false, error: error.message }
+      return { success: false, error: error.message };
     }
 
     // Emit event
@@ -285,12 +285,12 @@ export async function markDealAsLost(
       tenantId,
       lostReason,
       lostAt: new Date().toISOString(),
-    })
+    });
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('[Deal Actions] Error marking deal as lost:', error)
-    return { success: false, error: String(error) }
+    console.error('[Deal Actions] Error marking deal as lost:', error);
+    return { success: false, error: String(error) };
   }
 }
 
@@ -301,25 +301,25 @@ export async function createDealTask(
   dealId: string,
   tenantId: string,
   taskData: {
-    title: string
-    description?: string
-    assigneeUserId?: string
-    dueAt?: string
-    priority?: 'low' | 'normal' | 'high' | 'urgent'
+    title: string;
+    description?: string;
+    assigneeUserId?: string;
+    dueAt?: string;
+    priority?: 'low' | 'normal' | 'high' | 'urgent';
   }
 ): Promise<{ success: boolean; taskId?: string; error?: string }> {
   try {
-    const supabase = createClient()
+    const supabase = createClient();
 
     // Get deal details with location_id
     const { data: deal } = await supabase
       .from('deals')
       .select('contact_id, owner_user_id, location_id')
       .eq('id', dealId)
-      .single()
+      .single();
 
     if (!deal) {
-      return { success: false, error: 'Deal not found' }
+      return { success: false, error: 'Deal not found' };
     }
 
     const { data: task, error } = await supabase
@@ -338,10 +338,10 @@ export async function createDealTask(
         auto_created: true,
       })
       .select('id')
-      .single()
+      .single();
 
     if (error) {
-      return { success: false, error: error.message }
+      return { success: false, error: error.message };
     }
 
     // Emit event
@@ -355,12 +355,12 @@ export async function createDealTask(
       autoCreated: true,
       priority: taskData.priority || 'normal',
       dueAt: taskData.dueAt,
-    })
+    });
 
-    return { success: true, taskId: task.id }
+    return { success: true, taskId: task.id };
   } catch (error) {
-    console.error('[Deal Actions] Error creating task:', error)
-    return { success: false, error: String(error) }
+    console.error('[Deal Actions] Error creating task:', error);
+    return { success: false, error: String(error) };
   }
 }
 
@@ -375,7 +375,7 @@ export async function sendDealNotification(
   priority: 'normal' | 'high' | 'urgent' = 'normal'
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient()
+    const supabase = createClient();
 
     // Create notification
     await supabase.from('notifications').insert({
@@ -389,12 +389,11 @@ export async function sendDealNotification(
       priority,
       channel: 'in_app',
       read_at: null,
-    })
+    });
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('[Deal Actions] Error sending notification:', error)
-    return { success: false, error: String(error) }
+    console.error('[Deal Actions] Error sending notification:', error);
+    return { success: false, error: String(error) };
   }
 }
-

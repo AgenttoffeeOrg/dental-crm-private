@@ -20,8 +20,10 @@ export async function POST(req: NextRequest) {
 
     // Get tenant ID
     const supabase = createServiceClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -38,14 +40,16 @@ export async function POST(req: NextRequest) {
 
     const tenantId = appUser.tenant_id;
 
-    // Log the click activity
+    // Log the click activity. We use the closest CHECK-allowed activity type
+    // ('email_clicked'); the original semantic ('link_click') is preserved on
+    // marketing_event_type so reporting can still distinguish channel.
     await supabase.from('activities').insert({
       tenant_id: tenantId,
       contact_id: contactId,
       deal_id: dealId,
-      activity_type: 'link_click',
-      activity_timestamp: new Date().toISOString(),
-      notes: `Clicked: ${clickedUrl}`,
+      type: 'email_clicked',
+      occurred_at: new Date().toISOString(),
+      description: `Clicked: ${clickedUrl}`,
       marketing_campaign_id: campaignId,
       marketing_event_type: 'link_clicked',
     });
@@ -61,11 +65,11 @@ export async function POST(req: NextRequest) {
 
     // Check if high-intent click
     const isHighIntent = isHighIntentClick(clickedUrl);
-    
+
     if (isHighIntent) {
       // Auto-create urgent task, add hot_lead tag, notify owner
       await handleHighIntentClick(contactId, dealId, clickedUrl, campaignId, tenantId);
-      
+
       return NextResponse.json({
         success: true,
         highIntent: true,
@@ -80,12 +84,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('[Marketing API] Click tracking error:', error);
-    return NextResponse.json(
-      { error: 'Failed to track click' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to track click' }, { status: 500 });
   }
 }
-
-
-
