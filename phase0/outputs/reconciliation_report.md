@@ -9,22 +9,22 @@
 
 ## 1. Headline numbers
 
-| Metric | Value | Notes |
-|---|---:|---|
-| Tables in live DB (`public`, base tables) | **255** | Audit said ~240; 6% drift, all forward |
-| Views in live DB (`public`) | 43 | Counts toward "things code can `.from()`" |
-| Columns in live DB (`public`) | 4,392 | |
-| CHECK constraints in live DB | 1,418 | |
-| Enum types in live DB | 6 | `invitation_status`, `invite_status`, `membership_role`, `membership_status`, `org_validation_event_type`, `validation_status_type` |
-| Routines (functions) in live DB | 292 | 246 are unused by code (mostly trigger / extension internals) |
-| Tables referenced by code (raw) | 185 | After dropping false positives `_migrations`/`audio`/`public`/`avatars`: **183** |
-| RPCs called by code | 39 | |
-| Migration files in `supabase/migrations/` (forward) | 119 | Plus 9 `ROLLBACK_*` files |
-| SQL files in `supabase/sql/` | 64 | Mostly historical declarative + seed data |
-| Migrations applied (recorded in `supabase_migrations.schema_migrations`) | **125** | The audit's "7 applied" claim is **outdated** |
-| Migration files matched 1:1 to applied record | 108 | |
-| File present, version not in applied list | 11 | All 11 are the *same migrations* applied with a slightly different version stamp (date-shifted by 1–4 days) |
-| Applied without an exact-version file on disk | 17 | 11 are the version-stamp duplicates above; **6 are genuinely missing files** (see §4) |
+| Metric                                                                   |   Value | Notes                                                                                                                               |
+| ------------------------------------------------------------------------ | ------: | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Tables in live DB (`public`, base tables)                                | **255** | Audit said ~240; 6% drift, all forward                                                                                              |
+| Views in live DB (`public`)                                              |      43 | Counts toward "things code can `.from()`"                                                                                           |
+| Columns in live DB (`public`)                                            |   4,392 |                                                                                                                                     |
+| CHECK constraints in live DB                                             |   1,418 |                                                                                                                                     |
+| Enum types in live DB                                                    |       6 | `invitation_status`, `invite_status`, `membership_role`, `membership_status`, `org_validation_event_type`, `validation_status_type` |
+| Routines (functions) in live DB                                          |     292 | 246 are unused by code (mostly trigger / extension internals)                                                                       |
+| Tables referenced by code (raw)                                          |     185 | After dropping false positives `_migrations`/`audio`/`public`/`avatars`: **183**                                                    |
+| RPCs called by code                                                      |      39 |                                                                                                                                     |
+| Migration files in `supabase/migrations/` (forward)                      |     119 | Plus 9 `ROLLBACK_*` files                                                                                                           |
+| SQL files in `supabase/sql/`                                             |      64 | Mostly historical declarative + seed data                                                                                           |
+| Migrations applied (recorded in `supabase_migrations.schema_migrations`) | **125** | The audit's "7 applied" claim is **outdated**                                                                                       |
+| Migration files matched 1:1 to applied record                            |     108 |                                                                                                                                     |
+| File present, version not in applied list                                |      11 | All 11 are the _same migrations_ applied with a slightly different version stamp (date-shifted by 1–4 days)                         |
+| Applied without an exact-version file on disk                            |      17 | 11 are the version-stamp duplicates above; **6 are genuinely missing files** (see §4)                                               |
 
 **Bottom line:** the audit's headline ("194 SQL files vs 7 applied") is no longer accurate. The migration log records **125 applied migrations**, and 108 of them match a forward-migration file in the repo by version. Real drift is much smaller than feared.
 
@@ -36,24 +36,24 @@
 
 After removing storage-bucket false positives (`avatars`, `public` → both are `supabase.storage.from()`, not DB tables), and confirming view-vs-table classification, the **CRITICAL** list is below. Each is a guaranteed `PGRST205` (table not found) on the next call.
 
-| # | Table referenced | Likely true intent | Severity | Suggested fix |
-|---|---|---|---|---|
-| 1 | `marketing_audit_competitors` | DB has `audit_competitors`. Naming drift after a rename. | CRITICAL | Rewrite code to `audit_competitors` (preferred — DB is source of truth) OR add a view alias. |
-| 2 | `marketing_audit_metrics` | DB has `audit_metrics`. | CRITICAL | Same as above. |
-| 3 | `marketing_audit_recommendations` | DB has `audit_recommendations`. | CRITICAL | Same as above. |
-| 4 | `marketing_audit_schedules` | DB has `audit_schedules`. | CRITICAL | Same as above. |
-| 5 | `marketing_audit_notification_preferences` | No corresponding DB table. Notification preferences for marketing-audit module never shipped. | HIGH | Either implement the table (CREATE) or remove the UI surface. |
-| 6 | `treatment_tag_routing_logs` | DB has `treatment_routing_logs`. | CRITICAL | Rename code reference. |
-| 7 | `tenant_settings` | DB has `tenant_routing_settings`, `tenant_feature_flags`, `tenant_admins` — no general `tenant_settings`. The references read settings (`from('tenant_settings').select('value').eq('key', ...)`). | HIGH | Either CREATE the simple key/value table or rewrite callers to read from the typed settings tables they actually need. |
-| 8 | `contact_psych_profiles` | Psychological-analyzer feature. No matching DB table. | HIGH | Either CREATE the table (this is a documented feature) or feature-flag the call sites off. |
-| 9 | `contact_psych_profile_history` | Append-only history for #8. | HIGH | Same — either create both or disable both. |
-| 10 | `conversation_messages` | Call coaching feature. Closest DB neighbour is `bot_turns`. | HIGH | INVESTIGATE — likely call-coaching prototype that was never tabled. |
-| 11 | `contact_tags` | Tagging feature. DB has `marketing_tags`. | HIGH | Likely intended to be `marketing_tags`; verify the join key. |
-| 12 | `form_variants` | A/B testing for forms. No DB table. | HIGH | Either CREATE or feature-flag off. |
-| 13 | `sales_script_metrics` | Aggregated metrics view. DB has `sales_script_outcomes`, `sales_script_usages`. | HIGH | Likely should be a VIEW computing metrics from the existing tables. |
-| 14 | `web_vitals_metrics` | Web-vitals capture endpoint. | HIGH | CREATE table or stop calling `/api/analytics/web-vitals`. |
-| 15 | `local_presence_reviews` | Review aggregation for "local presence" integration. | HIGH | INVESTIGATE — may be planned-but-unbuilt. |
-| 16 | `multiorg_adoption_metrics` | Multi-org analytics endpoint. | HIGH | Likely should be a VIEW. |
+| #   | Table referenced                           | Likely true intent                                                                                                                                                                                 | Severity | Suggested fix                                                                                                          |
+| --- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | `marketing_audit_competitors`              | DB has `audit_competitors`. Naming drift after a rename.                                                                                                                                           | CRITICAL | Rewrite code to `audit_competitors` (preferred — DB is source of truth) OR add a view alias.                           |
+| 2   | `marketing_audit_metrics`                  | DB has `audit_metrics`.                                                                                                                                                                            | CRITICAL | Same as above.                                                                                                         |
+| 3   | `marketing_audit_recommendations`          | DB has `audit_recommendations`.                                                                                                                                                                    | CRITICAL | Same as above.                                                                                                         |
+| 4   | `marketing_audit_schedules`                | DB has `audit_schedules`.                                                                                                                                                                          | CRITICAL | Same as above.                                                                                                         |
+| 5   | `marketing_audit_notification_preferences` | No corresponding DB table. Notification preferences for marketing-audit module never shipped.                                                                                                      | HIGH     | Either implement the table (CREATE) or remove the UI surface.                                                          |
+| 6   | `treatment_tag_routing_logs`               | DB has `treatment_routing_logs`.                                                                                                                                                                   | CRITICAL | Rename code reference.                                                                                                 |
+| 7   | `tenant_settings`                          | DB has `tenant_routing_settings`, `tenant_feature_flags`, `tenant_admins` — no general `tenant_settings`. The references read settings (`from('tenant_settings').select('value').eq('key', ...)`). | HIGH     | Either CREATE the simple key/value table or rewrite callers to read from the typed settings tables they actually need. |
+| 8   | `contact_psych_profiles`                   | Psychological-analyzer feature. No matching DB table.                                                                                                                                              | HIGH     | Either CREATE the table (this is a documented feature) or feature-flag the call sites off.                             |
+| 9   | `contact_psych_profile_history`            | Append-only history for #8.                                                                                                                                                                        | HIGH     | Same — either create both or disable both.                                                                             |
+| 10  | `conversation_messages`                    | Call coaching feature. Closest DB neighbour is `bot_turns`.                                                                                                                                        | HIGH     | INVESTIGATE — likely call-coaching prototype that was never tabled.                                                    |
+| 11  | `contact_tags`                             | Tagging feature. DB has `marketing_tags`.                                                                                                                                                          | HIGH     | Likely intended to be `marketing_tags`; verify the join key.                                                           |
+| 12  | `form_variants`                            | A/B testing for forms. No DB table.                                                                                                                                                                | HIGH     | Either CREATE or feature-flag off.                                                                                     |
+| 13  | `sales_script_metrics`                     | Aggregated metrics view. DB has `sales_script_outcomes`, `sales_script_usages`.                                                                                                                    | HIGH     | Likely should be a VIEW computing metrics from the existing tables.                                                    |
+| 14  | `web_vitals_metrics`                       | Web-vitals capture endpoint.                                                                                                                                                                       | HIGH     | CREATE table or stop calling `/api/analytics/web-vitals`.                                                              |
+| 15  | `local_presence_reviews`                   | Review aggregation for "local presence" integration.                                                                                                                                               | HIGH     | INVESTIGATE — may be planned-but-unbuilt.                                                                              |
+| 16  | `multiorg_adoption_metrics`                | Multi-org analytics endpoint.                                                                                                                                                                      | HIGH     | Likely should be a VIEW.                                                                                               |
 
 ### 2.B Tables that look "missing" but are actually views (NOT bugs)
 
@@ -84,7 +84,7 @@ Severity: **CRITICAL** — every stage change and every deal-assignment automati
 await supabase.from('activities').insert({
   tenant_id: submission.tenantId,
   contact_id: contactId,
-  activity_type: 'form_submission',         // ❌ column is `type`, not `activity_type`
+  activity_type: 'form_submission', // ❌ column is `type`, not `activity_type`
   activity_timestamp: new Date().toISOString(), // ❌ no such column (closest: `occurred_at`)
   notes: `Submitted form: ${submission.formName}`, // ❌ no such column (closest: `description`)
   marketing_campaign_id: submission.formId,
@@ -98,18 +98,19 @@ Severity: **CRITICAL** — every web-form submission fails to log a follow-up ac
 
 ### 2.E RPC functions called but missing in DB
 
-| RPC | Severity | Notes |
-|---|---|---|
-| `exec`, `exec_sql` | LOW | Search shows these are referenced in test/diagnostic helpers (`src/app/api/test/...`). Not used by production paths; safe to leave. INVESTIGATE for cleanup. |
-| `execute_analytics_query` | HIGH | Referenced by analytics module. Either define it or rewrite callers to use plain `select()`. |
-| `find_nearby_competitors` | HIGH | Marketing-audit local-presence feature. CREATE function or remove. |
-| `increment_form_submissions`, `increment_form_views` | HIGH | Counter increments for the marketing forms module. CREATE simple counter functions. |
-| `increment_variant_submissions`, `increment_variant_views` | HIGH | Counters for `form_variants` (which itself is missing — §2.A row 12). Both block A/B testing. |
+| RPC                                                        | Severity | Notes                                                                                                                                                        |
+| ---------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `exec`, `exec_sql`                                         | LOW      | Search shows these are referenced in test/diagnostic helpers (`src/app/api/test/...`). Not used by production paths; safe to leave. INVESTIGATE for cleanup. |
+| `execute_analytics_query`                                  | HIGH     | Referenced by analytics module. Either define it or rewrite callers to use plain `select()`.                                                                 |
+| `find_nearby_competitors`                                  | HIGH     | Marketing-audit local-presence feature. CREATE function or remove.                                                                                           |
+| `increment_form_submissions`, `increment_form_views`       | HIGH     | Counter increments for the marketing forms module. CREATE simple counter functions.                                                                          |
+| `increment_variant_submissions`, `increment_variant_views` | HIGH     | Counters for `form_variants` (which itself is missing — §2.A row 12). Both block A/B testing.                                                                |
 
 ### 2.F Column-mismatch noise (the 394 vs 367 figure)
 
 The naive code-walker flagged 394 column writes that don't appear in DB. After triage (`phase0/outputs/columns_triaged.json`), most are false positives caused by:
-- Writing to a *different* table inside the same code block as a `.from('X')` chain (the regex's 800-char window is too greedy).
+
+- Writing to a _different_ table inside the same code block as a `.from('X')` chain (the regex's 800-char window is too greedy).
 - Object literals that aren't insert/update payloads at all (e.g. function options).
 - Helper objects shaped like the row but stripped down before the actual `.insert(...)`.
 
@@ -125,14 +126,14 @@ The 6 public enums (`invitation_status`, `invite_status`, `membership_role`, `me
 
 ### 3.A In-DB-but-not-declared
 
-The 6 truly untracked applied migrations (no matching file by name *or* close-version filename):
+The 6 truly untracked applied migrations (no matching file by name _or_ close-version filename):
 
-| Version | Name | Classification | Notes |
-|---|---|---|---|
-| `00000000000000` | `baseline_from_sql_folder` | KEEP-AND-DECLARE (synthetic) | Auto-generated baseline marker; safe to ignore. |
-| `20260502131345` | `fix_validate_task_tenant_relationships_drop_created_by_user_id` | KEEP-AND-DECLARE | Applied today via MCP. **Back-fill a file** in `supabase/migrations/`. |
-| `20260502150820` | `add_missing_app_users_fks_for_postgrest_joins` | KEEP-AND-DECLARE | Applied today via MCP. Back-fill. |
-| `20260502155655` | `create_missing_tasks_and_deals_views` | KEEP-AND-DECLARE | Applied today via MCP. Back-fill. |
+| Version          | Name                                                             | Classification               | Notes                                                                  |
+| ---------------- | ---------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------- |
+| `00000000000000` | `baseline_from_sql_folder`                                       | KEEP-AND-DECLARE (synthetic) | Auto-generated baseline marker; safe to ignore.                        |
+| `20260502131345` | `fix_validate_task_tenant_relationships_drop_created_by_user_id` | KEEP-AND-DECLARE             | Applied today via MCP. **Back-fill a file** in `supabase/migrations/`. |
+| `20260502150820` | `add_missing_app_users_fks_for_postgrest_joins`                  | KEEP-AND-DECLARE             | Applied today via MCP. Back-fill.                                      |
+| `20260502155655` | `create_missing_tasks_and_deals_views`                           | KEEP-AND-DECLARE             | Applied today via MCP. Back-fill.                                      |
 
 The other 13 "applied without file" rows in `phase0/outputs/migration_diff.json` all match a file under a slightly different version stamp (e.g. file `20251017_hardening_001_helpers.sql` vs applied `20251017` `hardening_001_helpers`, or file `20250120_ensure_integration_connections.sql` vs applied `20250122_ensure_integration_connections`). These are bookkeeping noise, not real drift — suggested cleanup in §6.B.
 
@@ -145,12 +146,14 @@ The 11 file-but-not-applied entries are all the version-stamp twins of §3.A (sa
 64 files, none authoritatively tracked in `schema_migrations`. They serve as historical declarative intent (initial schema, seed data, demo data, RLS resets, etc.). The single `baseline_from_sql_folder` row in `schema_migrations` represents the "we treat all these as already applied" decision someone made at the time.
 
 Classification:
+
 - KEEP-AND-DECLARE (read-only history): all 64 files — leave them alone, do not delete. They're useful for archaeology.
 - DELETE: not recommended in Phase 0; revisit during the dead-schema cleanup in §6.B.
 
 ### 3.D Declared-inconsistently
 
 The audit mentioned 21 cases. Two confirmed examples in `supabase/sql/`:
+
 - `05_enhanced_deal_management.sql` and `05_enhanced_deal_management_safe.sql` — the same logical migration with two variants.
 - `45_treatment_routing.sql` and `45_treatment_routing_rollback.sql` — pair.
 - `46_super_admin_system.sql` and `46_treatment_routing_permissions.sql` — same number prefix, different content.
@@ -184,13 +187,13 @@ Migrations applied to production where the migration file is missing or version-
 
 These are the items that block lead capture or cause guaranteed silent failures **right now**.
 
-| # | Finding | Decision: |
-|---|---|---|
-| **6A-1** | Extend `activities.type` CHECK to allow `'form_submission'`, `'stage_change'`, `'assignment'`, `'instagram_dm'`, `'fb_messenger'`, `'online_booking_completed'`, `'online_booking_abandoned'`, `'voicestack_call'`, `'web_chat'` (final list to confirm with Shamanth in Step 5). | _pending review_ |
-| **6A-2** | Code fix: `src/lib/marketing/form-processor.ts:96–104` — rename `activity_type` → `type`, `activity_timestamp` → `occurred_at`, `notes` → `description`. (Code change, NOT in the migration; flagged here so it ships in the same PR.) | _pending review_ |
-| **6A-3** | Create RPCs: `increment_form_submissions(form_id uuid)`, `increment_form_views(form_id uuid)` — 2-line counter functions on `forms`. | _pending review_ |
-| **6A-4** | Create view aliases or rename the code: `marketing_audit_competitors` → `audit_competitors`, `marketing_audit_metrics` → `audit_metrics`, `marketing_audit_recommendations` → `audit_recommendations`, `marketing_audit_schedules` → `audit_schedules`. **Recommended:** add 4 simple `CREATE VIEW` aliases so we don't have to touch 50+ files of marketing-audit code. | _pending review_ |
-| **6A-5** | Rename code or add view alias: `treatment_tag_routing_logs` → `treatment_routing_logs`. (One file: `src/app/api/treatment-routing/bulk-reroute/route.ts`. Code-side fix is simpler.) | _pending review_ |
+| #        | Finding                                                                                                                                                                                                                                                                                                                                                                                                                                           | Decision:        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **6A-1** | Extend `activities.type` CHECK to allow `'form_submission'`, `'stage_change'`, `'assignment'`, `'instagram_dm'`, `'fb_messenger'`, `'online_booking_completed'`, `'online_booking_abandoned'`, `'voicestack_call'`, `'web_chat'` (final list to confirm with Shamanth in Step 5).                                                                                                                                                                 | _pending review_ |
+| **6A-2** | Code fix: `src/lib/marketing/form-processor.ts:96–104` — rename `activity_type` → `type`, `activity_timestamp` → `occurred_at`, `notes` → `description`. (Code change, NOT in the migration; flagged here so it ships in the same PR.)                                                                                                                                                                                                            | _pending review_ |
+| **6A-3** | Create RPCs: `increment_form_submissions(form_id uuid)`, `increment_form_views(form_id uuid)` — 2-line counter functions on `forms`.                                                                                                                                                                                                                                                                                                              | _pending review_ |
+| **6A-4** | Create view aliases or rename the code: `marketing_audit_competitors` → `audit_competitors`, `marketing_audit_metrics` → `audit_metrics`, `marketing_audit_recommendations` → `audit_recommendations`, `marketing_audit_schedules` → `audit_schedules`. **Recommended:** add 4 simple `CREATE VIEW` aliases so we don't have to touch 50+ files of marketing-audit code.                                                                          | _pending review_ |
+| **6A-5** | Rename code or add view alias: `treatment_tag_routing_logs` → `treatment_routing_logs`. (One file: `src/app/api/treatment-routing/bulk-reroute/route.ts`. Code-side fix is simpler.)                                                                                                                                                                                                                                                              | _pending review_ |
 | **6A-6** | Back-fill the 3 "applied today" migrations into `supabase/migrations/` so the file folder reflects production:<br>`20260502131345_fix_validate_task_tenant_relationships_drop_created_by_user_id.sql`<br>`20260502150820_add_missing_app_users_fks_for_postgrest_joins.sql`<br>`20260502155655_create_missing_tasks_and_deals_views.sql`<br>(Body can be a comment + the original SQL — pull from the `statements` array in `schema_migrations`.) | _pending review_ |
 
 ### 6.B Should-fix later (NOT in this Phase 0 migration)
@@ -216,7 +219,7 @@ These are the items that block lead capture or cause guaranteed silent failures 
 
 - 1 `ALTER TABLE activities DROP CONSTRAINT … ADD CONSTRAINT …` (CHECK extension)
 - 4 `CREATE OR REPLACE VIEW marketing_audit_X AS SELECT * FROM audit_X;`
-- 2 `CREATE OR REPLACE FUNCTION increment_form_X(...)` 
+- 2 `CREATE OR REPLACE FUNCTION increment_form_X(...)`
 - 3 retroactive migration files (§6A-6)
 
 Plus a small code patch (`form-processor.ts`, `bulk-reroute/route.ts`, plus the form-counters wrapper) shipped in the same PR. Estimated coding time: **30–45 min** for the migration, **15–20 min** for the code patches, **30–45 min** for human-review (Step 5). Total: **~1.5–2 hours** including review.
@@ -266,21 +269,24 @@ file's timestamp on disk was renamed to match the recorded version so
 the file/DB stay in sync.
 
 **Findings addressed (§6A):**
+
 - §6A-1 — `activities.type` CHECK extended with 28 additional values (Block 1.1; final list has 34 values covering Phase 0 through Phase 2 channel/system events).
 - §6A-2 — code patches: `activities` column renames `activity_type → type`, `activity_timestamp → occurred_at`, `notes → description` (Commit 3, 10 files).
 - §6A-3 — `increment_form_submissions(uuid)` and `increment_form_views(uuid)` RPCs created (Block 1.4; both `marketing_forms.total_submissions` and `total_views` columns pre-existed with `default 0`, so no schema change needed there).
-- §6A-4 — `audit_*` tables renamed to `marketing_audit_*` (Block 1.2). Pre-flight verified the only FK relationships were *outgoing* to `marketing_audit_runs`; no incoming FKs from other tables, so the rename was safe. Cosmetic index rename happens in the same block.
+- §6A-4 — `audit_*` tables renamed to `marketing_audit_*` (Block 1.2). Pre-flight verified the only FK relationships were _outgoing_ to `marketing_audit_runs`; no incoming FKs from other tables, so the rename was safe. Cosmetic index rename happens in the same block.
 - §6A-5 — code rename `treatment_tag_routing_logs → treatment_routing_logs` (Commit 4, single caller).
 - §6A-6 — 3 back-fill migration files created (Commit 2): `20260502131345`, `20260502150820`, `20260502155655`. SQL bodies pulled from `supabase_migrations.schema_migrations.statements`. No re-application; already in production.
 - §6A-7 (added) — `DEFAULT_TENANT_ID` zero-UUID fallback removed (Commit 5). webhook handlers now require resolvable `tenant_id` and 400 with structured logging if not. TikTok handler grew an `integration_connections`-based lookup. Test endpoint also patched.
 - §6A-8 (added) — silent `.catch()` audit on the 11 in-scope ingestion files (Commit 6). All Type B handlers gained structured context (`route`, `tenant_id`, `correlation_id`, `error_message`, `error_stack`). No Type C swallows were found.
 
 **Findings deliberately deferred to Phase 1+ (§6B and beyond):**
+
 - §6B-1 through §6B-6 — un-shipped feature tables, dev-helper RPCs, dead-schema cleanup, column-gap full pass.
 - The 367 high-confidence column gaps from `columns_triaged.json` (sample-checked 6/10 = false positives, see below).
 - Calendar-sync, sales-script, and PMS feature column drift surfaced by the sample audit (none on the lead-capture critical path; all behind feature flags or in deferred integrations).
 
 **Validation results:**
+
 - **Idempotency test:** PASS. Migration body re-executed via `execute_sql` after the initial `apply_migration`; second run completed successfully (`status: idempotency-second-run OK`). Every block uses `IF EXISTS` / `IF NOT EXISTS` / `DO` guards.
 - **Post-migration code/DB diff:** PASS on every runbook success criterion:
   - `activities` CHECK contains all 34 expected values.
@@ -294,12 +300,12 @@ the file/DB stay in sync.
 
 Pre-flight count of rows with `tenant_id = '00000000-0000-0000-0000-000000000000'`:
 
-| Table | Rows |
-| --- | --- |
-| contacts | 0 |
-| deals | 0 |
-| activities | 0 |
-| marketing_form_submissions | 0 |
+| Table                      | Rows |
+| -------------------------- | ---- |
+| contacts                   | 0    |
+| deals                      | 0    |
+| activities                 | 0    |
+| marketing_form_submissions | 0    |
 
 The pre-launch state means no clean-up pass is needed. Once the
 `DEFAULT_TENANT_ID` fallback was removed (Commit 5), there is no path
@@ -321,6 +327,7 @@ that produces new zero-UUID rows.
 Verdict: **6/10 false positives, 4/10 real (1 fixed inline, 3 deferred to feature owners).** This is below the runbook's 9/10 threshold for "deferral confirmed safe", so the column-gap full pass is added explicitly to the Phase 1+ backlog (Section §6B). The deferred 3 are not on the lead-capture critical path — calendar-sync (feature flag), sales-script integration, and CSV import.
 
 **Production application:**
+
 - Applied at: 2026-05-02T17:49:27Z (UTC) via Supabase MCP `apply_migration`.
 - Method: Supabase MCP `apply_migration` (server-side; equivalent to `supabase db push` from the management plane).
 - Recorded in `supabase_migrations.schema_migrations`: YES — version `20260502174927`, name `phase_0_reconciliation`.

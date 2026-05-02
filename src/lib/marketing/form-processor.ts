@@ -1,7 +1,7 @@
 /**
  * FORM PROCESSOR - Marketing Forms → CRM Integration
  * Handles form submissions, creates contacts/deals, assigns owners
- * 
+ *
  * PHASE 9 ENHANCEMENT:
  * - Integrated Universal Treatment Tag Routing System
  * - Automatic AI-powered tag extraction from form data
@@ -42,7 +42,7 @@ export async function processFormSubmission(
   dealRules?: DealCreationRules
 ): Promise<{ contactId: string; dealId?: string }> {
   const supabase = createClient();
-  
+
   // Extract contact data from form payload
   const contactData = {
     tenant_id: submission.tenantId,
@@ -74,7 +74,7 @@ export async function processFormSubmission(
         updated_at: new Date().toISOString(),
       })
       .eq('id', contactId);
-    
+
     console.log(`[Form Processor] Updated existing contact ${contactId}`);
   } else {
     // Create new contact
@@ -83,7 +83,7 @@ export async function processFormSubmission(
       .insert(contactData)
       .select('id')
       .single();
-    
+
     contactId = newContact!.id;
     console.log(`[Form Processor] Created new contact ${contactId}`);
   }
@@ -111,10 +111,10 @@ export async function processFormSubmission(
       : null;
 
     // ===== PHASE 9: UNIVERSAL TREATMENT TAG ROUTING =====
-    
+
     // Step 1: Extract treatment tags from form payload
     let treatmentTags: string[] = [];
-    
+
     // Check if form explicitly provides treatment tags
     if (submission.payload.treatment_tags && Array.isArray(submission.payload.treatment_tags)) {
       treatmentTags = submission.payload.treatment_tags;
@@ -131,25 +131,25 @@ export async function processFormSubmission(
       ]
         .filter(Boolean)
         .join(' ');
-      
+
       if (formText.trim()) {
         try {
-          const extractionResult = await extractTagsFromDealText(
-            formText,
-            submission.tenantId
-          );
-          treatmentTags = extractionResult.extractedTags.map(t => t.tagName);
+          const extractionResult = await extractTagsFromDealText(formText, submission.tenantId);
+          treatmentTags = extractionResult.extractedTags.map((t) => t.tagName);
           console.log(`[Form Processor] AI extracted ${treatmentTags.length} tags:`, treatmentTags);
         } catch (error) {
           // Best-effort: tag extraction failure means the deal routes to
           // "unsorted" but the form submission is still captured.
-          console.warn('[form-processor] AI tag extraction failed (best-effort, will route unsorted)', {
-            route: 'lib/marketing/form-processor',
-            tenant_id: submission.tenantId,
-            form_id: submission.formId,
-            error_message: error instanceof Error ? error.message : String(error),
-            error_stack: error instanceof Error ? error.stack : undefined,
-          });
+          console.warn(
+            '[form-processor] AI tag extraction failed (best-effort, will route unsorted)',
+            {
+              route: 'lib/marketing/form-processor',
+              tenant_id: submission.tenantId,
+              form_id: submission.formId,
+              error_message: error instanceof Error ? error.message : String(error),
+              error_stack: error instanceof Error ? error.stack : undefined,
+            }
+          );
         }
       }
     }
@@ -160,7 +160,7 @@ export async function processFormSubmission(
     let finalStageId: string;
     let routingMethod: string;
     let routingLogId: string | undefined;
-    
+
     if (dealRules.forceManualPipeline && dealRules.targetPipelineId && dealRules.defaultStageId) {
       // PRIORITY 1: Manual override - Completely bypass routing engine
       // Use case: User explicitly wants all form submissions to go to a specific pipeline
@@ -181,14 +181,16 @@ export async function processFormSubmission(
           userOverridePipeline: dealRules.targetPipelineId, // Pass as override to routing engine
           source: 'marketing_form',
         });
-        
+
         finalPipelineId = routingResult.pipelineId;
         finalStageId = routingResult.stageId;
         routingMethod = routingResult.routingMethod;
         routingLogId = routingResult.routingLogId;
-        
-        console.log(`[Form Processor] Auto-routed to pipeline: ${finalPipelineId} (${routingMethod})`);
-        
+
+        console.log(
+          `[Form Processor] Auto-routed to pipeline: ${finalPipelineId} (${routingMethod})`
+        );
+
         // Log routing decision
         if (routingLogId) {
           console.log(`[Form Processor] Routing logged: ${routingLogId}`);
@@ -221,7 +223,9 @@ export async function processFormSubmission(
       finalPipelineId = dealRules.targetPipelineId;
       finalStageId = dealRules.defaultStageId;
       routingMethod = 'routing_disabled';
-      console.log(`[Form Processor] Using specified pipeline (routing disabled): ${finalPipelineId}`);
+      console.log(
+        `[Form Processor] Using specified pipeline (routing disabled): ${finalPipelineId}`
+      );
     }
 
     // Step 3: Create deal with routed pipeline, extracted tags, and full attribution data
@@ -254,7 +258,9 @@ export async function processFormSubmission(
       .single();
 
     dealId = newDeal!.id;
-    console.log(`[Form Processor] Created deal ${dealId} for contact ${contactId} with ${treatmentTags.length} tags (${routingMethod})`);
+    console.log(
+      `[Form Processor] Created deal ${dealId} for contact ${contactId} with ${treatmentTags.length} tags (${routingMethod})`
+    );
 
     // ===== PHASE 12: PRESERVE ATTRIBUTION =====
     // Track marketing attribution (first-touch already tracked for contact)
@@ -274,7 +280,7 @@ export async function processFormSubmission(
 
       const deal = dealResult.data;
       const contact = contactResult.data;
-      
+
       // Inherit location: deal > contact > null
       const locationId = deal?.location_id || contact?.location_id || null;
 
@@ -307,7 +313,7 @@ async function assignOwner(
   rules: DealCreationRules
 ): Promise<string | null> {
   const supabase = createClient();
-  
+
   if (rules.assignmentRule === 'round_robin') {
     return await roundRobinAssignment(tenantId);
   } else if (rules.assignmentRule === 'tag_based') {
@@ -315,7 +321,7 @@ async function assignOwner(
   } else if (rules.assignmentRule === 'territory_based') {
     return await territoryBasedAssignment(tenantId, contactData, rules.assignmentConfig);
   }
-  
+
   return null;
 }
 
@@ -324,7 +330,7 @@ async function assignOwner(
  */
 async function roundRobinAssignment(tenantId: string): Promise<string | null> {
   const supabase = createClient();
-  
+
   // Get all active users
   const { data: users } = await supabase
     .from('app_users')
@@ -350,14 +356,14 @@ async function tagBasedAssignment(
   config?: Record<string, any>
 ): Promise<string | null> {
   if (!config) return null;
-  
+
   // Match tags to assigned owners
   for (const tag of tags) {
     if (config[tag]) {
       return config[tag]; // Return configured owner for this tag
     }
   }
-  
+
   return null;
 }
 
@@ -370,17 +376,13 @@ async function territoryBasedAssignment(
   config?: Record<string, any>
 ): Promise<string | null> {
   if (!config) return null;
-  
+
   // Match territory (city, state, zip) to owners
   const territory = contactData.city || contactData.state || contactData.postal_code;
-  
+
   if (territory && config[territory]) {
     return config[territory];
   }
-  
+
   return null;
 }
-
-
-
-

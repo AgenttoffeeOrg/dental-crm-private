@@ -4,22 +4,22 @@
  * Documentation: https://developers.google.com/google-ads/api/docs/lead-form/overview
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase-server'
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase-server';
 
 /**
  * POST - Manually triggered or cron-based lead sync
  */
 export async function POST(request: NextRequest) {
   try {
-    const { advertiserId, startDate, endDate } = await request.json()
+    const { advertiserId, startDate, endDate } = await request.json();
 
     // This would integrate with Google Ads API to fetch leads
     // For now, this is a placeholder structure
 
-    const supabase = createServiceClient()
+    const supabase = createServiceClient();
 
-    console.log('[Google Ads] Syncing leads for advertiser:', advertiserId)
+    console.log('[Google Ads] Syncing leads for advertiser:', advertiserId);
 
     // TODO: Implement Google Ads API integration
     // 1. Fetch leads from Google Ads Lead Form Extensions
@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Lead sync initiated',
       leadsProcessed: 0,
-    })
+    });
   } catch (error) {
-    console.error('[Google Ads] Error:', error)
-    return NextResponse.json({ error: 'Sync failed' }, { status: 500 })
+    console.error('[Google Ads] Error:', error);
+    return NextResponse.json({ error: 'Sync failed' }, { status: 500 });
   }
 }
 
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     status: 'healthy',
     service: 'Google Ads Lead Form Sync',
     timestamp: new Date().toISOString(),
-  })
+  });
 }
 
 /**
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
  * This would run every 15 minutes via cron
  */
 export async function syncGoogleAdsLeads() {
-  const supabase = createServiceClient()
+  const supabase = createServiceClient();
 
   try {
     // Get all active Google Ads integrations
@@ -62,17 +62,17 @@ export async function syncGoogleAdsLeads() {
       .from('api_credentials')
       .select('*')
       .eq('provider', 'google_ads')
-      .eq('is_active', true)
+      .eq('is_active', true);
 
     if (!integrations || integrations.length === 0) {
-      console.log('[Google Ads Sync] No active integrations')
-      return
+      console.log('[Google Ads Sync] No active integrations');
+      return;
     }
 
     for (const integration of integrations) {
       // Fetch new leads for this advertiser
       // TODO: Implement actual Google Ads API calls
-      console.log('[Google Ads Sync] Processing advertiser:', integration.practice_id)
+      console.log('[Google Ads Sync] Processing advertiser:', integration.practice_id);
     }
   } catch (error) {
     // Best-effort background sync: failure means leads aren't pulled this
@@ -81,7 +81,6 @@ export async function syncGoogleAdsLeads() {
       route: 'lib/google-ads-sync',
       error_message: error instanceof Error ? error.message : String(error),
       error_stack: error instanceof Error ? error.stack : undefined,
-    })
+    });
   }
 }
-

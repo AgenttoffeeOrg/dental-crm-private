@@ -20,8 +20,10 @@ export async function POST(req: NextRequest) {
 
     // Get tenant ID
     const supabase = createServiceClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -63,11 +65,11 @@ export async function POST(req: NextRequest) {
 
     // Check if high-intent click
     const isHighIntent = isHighIntentClick(clickedUrl);
-    
+
     if (isHighIntent) {
       // Auto-create urgent task, add hot_lead tag, notify owner
       await handleHighIntentClick(contactId, dealId, clickedUrl, campaignId, tenantId);
-      
+
       return NextResponse.json({
         success: true,
         highIntent: true,
@@ -82,12 +84,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('[Marketing API] Click tracking error:', error);
-    return NextResponse.json(
-      { error: 'Failed to track click' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to track click' }, { status: 500 });
   }
 }
-
-
-

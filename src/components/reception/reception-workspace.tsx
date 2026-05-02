@@ -1,22 +1,22 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { format, formatDistanceToNow } from 'date-fns'
-import { toast } from 'sonner'
-import { createClient } from '@/lib/supabase-client'
-import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
-import { sanitizePhoneNumber } from '@/lib/utils/phone'
-import { ClickToCallDialer } from '@/components/communications/click-to-call-dialer'
-import { EmailComposerPanel } from '@/components/communications/email-composer-panel'
-import { SMSComposerPanel } from '@/components/communications/sms-composer-panel'
-import { WhatsAppComposerPanel } from '@/components/communications/whatsapp-composer-panel'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Skeleton } from '@/components/ui/skeleton'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { format, formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase-client';
+import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant';
+import { sanitizePhoneNumber } from '@/lib/utils/phone';
+import { ClickToCallDialer } from '@/components/communications/click-to-call-dialer';
+import { EmailComposerPanel } from '@/components/communications/email-composer-panel';
+import { SMSComposerPanel } from '@/components/communications/sms-composer-panel';
+import { WhatsAppComposerPanel } from '@/components/communications/whatsapp-composer-panel';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertTriangle,
   Calendar,
@@ -25,204 +25,200 @@ import {
   MessageCircle,
   PhoneCall,
   Sparkles,
-} from 'lucide-react'
+} from 'lucide-react';
 
 type ContactSummary = {
-  id: string
-  full_name: string
-  primary_phone?: string | null
-  primary_email?: string | null
-  status?: string | null
-  tags?: string[] | null
-  city?: string | null
-  country?: string | null
-  state?: string | null
-}
+  id: string;
+  full_name: string;
+  primary_phone?: string | null;
+  primary_email?: string | null;
+  status?: string | null;
+  tags?: string[] | null;
+  city?: string | null;
+  country?: string | null;
+  state?: string | null;
+};
 
 type DealSummary = {
-  id: string
-  title?: string | null
-  value_estimate_cents?: number | null
-  updated_at?: string | null
-  status?: string | null
+  id: string;
+  title?: string | null;
+  value_estimate_cents?: number | null;
+  updated_at?: string | null;
+  status?: string | null;
   stage?: {
-    name?: string | null
-  } | null
-}
+    name?: string | null;
+  } | null;
+};
 
 type TaskSummary = {
-  id: string
-  title?: string | null
-  due_at?: string | null
-  status?: string | null
-}
+  id: string;
+  title?: string | null;
+  due_at?: string | null;
+  status?: string | null;
+};
 
 type ActivitySummary = {
-  id: string
-  type?: string | null
-  occurred_at?: string | null
-  direction?: string | null
-  snippet?: string | null
-  description?: string | null
-}
+  id: string;
+  type?: string | null;
+  occurred_at?: string | null;
+  direction?: string | null;
+  snippet?: string | null;
+  description?: string | null;
+};
 
 type PersonaSnapshot = {
-  label: string
-  tags: string[]
-  updatedAt?: string | null
-  recommendedApproach?: string | null
-}
+  label: string;
+  tags: string[];
+  updatedAt?: string | null;
+  recommendedApproach?: string | null;
+};
 
 type ContactDetails = {
-  contact: ContactSummary
-  deals: DealSummary[]
-  openDealCount: number
-  pipelineValueCents: number
-  upcomingTasks: TaskSummary[]
-  lastActivity: ActivitySummary | null
-  persona: PersonaSnapshot | null
-}
+  contact: ContactSummary;
+  deals: DealSummary[];
+  openDealCount: number;
+  pipelineValueCents: number;
+  upcomingTasks: TaskSummary[];
+  lastActivity: ActivitySummary | null;
+  persona: PersonaSnapshot | null;
+};
 
 type QueueAlertsState = {
-  severity: 'info' | 'warning' | 'critical'
-  incidents: any[]
-  queues: any[]
-  backupRuns: any[]
-}
+  severity: 'info' | 'warning' | 'critical';
+  incidents: any[];
+  queues: any[];
+  backupRuns: any[];
+};
 
 type FeatureFlagInsights = {
-  enabledCount: number
-  overrideCount: number
-  flags: any[]
-}
+  enabledCount: number;
+  overrideCount: number;
+  flags: any[];
+};
 
 function formatCurrency(valueInCents?: number | null) {
   if (!valueInCents || Number.isNaN(valueInCents)) {
-    return 'GBP 0'
+    return 'GBP 0';
   }
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: 'GBP',
     maximumFractionDigits: 0,
-  }).format(valueInCents / 100)
+  }).format(valueInCents / 100);
 }
 
 function formatDueDate(dueAt?: string | null) {
-  if (!dueAt) return 'No due date'
+  if (!dueAt) return 'No due date';
   try {
-    return format(new Date(dueAt), 'EEE, d MMM p')
+    return format(new Date(dueAt), 'EEE, d MMM p');
   } catch {
-    return dueAt
+    return dueAt;
   }
 }
 
 function formatRelative(date?: string | null, fallback = 'Not recorded') {
-  if (!date) return fallback
+  if (!date) return fallback;
   try {
-    return formatDistanceToNow(new Date(date), { addSuffix: true })
+    return formatDistanceToNow(new Date(date), { addSuffix: true });
   } catch {
-    return fallback
+    return fallback;
   }
 }
 
 export function ReceptionWorkspace() {
-  const { tenantId } = useTenant()
-  const { userId: currentUserId } = useCurrentUser()
-  const supabase = useMemo(() => createClient(), [])
+  const { tenantId } = useTenant();
+  const { userId: currentUserId } = useCurrentUser();
+  const supabase = useMemo(() => createClient(), []);
 
-  const [searchTerm, setSearchTerm] = useState('')
-  const [contacts, setContacts] = useState<ContactSummary[]>([])
-  const [contactLoading, setContactLoading] = useState(false)
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
-  const [details, setDetails] = useState<ContactDetails | null>(null)
-  const [detailsLoading, setDetailsLoading] = useState(false)
-  const [queueAlerts, setQueueAlerts] = useState<QueueAlertsState | null>(null)
-  const [queueLoading, setQueueLoading] = useState(true)
-  const [flagsInsights, setFlagsInsights] = useState<FeatureFlagInsights | null>(null)
-  const [flagsLoading, setFlagsLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('');
+  const [contacts, setContacts] = useState<ContactSummary[]>([]);
+  const [contactLoading, setContactLoading] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [details, setDetails] = useState<ContactDetails | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [queueAlerts, setQueueAlerts] = useState<QueueAlertsState | null>(null);
+  const [queueLoading, setQueueLoading] = useState(true);
+  const [flagsInsights, setFlagsInsights] = useState<FeatureFlagInsights | null>(null);
+  const [flagsLoading, setFlagsLoading] = useState(true);
 
-  const [dialerOpen, setDialerOpen] = useState(false)
-  const [smsOpen, setSmsOpen] = useState(false)
-  const [emailOpen, setEmailOpen] = useState(false)
-  const [whatsappOpen, setWhatsAppOpen] = useState(false)
+  const [dialerOpen, setDialerOpen] = useState(false);
+  const [smsOpen, setSmsOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [whatsappOpen, setWhatsAppOpen] = useState(false);
 
   const loadContacts = useCallback(
     async (query: string) => {
-      if (!tenantId) return
-      setContactLoading(true)
+      if (!tenantId) return;
+      setContactLoading(true);
       try {
         let request = supabase
           .from('contacts')
-          .select(
-            'id, full_name, primary_phone, primary_email, tags, city, country, state'
-          )
+          .select('id, full_name, primary_phone, primary_email, tags, city, country, state')
           .eq('tenant_id', tenantId)
           .order('updated_at', { ascending: false })
-          .limit(25)
+          .limit(25);
 
-        const trimmed = query.trim()
+        const trimmed = query.trim();
         if (trimmed) {
-          const escaped = trimmed.replace(/%/g, '\\%').replace(/_/g, '\\_')
-          const like = `%${escaped}%`
+          const escaped = trimmed.replace(/%/g, '\\%').replace(/_/g, '\\_');
+          const like = `%${escaped}%`;
           request = request.or(
             `full_name.ilike.${like},primary_email.ilike.${like},primary_phone.ilike.${like}`
-          )
+          );
         }
 
-        const { data, error } = await request
-        if (error) throw error
+        const { data, error } = await request;
+        if (error) throw error;
 
-        setContacts(data ?? [])
+        setContacts(data ?? []);
         setSelectedContactId((previous) => {
           if (previous && (data ?? []).some((contact) => contact.id === previous)) {
-            return previous
+            return previous;
           }
           if ((data ?? []).length > 0) {
-            return data![0].id
+            return data![0].id;
           }
-          return null
-        })
+          return null;
+        });
       } catch (error) {
-        console.error('[Reception] Failed to load contacts', error)
-        toast.error('Unable to load contacts right now.')
+        console.error('[Reception] Failed to load contacts', error);
+        toast.error('Unable to load contacts right now.');
       } finally {
-        setContactLoading(false)
+        setContactLoading(false);
       }
     },
     [tenantId, supabase]
-  )
+  );
 
   useEffect(() => {
-    if (!tenantId) return
-    loadContacts('')
-  }, [tenantId, loadContacts])
+    if (!tenantId) return;
+    loadContacts('');
+  }, [tenantId, loadContacts]);
 
   useEffect(() => {
-    if (!tenantId) return
+    if (!tenantId) return;
     const handler = setTimeout(() => {
-      loadContacts(searchTerm)
-    }, 300)
-    return () => clearTimeout(handler)
-  }, [searchTerm, tenantId, loadContacts])
+      loadContacts(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm, tenantId, loadContacts]);
 
   const loadContactDetails = useCallback(
     async (contactId: string) => {
-      setDetailsLoading(true)
+      setDetailsLoading(true);
       try {
         const { data: contactData, error: contactError } = await supabase
           .from('contacts')
-          .select(
-            'id, full_name, primary_phone, primary_email, tags, city, country, state'
-          )
+          .select('id, full_name, primary_phone, primary_email, tags, city, country, state')
           .eq('id', contactId)
-          .maybeSingle()
+          .maybeSingle();
 
         if (contactError) {
-          throw contactError
+          throw contactError;
         }
         if (!contactData) {
-          setDetails(null)
-          return
+          setDetails(null);
+          return;
         }
 
         const [
@@ -233,7 +229,9 @@ export function ReceptionWorkspace() {
         ] = await Promise.all([
           supabase
             .from('deals')
-            .select('id, title, value_estimate_cents, updated_at, status, stage:pipeline_stages(name)')
+            .select(
+              'id, title, value_estimate_cents, updated_at, status, stage:pipeline_stages(name)'
+            )
             .eq('contact_id', contactId)
             .order('updated_at', { ascending: false })
             .limit(6),
@@ -255,39 +253,39 @@ export function ReceptionWorkspace() {
             .select('dominant_trait, updated_at, snapshot')
             .eq('contact_id', contactId)
             .maybeSingle(),
-        ])
+        ]);
 
         if (dealsError) {
-          console.error('[Reception] Deals load error', dealsError)
+          console.error('[Reception] Deals load error', dealsError);
         }
         if (tasksError) {
-          console.error('[Reception] Tasks load error', tasksError)
+          console.error('[Reception] Tasks load error', tasksError);
         }
         if (activityError) {
-          console.error('[Reception] Activity load error', activityError)
+          console.error('[Reception] Activity load error', activityError);
         }
         if (personaError && personaError.code !== 'PGRST116') {
-          console.error('[Reception] Persona load error', personaError)
+          console.error('[Reception] Persona load error', personaError);
         }
 
-        const deals = (dealsData as DealSummary[]) ?? []
+        const deals = (dealsData as DealSummary[]) ?? [];
         const pipelineValueCents = deals.reduce(
           (sum, deal) => sum + (deal.value_estimate_cents || 0),
           0
-        )
+        );
         const openDealCount = deals.filter((deal) => {
-          const stageName = deal.stage?.name?.toLowerCase() ?? ''
-          return !stageName.includes('closed_won') && !stageName.includes('closed_lost')
-        }).length
+          const stageName = deal.stage?.name?.toLowerCase() ?? '';
+          return !stageName.includes('closed_won') && !stageName.includes('closed_lost');
+        }).length;
 
-        const tasks = (tasksData as TaskSummary[]) ?? []
-        const lastActivityList = (activityData as ActivitySummary[]) ?? []
-        const lastActivity = lastActivityList.length > 0 ? lastActivityList[0] : null
+        const tasks = (tasksData as TaskSummary[]) ?? [];
+        const lastActivityList = (activityData as ActivitySummary[]) ?? [];
+        const lastActivity = lastActivityList.length > 0 ? lastActivityList[0] : null;
 
-        let persona: PersonaSnapshot | null = null
+        let persona: PersonaSnapshot | null = null;
         if (personaData) {
-          const snapshot = (personaData.snapshot as any) ?? {}
-          const tags = Array.isArray(snapshot.persona_tags) ? snapshot.persona_tags : []
+          const snapshot = (personaData.snapshot as any) ?? {};
+          const tags = Array.isArray(snapshot.persona_tags) ? snapshot.persona_tags : [];
           persona = {
             label: personaData.dominant_trait
               ? personaData.dominant_trait
@@ -297,7 +295,7 @@ export function ReceptionWorkspace() {
             tags,
             updatedAt: personaData.updated_at,
             recommendedApproach: snapshot.recommended_approach ?? null,
-          }
+          };
         }
 
         setDetails({
@@ -308,170 +306,169 @@ export function ReceptionWorkspace() {
           upcomingTasks: tasks,
           lastActivity,
           persona,
-        })
+        });
       } catch (error) {
-        console.error('[Reception] Failed to load contact details', error)
-        toast.error('Unable to load reception insights for this contact.')
-        setDetails(null)
+        console.error('[Reception] Failed to load contact details', error);
+        toast.error('Unable to load reception insights for this contact.');
+        setDetails(null);
       } finally {
-        setDetailsLoading(false)
+        setDetailsLoading(false);
       }
     },
     [supabase]
-  )
+  );
 
   useEffect(() => {
     if (selectedContactId) {
-      loadContactDetails(selectedContactId)
+      loadContactDetails(selectedContactId);
     } else {
-      setDetails(null)
+      setDetails(null);
     }
-  }, [selectedContactId, loadContactDetails])
+  }, [selectedContactId, loadContactDetails]);
 
   const fetchQueueAlerts = useCallback(async () => {
-    setQueueLoading(true)
+    setQueueLoading(true);
     try {
-      const response = await fetch('/api/system/queues/alerts', { credentials: 'include' })
+      const response = await fetch('/api/system/queues/alerts', { credentials: 'include' });
       if (!response.ok) {
-        throw new Error(`Queue alerts status ${response.status}`)
+        throw new Error(`Queue alerts status ${response.status}`);
       }
-      const data = await response.json()
-      const incidents =
-        data?.queues?.flatMap((queue: any) => queue.incidents || []) ?? []
+      const data = await response.json();
+      const incidents = data?.queues?.flatMap((queue: any) => queue.incidents || []) ?? [];
       const severity = data?.queues?.some((queue: any) => queue.severity === 'critical')
         ? 'critical'
         : data?.queues?.some((queue: any) => queue.severity === 'warning')
-        ? 'warning'
-        : 'info'
+          ? 'warning'
+          : 'info';
       setQueueAlerts({
         severity,
         incidents,
         queues: data?.queues ?? [],
         backupRuns: data?.backupRuns ?? [],
-      })
+      });
     } catch (error) {
-      console.error('[Reception] Failed to load queue alerts', error)
-      setQueueAlerts(null)
+      console.error('[Reception] Failed to load queue alerts', error);
+      setQueueAlerts(null);
     } finally {
-      setQueueLoading(false)
+      setQueueLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchQueueAlerts()
-  }, [fetchQueueAlerts])
+    fetchQueueAlerts();
+  }, [fetchQueueAlerts]);
 
   const fetchFeatureFlagInsights = useCallback(async () => {
-    setFlagsLoading(true)
+    setFlagsLoading(true);
     try {
-      const response = await fetch('/api/system/feature-flags', { credentials: 'include' })
+      const response = await fetch('/api/system/feature-flags', { credentials: 'include' });
       if (!response.ok) {
-        throw new Error(`Feature flag status ${response.status}`)
+        throw new Error(`Feature flag status ${response.status}`);
       }
-      const data = await response.json()
-      const flags = data?.flags ?? []
+      const data = await response.json();
+      const flags = data?.flags ?? [];
       setFlagsInsights({
         enabledCount: flags.filter((flag: any) => flag.effectiveEnabled).length,
         overrideCount: flags.filter((flag: any) => flag.source === 'tenant').length,
         flags,
-      })
+      });
     } catch (error) {
       if (error instanceof Error && /status 401/.test(error.message)) {
         // User lacks governance access; fall back to empty insights without logging noise
-        setFlagsInsights(null)
+        setFlagsInsights(null);
       } else {
-        console.error('[Reception] Failed to load feature flags', error)
-        setFlagsInsights(null)
+        console.error('[Reception] Failed to load feature flags', error);
+        setFlagsInsights(null);
       }
     } finally {
-      setFlagsLoading(false)
+      setFlagsLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchFeatureFlagInsights()
-  }, [fetchFeatureFlagInsights])
+    fetchFeatureFlagInsights();
+  }, [fetchFeatureFlagInsights]);
 
   const heroContact =
-    details?.contact ?? contacts.find((contact) => contact.id === selectedContactId) ?? null
+    details?.contact ?? contacts.find((contact) => contact.id === selectedContactId) ?? null;
 
   const sanitizedPhone = useMemo(
     () => (heroContact?.primary_phone ? sanitizePhoneNumber(heroContact.primary_phone) : ''),
     [heroContact?.primary_phone]
-  )
+  );
 
-  const primaryDealId = details?.deals?.[0]?.id ?? null
+  const primaryDealId = details?.deals?.[0]?.id ?? null;
 
   const enabledFlagBadges =
-    flagsInsights?.flags?.filter((flag: any) => flag.effectiveEnabled).slice(0, 3) ?? []
+    flagsInsights?.flags?.filter((flag: any) => flag.effectiveEnabled).slice(0, 3) ?? [];
 
-  const queueIncidents = queueAlerts?.incidents?.slice(0, 3) ?? []
-  const lastBackupRun = queueAlerts?.backupRuns?.[0] ?? null
-  const queueSeverityTone: 'info' | 'warning' | 'critical' = queueAlerts?.severity ?? 'info'
+  const queueIncidents = queueAlerts?.incidents?.slice(0, 3) ?? [];
+  const lastBackupRun = queueAlerts?.backupRuns?.[0] ?? null;
+  const queueSeverityTone: 'info' | 'warning' | 'critical' = queueAlerts?.severity ?? 'info';
 
   const severityAccent: Record<'info' | 'warning' | 'critical', string> = {
     info: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     warning: 'border-amber-200 bg-amber-50 text-amber-700',
     critical: 'border-red-200 bg-red-50 text-red-700',
-  }
+  };
 
   const lastTouchLabel = details
     ? details.lastActivity
       ? formatRelative(details.lastActivity.occurred_at)
       : 'No recorded touchpoint'
-    : 'No recorded touchpoint'
+    : 'No recorded touchpoint';
 
   const contactLocation = heroContact
     ? [heroContact.city, heroContact.state, heroContact.country].filter(Boolean).join(', ')
-    : null
+    : null;
 
   const handleOpenDialer = () => {
     if (!heroContact) {
-      toast.error('Select a contact first.')
-      return
+      toast.error('Select a contact first.');
+      return;
     }
     if (!heroContact.primary_phone) {
-      toast.error('Add a phone number before placing a call.')
-      return
+      toast.error('Add a phone number before placing a call.');
+      return;
     }
-    setDialerOpen(true)
-  }
+    setDialerOpen(true);
+  };
 
   const handleOpenSMS = () => {
     if (!heroContact) {
-      toast.error('Select a contact first.')
-      return
+      toast.error('Select a contact first.');
+      return;
     }
     if (!heroContact.primary_phone) {
-      toast.error('Add a phone number before sending an SMS.')
-      return
+      toast.error('Add a phone number before sending an SMS.');
+      return;
     }
-    setSmsOpen(true)
-  }
+    setSmsOpen(true);
+  };
 
   const handleOpenEmail = () => {
     if (!heroContact) {
-      toast.error('Select a contact first.')
-      return
+      toast.error('Select a contact first.');
+      return;
     }
     if (!heroContact.primary_email) {
-      toast.error('Add an email address before composing.')
-      return
+      toast.error('Add an email address before composing.');
+      return;
     }
-    setEmailOpen(true)
-  }
+    setEmailOpen(true);
+  };
 
   const handleOpenWhatsApp = () => {
     if (!heroContact) {
-      toast.error('Select a contact first.')
-      return
+      toast.error('Select a contact first.');
+      return;
     }
     if (!heroContact.primary_phone) {
-      toast.error('Add a phone number before sending a WhatsApp.')
-      return
+      toast.error('Add a phone number before sending a WhatsApp.');
+      return;
     }
-    setWhatsAppOpen(true)
-  }
+    setWhatsAppOpen(true);
+  };
 
   return (
     <div className="flex h-full min-h-[calc(100vh-3.5rem)] bg-gray-50">
@@ -501,10 +498,10 @@ export function ReceptionWorkspace() {
                   {queueLoading
                     ? 'Checking queues...'
                     : queueAlerts && queueAlerts.incidents.length > 0
-                    ? `${queueAlerts.incidents.length} open incident${
-                        queueAlerts.incidents.length === 1 ? '' : 's'
-                      }`
-                    : 'All queues healthy'}
+                      ? `${queueAlerts.incidents.length} open incident${
+                          queueAlerts.incidents.length === 1 ? '' : 's'
+                        }`
+                      : 'All queues healthy'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -534,8 +531,8 @@ export function ReceptionWorkspace() {
                               queue.severity === 'critical'
                                 ? 'border-red-200 text-red-700 bg-red-50'
                                 : queue.severity === 'warning'
-                                ? 'border-amber-200 text-amber-700 bg-amber-50'
-                                : 'border-emerald-200 text-emerald-700 bg-emerald-50'
+                                  ? 'border-amber-200 text-amber-700 bg-amber-50'
+                                  : 'border-emerald-200 text-emerald-700 bg-emerald-50'
                             }`}
                           >
                             {queue.severity || 'info'}
@@ -552,13 +549,15 @@ export function ReceptionWorkspace() {
 
             <Card className="border-gray-200">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-gray-900">Feature Access</CardTitle>
+                <CardTitle className="text-sm font-semibold text-gray-900">
+                  Feature Access
+                </CardTitle>
                 <CardDescription className="text-xs text-gray-500">
                   {flagsLoading
                     ? 'Loading access...'
                     : flagsInsights
-                    ? `${flagsInsights.enabledCount} features enabled`
-                    : 'Unable to load feature flags'}
+                      ? `${flagsInsights.enabledCount} features enabled`
+                      : 'Unable to load feature flags'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -585,7 +584,11 @@ export function ReceptionWorkspace() {
                     {enabledFlagBadges.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
                         {enabledFlagBadges.map((flag: any) => (
-                          <Badge key={flag.key} variant="outline" className="text-[10px] capitalize">
+                          <Badge
+                            key={flag.key}
+                            variant="outline"
+                            className="text-[10px] capitalize"
+                          >
                             {flag.name}
                           </Badge>
                         ))}
@@ -606,13 +609,15 @@ export function ReceptionWorkspace() {
 
             <Card className="border-gray-200">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-gray-900">Recent Contacts</CardTitle>
+                <CardTitle className="text-sm font-semibold text-gray-900">
+                  Recent Contacts
+                </CardTitle>
                 <CardDescription className="text-xs text-gray-500">
                   {contactLoading
                     ? 'Searching...'
                     : contacts.length > 0
-                    ? `${contacts.length} match${contacts.length === 1 ? '' : 'es'}`
-                    : 'No matches found'}
+                      ? `${contacts.length} match${contacts.length === 1 ? '' : 'es'}`
+                      : 'No matches found'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -626,7 +631,7 @@ export function ReceptionWorkspace() {
                   </div>
                 ) : (
                   contacts.map((contact) => {
-                    const isActive = contact.id === selectedContactId
+                    const isActive = contact.id === selectedContactId;
                     return (
                       <button
                         key={contact.id}
@@ -659,7 +664,7 @@ export function ReceptionWorkspace() {
                           )}
                         </div>
                       </button>
-                    )
+                    );
                   })
                 )}
               </CardContent>
@@ -796,9 +801,7 @@ export function ReceptionWorkspace() {
                         <p className="mt-2 text-lg font-semibold text-gray-900">
                           {formatCurrency(details.pipelineValueCents)}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          Estimated value from linked deals
-                        </p>
+                        <p className="text-xs text-gray-500">Estimated value from linked deals</p>
                       </div>
                       <div className="rounded-lg border border-gray-200 bg-white p-3">
                         <p className="text-xs uppercase tracking-wide text-gray-400">
@@ -1162,7 +1165,5 @@ export function ReceptionWorkspace() {
         </>
       )}
     </div>
-  )
+  );
 }
-
-

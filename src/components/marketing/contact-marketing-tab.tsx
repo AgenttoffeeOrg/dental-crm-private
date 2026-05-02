@@ -29,7 +29,7 @@ export function ContactMarketingTab({ contactId, tenantId }: ContactMarketingTab
 
   async function fetchMarketingData() {
     const supabase = createClient();
-    
+
     // Get engagement score
     const { data: contact } = await supabase
       .from('contacts')
@@ -86,18 +86,24 @@ export function ContactMarketingTab({ contactId, tenantId }: ContactMarketingTab
             <div className="text-xs text-gray-500 mt-1">out of 100</div>
           </div>
         </div>
-        
+
         {/* Engagement Level */}
         <div className="mt-4">
-          <Badge 
-            variant="outline" 
-            className={engagementScore >= 70 ? "bg-green-50 text-green-700 border-green-200" : 
-                       engagementScore >= 40 ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
-                       "bg-gray-50 text-gray-700 border-gray-200"}
+          <Badge
+            variant="outline"
+            className={
+              engagementScore >= 70
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : engagementScore >= 40
+                  ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                  : 'bg-gray-50 text-gray-700 border-gray-200'
+            }
           >
-            {engagementScore >= 70 ? '🔥 Highly Engaged' : 
-             engagementScore >= 40 ? '👍 Moderately Engaged' :
-             '😴 Low Engagement'}
+            {engagementScore >= 70
+              ? '🔥 Highly Engaged'
+              : engagementScore >= 40
+                ? '👍 Moderately Engaged'
+                : '😴 Low Engagement'}
           </Badge>
         </div>
       </Card>
@@ -108,7 +114,7 @@ export function ContactMarketingTab({ contactId, tenantId }: ContactMarketingTab
           <Mail className="h-4 w-4 text-purple-600" />
           Campaigns Received ({campaigns.length})
         </h3>
-        
+
         {campaigns.length === 0 ? (
           <Card className="p-6 text-center text-gray-500 bg-gray-50">
             No campaigns received yet
@@ -127,10 +133,14 @@ export function ContactMarketingTab({ contactId, tenantId }: ContactMarketingTab
                         <ExternalLink className="h-3.5 w-3.5 text-blue-600" />
                       )}
                       <span className="text-sm font-medium text-gray-900">
-                        {campaign.marketing_event_type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        {campaign.marketing_event_type
+                          ?.replace(/_/g, ' ')
+                          .replace(/\b\w/g, (l: string) => l.toUpperCase())}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600">{campaign.description || 'Marketing campaign interaction'}</p>
+                    <p className="text-xs text-gray-600">
+                      {campaign.description || 'Marketing campaign interaction'}
+                    </p>
                     <p className="text-xs text-gray-400 mt-1">
                       {new Date(campaign.occurred_at).toLocaleDateString()}
                     </p>
@@ -148,7 +158,7 @@ export function ContactMarketingTab({ contactId, tenantId }: ContactMarketingTab
           <Zap className="h-4 w-4 text-orange-600" />
           Active Journeys ({journeys.length})
         </h3>
-        
+
         {journeys.length === 0 ? (
           <Card className="p-6 text-center text-gray-500 bg-gray-50">
             No active automation journeys
@@ -166,7 +176,10 @@ export function ContactMarketingTab({ contactId, tenantId }: ContactMarketingTab
                       Step {journey.node_index + 1} • {journey.state}
                     </p>
                   </div>
-                  <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                  <Badge
+                    variant="outline"
+                    className="bg-orange-50 text-orange-700 border-orange-200"
+                  >
                     Active
                   </Badge>
                 </div>
@@ -190,7 +203,3 @@ export function ContactMarketingTab({ contactId, tenantId }: ContactMarketingTab
     </div>
   );
 }
-
-
-
-
