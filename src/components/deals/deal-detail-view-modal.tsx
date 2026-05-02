@@ -1008,6 +1008,7 @@ const sanitizedContactPhone = useMemo(
         </DialogContent>
       </Dialog>
       </div>
+      </div>
 
       {/* AI Assistant - Toggleable Slider from Right */}
       {aiAssistantOpen && (

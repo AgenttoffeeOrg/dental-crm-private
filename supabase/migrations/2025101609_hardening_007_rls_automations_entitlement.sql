@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 2.3: Automations RLS with Combined Entitlements
 -- Date: October 16, 2025
@@ -22,6 +24,7 @@ DROP POLICY IF EXISTS automations_service_role ON automations;
 -- 1. AUTOMATIONS TABLE - COMBINED ENTITLEMENT CHECK
 -- =====================================================
 
+DROP POLICY IF EXISTS automations_select ON automations;
 CREATE POLICY automations_select ON automations
   FOR SELECT
   USING (
@@ -41,6 +44,7 @@ COMMENT ON POLICY automations_select ON automations IS
   'SELECT: Requires automations entitlement. 
    If category=marketing, also requires marketing entitlement.';
 
+DROP POLICY IF EXISTS automations_insert ON automations;
 CREATE POLICY automations_insert ON automations
   FOR INSERT
   WITH CHECK (
@@ -60,6 +64,7 @@ COMMENT ON POLICY automations_insert ON automations IS
   'INSERT: Requires automations entitlement + manager+ role. 
    If category=marketing, also requires marketing entitlement.';
 
+DROP POLICY IF EXISTS automations_update ON automations;
 CREATE POLICY automations_update ON automations
   FOR UPDATE
   USING (
@@ -79,6 +84,7 @@ COMMENT ON POLICY automations_update ON automations IS
   'UPDATE: Requires automations entitlement + manager+ role. 
    If category=marketing, also requires marketing entitlement.';
 
+DROP POLICY IF EXISTS automations_delete ON automations;
 CREATE POLICY automations_delete ON automations
   FOR DELETE
   USING (
@@ -98,6 +104,7 @@ COMMENT ON POLICY automations_delete ON automations IS
   'DELETE: Requires automations entitlement + admin role. 
    If category=marketing, also requires marketing entitlement.';
 
+DROP POLICY IF EXISTS automations_service_role ON automations;
 CREATE POLICY automations_service_role ON automations
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -117,6 +124,7 @@ DROP POLICY IF EXISTS automation_nodes_select ON automation_nodes;
 DROP POLICY IF EXISTS automation_nodes_all ON automation_nodes;
 DROP POLICY IF EXISTS automation_nodes_service ON automation_nodes;
 
+DROP POLICY IF EXISTS automation_nodes_select ON automation_nodes;
 CREATE POLICY automation_nodes_select ON automation_nodes
   FOR SELECT
   USING (
@@ -124,6 +132,7 @@ CREATE POLICY automation_nodes_select ON automation_nodes
     AND check_entitlement('automations', false)
   );
 
+DROP POLICY IF EXISTS automation_nodes_all ON automation_nodes;
 CREATE POLICY automation_nodes_all ON automation_nodes
   FOR ALL
   USING (
@@ -132,6 +141,7 @@ CREATE POLICY automation_nodes_all ON automation_nodes
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'manager', 'marketing'])
   );
 
+DROP POLICY IF EXISTS automation_nodes_service ON automation_nodes;
 CREATE POLICY automation_nodes_service ON automation_nodes
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -151,6 +161,7 @@ DROP POLICY IF EXISTS automation_edges_select ON automation_edges;
 DROP POLICY IF EXISTS automation_edges_all ON automation_edges;
 DROP POLICY IF EXISTS automation_edges_service ON automation_edges;
 
+DROP POLICY IF EXISTS automation_edges_select ON automation_edges;
 CREATE POLICY automation_edges_select ON automation_edges
   FOR SELECT
   USING (
@@ -158,6 +169,7 @@ CREATE POLICY automation_edges_select ON automation_edges
     AND check_entitlement('automations', false)
   );
 
+DROP POLICY IF EXISTS automation_edges_all ON automation_edges;
 CREATE POLICY automation_edges_all ON automation_edges
   FOR ALL
   USING (
@@ -166,6 +178,7 @@ CREATE POLICY automation_edges_all ON automation_edges
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'manager', 'marketing'])
   );
 
+DROP POLICY IF EXISTS automation_edges_service ON automation_edges;
 CREATE POLICY automation_edges_service ON automation_edges
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -185,6 +198,7 @@ DROP POLICY IF EXISTS automation_runs_select ON automation_runs;
 DROP POLICY IF EXISTS automation_runs_insert ON automation_runs;
 DROP POLICY IF EXISTS automation_runs_service ON automation_runs;
 
+DROP POLICY IF EXISTS automation_runs_select ON automation_runs;
 CREATE POLICY automation_runs_select ON automation_runs
   FOR SELECT
   USING (
@@ -192,6 +206,7 @@ CREATE POLICY automation_runs_select ON automation_runs
     AND check_entitlement('automations', false)
   );
 
+DROP POLICY IF EXISTS automation_runs_insert ON automation_runs;
 CREATE POLICY automation_runs_insert ON automation_runs
   FOR INSERT
   WITH CHECK (
@@ -199,6 +214,7 @@ CREATE POLICY automation_runs_insert ON automation_runs
     AND check_entitlement('automations', false)
   );
 
+DROP POLICY IF EXISTS automation_runs_service ON automation_runs;
 CREATE POLICY automation_runs_service ON automation_runs
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -217,6 +233,7 @@ DROP POLICY IF EXISTS automation_logs_select ON automation_execution_logs;
 DROP POLICY IF EXISTS automation_logs_insert ON automation_execution_logs;
 DROP POLICY IF EXISTS automation_logs_service_role ON automation_execution_logs;
 
+DROP POLICY IF EXISTS automation_logs_select ON automation_execution_logs;
 CREATE POLICY automation_logs_select ON automation_execution_logs
   FOR SELECT
   USING (
@@ -224,6 +241,7 @@ CREATE POLICY automation_logs_select ON automation_execution_logs
     AND check_entitlement('automations', false)
   );
 
+DROP POLICY IF EXISTS automation_logs_insert ON automation_execution_logs;
 CREATE POLICY automation_logs_insert ON automation_execution_logs
   FOR INSERT
   WITH CHECK (
@@ -231,6 +249,7 @@ CREATE POLICY automation_logs_insert ON automation_execution_logs
     AND check_entitlement('automations', false)
   );
 
+DROP POLICY IF EXISTS automation_logs_service_role ON automation_execution_logs;
 CREATE POLICY automation_logs_service_role ON automation_execution_logs
   FOR ALL
   USING (auth.role() = 'service_role');

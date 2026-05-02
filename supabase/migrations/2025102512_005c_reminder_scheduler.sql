@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 4C: VALIDATION REMINDER SCHEDULER
 -- Purpose: Automated reminders for org validation and email verification

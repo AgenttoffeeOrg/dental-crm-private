@@ -136,7 +136,23 @@ function SignUpForm() {
         throw new Error('Failed to create user account')
       }
 
-      // Note: Email confirmation is handled separately and doesn't block dashboard access
+      // If Supabase has email confirmation enabled, no session is returned here.
+      // In that case the client is unauthenticated and cannot read/write app_users
+      // due to RLS. A database trigger (handle_new_auth_user) creates the app_users
+      // row server-side, so we can safely skip the client-side profile sync and
+      // route the user to confirm their email.
+      if (!authData.session) {
+        console.log('[SIGNUP] No session yet - email confirmation required')
+        toast.success('Check your email', {
+          description: `We sent a confirmation link to ${formData.email.trim()}. Click it to finish signing up.`,
+          duration: 8000
+        })
+        setTimeout(() => {
+          const email = encodeURIComponent(formData.email.trim())
+          window.location.href = `/sign-in?email=${email}&message=verify-email`
+        }, 1500)
+        return
+      }
 
       // Step 2: Create app user (or update if exists)
       // Users can sign up without a tenant - they'll be prompted to create an organization

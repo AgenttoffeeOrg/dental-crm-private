@@ -1,9 +1,12 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STAGE AUTO-MOVE RULES
 -- Migration: Automatic deal stage transitions
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS stage_auto_move_rules (
+DROP TABLE IF EXISTS stage_auto_move_rules CASCADE;
+CREATE TABLE stage_auto_move_rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     
@@ -33,23 +36,23 @@ CREATE TABLE IF NOT EXISTS stage_auto_move_rules (
     CONSTRAINT different_stages CHECK (from_stage_id != to_stage_id)
 );
 
-CREATE INDEX idx_stage_auto_move_tenant ON stage_auto_move_rules(tenant_id);
-CREATE INDEX idx_stage_auto_move_pipeline ON stage_auto_move_rules(pipeline_id);
-CREATE INDEX idx_stage_auto_move_from_stage ON stage_auto_move_rules(from_stage_id);
-CREATE INDEX idx_stage_auto_move_active ON stage_auto_move_rules(is_active) WHERE is_active = true;
-CREATE INDEX idx_stage_auto_move_trigger ON stage_auto_move_rules(trigger_type);
+CREATE INDEX IF NOT EXISTS idx_stage_auto_move_tenant ON stage_auto_move_rules(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_stage_auto_move_pipeline ON stage_auto_move_rules(pipeline_id);
+CREATE INDEX IF NOT EXISTS idx_stage_auto_move_from_stage ON stage_auto_move_rules(from_stage_id);
+CREATE INDEX IF NOT EXISTS idx_stage_auto_move_active ON stage_auto_move_rules(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_stage_auto_move_trigger ON stage_auto_move_rules(trigger_type);
 
 -- RLS Policies
 ALTER TABLE stage_auto_move_rules ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their tenant's auto-move rules"
-    ON stage_auto_move_rules FOR SELECT
+DROP POLICY IF EXISTS "Users can view their tenant's auto-move rules" ON stage_auto_move_rules;
+CREATE POLICY "Users can view their tenant's auto-move rules" ON stage_auto_move_rules FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "Admins can manage auto-move rules"
-    ON stage_auto_move_rules FOR ALL
+DROP POLICY IF EXISTS "Admins can manage auto-move rules" ON stage_auto_move_rules;
+CREATE POLICY "Admins can manage auto-move rules" ON stage_auto_move_rules FOR ALL
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users 
         WHERE id = auth.uid() AND role IN ('owner', 'admin')

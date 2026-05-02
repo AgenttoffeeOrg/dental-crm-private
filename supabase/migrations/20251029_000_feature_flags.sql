@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- FEATURE FLAGS SYSTEM
 -- Purpose: Enable/disable features globally or per-tenant
@@ -10,7 +12,8 @@ BEGIN;
 -- 1. FEATURE FLAGS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS feature_flags (
+DROP TABLE IF EXISTS feature_flags CASCADE;
+CREATE TABLE feature_flags (
   key TEXT PRIMARY KEY,
   enabled BOOLEAN NOT NULL DEFAULT false,
   description TEXT,
@@ -30,8 +33,8 @@ CREATE TABLE IF NOT EXISTS feature_flags (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_feature_flags_enabled ON feature_flags(enabled) WHERE enabled = true;
-CREATE INDEX idx_feature_flags_category ON feature_flags(category);
+CREATE INDEX IF NOT EXISTS idx_feature_flags_enabled ON feature_flags(enabled) WHERE enabled = true;
+CREATE INDEX IF NOT EXISTS idx_feature_flags_category ON feature_flags(category);
 
 COMMENT ON TABLE feature_flags IS 'Global and per-tenant feature toggles for safe rollout';
 COMMENT ON COLUMN feature_flags.tenant_overrides IS 'JSON object mapping tenant_id to boolean override';
@@ -139,14 +142,14 @@ $$ LANGUAGE SQL;
 ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can read feature flags
-CREATE POLICY "Anyone can view feature flags"
-  ON feature_flags
+DROP POLICY IF EXISTS "Anyone can view feature flags" ON feature_flags;
+CREATE POLICY "Anyone can view feature flags" ON feature_flags
   FOR SELECT
   USING (true);
 
 -- Only service role can modify flags
-CREATE POLICY "Service role can manage flags"
-  ON feature_flags
+DROP POLICY IF EXISTS "Service role can manage flags" ON feature_flags;
+CREATE POLICY "Service role can manage flags" ON feature_flags
   FOR ALL
   USING (auth.role() = 'service_role');
 

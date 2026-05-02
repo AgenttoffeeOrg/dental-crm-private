@@ -181,8 +181,7 @@ export async function selectScripts(context: ScriptSelectorContext): Promise<Scr
   })
 
   const limit = context.limit ?? 3
-  return recommendations
-    .sort((a, b) => b.score - a.score || b.successRate - a.successRate || a.usageCount - b.usageCount)
-    .slice(0, limit)
+  const sortedRecommendations = recommendations.toSorted((a, b) => b.score - a.score || b.successRate - a.successRate || a.usageCount - b.usageCount)
+  return sortedRecommendations.slice(0, limit)
 }
 

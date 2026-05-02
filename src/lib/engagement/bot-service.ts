@@ -37,7 +37,7 @@ interface EscalationInput {
 }
 
 export class BotService {
-  private supabase = createServiceClient()
+  private readonly supabase = createServiceClient()
 
   async getOrCreateSession(input: CreateSessionInput): Promise<BotSession> {
     const { tenantId, contactId, channel } = input

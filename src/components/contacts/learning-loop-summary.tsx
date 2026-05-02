@@ -104,12 +104,14 @@ export function LearningLoopSummary({ tenantId, onOpenCoaching }: LearningLoopSu
         revenueCents: value.revenueCents,
       }))
 
-      const topPerformer = summaries
-        .filter((item) => item.usages >= 3)
-        .sort((a, b) => b.successRate - a.successRate)[0]
+      const filteredSummaries = summaries.filter((item) => item.usages >= 3)
+      const sortedBySuccess = filteredSummaries.toSorted((a, b) => b.successRate - a.successRate)
+      const topPerformer = sortedBySuccess[0]
 
-      const adoptionLeader = summaries.sort((a, b) => b.usages - a.usages)[0]
-      const revenueLeader = summaries.sort((a, b) => b.revenueCents - a.revenueCents)[0]
+      const sortedByUsages = summaries.toSorted((a, b) => b.usages - a.usages)
+      const adoptionLeader = sortedByUsages[0]
+      const sortedByRevenue = summaries.toSorted((a, b) => b.revenueCents - a.revenueCents)
+      const revenueLeader = sortedByRevenue[0]
 
       setSummary({
         topPerformer,

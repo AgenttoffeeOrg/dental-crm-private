@@ -214,7 +214,7 @@ export function generateSubdomainSlug(organizationName: string): string {
   return organizationName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
-    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+    .replace(/(^-+|-+$)/g, '') // Remove leading/trailing hyphens
     .substring(0, 63) // Max 63 chars for DNS
 }
 

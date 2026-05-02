@@ -103,7 +103,7 @@ export default function DashboardNewPage() {
     onCreateContact: () => setShowCreateContact(true),
     onCreateDeal: () => setShowCreateDeal(true),
     onCreateTask: () => setShowCreateTask(true),
-    onRefresh: () => loadDashboardData(),
+    onRefresh: () => { void loadDashboardData() },
     onShowHelp: () => setShowShortcutsHelp(true),
     onNavigate: (path) => router.push(path),
     enabled: true

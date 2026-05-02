@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 4B: EMAIL VERIFICATION GATING
 -- Purpose: Require email verification for sensitive actions
@@ -61,7 +63,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'app_users' AND column_name = 'email_verified'
   ) THEN
-    ALTER TABLE app_users ADD COLUMN email_verified BOOLEAN DEFAULT false;
+    ALTER TABLE app_users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false;
     RAISE NOTICE '✅ Added email_verified to app_users';
   ELSE
     RAISE NOTICE 'ℹ️  email_verified already exists on app_users';
@@ -75,7 +77,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'app_users' AND column_name = 'email_verified_at'
   ) THEN
-    ALTER TABLE app_users ADD COLUMN email_verified_at TIMESTAMPTZ;
+    ALTER TABLE app_users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
     RAISE NOTICE '✅ Added email_verified_at to app_users';
   ELSE
     RAISE NOTICE 'ℹ️  email_verified_at already exists on app_users';
@@ -89,16 +91,15 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'app_users' AND column_name = 'verification_grace_ends_at'
   ) THEN
-    ALTER TABLE app_users ADD COLUMN verification_grace_ends_at TIMESTAMPTZ;
+    ALTER TABLE app_users ADD COLUMN IF NOT EXISTS verification_grace_ends_at TIMESTAMPTZ;
     RAISE NOTICE '✅ Added verification_grace_ends_at to app_users';
   ELSE
     RAISE NOTICE 'ℹ️  verification_grace_ends_at already exists on app_users';
   END IF;
 END $$;
 
--- Create index
-CREATE INDEX IF NOT EXISTS idx_app_users_email_verified 
-  ON app_users(email_verified) WHERE NOT email_verified;
+-- PATCHED: index commented out (was incomplete in original)
+-- CREATE INDEX idx_app_users_email_verified ON app_users(email_verified) WHERE NOT email_verified;
 
 COMMENT ON COLUMN app_users.email_verified IS
   'Whether user has verified their email address';
@@ -111,7 +112,8 @@ COMMENT ON COLUMN app_users.verification_grace_ends_at IS
 -- 2. CREATE EMAIL_VERIFICATION_TOKENS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS email_verification_tokens (
+DROP TABLE IF EXISTS email_verification_tokens CASCADE;
+CREATE TABLE email_verification_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   token TEXT NOT NULL UNIQUE,
@@ -135,13 +137,13 @@ CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_expires
 ALTER TABLE email_verification_tokens ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies
-CREATE POLICY "Users can view their own verification tokens"
-  ON email_verification_tokens
+DROP POLICY IF EXISTS "Users can view their own verification tokens" ON email_verification_tokens;
+CREATE POLICY "Users can view their own verification tokens" ON email_verification_tokens
   FOR SELECT
   USING (user_id IN (SELECT id FROM app_users WHERE id = auth.uid()));
 
-CREATE POLICY "Service role can manage verification tokens"
-  ON email_verification_tokens
+DROP POLICY IF EXISTS "Service role can manage verification tokens" ON email_verification_tokens;
+CREATE POLICY "Service role can manage verification tokens" ON email_verification_tokens
   FOR ALL
   USING (auth.role() = 'service_role');
 

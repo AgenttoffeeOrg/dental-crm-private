@@ -72,10 +72,12 @@ export async function getAutomationMetrics(
       }
 
       // Get last run
-      const lastRun = runs && runs.length > 0
-        ? runs.sort((a, b) => 
+      const sortedRuns = runs && runs.length > 0
+        ? runs.toSorted((a, b) => 
             new Date(b.entered_at).getTime() - new Date(a.entered_at).getTime()
-          )[0].entered_at
+          )
+        : []
+      const lastRun = sortedRuns.length > 0 ? sortedRuns[0].entered_at
         : null
 
       metrics.push({
@@ -148,7 +150,7 @@ export async function getAutomationDropOff(
       }
     })
 
-    return analysis.sort((a, b) => b.dropOffRate - a.dropOffRate)
+    return analysis.toSorted((a, b) => b.dropOffRate - a.dropOffRate)
   } catch (error) {
     console.error('[Automation Analytics] Error analyzing drop-off:', error)
     return []
@@ -205,9 +207,8 @@ export async function getAutomationHealthDashboard(
 
     // Get metrics for top performers
     const metrics = await getAutomationMetrics(tenantId)
-    const topPerformers = metrics
-      .sort((a, b) => b.successRate - a.successRate)
-      .slice(0, 5)
+    const sortedMetrics = metrics.toSorted((a, b) => b.successRate - a.successRate)
+    const topPerformers = sortedMetrics.slice(0, 5)
       .map(m => ({
         name: m.automationName,
         successRate: m.successRate,

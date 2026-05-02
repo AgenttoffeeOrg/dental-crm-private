@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Create Tenant Admins System
 -- Purpose: Track Super Admins at tenant level (different from platform super_admins)
@@ -12,7 +14,8 @@ BEGIN;
 -- This tracks Super Admins for each tenant (organization-level)
 -- Separate from the platform-level super_admins table
 
-CREATE TABLE IF NOT EXISTS tenant_admins (
+DROP TABLE IF EXISTS tenant_admins CASCADE;
+CREATE TABLE tenant_admins (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -75,7 +78,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_tenant_admins_updated_at
+CREATE OR REPLACE TRIGGER trigger_tenant_admins_updated_at
   BEFORE UPDATE ON tenant_admins
   FOR EACH ROW
   EXECUTE FUNCTION update_tenant_admins_updated_at();
@@ -87,6 +90,7 @@ CREATE TRIGGER trigger_tenant_admins_updated_at
 ALTER TABLE tenant_admins ENABLE ROW LEVEL SECURITY;
 
 -- Users can see admins in their organization
+DROP POLICY IF EXISTS tenant_admins_select_policy ON tenant_admins;
 CREATE POLICY tenant_admins_select_policy ON tenant_admins
   FOR SELECT
   USING (
@@ -96,6 +100,7 @@ CREATE POLICY tenant_admins_select_policy ON tenant_admins
   );
 
 -- Only existing admins can create new admins
+DROP POLICY IF EXISTS tenant_admins_insert_policy ON tenant_admins;
 CREATE POLICY tenant_admins_insert_policy ON tenant_admins
   FOR INSERT
   WITH CHECK (
@@ -108,6 +113,7 @@ CREATE POLICY tenant_admins_insert_policy ON tenant_admins
   );
 
 -- Only admins can update admin records
+DROP POLICY IF EXISTS tenant_admins_update_policy ON tenant_admins;
 CREATE POLICY tenant_admins_update_policy ON tenant_admins
   FOR UPDATE
   USING (

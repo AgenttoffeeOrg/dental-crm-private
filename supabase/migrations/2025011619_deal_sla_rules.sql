@@ -1,9 +1,12 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- DEAL SLA RULES
 -- Migration: Deal SLA monitoring and enforcement
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS deal_sla_rules (
+DROP TABLE IF EXISTS deal_sla_rules CASCADE;
+CREATE TABLE deal_sla_rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     
@@ -29,22 +32,22 @@ CREATE TABLE IF NOT EXISTS deal_sla_rules (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_deal_sla_rules_tenant ON deal_sla_rules(tenant_id);
-CREATE INDEX idx_deal_sla_rules_pipeline ON deal_sla_rules(pipeline_id) WHERE pipeline_id IS NOT NULL;
-CREATE INDEX idx_deal_sla_rules_stage ON deal_sla_rules(stage_id) WHERE stage_id IS NOT NULL;
-CREATE INDEX idx_deal_sla_rules_active ON deal_sla_rules(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_deal_sla_rules_tenant ON deal_sla_rules(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_deal_sla_rules_pipeline ON deal_sla_rules(pipeline_id) WHERE pipeline_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_deal_sla_rules_stage ON deal_sla_rules(stage_id) WHERE stage_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_deal_sla_rules_active ON deal_sla_rules(is_active) WHERE is_active = true;
 
 -- RLS Policies
 ALTER TABLE deal_sla_rules ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their tenant's SLA rules"
-    ON deal_sla_rules FOR SELECT
+DROP POLICY IF EXISTS "Users can view their tenant's SLA rules" ON deal_sla_rules;
+CREATE POLICY "Users can view their tenant's SLA rules" ON deal_sla_rules FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "Admins can manage SLA rules"
-    ON deal_sla_rules FOR ALL
+DROP POLICY IF EXISTS "Admins can manage SLA rules" ON deal_sla_rules;
+CREATE POLICY "Admins can manage SLA rules" ON deal_sla_rules FOR ALL
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users 
         WHERE id = auth.uid() AND role IN ('owner', 'admin')

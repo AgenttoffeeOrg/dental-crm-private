@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS automation_approvals (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_automation_approvals_tenant ON automation_approvals(tenant_id);
-CREATE INDEX idx_automation_approvals_automation ON automation_approvals(automation_id);
-CREATE INDEX idx_automation_approvals_status ON automation_approvals(status);
-CREATE INDEX idx_automation_approvals_reviewer ON automation_approvals(reviewer_user_id);
+CREATE INDEX IF NOT EXISTS idx_automation_approvals_tenant ON automation_approvals(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_automation_approvals_automation ON automation_approvals(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_approvals_status ON automation_approvals(status);
+CREATE INDEX IF NOT EXISTS idx_automation_approvals_reviewer ON automation_approvals(reviewer_user_id);
 
 -- Automation Versions (Version history + rollback)
 CREATE TABLE IF NOT EXISTS automation_versions (
@@ -55,10 +55,10 @@ CREATE TABLE IF NOT EXISTS automation_versions (
     UNIQUE(automation_id, version_number)
 );
 
-CREATE INDEX idx_automation_versions_tenant ON automation_versions(tenant_id);
-CREATE INDEX idx_automation_versions_automation ON automation_versions(automation_id);
-CREATE INDEX idx_automation_versions_number ON automation_versions(version_number DESC);
-CREATE INDEX idx_automation_versions_published ON automation_versions(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_automation_versions_tenant ON automation_versions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_automation_versions_automation ON automation_versions(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_versions_number ON automation_versions(version_number DESC);
+CREATE INDEX IF NOT EXISTS idx_automation_versions_published ON automation_versions(published_at DESC);
 
 -- Automation Rate Limits (Prevent spam)
 CREATE TABLE IF NOT EXISTS automation_rate_limits (
@@ -92,9 +92,9 @@ CREATE TABLE IF NOT EXISTS automation_rate_limits (
     UNIQUE(tenant_id, automation_id)
 );
 
-CREATE INDEX idx_automation_rate_limits_tenant ON automation_rate_limits(tenant_id);
-CREATE INDEX idx_automation_rate_limits_automation ON automation_rate_limits(automation_id);
-CREATE INDEX idx_automation_rate_limits_paused ON automation_rate_limits(is_paused_due_to_limits) WHERE is_paused_due_to_limits = true;
+CREATE INDEX IF NOT EXISTS idx_automation_rate_limits_tenant ON automation_rate_limits(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_automation_rate_limits_automation ON automation_rate_limits(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_rate_limits_paused ON automation_rate_limits(is_paused_due_to_limits) WHERE is_paused_due_to_limits = true;
 
 -- Consent Audit Log (GDPR/CCPA compliance)
 CREATE TABLE IF NOT EXISTS automation_consent_audit (
@@ -116,10 +116,10 @@ CREATE TABLE IF NOT EXISTS automation_consent_audit (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_consent_audit_tenant ON automation_consent_audit(tenant_id);
-CREATE INDEX idx_consent_audit_automation ON automation_consent_audit(automation_id);
-CREATE INDEX idx_consent_audit_contact ON automation_consent_audit(contact_id);
-CREATE INDEX idx_consent_audit_created ON automation_consent_audit(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_consent_audit_tenant ON automation_consent_audit(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_consent_audit_automation ON automation_consent_audit(automation_id);
+CREATE INDEX IF NOT EXISTS idx_consent_audit_contact ON automation_consent_audit(contact_id);
+CREATE INDEX IF NOT EXISTS idx_consent_audit_created ON automation_consent_audit(created_at DESC);
 
 -- RLS Policies
 ALTER TABLE automation_approvals ENABLE ROW LEVEL SECURITY;
@@ -127,44 +127,44 @@ ALTER TABLE automation_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE automation_rate_limits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE automation_consent_audit ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their tenant's approvals"
-    ON automation_approvals FOR SELECT
+DROP POLICY IF EXISTS "Users can view their tenant's approvals" ON automation_approvals;
+CREATE POLICY "Users can view their tenant's approvals" ON automation_approvals FOR SELECT
     USING (tenant_id IN (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 
-CREATE POLICY "Users can request approvals"
-    ON automation_approvals FOR INSERT
+DROP POLICY IF EXISTS "Users can request approvals" ON automation_approvals;
+CREATE POLICY "Users can request approvals" ON automation_approvals FOR INSERT
     WITH CHECK (tenant_id IN (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 
-CREATE POLICY "Managers can approve/reject"
-    ON automation_approvals FOR UPDATE
+DROP POLICY IF EXISTS "Managers can approve/reject" ON automation_approvals;
+CREATE POLICY "Managers can approve/reject" ON automation_approvals FOR UPDATE
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users 
         WHERE id = auth.uid() AND role IN ('owner', 'admin', 'manager')
     ));
 
-CREATE POLICY "Users can view automation versions"
-    ON automation_versions FOR SELECT
+DROP POLICY IF EXISTS "Users can view automation versions" ON automation_versions;
+CREATE POLICY "Users can view automation versions" ON automation_versions FOR SELECT
     USING (tenant_id IN (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 
-CREATE POLICY "Users can create versions"
-    ON automation_versions FOR INSERT
+DROP POLICY IF EXISTS "Users can create versions" ON automation_versions;
+CREATE POLICY "Users can create versions" ON automation_versions FOR INSERT
     WITH CHECK (tenant_id IN (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 
-CREATE POLICY "Users can view rate limits"
-    ON automation_rate_limits FOR SELECT
+DROP POLICY IF EXISTS "Users can view rate limits" ON automation_rate_limits;
+CREATE POLICY "Users can view rate limits" ON automation_rate_limits FOR SELECT
     USING (tenant_id IN (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 
-CREATE POLICY "System can manage rate limits"
-    ON automation_rate_limits FOR ALL
+DROP POLICY IF EXISTS "System can manage rate limits" ON automation_rate_limits;
+CREATE POLICY "System can manage rate limits" ON automation_rate_limits FOR ALL
     USING (true)
     WITH CHECK (true);
 
-CREATE POLICY "Users can view consent audit"
-    ON automation_consent_audit FOR SELECT
+DROP POLICY IF EXISTS "Users can view consent audit" ON automation_consent_audit;
+CREATE POLICY "Users can view consent audit" ON automation_consent_audit FOR SELECT
     USING (tenant_id IN (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 
-CREATE POLICY "System can insert consent audit"
-    ON automation_consent_audit FOR INSERT
+DROP POLICY IF EXISTS "System can insert consent audit" ON automation_consent_audit;
+CREATE POLICY "System can insert consent audit" ON automation_consent_audit FOR INSERT
     WITH CHECK (true);
 
 -- =====================================================
@@ -210,7 +210,7 @@ END;
 $$;
 
 -- Trigger to auto-create versions
-CREATE TRIGGER automation_version_trigger
+CREATE OR REPLACE TRIGGER automation_version_trigger
     AFTER UPDATE ON marketing_journeys
     FOR EACH ROW
     WHEN (OLD.graph_json IS DISTINCT FROM NEW.graph_json OR OLD.status = 'draft' AND NEW.status = 'active')

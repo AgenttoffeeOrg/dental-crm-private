@@ -213,6 +213,15 @@ export function DataTable<TData, TValue>({
                                 : 'flex items-center gap-2'
                             }
                             onClick={header.column.getToggleSortingHandler()}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                header.column.getToggleSortingHandler()?.(e as any)
+                              }
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Sort by ${header.id}`}
                           >
                             {flexRender(
                               header.column.columnDef.header,
@@ -238,8 +247,31 @@ export function DataTable<TData, TValue>({
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
+              {(() => {
+                const rows = table.getRowModel().rows
+                if (!rows?.length) {
+                  return (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="h-24 text-center">
+                        <div className="flex flex-col items-center justify-center text-gray-500">
+                          <Search className="h-8 w-8 mb-2 text-gray-300" />
+                          <p className="text-sm font-medium">{emptyMessage}</p>
+                          {globalFilter && (
+                            <Button
+                              variant="link"
+                              size="sm"
+                              onClick={() => setGlobalFilter('')}
+                              className="mt-2"
+                            >
+                              Clear search
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                }
+                return rows.map((row) => (
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && 'selected'}
@@ -249,6 +281,14 @@ export function DataTable<TData, TValue>({
                         : 'hover:bg-gray-50'
                     }
                     onClick={() => onRowClick && onRowClick(row.original)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && onRowClick) {
+                        onRowClick(row.original)
+                      }
+                    }}
+                    role={onRowClick ? "button" : undefined}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    aria-label={onRowClick ? "Select row" : undefined}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id} className="py-3">
@@ -257,26 +297,7 @@ export function DataTable<TData, TValue>({
                     ))}
                   </TableRow>
                 ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-32 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-500">
-                      <Search className="h-8 w-8 mb-2 text-gray-300" />
-                      <p className="text-sm font-medium">{emptyMessage}</p>
-                      {globalFilter && (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          onClick={() => setGlobalFilter('')}
-                          className="mt-2"
-                        >
-                          Clear search
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
+              })()}
             </TableBody>
           </Table>
         </div>

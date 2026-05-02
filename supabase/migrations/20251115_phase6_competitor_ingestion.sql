@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 6 – COMPETITOR INTELLIGENCE FOUNDATIONS
 -- Adds supporting tables for ingestion jobs & document storage
@@ -5,7 +7,8 @@
 
 begin;
 
-create table if not exists competitor_documents (
+DROP TABLE IF EXISTS competitor_documents CASCADE;
+CREATE TABLE competitor_documents (
     id uuid primary key default gen_random_uuid(),
     tenant_id uuid not null references tenants(id) on delete cascade,
     competitor_id uuid references competitors(id) on delete set null,
@@ -22,7 +25,8 @@ create table if not exists competitor_documents (
 create index if not exists idx_competitor_documents_tenant
     on competitor_documents(tenant_id, captured_at desc);
 
-create table if not exists competitor_ingestion_jobs (
+DROP TABLE IF EXISTS competitor_ingestion_jobs CASCADE;
+CREATE TABLE competitor_ingestion_jobs (
     id uuid primary key default gen_random_uuid(),
     tenant_id uuid references tenants(id) on delete cascade,
     source_name text not null,
@@ -46,23 +50,23 @@ alter table competitor_ingestion_jobs enable row level security;
 
 -- Service role full access
 drop policy if exists "Service role manages competitor documents" on competitor_documents;
-create policy "Service role manages competitor documents"
-    on competitor_documents
+DROP POLICY IF EXISTS "Service role manages competitor documents" ON competitor_documents;
+CREATE POLICY "Service role manages competitor documents" ON competitor_documents
     for all
     using (auth.role() = 'service_role')
     with check (auth.role() = 'service_role');
 
 drop policy if exists "Service role manages competitor ingestion jobs" on competitor_ingestion_jobs;
-create policy "Service role manages competitor ingestion jobs"
-    on competitor_ingestion_jobs
+DROP POLICY IF EXISTS "Service role manages competitor ingestion jobs" ON competitor_ingestion_jobs;
+CREATE POLICY "Service role manages competitor ingestion jobs" ON competitor_ingestion_jobs
     for all
     using (auth.role() = 'service_role')
     with check (auth.role() = 'service_role');
 
 -- Tenant member access
 drop policy if exists "Tenant members read competitor documents" on competitor_documents;
-create policy "Tenant members read competitor documents"
-    on competitor_documents
+DROP POLICY IF EXISTS "Tenant members read competitor documents" ON competitor_documents;
+CREATE POLICY "Tenant members read competitor documents" ON competitor_documents
     for select
     using (
         exists (
@@ -74,8 +78,8 @@ create policy "Tenant members read competitor documents"
     );
 
 drop policy if exists "Tenant members manage competitor documents" on competitor_documents;
-create policy "Tenant members manage competitor documents"
-    on competitor_documents
+DROP POLICY IF EXISTS "Tenant members manage competitor documents" ON competitor_documents;
+CREATE POLICY "Tenant members manage competitor documents" ON competitor_documents
     for all
     using (
         exists (
@@ -95,8 +99,8 @@ create policy "Tenant members manage competitor documents"
     );
 
 drop policy if exists "Tenant members read ingestion jobs" on competitor_ingestion_jobs;
-create policy "Tenant members read ingestion jobs"
-    on competitor_ingestion_jobs
+DROP POLICY IF EXISTS "Tenant members read ingestion jobs" ON competitor_ingestion_jobs;
+CREATE POLICY "Tenant members read ingestion jobs" ON competitor_ingestion_jobs
     for select
     using (
         tenant_id is null
@@ -109,8 +113,8 @@ create policy "Tenant members read ingestion jobs"
     );
 
 drop policy if exists "Tenant members create ingestion jobs" on competitor_ingestion_jobs;
-create policy "Tenant members create ingestion jobs"
-    on competitor_ingestion_jobs
+DROP POLICY IF EXISTS "Tenant members create ingestion jobs" ON competitor_ingestion_jobs;
+CREATE POLICY "Tenant members create ingestion jobs" ON competitor_ingestion_jobs
     for insert
     with check (
         tenant_id is null
@@ -123,8 +127,8 @@ create policy "Tenant members create ingestion jobs"
     );
 
 drop policy if exists "Tenant members update ingestion jobs" on competitor_ingestion_jobs;
-create policy "Tenant members update ingestion jobs"
-    on competitor_ingestion_jobs
+DROP POLICY IF EXISTS "Tenant members update ingestion jobs" ON competitor_ingestion_jobs;
+CREATE POLICY "Tenant members update ingestion jobs" ON competitor_ingestion_jobs
     for update
     using (
         tenant_id is null

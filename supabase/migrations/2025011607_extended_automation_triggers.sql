@@ -12,8 +12,9 @@ DROP CONSTRAINT IF EXISTS marketing_journeys_entry_trigger_type_check;
 
 -- Add new constraint with expanded trigger types
 ALTER TABLE marketing_journeys
-ADD CONSTRAINT marketing_journeys_entry_trigger_type_check
-CHECK (entry_trigger_type IN (
+DROP CONSTRAINT IF EXISTS marketing_journeys_entry_trigger_type_check;
+ALTER TABLE marketing_journeys
+ADD CONSTRAINT marketing_journeys_entry_trigger_type_check CHECK (entry_trigger_type IN (
     -- EXISTING MARKETING TRIGGERS
     'contact_created',
     'tag_added',

@@ -178,7 +178,7 @@ export function BulkImportExport({ tenantId, onImportComplete }: BulkImportExpor
         continue
       }
 
-      const cells = matches.map(cell => cell.replace(/^"|"$/g, '').trim())
+      const cells = matches.map(cell => cell.replace(/(^"|"$)/g, '').trim())
 
       const name = cells[0]
       const keywordsStr = cells[1]

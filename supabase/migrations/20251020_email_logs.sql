@@ -1,7 +1,10 @@
+SET search_path TO public, extensions;
+
 -- Email Logs Table
 -- Tracks all emails sent through the system for debugging and audit
 
-CREATE TABLE IF NOT EXISTS email_logs (
+DROP TABLE IF EXISTS email_logs CASCADE;
+CREATE TABLE email_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
@@ -52,14 +55,14 @@ CREATE INDEX IF NOT EXISTS idx_email_logs_to_email ON email_logs(to_email);
 ALTER TABLE email_logs ENABLE ROW LEVEL SECURITY;
 
 -- Users can view their own email logs
-CREATE POLICY "Users can view their own email logs"
-  ON email_logs
+DROP POLICY IF EXISTS "Users can view their own email logs" ON email_logs;
+CREATE POLICY "Users can view their own email logs" ON email_logs
   FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Admins can view all email logs in their tenant
-CREATE POLICY "Admins can view tenant email logs"
-  ON email_logs
+DROP POLICY IF EXISTS "Admins can view tenant email logs" ON email_logs;
+CREATE POLICY "Admins can view tenant email logs" ON email_logs
   FOR SELECT
   USING (
     EXISTS (
@@ -71,8 +74,8 @@ CREATE POLICY "Admins can view tenant email logs"
   );
 
 -- System can insert email logs
-CREATE POLICY "System can insert email logs"
-  ON email_logs
+DROP POLICY IF EXISTS "System can insert email logs" ON email_logs;
+CREATE POLICY "System can insert email logs" ON email_logs
   FOR INSERT
   WITH CHECK (true);
 
@@ -85,7 +88,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_email_logs_updated_at
+CREATE OR REPLACE TRIGGER update_email_logs_updated_at
   BEFORE UPDATE ON email_logs
   FOR EACH ROW
   EXECUTE FUNCTION update_email_logs_updated_at();

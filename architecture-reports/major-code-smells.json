@@ -1,0 +1,1200 @@
+{
+  "file": "src/lib/forms/admin-notifications.ts",
+  "line": 122,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"spamScore\"."
+}
+{
+  "file": "src/components/integrations/unified-integrations-hub.tsx",
+  "line": 117,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"updatedIntegrations\"."
+}
+{
+  "file": "src/lib/integrations/verification-tracker.ts",
+  "line": 23,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/integrations/test/route.ts",
+  "line": 54,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/integrations/test/route.ts",
+  "line": 65,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"connections\"."
+}
+{
+  "file": "src/components/integrations/integrations-hub-grouped.tsx",
+  "line": 71,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"activeTab\"."
+}
+{
+  "file": "src/components/integrations/integrations-hub-grouped.tsx",
+  "line": 71,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"setActiveTab\"."
+}
+{
+  "file": "src/components/integrations/integrations-hub-grouped.tsx",
+  "line": 124,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/integrations/service-status-badge.tsx",
+  "line": 57,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/integrations/service-status-badge.tsx",
+  "line": 58,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/lib/integrations/scope-checker.ts",
+  "line": 42,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"status\"."
+}
+{
+  "file": "src/lib/integrations/scope-checker.ts",
+  "line": 52,
+  "rule": "typescript:S4165",
+  "message": "Review this redundant assignment: \"canActivate\" already holds the assigned value along all execution paths."
+}
+{
+  "file": "src/app/api/integrations/[type]/oauth/callback/route.ts",
+  "line": 68,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/lib/integrations/unified-scopes.ts",
+  "line": 184,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/integrations/[type]/test/route.ts",
+  "line": 73,
+  "rule": "typescript:S4165",
+  "message": "Review this redundant assignment: \"testResult\" already holds the assigned value along all execution paths."
+}
+{
+  "file": "src/app/settings/integrations/page.tsx",
+  "line": 20,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/settings/integrations/page.tsx",
+  "line": 22,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/settings/integrations/page.tsx",
+  "line": 24,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/settings/integrations/page.tsx",
+  "line": 26,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/api/communications/send-email/route.ts",
+  "line": 79,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/api/communications/send-email/route.ts",
+  "line": 80,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/api/marketing-audit/[id]/recommendations/[recId]/create-task/route.ts",
+  "line": 67,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/api/marketing-audit/[id]/recommendations/[recId]/create-task/route.ts",
+  "line": 115,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/api/system/queues/alerts/route.ts",
+  "line": 81,
+  "rule": "typescript:S1871",
+  "message": "This branch's code block is the same as the block for the branch on line 79."
+}
+{
+  "file": "src/app/api/system/queues/alerts/route.ts",
+  "line": 111,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/api/tasks/[id]/route.ts",
+  "line": 90,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"user\"."
+}
+{
+  "file": "src/app/api/tasks/[id]/route.ts",
+  "line": 116,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/tasks/[id]/route.ts",
+  "line": 131,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 327,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 361,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 451,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 800,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 893,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 905,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 1006,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 1006,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 1126,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 1187,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 1196,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 1207,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 1223,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 1240,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/app/f/[slug]/page.tsx",
+  "line": 35,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 294,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"locationFilteredTasks\"."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 613,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 615,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 617,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/analytics/competitive-insights-dashboard.tsx",
+  "line": 32,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/analytics/competitive-insights-dashboard.tsx",
+  "line": 86,
+  "rule": "typescript:S4043",
+  "message": "Move this array \"sort\" operation to a separate statement or replace it with \"toSorted\"."
+}
+{
+  "file": "src/components/analytics/competitive-insights-dashboard.tsx",
+  "line": 151,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/analytics/competitive-insights-dashboard.tsx",
+  "line": 306,
+  "rule": "typescript:S6479",
+  "message": "Do not use Array index in keys"
+}
+{
+  "file": "src/components/analytics/competitive-insights-dashboard.tsx",
+  "line": 313,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/call-coaching/call-coaching-workspace.tsx",
+  "line": 327,
+  "rule": "typescript:S6479",
+  "message": "Do not use Array index in keys"
+}
+{
+  "file": "src/components/call-coaching/call-coaching-workspace.tsx",
+  "line": 335,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/call-coaching/call-coaching-workspace.tsx",
+  "line": 545,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/communications/email-composer-panel.tsx",
+  "line": 178,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/communications/sms-composer-panel.tsx",
+  "line": 127,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 98,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"primaryDealId\"."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 417,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 644,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 670,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 755,
+  "rule": "typescript:S6479",
+  "message": "Do not use Array index in keys"
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 1357,
+  "rule": "typescript:S6848",
+  "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element."
+}
+{
+  "file": "src/components/contacts/learning-loop-summary.tsx",
+  "line": 111,
+  "rule": "typescript:S4043",
+  "message": "Move this array \"sort\" operation to a separate statement or replace it with \"toSorted\"."
+}
+{
+  "file": "src/components/contacts/learning-loop-summary.tsx",
+  "line": 112,
+  "rule": "typescript:S4043",
+  "message": "Move this array \"sort\" operation to a separate statement or replace it with \"toSorted\"."
+}
+{
+  "file": "src/components/dashboard/dashboard-intelligence-panel.tsx",
+  "line": 117,
+  "rule": "typescript:S4043",
+  "message": "Move this array \"sort\" operation to a separate statement or replace it with \"toSorted\"."
+}
+{
+  "file": "src/components/dashboard/dashboard-intelligence-panel.tsx",
+  "line": 118,
+  "rule": "typescript:S4043",
+  "message": "Move this array \"sort\" operation to a separate statement or replace it with \"toSorted\"."
+}
+{
+  "file": "src/components/dashboard/dashboard-intelligence-panel.tsx",
+  "line": 221,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/deals/simple-deal-dialog.tsx",
+  "line": 870,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/components/deals/simple-deal-dialog.tsx",
+  "line": 1130,
+  "rule": "typescript:S2301",
+  "message": "Provide multiple methods instead of using \"openState\" to determine which action to take."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 128,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 133,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 244,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 434,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 532,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 549,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 558,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 577,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 585,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 598,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 610,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 623,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 631,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 644,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/multi-location/location-switcher.tsx",
+  "line": 42,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"refreshUser\"."
+}
+{
+  "file": "src/components/onboarding/steps/first-location-step.tsx",
+  "line": 399,
+  "rule": "typescript:S6479",
+  "message": "Do not use Array index in keys"
+}
+{
+  "file": "src/components/pipeline/DealCardPremium.tsx",
+  "line": 99,
+  "rule": "typescript:S6819",
+  "message": "Use <input type=\"button\">, <input type=\"image\">, <input type=\"reset\">, <input type=\"submit\">, or <button> instead of the \"button\" role to ensure accessibility across all devices."
+}
+{
+  "file": "src/components/pipeline/deal-card-minimal.tsx",
+  "line": 81,
+  "rule": "typescript:S6848",
+  "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element."
+}
+{
+  "file": "src/components/pipeline/deal-card-minimal.tsx",
+  "line": 92,
+  "rule": "typescript:S6848",
+  "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element."
+}
+{
+  "file": "src/components/pipeline/pipeline-board.tsx",
+  "line": 1099,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/pipeline/pipeline-board.tsx",
+  "line": 1100,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/pipeline/pipeline-column.tsx",
+  "line": 108,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 343,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 419,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 503,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 505,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 513,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 536,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 559,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 567,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 613,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 614,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 621,
+  "rule": "typescript:S6479",
+  "message": "Do not use Array index in keys"
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 623,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 767,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 995,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 1053,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/scripts/next-best-script-panel.tsx",
+  "line": 470,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/scripts/next-best-script-panel.tsx",
+  "line": 474,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/scripts/next-best-script-panel.tsx",
+  "line": 511,
+  "rule": "typescript:S6772",
+  "message": "Ambiguous spacing before next element span"
+}
+{
+  "file": "src/components/scripts/next-best-script-panel.tsx",
+  "line": 642,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/settings/feature-flags-governance-tab.tsx",
+  "line": 78,
+  "rule": "typescript:S4043",
+  "message": "Move this array \"sort\" operation to a separate statement or replace it with \"toSorted\"."
+}
+{
+  "file": "src/components/settings/system-reliability-tab.tsx",
+  "line": 287,
+  "rule": "typescript:S6479",
+  "message": "Do not use Array index in keys"
+}
+{
+  "file": "src/components/settings/system-reliability-tab.tsx",
+  "line": 350,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/settings/system-reliability-tab.tsx",
+  "line": 419,
+  "rule": "typescript:S6772",
+  "message": "Ambiguous spacing before next element code"
+}
+{
+  "file": "src/components/settings/system-reliability-tab.tsx",
+  "line": 453,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/tasks/bulk-actions-menu.tsx",
+  "line": 323,
+  "rule": "typescript:S7762",
+  "message": "Prefer `childNode.remove()` over `parentNode.removeChild(childNode)`."
+}
+{
+  "file": "src/components/tasks/create-task-panel.tsx",
+  "line": 49,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"orgId\"."
+}
+{
+  "file": "src/components/tasks/create-task-panel.tsx",
+  "line": 126,
+  "rule": "typescript:S2589",
+  "message": "This always evaluates to truthy. Consider refactoring this code."
+}
+{
+  "file": "src/components/tasks/create-task-slide-over.tsx",
+  "line": 119,
+  "rule": "typescript:S2589",
+  "message": "This always evaluates to truthy. Consider refactoring this code."
+}
+{
+  "file": "src/components/tasks/create-task-slide-over.tsx",
+  "line": 218,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"TASK_TYPE_ICONS\"."
+}
+{
+  "file": "src/components/tasks/task-detail-modal.tsx",
+  "line": 50,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"mutationLoading\"."
+}
+{
+  "file": "src/components/tasks/task-detail-modal.tsx",
+  "line": 67,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"taskLocation\"."
+}
+{
+  "file": "src/components/ui/contact-selector.tsx",
+  "line": 52,
+  "rule": "typescript:S6819",
+  "message": "Use <input list=...>, <input list=...>, <input list=...>, <input list=...>, <input list=...>, <input list=...>, or <select multiple=...> instead of the \"combobox\" role to ensure accessibility across all devices."
+}
+{
+  "file": "src/components/ui/deal-selector.tsx",
+  "line": 52,
+  "rule": "typescript:S6819",
+  "message": "Use <input list=...>, <input list=...>, <input list=...>, <input list=...>, <input list=...>, <input list=...>, or <select multiple=...> instead of the \"combobox\" role to ensure accessibility across all devices."
+}
+{
+  "file": "src/lib/communications/dispatcher.ts",
+  "line": 198,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/lib/communications/dispatcher.ts",
+  "line": 318,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/lib/communications/dispatcher.ts",
+  "line": 411,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/lib/communications/dispatcher.ts",
+  "line": 507,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/lib/engagement/bot-service.ts",
+  "line": 40,
+  "rule": "typescript:S2933",
+  "message": "Member 'supabase' is never reassigned; mark it as `readonly`."
+}
+{
+  "file": "src/lib/engagement/bot-service.ts",
+  "line": 308,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/lib/engagement/conversation-state-machine.ts",
+  "line": 155,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/lib/integrations/email-provider.ts",
+  "line": 55,
+  "rule": "typescript:S4624",
+  "message": "Refactor this code to not use nested template literals."
+}
+{
+  "file": "src/lib/integrations/tenant-integration-config.ts",
+  "line": 193,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/lib/integrations/tenant-integration-config.ts",
+  "line": 199,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/lib/queues/engagement-queue.ts",
+  "line": 13,
+  "rule": "typescript:S6564",
+  "message": "Remove this redundant type alias and replace its occurrences with \"ProcessEnrollmentJob\"."
+}
+{
+  "file": "src/lib/queues/queue-manager.ts",
+  "line": 32,
+  "rule": "typescript:S2933",
+  "message": "Member 'queues' is never reassigned; mark it as `readonly`."
+}
+{
+  "file": "src/lib/queues/queue-manager.ts",
+  "line": 33,
+  "rule": "typescript:S2933",
+  "message": "Member 'queueEvents' is never reassigned; mark it as `readonly`."
+}
+{
+  "file": "src/lib/queues/queue-manager.ts",
+  "line": 34,
+  "rule": "typescript:S2933",
+  "message": "Member 'scheduler' is never reassigned; mark it as `readonly`."
+}
+{
+  "file": "src/lib/queues/queue-manager.ts",
+  "line": 35,
+  "rule": "typescript:S2933",
+  "message": "Member 'workers' is never reassigned; mark it as `readonly`."
+}
+{
+  "file": "src/lib/services/competitor-insights.ts",
+  "line": 171,
+  "rule": "typescript:S4043",
+  "message": "Move this array \"sort\" operation to a separate statement or replace it with \"toSorted\"."
+}
+{
+  "file": "src/lib/services/competitor-insights.ts",
+  "line": 190,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/lib/services/psychological-analyzer.ts",
+  "line": 239,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"profileId\"."
+}
+{
+  "file": "src/lib/services/script-selector.ts",
+  "line": 184,
+  "rule": "typescript:S4043",
+  "message": "Move this array \"sort\" operation to a separate statement or replace it with \"toSorted\"."
+}
+{
+  "file": "src/workers/analytics-worker.ts",
+  "line": 16,
+  "rule": "typescript:S7785",
+  "message": "Prefer top-level await over using a promise chain."
+}
+{
+  "file": "src/workers/communication-worker.ts",
+  "line": 18,
+  "rule": "typescript:S7785",
+  "message": "Prefer top-level await over using a promise chain."
+}
+{
+  "file": "src/workers/competitor-intel-worker.ts",
+  "line": 19,
+  "rule": "typescript:S7785",
+  "message": "Prefer top-level await over using a promise chain."
+}
+{
+  "file": "src/workers/engagement-worker.ts",
+  "line": 17,
+  "rule": "typescript:S7785",
+  "message": "Prefer top-level await over using a promise chain."
+}
+{
+  "file": "src/app/api/onboarding/save-progress/route.ts",
+  "line": 119,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"accountType\"."
+}
+{
+  "file": "src/app/api/onboarding/save-progress/route.ts",
+  "line": 128,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"accountType\"."
+}
+{
+  "file": "src/app/api/onboarding/save-progress/route.ts",
+  "line": 228,
+  "rule": "typescript:S2589",
+  "message": "This always evaluates to truthy. Consider refactoring this code."
+}
+{
+  "file": "src/app/api/onboarding/status/route.ts",
+  "line": 107,
+  "rule": "typescript:S6660",
+  "message": "'If' statement should not be the only statement in 'else' block"
+}
+{
+  "file": "src/app/api/onboarding/validate-step/route.ts",
+  "line": 132,
+  "rule": "typescript:S2589",
+  "message": "This always evaluates to truthy. Consider refactoring this code."
+}
+{
+  "file": "src/app/dashboard/page.tsx",
+  "line": 256,
+  "rule": "typescript:S6848",
+  "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element."
+}
+{
+  "file": "src/components/onboarding/wizard-footer.tsx",
+  "line": 133,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/onboarding/wizard-progress-bar.tsx",
+  "line": 105,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 247,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"showCreateDeal\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 247,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"setShowCreateDeal\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 251,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"editingPipelineName\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 253,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"createPipelineDialogOpen\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 254,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"settingsDialogOpen\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 254,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"setSettingsDialogOpen\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 255,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"selectedTemplate\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 813,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"startEditingDeal\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 818,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"saveEditingDeal\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 842,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"cancelEditingDeal\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 848,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"handleCreateFromTemplate\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 853,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"startEditingPipelineName\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 861,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"handleSavePipelineName\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 943,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"handleApplySavedView\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 984,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"totalValue\"."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1331,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1418,
+  "rule": "typescript:S6848",
+  "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1559,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1583,
+  "rule": "typescript:S6848",
+  "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1651,
+  "rule": "typescript:S6479",
+  "message": "Do not use Array index in keys"
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1892,
+  "rule": "typescript:S6848",
+  "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1928,
+  "rule": "typescript:S6479",
+  "message": "Do not use Array index in keys"
+}
+{
+  "file": "src/components/pipeline/deal-intelligence/HealthPill.tsx",
+  "line": 45,
+  "rule": "typescript:S3358",
+  "message": "Extract this nested ternary operation into an independent statement."
+}
+{
+  "file": "src/components/pipeline/pipeline-unified-header.tsx",
+  "line": 79,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"formatCurrency\"."
+}
+{
+  "file": "src/components/ui/simple-dropdown-menu.tsx",
+  "line": 58,
+  "rule": "typescript:S6848",
+  "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element."
+}
+{
+  "file": "src/lib/intelligence/deal-intelligence.ts",
+  "line": 193,
+  "rule": "typescript:S1788",
+  "message": "Default parameters should be last."
+}
+{
+  "file": "src/app/api/contacts/[id]/route.ts",
+  "line": 56,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/contacts/[id]/route.ts",
+  "line": 167,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/contacts/[id]/route.ts",
+  "line": 313,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/contacts/route.ts",
+  "line": 56,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/contacts/route.ts",
+  "line": 216,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/contacts/route.ts",
+  "line": 357,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/invites/accept/route.ts",
+  "line": 66,
+  "rule": "typescript:S6582",
+  "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+}
+{
+  "file": "src/app/api/invites/create/route.ts",
+  "line": 217,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"existingError\"."
+}
+{
+  "file": "src/app/api/onboarding/validate-step/route.ts",
+  "line": 131,
+  "rule": "typescript:S6535",
+  "message": "Unnecessary escape character: \\(."
+}
+{
+  "file": "src/app/api/onboarding/validate-step/route.ts",
+  "line": 131,
+  "rule": "typescript:S6535",
+  "message": "Unnecessary escape character: \\)."
+}
+{
+  "file": "src/app/api/onboarding/validate-step/route.ts",
+  "line": 131,
+  "rule": "typescript:S6535",
+  "message": "Unnecessary escape character: \\+."
+}
+{
+  "file": "src/app/dashboard/page.tsx",
+  "line": 91,
+  "rule": "typescript:S1854",
+  "message": "Remove this useless assignment to variable \"guardedAction\"."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 886,
+  "rule": "typescript:S6848",
+  "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 1246,
+  "rule": "typescript:S6848",
+  "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element."
+}
+{
+  "file": "src/components/deals/deal-detail-view.tsx",
+  "line": 296,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/deals/deal-detail-view.tsx",
+  "line": 320,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/deals/deal-detail-view.tsx",
+  "line": 355,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}
+{
+  "file": "src/components/deals/deal-detail-view.tsx",
+  "line": 368,
+  "rule": "typescript:S6853",
+  "message": "A form label must be associated with a control."
+}

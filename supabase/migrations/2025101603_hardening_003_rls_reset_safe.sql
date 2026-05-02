@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 1.3: RLS Policy Reset & Consistency (SAFE VERSION)
 -- Date: October 16, 2025

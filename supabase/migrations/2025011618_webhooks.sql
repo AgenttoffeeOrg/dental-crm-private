@@ -1,10 +1,13 @@
+SET search_path TO public, extensions;
+
 /**
  * Marketing Audit - Webhooks Table
  * 
  * Store webhook endpoints for event notifications.
  */
 
-CREATE TABLE IF NOT EXISTS public.marketing_audit_webhooks (
+DROP TABLE IF EXISTS public.marketing_audit_webhooks CASCADE;
+CREATE TABLE public.marketing_audit_webhooks (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id uuid REFERENCES public.tenants(id) ON DELETE CASCADE NOT NULL,
   url text NOT NULL,
@@ -22,15 +25,15 @@ CREATE TABLE IF NOT EXISTS public.marketing_audit_webhooks (
 );
 
 -- Create indexes
-CREATE INDEX idx_webhooks_tenant ON public.marketing_audit_webhooks(tenant_id);
-CREATE INDEX idx_webhooks_active ON public.marketing_audit_webhooks(active) WHERE active = true;
+CREATE INDEX IF NOT EXISTS idx_webhooks_tenant ON public.marketing_audit_webhooks(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_webhooks_active ON public.marketing_audit_webhooks(active) WHERE active = true;
 
 -- Enable RLS
 ALTER TABLE public.marketing_audit_webhooks ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can manage webhooks for their tenant
-CREATE POLICY "Users can view own webhooks"
-  ON public.marketing_audit_webhooks
+DROP POLICY IF EXISTS "Users can view own webhooks" ON public.marketing_audit_webhooks;
+CREATE POLICY "Users can view own webhooks" ON public.marketing_audit_webhooks
   FOR SELECT
   USING (
     tenant_id IN (
@@ -38,8 +41,8 @@ CREATE POLICY "Users can view own webhooks"
     )
   );
 
-CREATE POLICY "Users can create own webhooks"
-  ON public.marketing_audit_webhooks
+DROP POLICY IF EXISTS "Users can create own webhooks" ON public.marketing_audit_webhooks;
+CREATE POLICY "Users can create own webhooks" ON public.marketing_audit_webhooks
   FOR INSERT
   WITH CHECK (
     tenant_id IN (
@@ -47,8 +50,8 @@ CREATE POLICY "Users can create own webhooks"
     )
   );
 
-CREATE POLICY "Users can update own webhooks"
-  ON public.marketing_audit_webhooks
+DROP POLICY IF EXISTS "Users can update own webhooks" ON public.marketing_audit_webhooks;
+CREATE POLICY "Users can update own webhooks" ON public.marketing_audit_webhooks
   FOR UPDATE
   USING (
     tenant_id IN (
@@ -56,8 +59,8 @@ CREATE POLICY "Users can update own webhooks"
     )
   );
 
-CREATE POLICY "Users can delete own webhooks"
-  ON public.marketing_audit_webhooks
+DROP POLICY IF EXISTS "Users can delete own webhooks" ON public.marketing_audit_webhooks;
+CREATE POLICY "Users can delete own webhooks" ON public.marketing_audit_webhooks
   FOR DELETE
   USING (
     tenant_id IN (
@@ -66,7 +69,8 @@ CREATE POLICY "Users can delete own webhooks"
   );
 
 -- Table for webhook delivery logs
-CREATE TABLE IF NOT EXISTS public.marketing_audit_webhook_logs (
+DROP TABLE IF EXISTS public.marketing_audit_webhook_logs CASCADE;
+CREATE TABLE public.marketing_audit_webhook_logs (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   webhook_id uuid REFERENCES public.marketing_audit_webhooks(id) ON DELETE CASCADE NOT NULL,
   event text NOT NULL,
@@ -79,14 +83,14 @@ CREATE TABLE IF NOT EXISTS public.marketing_audit_webhook_logs (
 );
 
 -- Index for cleanup
-CREATE INDEX idx_webhook_logs_delivered ON public.marketing_audit_webhook_logs(delivered_at);
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_delivered ON public.marketing_audit_webhook_logs(delivered_at);
 
 -- Enable RLS
 ALTER TABLE public.marketing_audit_webhook_logs ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can view logs for their webhooks
-CREATE POLICY "Users can view own webhook logs"
-  ON public.marketing_audit_webhook_logs
+DROP POLICY IF EXISTS "Users can view own webhook logs" ON public.marketing_audit_webhook_logs;
+CREATE POLICY "Users can view own webhook logs" ON public.marketing_audit_webhook_logs
   FOR SELECT
   USING (
     webhook_id IN (

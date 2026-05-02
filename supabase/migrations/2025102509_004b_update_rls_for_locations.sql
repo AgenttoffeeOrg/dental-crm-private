@@ -1,8 +1,10 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 3B: UPDATE RLS POLICIES FOR LOCATION-AWARE ACCESS
 -- Purpose: Extend RLS to respect location_id when present
 -- Safety: Backward compatible, only applies when location_id set
--- FIX: Creates compatibility function if auth.get_user_tenant_id() doesn't exist
+-- FIX: Creates compatibility function if public.get_user_tenant_id() doesn't exist
 -- =====================================================
 --
 -- WHAT THIS DOES:
@@ -46,7 +48,7 @@ DECLARE
   auth_function_exists BOOLEAN;
   separator CONSTANT TEXT := '========================================';
 BEGIN
-  -- Check if auth.get_user_tenant_id() exists
+  -- Check if public.get_user_tenant_id() exists
   SELECT EXISTS (
     SELECT 1 
     FROM pg_proc p
@@ -61,10 +63,10 @@ BEGIN
   RAISE NOTICE '%', separator;
   
   IF auth_function_exists THEN
-    RAISE NOTICE '✅ auth.get_user_tenant_id() found';
+    RAISE NOTICE '✅ public.get_user_tenant_id() found';
     RAISE NOTICE '   Will use existing tenant resolution';
   ELSE
-    RAISE NOTICE '⚠️  auth.get_user_tenant_id() not found';
+    RAISE NOTICE '⚠️  public.get_user_tenant_id() not found';
     RAISE NOTICE '   This function should exist from initial RLS setup';
     RAISE NOTICE '   Creating compatibility wrapper...';
   END IF;
@@ -85,7 +87,7 @@ DECLARE
   auth_fn_exists BOOLEAN;
   status_active CONSTANT membership_status := 'active';
 BEGIN
-  -- Check if auth.get_user_tenant_id exists
+  -- Check if public.get_user_tenant_id exists
   SELECT EXISTS (
     SELECT 1 
     FROM pg_proc p
@@ -96,7 +98,7 @@ BEGIN
   
   -- If auth function exists, use it (old single-tenant model)
   IF auth_fn_exists THEN
-    EXECUTE 'SELECT auth.get_user_tenant_id()' INTO v_tenant_id;
+    EXECUTE 'SELECT public.get_user_tenant_id()' INTO v_tenant_id;
     RETURN v_tenant_id;
   END IF;
   
@@ -124,7 +126,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.get_user_tenant_id_compat IS
-  'Compatibility wrapper for tenant resolution. Uses auth.get_user_tenant_id() if available, otherwise falls back to multi-org model.';
+  'Compatibility wrapper for tenant resolution. Uses public.get_user_tenant_id() if available, otherwise falls back to multi-org model.';
 
 DO $$
 BEGIN
@@ -212,8 +214,8 @@ DROP POLICY IF EXISTS "Users can view contacts in their tenant" ON contacts;
 DROP POLICY IF EXISTS "Users can view contacts in their tenant and locations" ON contacts;
 
 -- Create new location-aware SELECT policy
-CREATE POLICY "Users can view contacts in their tenant and locations"
-  ON contacts
+DROP POLICY IF EXISTS "Users can view contacts in their tenant and locations" ON contacts;
+CREATE POLICY "Users can view contacts in their tenant and locations" ON contacts
   FOR SELECT
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -225,8 +227,8 @@ DROP POLICY IF EXISTS "Users can create contacts in their tenant" ON contacts;
 DROP POLICY IF EXISTS "Users can create contacts in their tenant and locations" ON contacts;
 
 -- Create new location-aware INSERT policy
-CREATE POLICY "Users can create contacts in their tenant and locations"
-  ON contacts
+DROP POLICY IF EXISTS "Users can create contacts in their tenant and locations" ON contacts;
+CREATE POLICY "Users can create contacts in their tenant and locations" ON contacts
   FOR INSERT
   WITH CHECK (
     tenant_id = public.get_user_tenant_id_compat()
@@ -238,8 +240,8 @@ DROP POLICY IF EXISTS "Users can update contacts in their tenant" ON contacts;
 DROP POLICY IF EXISTS "Users can update contacts in their tenant and locations" ON contacts;
 
 -- Create new location-aware UPDATE policy
-CREATE POLICY "Users can update contacts in their tenant and locations"
-  ON contacts
+DROP POLICY IF EXISTS "Users can update contacts in their tenant and locations" ON contacts;
+CREATE POLICY "Users can update contacts in their tenant and locations" ON contacts
   FOR UPDATE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -251,8 +253,8 @@ DROP POLICY IF EXISTS "Users can delete contacts in their tenant" ON contacts;
 DROP POLICY IF EXISTS "Users can delete contacts in their tenant and locations" ON contacts;
 
 -- Create new location-aware DELETE policy
-CREATE POLICY "Users can delete contacts in their tenant and locations"
-  ON contacts
+DROP POLICY IF EXISTS "Users can delete contacts in their tenant and locations" ON contacts;
+CREATE POLICY "Users can delete contacts in their tenant and locations" ON contacts
   FOR DELETE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -270,8 +272,8 @@ END $$;
 
 DROP POLICY IF EXISTS "Users can view deals in their tenant" ON deals;
 DROP POLICY IF EXISTS "Users can view deals in their tenant and locations" ON deals;
-CREATE POLICY "Users can view deals in their tenant and locations"
-  ON deals
+DROP POLICY IF EXISTS "Users can view deals in their tenant and locations" ON deals;
+CREATE POLICY "Users can view deals in their tenant and locations" ON deals
   FOR SELECT
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -280,8 +282,8 @@ CREATE POLICY "Users can view deals in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can create deals in their tenant" ON deals;
 DROP POLICY IF EXISTS "Users can create deals in their tenant and locations" ON deals;
-CREATE POLICY "Users can create deals in their tenant and locations"
-  ON deals
+DROP POLICY IF EXISTS "Users can create deals in their tenant and locations" ON deals;
+CREATE POLICY "Users can create deals in their tenant and locations" ON deals
   FOR INSERT
   WITH CHECK (
     tenant_id = public.get_user_tenant_id_compat()
@@ -290,8 +292,8 @@ CREATE POLICY "Users can create deals in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can update deals in their tenant" ON deals;
 DROP POLICY IF EXISTS "Users can update deals in their tenant and locations" ON deals;
-CREATE POLICY "Users can update deals in their tenant and locations"
-  ON deals
+DROP POLICY IF EXISTS "Users can update deals in their tenant and locations" ON deals;
+CREATE POLICY "Users can update deals in their tenant and locations" ON deals
   FOR UPDATE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -300,8 +302,8 @@ CREATE POLICY "Users can update deals in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can delete deals in their tenant" ON deals;
 DROP POLICY IF EXISTS "Users can delete deals in their tenant and locations" ON deals;
-CREATE POLICY "Users can delete deals in their tenant and locations"
-  ON deals
+DROP POLICY IF EXISTS "Users can delete deals in their tenant and locations" ON deals;
+CREATE POLICY "Users can delete deals in their tenant and locations" ON deals
   FOR DELETE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -319,8 +321,8 @@ END $$;
 
 DROP POLICY IF EXISTS "Users can view pipelines in their tenant" ON pipelines;
 DROP POLICY IF EXISTS "Users can view pipelines in their tenant and locations" ON pipelines;
-CREATE POLICY "Users can view pipelines in their tenant and locations"
-  ON pipelines
+DROP POLICY IF EXISTS "Users can view pipelines in their tenant and locations" ON pipelines;
+CREATE POLICY "Users can view pipelines in their tenant and locations" ON pipelines
   FOR SELECT
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -329,8 +331,8 @@ CREATE POLICY "Users can view pipelines in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can create pipelines in their tenant" ON pipelines;
 DROP POLICY IF EXISTS "Users can create pipelines in their tenant and locations" ON pipelines;
-CREATE POLICY "Users can create pipelines in their tenant and locations"
-  ON pipelines
+DROP POLICY IF EXISTS "Users can create pipelines in their tenant and locations" ON pipelines;
+CREATE POLICY "Users can create pipelines in their tenant and locations" ON pipelines
   FOR INSERT
   WITH CHECK (
     tenant_id = public.get_user_tenant_id_compat()
@@ -339,8 +341,8 @@ CREATE POLICY "Users can create pipelines in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can update pipelines in their tenant" ON pipelines;
 DROP POLICY IF EXISTS "Users can update pipelines in their tenant and locations" ON pipelines;
-CREATE POLICY "Users can update pipelines in their tenant and locations"
-  ON pipelines
+DROP POLICY IF EXISTS "Users can update pipelines in their tenant and locations" ON pipelines;
+CREATE POLICY "Users can update pipelines in their tenant and locations" ON pipelines
   FOR UPDATE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -349,8 +351,8 @@ CREATE POLICY "Users can update pipelines in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can delete pipelines in their tenant" ON pipelines;
 DROP POLICY IF EXISTS "Users can delete pipelines in their tenant and locations" ON pipelines;
-CREATE POLICY "Users can delete pipelines in their tenant and locations"
-  ON pipelines
+DROP POLICY IF EXISTS "Users can delete pipelines in their tenant and locations" ON pipelines;
+CREATE POLICY "Users can delete pipelines in their tenant and locations" ON pipelines
   FOR DELETE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -368,8 +370,8 @@ END $$;
 
 DROP POLICY IF EXISTS "Users can view tasks in their tenant" ON tasks;
 DROP POLICY IF EXISTS "Users can view tasks in their tenant and locations" ON tasks;
-CREATE POLICY "Users can view tasks in their tenant and locations"
-  ON tasks
+DROP POLICY IF EXISTS "Users can view tasks in their tenant and locations" ON tasks;
+CREATE POLICY "Users can view tasks in their tenant and locations" ON tasks
   FOR SELECT
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -378,8 +380,8 @@ CREATE POLICY "Users can view tasks in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can create tasks in their tenant" ON tasks;
 DROP POLICY IF EXISTS "Users can create tasks in their tenant and locations" ON tasks;
-CREATE POLICY "Users can create tasks in their tenant and locations"
-  ON tasks
+DROP POLICY IF EXISTS "Users can create tasks in their tenant and locations" ON tasks;
+CREATE POLICY "Users can create tasks in their tenant and locations" ON tasks
   FOR INSERT
   WITH CHECK (
     tenant_id = public.get_user_tenant_id_compat()
@@ -388,8 +390,8 @@ CREATE POLICY "Users can create tasks in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can update tasks in their tenant" ON tasks;
 DROP POLICY IF EXISTS "Users can update tasks in their tenant and locations" ON tasks;
-CREATE POLICY "Users can update tasks in their tenant and locations"
-  ON tasks
+DROP POLICY IF EXISTS "Users can update tasks in their tenant and locations" ON tasks;
+CREATE POLICY "Users can update tasks in their tenant and locations" ON tasks
   FOR UPDATE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -398,8 +400,8 @@ CREATE POLICY "Users can update tasks in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can delete tasks in their tenant" ON tasks;
 DROP POLICY IF EXISTS "Users can delete tasks in their tenant and locations" ON tasks;
-CREATE POLICY "Users can delete tasks in their tenant and locations"
-  ON tasks
+DROP POLICY IF EXISTS "Users can delete tasks in their tenant and locations" ON tasks;
+CREATE POLICY "Users can delete tasks in their tenant and locations" ON tasks
   FOR DELETE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -417,8 +419,8 @@ END $$;
 
 DROP POLICY IF EXISTS "Users can view activities in their tenant" ON activities;
 DROP POLICY IF EXISTS "Users can view activities in their tenant and locations" ON activities;
-CREATE POLICY "Users can view activities in their tenant and locations"
-  ON activities
+DROP POLICY IF EXISTS "Users can view activities in their tenant and locations" ON activities;
+CREATE POLICY "Users can view activities in their tenant and locations" ON activities
   FOR SELECT
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -427,8 +429,8 @@ CREATE POLICY "Users can view activities in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can create activities in their tenant" ON activities;
 DROP POLICY IF EXISTS "Users can create activities in their tenant and locations" ON activities;
-CREATE POLICY "Users can create activities in their tenant and locations"
-  ON activities
+DROP POLICY IF EXISTS "Users can create activities in their tenant and locations" ON activities;
+CREATE POLICY "Users can create activities in their tenant and locations" ON activities
   FOR INSERT
   WITH CHECK (
     tenant_id = public.get_user_tenant_id_compat()
@@ -437,8 +439,8 @@ CREATE POLICY "Users can create activities in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can update activities in their tenant" ON activities;
 DROP POLICY IF EXISTS "Users can update activities in their tenant and locations" ON activities;
-CREATE POLICY "Users can update activities in their tenant and locations"
-  ON activities
+DROP POLICY IF EXISTS "Users can update activities in their tenant and locations" ON activities;
+CREATE POLICY "Users can update activities in their tenant and locations" ON activities
   FOR UPDATE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -447,8 +449,8 @@ CREATE POLICY "Users can update activities in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can delete activities in their tenant" ON activities;
 DROP POLICY IF EXISTS "Users can delete activities in their tenant and locations" ON activities;
-CREATE POLICY "Users can delete activities in their tenant and locations"
-  ON activities
+DROP POLICY IF EXISTS "Users can delete activities in their tenant and locations" ON activities;
+CREATE POLICY "Users can delete activities in their tenant and locations" ON activities
   FOR DELETE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -466,8 +468,8 @@ END $$;
 
 DROP POLICY IF EXISTS "Users can view files in their tenant" ON files;
 DROP POLICY IF EXISTS "Users can view files in their tenant and locations" ON files;
-CREATE POLICY "Users can view files in their tenant and locations"
-  ON files
+DROP POLICY IF EXISTS "Users can view files in their tenant and locations" ON files;
+CREATE POLICY "Users can view files in their tenant and locations" ON files
   FOR SELECT
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -476,8 +478,8 @@ CREATE POLICY "Users can view files in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can upload files in their tenant" ON files;
 DROP POLICY IF EXISTS "Users can upload files in their tenant and locations" ON files;
-CREATE POLICY "Users can upload files in their tenant and locations"
-  ON files
+DROP POLICY IF EXISTS "Users can upload files in their tenant and locations" ON files;
+CREATE POLICY "Users can upload files in their tenant and locations" ON files
   FOR INSERT
   WITH CHECK (
     tenant_id = public.get_user_tenant_id_compat()
@@ -486,8 +488,8 @@ CREATE POLICY "Users can upload files in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can update files in their tenant" ON files;
 DROP POLICY IF EXISTS "Users can update files in their tenant and locations" ON files;
-CREATE POLICY "Users can update files in their tenant and locations"
-  ON files
+DROP POLICY IF EXISTS "Users can update files in their tenant and locations" ON files;
+CREATE POLICY "Users can update files in their tenant and locations" ON files
   FOR UPDATE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -496,8 +498,8 @@ CREATE POLICY "Users can update files in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can delete files in their tenant" ON files;
 DROP POLICY IF EXISTS "Users can delete files in their tenant and locations" ON files;
-CREATE POLICY "Users can delete files in their tenant and locations"
-  ON files
+DROP POLICY IF EXISTS "Users can delete files in their tenant and locations" ON files;
+CREATE POLICY "Users can delete files in their tenant and locations" ON files
   FOR DELETE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -515,8 +517,8 @@ END $$;
 
 DROP POLICY IF EXISTS "Users can view ai_artifacts in their tenant" ON ai_artifacts;
 DROP POLICY IF EXISTS "Users can view ai_artifacts in their tenant and locations" ON ai_artifacts;
-CREATE POLICY "Users can view ai_artifacts in their tenant and locations"
-  ON ai_artifacts
+DROP POLICY IF EXISTS "Users can view ai_artifacts in their tenant and locations" ON ai_artifacts;
+CREATE POLICY "Users can view ai_artifacts in their tenant and locations" ON ai_artifacts
   FOR SELECT
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -525,8 +527,8 @@ CREATE POLICY "Users can view ai_artifacts in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can create ai_artifacts in their tenant" ON ai_artifacts;
 DROP POLICY IF EXISTS "Users can create ai_artifacts in their tenant and locations" ON ai_artifacts;
-CREATE POLICY "Users can create ai_artifacts in their tenant and locations"
-  ON ai_artifacts
+DROP POLICY IF EXISTS "Users can create ai_artifacts in their tenant and locations" ON ai_artifacts;
+CREATE POLICY "Users can create ai_artifacts in their tenant and locations" ON ai_artifacts
   FOR INSERT
   WITH CHECK (
     tenant_id = public.get_user_tenant_id_compat()
@@ -535,8 +537,8 @@ CREATE POLICY "Users can create ai_artifacts in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can update ai_artifacts in their tenant" ON ai_artifacts;
 DROP POLICY IF EXISTS "Users can update ai_artifacts in their tenant and locations" ON ai_artifacts;
-CREATE POLICY "Users can update ai_artifacts in their tenant and locations"
-  ON ai_artifacts
+DROP POLICY IF EXISTS "Users can update ai_artifacts in their tenant and locations" ON ai_artifacts;
+CREATE POLICY "Users can update ai_artifacts in their tenant and locations" ON ai_artifacts
   FOR UPDATE
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -545,8 +547,8 @@ CREATE POLICY "Users can update ai_artifacts in their tenant and locations"
 
 DROP POLICY IF EXISTS "Users can delete ai_artifacts in their tenant" ON ai_artifacts;
 DROP POLICY IF EXISTS "Users can delete ai_artifacts in their tenant and locations" ON ai_artifacts;
-CREATE POLICY "Users can delete ai_artifacts in their tenant and locations"
-  ON ai_artifacts
+DROP POLICY IF EXISTS "Users can delete ai_artifacts in their tenant and locations" ON ai_artifacts;
+CREATE POLICY "Users can delete ai_artifacts in their tenant and locations" ON ai_artifacts
   FOR DELETE
   USING (
     tenant_id = public.get_user_tenant_id_compat()

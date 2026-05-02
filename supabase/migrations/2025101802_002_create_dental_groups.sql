@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Create Dental Groups Table
 -- Purpose: Parent entity for multi-location organizations
@@ -11,7 +13,8 @@ BEGIN;
 -- 1. CREATE DENTAL_GROUPS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS dental_groups (
+DROP TABLE IF EXISTS dental_groups CASCADE;
+CREATE TABLE dental_groups (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -74,6 +77,8 @@ BEGIN
       AND conrelid = 'tenants'::regclass
   ) THEN
     ALTER TABLE tenants 
+      DROP CONSTRAINT IF EXISTS fk_tenants_dental_group;
+ALTER TABLE tenants 
       ADD CONSTRAINT fk_tenants_dental_group 
       FOREIGN KEY (dental_group_id) 
       REFERENCES dental_groups(id) 
@@ -122,7 +127,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_dental_groups_updated_at
+CREATE OR REPLACE TRIGGER trigger_dental_groups_updated_at
   BEFORE UPDATE ON dental_groups
   FOR EACH ROW
   EXECUTE FUNCTION update_dental_groups_updated_at();
@@ -136,6 +141,7 @@ ALTER TABLE dental_groups ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can see groups they belong to
 -- (A user belongs to a group if they have access to ANY location in that group)
+DROP POLICY IF EXISTS dental_groups_select_policy ON dental_groups;
 CREATE POLICY dental_groups_select_policy ON dental_groups
   FOR SELECT
   USING (
@@ -150,6 +156,7 @@ CREATE POLICY dental_groups_select_policy ON dental_groups
   );
 
 -- Policy: Only group creator or Tenant Admins can update
+DROP POLICY IF EXISTS dental_groups_update_policy ON dental_groups;
 CREATE POLICY dental_groups_update_policy ON dental_groups
   FOR UPDATE
   USING (
@@ -171,6 +178,7 @@ CREATE POLICY dental_groups_update_policy ON dental_groups
 -- Service role bypasses RLS, so no INSERT policy needed for now
 
 -- Policy: Only group creator can delete (extremely dangerous)
+DROP POLICY IF EXISTS dental_groups_delete_policy ON dental_groups;
 CREATE POLICY dental_groups_delete_policy ON dental_groups
   FOR DELETE
   USING (created_by_user_id = auth.uid());

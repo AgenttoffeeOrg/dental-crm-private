@@ -107,6 +107,10 @@ export function LiveNotificationBadge({
                   key={notification.id}
                   className="p-3 hover:bg-gray-50 cursor-pointer"
                   onClick={() => handleViewNotification(notification)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleViewNotification(notification)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View notification: ${notification.title || 'Notification'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">

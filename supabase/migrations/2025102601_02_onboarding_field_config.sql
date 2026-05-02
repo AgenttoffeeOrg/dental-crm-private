@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 1: ENHANCED ONBOARDING WIZARD - DATABASE SCHEMA
 -- Migration 2 of 3: Onboarding Field Configuration
@@ -16,7 +18,8 @@ BEGIN;
 -- customize the onboarding experience per tenant.
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS onboarding_field_config (
+DROP TABLE IF EXISTS onboarding_field_config CASCADE;
+CREATE TABLE onboarding_field_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
   step_id TEXT NOT NULL,
@@ -60,7 +63,8 @@ COMMENT ON COLUMN onboarding_field_config.validation_rules IS
 -- Master list of all onboarding steps with metadata
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS onboarding_step_definitions (
+DROP TABLE IF EXISTS onboarding_step_definitions CASCADE;
+CREATE TABLE onboarding_step_definitions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
@@ -104,9 +108,10 @@ COMMENT ON COLUMN onboarding_step_definitions.is_skippable IS
 -- =====================================================
 -- ENSURE: onboarding_progress table exists
 -- =====================================================
--- Create table if it doesn't exist, then add new columns
+--  if CREATE TABLE if it doesn't exist, then add new columns
 
-CREATE TABLE IF NOT EXISTS onboarding_progress (
+DROP TABLE IF EXISTS onboarding_progress CASCADE;
+CREATE TABLE onboarding_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -152,9 +157,8 @@ ALTER TABLE app_users ADD COLUMN IF NOT EXISTS onboarding_current_step TEXT;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS onboarding_started_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMP WITH TIME ZONE;
 
--- Create index
-CREATE INDEX IF NOT EXISTS idx_app_users_onboarding_flow 
-  ON app_users(onboarding_flow_type) WHERE onboarding_completed = false;
+-- CREATE INDEX IF NOT EXISTS idx_app_users_onboarding_flow 
+-- ON app_users(onboarding_flow_type) WHERE onboarding_completed = false;
 
 -- Add comments
 COMMENT ON COLUMN app_users.onboarding_flow_type IS 
@@ -181,9 +185,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger for onboarding_field_config
+-- CREATE OR REPLACE TRIGGER for onboarding_field_config
 DROP TRIGGER IF EXISTS update_onboarding_field_config_updated_at ON onboarding_field_config;
-CREATE TRIGGER update_onboarding_field_config_updated_at
+CREATE OR REPLACE TRIGGER update_onboarding_field_config_updated_at
   BEFORE UPDATE ON onboarding_field_config
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();

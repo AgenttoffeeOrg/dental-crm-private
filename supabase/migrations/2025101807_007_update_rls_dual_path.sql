@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Update RLS Policies for Dual-Path Architecture
 -- Purpose: Enable multi-location access while maintaining single-location performance
@@ -28,6 +30,7 @@ BEGIN;
 DROP POLICY IF EXISTS contacts_tenant_isolation ON contacts;
 
 -- Create new dual-path policy
+DROP POLICY IF EXISTS contacts_tenant_isolation ON contacts;
 CREATE POLICY contacts_tenant_isolation ON contacts
   FOR ALL
   USING (tenant_id = ANY(public.get_accessible_tenants()));
@@ -41,6 +44,7 @@ COMMENT ON POLICY contacts_tenant_isolation ON contacts IS
 
 DROP POLICY IF EXISTS deals_tenant_isolation ON deals;
 
+DROP POLICY IF EXISTS deals_tenant_isolation ON deals;
 CREATE POLICY deals_tenant_isolation ON deals
   FOR ALL
   USING (tenant_id = ANY(public.get_accessible_tenants()));
@@ -54,6 +58,7 @@ COMMENT ON POLICY deals_tenant_isolation ON deals IS
 
 DROP POLICY IF EXISTS activities_tenant_isolation ON activities;
 
+DROP POLICY IF EXISTS activities_tenant_isolation ON activities;
 CREATE POLICY activities_tenant_isolation ON activities
   FOR ALL
   USING (tenant_id = ANY(public.get_accessible_tenants()));
@@ -64,6 +69,7 @@ CREATE POLICY activities_tenant_isolation ON activities
 
 DROP POLICY IF EXISTS pipelines_tenant_isolation ON pipelines;
 
+DROP POLICY IF EXISTS pipelines_tenant_isolation ON pipelines;
 CREATE POLICY pipelines_tenant_isolation ON pipelines
   FOR ALL
   USING (tenant_id = ANY(public.get_accessible_tenants()));
@@ -72,9 +78,10 @@ CREATE POLICY pipelines_tenant_isolation ON pipelines
 -- 5. UPDATE STAGES TABLE RLS
 -- =====================================================
 
-DROP POLICY IF EXISTS stages_tenant_isolation ON stages;
+DROP POLICY IF EXISTS stages_tenant_isolation ON pipeline_stages;
 
-CREATE POLICY stages_tenant_isolation ON stages
+DROP POLICY IF EXISTS stages_tenant_isolation ON pipeline_stages;
+CREATE POLICY stages_tenant_isolation ON pipeline_stages
   FOR ALL
   USING (tenant_id = ANY(public.get_accessible_tenants()));
 
@@ -87,11 +94,13 @@ DROP POLICY IF EXISTS app_users_tenant_isolation ON app_users;
 DROP POLICY IF EXISTS app_users_select_policy ON app_users;
 
 -- Create new dual-path policy
+DROP POLICY IF EXISTS app_users_tenant_isolation ON app_users;
 CREATE POLICY app_users_tenant_isolation ON app_users
   FOR SELECT
   USING (tenant_id = ANY(public.get_accessible_tenants()));
 
 -- Users can update their own profile
+DROP POLICY IF EXISTS app_users_update_own ON app_users;
 CREATE POLICY app_users_update_own ON app_users
   FOR UPDATE
   USING (id = auth.uid());
@@ -105,6 +114,7 @@ COMMENT ON POLICY app_users_tenant_isolation ON app_users IS
 
 DROP POLICY IF EXISTS user_invitations_tenant_isolation ON user_invitations;
 
+DROP POLICY IF EXISTS user_invitations_tenant_isolation ON user_invitations;
 CREATE POLICY user_invitations_tenant_isolation ON user_invitations
   FOR ALL
   USING (tenant_id = ANY(public.get_accessible_tenants()));
@@ -115,6 +125,7 @@ CREATE POLICY user_invitations_tenant_isolation ON user_invitations
 
 DROP POLICY IF EXISTS custom_roles_tenant_isolation ON custom_roles;
 
+DROP POLICY IF EXISTS custom_roles_tenant_isolation ON custom_roles;
 CREATE POLICY custom_roles_tenant_isolation ON custom_roles
   FOR ALL
   USING (tenant_id = ANY(public.get_accessible_tenants()));
@@ -127,7 +138,8 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_logs') THEN
     EXECUTE 'DROP POLICY IF EXISTS audit_logs_tenant_isolation ON audit_logs';
-    EXECUTE 'CREATE POLICY audit_logs_tenant_isolation ON audit_logs
+    EXECUTE 'DROP POLICY IF EXISTS audit_logs_tenant_isolation ON audit_logs;
+CREATE POLICY audit_logs_tenant_isolation ON audit_logs
       FOR SELECT
       USING (tenant_id = ANY(public.get_accessible_tenants()))';
   END IF;
@@ -141,7 +153,8 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'notes') THEN
     EXECUTE 'DROP POLICY IF EXISTS notes_tenant_isolation ON notes';
-    EXECUTE 'CREATE POLICY notes_tenant_isolation ON notes
+    EXECUTE 'DROP POLICY IF EXISTS notes_tenant_isolation ON notes;
+CREATE POLICY notes_tenant_isolation ON notes
       FOR ALL
       USING (tenant_id = ANY(public.get_accessible_tenants()))';
   END IF;
@@ -155,7 +168,8 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'documents') THEN
     EXECUTE 'DROP POLICY IF EXISTS documents_tenant_isolation ON documents';
-    EXECUTE 'CREATE POLICY documents_tenant_isolation ON documents
+    EXECUTE 'DROP POLICY IF EXISTS documents_tenant_isolation ON documents;
+CREATE POLICY documents_tenant_isolation ON documents
       FOR ALL
       USING (tenant_id = ANY(public.get_accessible_tenants()))';
   END IF;
@@ -169,7 +183,8 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tasks') THEN
     EXECUTE 'DROP POLICY IF EXISTS tasks_tenant_isolation ON tasks';
-    EXECUTE 'CREATE POLICY tasks_tenant_isolation ON tasks
+    EXECUTE 'DROP POLICY IF EXISTS tasks_tenant_isolation ON tasks;
+CREATE POLICY tasks_tenant_isolation ON tasks
       FOR ALL
       USING (tenant_id = ANY(public.get_accessible_tenants()))';
   END IF;
@@ -183,7 +198,8 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_campaigns') THEN
     EXECUTE 'DROP POLICY IF EXISTS email_campaigns_tenant_isolation ON email_campaigns';
-    EXECUTE 'CREATE POLICY email_campaigns_tenant_isolation ON email_campaigns
+    EXECUTE 'DROP POLICY IF EXISTS email_campaigns_tenant_isolation ON email_campaigns;
+CREATE POLICY email_campaigns_tenant_isolation ON email_campaigns
       FOR ALL
       USING (tenant_id = ANY(public.get_accessible_tenants()))';
   END IF;
@@ -197,7 +213,8 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'communications') THEN
     EXECUTE 'DROP POLICY IF EXISTS communications_tenant_isolation ON communications';
-    EXECUTE 'CREATE POLICY communications_tenant_isolation ON communications
+    EXECUTE 'DROP POLICY IF EXISTS communications_tenant_isolation ON communications;
+CREATE POLICY communications_tenant_isolation ON communications
       FOR ALL
       USING (tenant_id = ANY(public.get_accessible_tenants()))';
   END IF;
@@ -207,7 +224,8 @@ END $$;
 -- 15. CREATE HELPER VIEW: User's Accessible Locations
 -- =====================================================
 
-CREATE OR REPLACE VIEW user_accessible_locations AS
+DROP VIEW IF EXISTS user_accessible_locations CASCADE;
+CREATE VIEW user_accessible_locations AS
 SELECT 
   au.id AS user_id,
   t.id AS tenant_id,
@@ -218,10 +236,7 @@ SELECT
     ELSE FALSE 
   END AS is_primary_location
 FROM app_users au
-INNER JOIN tenants t ON t.id = ANY(
-  -- Get user's accessible tenants using the dual-path function
-  (SELECT public.get_accessible_tenants())
-)
+INNER JOIN tenants t ON t.id = ANY(public.get_accessible_tenants())
 WHERE au.id = auth.uid();
 
 COMMENT ON VIEW user_accessible_locations IS 

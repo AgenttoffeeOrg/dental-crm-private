@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 7: RBAC & PERMISSIONS SYSTEM
 -- Role-based access control with granular permissions
@@ -19,7 +21,8 @@ BEGIN;
 -- 1. PERMISSION DEFINITIONS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS permissions (
+DROP TABLE IF EXISTS permissions CASCADE;
+CREATE TABLE permissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT NOT NULL UNIQUE, -- e.g., 'deals.create', 'contacts.delete', 'settings.billing.view'
   name TEXT NOT NULL,
@@ -40,7 +43,8 @@ CREATE INDEX IF NOT EXISTS idx_permissions_dangerous ON permissions(is_dangerous
 -- 2. ROLE DEFINITIONS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS role_definitions (
+DROP TABLE IF EXISTS role_definitions CASCADE;
+CREATE TABLE role_definitions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT NOT NULL UNIQUE, -- 'owner', 'admin', 'manager', 'staff', 'marketing', 'read_only'
   name TEXT NOT NULL,
@@ -66,7 +70,8 @@ CREATE INDEX IF NOT EXISTS idx_role_definitions_custom ON role_definitions(is_cu
 -- 3. ROLE_PERMISSIONS MAPPING TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS role_permissions (
+DROP TABLE IF EXISTS role_permissions CASCADE;
+CREATE TABLE role_permissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   role_id UUID NOT NULL REFERENCES role_definitions(id) ON DELETE CASCADE,
   permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
@@ -83,7 +88,8 @@ CREATE INDEX IF NOT EXISTS idx_role_permissions_permission ON role_permissions(p
 -- 4. USER_PERMISSIONS (Override/Exception Grants)
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS user_permissions (
+DROP TABLE IF EXISTS user_permissions CASCADE;
+CREATE TABLE user_permissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -100,7 +106,7 @@ CREATE TABLE IF NOT EXISTS user_permissions (
 
 CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id, tenant_id);
 CREATE INDEX IF NOT EXISTS idx_user_permissions_permission ON user_permissions(permission_id);
-CREATE INDEX IF NOT EXISTS idx_user_permissions_active ON user_permissions(user_id, tenant_id) WHERE granted = true AND (expires_at IS NULL OR expires_at > NOW());
+CREATE INDEX IF NOT EXISTS idx_user_permissions_active ON user_permissions(user_id, tenant_id) WHERE granted = true;
 
 -- =====================================================
 -- 5. INSERT SYSTEM ROLES
@@ -372,7 +378,7 @@ AS $$
     AND up.granted = true
     AND (up.expires_at IS NULL OR up.expires_at > NOW())
   
-  ORDER BY permission_module, permission_code;
+  ORDER BY 3, 1;
 $$;
 
 -- Check if user can access specific location
@@ -408,7 +414,8 @@ $$;
 -- 9. PERMISSION CHANGE AUDIT LOG
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS permission_changes_log (
+DROP TABLE IF EXISTS permission_changes_log CASCADE;
+CREATE TABLE permission_changes_log (
   id BIGSERIAL PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES tenants(id),
   changed_by_user_id UUID NOT NULL REFERENCES app_users(id),
@@ -434,18 +441,22 @@ CREATE INDEX IF NOT EXISTS idx_perm_changes_type ON permission_changes_log(chang
 -- Permissions (read-only for all authenticated users)
 ALTER TABLE permissions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view permissions" ON permissions;
 CREATE POLICY "Anyone can view permissions" ON permissions
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Service role bypass permissions" ON permissions;
 CREATE POLICY "Service role bypass permissions" ON permissions
   FOR ALL USING (auth.role() = 'service_role');
 
 -- Role Definitions (read-only for users, admin can manage custom roles)
 ALTER TABLE role_definitions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view all role definitions" ON role_definitions;
 CREATE POLICY "Users can view all role definitions" ON role_definitions
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Admins can manage custom roles" ON role_definitions;
 CREATE POLICY "Admins can manage custom roles" ON role_definitions
   FOR ALL USING (
     (is_custom_role = true AND tenant_id = public.get_user_org_id() AND public.user_has_permission(auth.uid(), tenant_id, 'settings.roles.manage'))
@@ -455,39 +466,46 @@ CREATE POLICY "Admins can manage custom roles" ON role_definitions
 -- Role Permissions (admin only)
 ALTER TABLE role_permissions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view role permissions" ON role_permissions;
 CREATE POLICY "Users can view role permissions" ON role_permissions
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Service role bypass role_permissions" ON role_permissions;
 CREATE POLICY "Service role bypass role_permissions" ON role_permissions
   FOR ALL USING (auth.role() = 'service_role');
 
 -- User Permissions (admin + self-view)
 ALTER TABLE user_permissions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own permissions" ON user_permissions;
 CREATE POLICY "Users can view own permissions" ON user_permissions
   FOR SELECT USING (
     user_id = auth.uid() 
     OR (tenant_id = public.get_user_org_id() AND public.user_has_permission(auth.uid(), tenant_id, 'settings.team.manage'))
   );
 
+DROP POLICY IF EXISTS "Admins can manage user permissions" ON user_permissions;
 CREATE POLICY "Admins can manage user permissions" ON user_permissions
   FOR ALL USING (
     tenant_id = public.get_user_org_id() 
     AND public.user_has_permission(auth.uid(), tenant_id, 'settings.team.manage')
   );
 
+DROP POLICY IF EXISTS "Service role bypass user_permissions" ON user_permissions;
 CREATE POLICY "Service role bypass user_permissions" ON user_permissions
   FOR ALL USING (auth.role() = 'service_role');
 
 -- Permission Changes Log (audit read-only)
 ALTER TABLE permission_changes_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Auditors can view permission changes" ON permission_changes_log;
 CREATE POLICY "Auditors can view permission changes" ON permission_changes_log
   FOR SELECT USING (
     tenant_id = public.get_user_org_id()
     AND public.user_has_permission(auth.uid(), tenant_id, 'audit.view')
   );
 
+DROP POLICY IF EXISTS "Service role bypass perm_changes_log" ON permission_changes_log;
 CREATE POLICY "Service role bypass perm_changes_log" ON permission_changes_log
   FOR ALL USING (auth.role() = 'service_role');
 

@@ -93,7 +93,7 @@ export async function POST(
     console.log(`[INVITES] Would send email to ${invite.invitee_email} with code ${invite.invite_code}`)
 
     // 8. Track event
-    await trackEvent(user.id, 'invite_resent', {
+    trackEvent(user.id, 'invite_resent', {
       invite_id: inviteId,
       tenant_id: appUser.active_tenant_id,
       invitee_email: invite.invitee_email,

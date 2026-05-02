@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 7C: AUDIT RETENTION & CLEANUP
 -- Purpose: Automated retention policy enforcement and cleanup

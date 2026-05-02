@@ -84,14 +84,27 @@ export function Tooltip({
             ${position === 'left' ? '-translate-x-full -translate-y-1/2' : ''}
             ${position === 'right' ? '-translate-y-1/2' : ''}
           `}
-          style={{
-            left: position === 'top' || position === 'bottom' ? `${coords.x}px` : undefined,
-            top: position === 'top' ? `${coords.y}px` : undefined,
-            bottom: position === 'bottom' ? `calc(100vh - ${coords.y}px)` : undefined,
-            right: position === 'left' ? `calc(100vw - ${coords.x}px)` : undefined,
-            left: position === 'right' ? `${coords.x}px` : undefined,
-            top: position === 'left' || position === 'right' ? `${coords.y}px` : undefined,
-          }}
+          style={(() => {
+            const styles: React.CSSProperties = {}
+            if (position === 'top' || position === 'bottom') {
+              styles.left = `${coords.x}px`
+            }
+            if (position === 'top') {
+              styles.top = `${coords.y}px`
+            }
+            if (position === 'bottom') {
+              styles.bottom = `calc(100vh - ${coords.y}px)`
+            }
+            if (position === 'left') {
+              styles.right = `calc(100vw - ${coords.x}px)`
+              styles.top = `${coords.y}px`
+            }
+            if (position === 'right') {
+              styles.left = `${coords.x}px`
+              styles.top = `${coords.y}px`
+            }
+            return styles
+          })()}
         >
           {content}
           

@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Also store in cookie as backup/immediate context
-    const cookieStore = await cookies()
+    const cookieStore = cookies()
     cookieStore.set('active_tenant_id', tenant_id, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

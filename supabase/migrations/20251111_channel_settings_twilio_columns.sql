@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- Adds explicit Twilio metadata columns to integration_channel_settings for faster lookups
 
 begin;
@@ -13,6 +15,8 @@ create index if not exists idx_channel_settings_twilio_account
     on integration_channel_settings (twilio_account_sid);
 
 commit;
+
+
 
 
 

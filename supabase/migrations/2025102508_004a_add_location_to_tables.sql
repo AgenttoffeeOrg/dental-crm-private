@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 3A: ADD LOCATION_ID TO CORE TABLES
 -- Purpose: Enable per-location data scoping for multi-location tenants
@@ -99,7 +101,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_target AND column_name = column_name_location
   ) THEN
-    ALTER TABLE contacts ADD COLUMN location_id UUID;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS location_id UUID;
     RAISE NOTICE '✅ Added location_id to contacts';
   ELSE
     RAISE NOTICE 'ℹ️  location_id already exists on contacts';
@@ -116,7 +118,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_target AND column_name = column_name_location
   ) THEN
-    ALTER TABLE deals ADD COLUMN location_id UUID;
+    ALTER TABLE deals ADD COLUMN IF NOT EXISTS location_id UUID;
     RAISE NOTICE '✅ Added location_id to deals';
   ELSE
     RAISE NOTICE 'ℹ️  location_id already exists on deals';
@@ -133,7 +135,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_target AND column_name = column_name_location
   ) THEN
-    ALTER TABLE pipelines ADD COLUMN location_id UUID;
+    ALTER TABLE pipelines ADD COLUMN IF NOT EXISTS location_id UUID;
     RAISE NOTICE '✅ Added location_id to pipelines';
   ELSE
     RAISE NOTICE 'ℹ️  location_id already exists on pipelines';
@@ -150,7 +152,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_target AND column_name = column_name_location
   ) THEN
-    ALTER TABLE tasks ADD COLUMN location_id UUID;
+    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS location_id UUID;
     RAISE NOTICE '✅ Added location_id to tasks';
   ELSE
     RAISE NOTICE 'ℹ️  location_id already exists on tasks';
@@ -167,7 +169,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_target AND column_name = column_name_location
   ) THEN
-    ALTER TABLE activities ADD COLUMN location_id UUID;
+    ALTER TABLE activities ADD COLUMN IF NOT EXISTS location_id UUID;
     RAISE NOTICE '✅ Added location_id to activities';
   ELSE
     RAISE NOTICE 'ℹ️  location_id already exists on activities';
@@ -184,7 +186,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_target AND column_name = column_name_location
   ) THEN
-    ALTER TABLE files ADD COLUMN location_id UUID;
+    ALTER TABLE files ADD COLUMN IF NOT EXISTS location_id UUID;
     RAISE NOTICE '✅ Added location_id to files';
   ELSE
     RAISE NOTICE 'ℹ️  location_id already exists on files';
@@ -201,7 +203,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_target AND column_name = column_name_location
   ) THEN
-    ALTER TABLE ai_artifacts ADD COLUMN location_id UUID;
+    ALTER TABLE ai_artifacts ADD COLUMN IF NOT EXISTS location_id UUID;
     RAISE NOTICE '✅ Added location_id to ai_artifacts';
   ELSE
     RAISE NOTICE 'ℹ️  location_id already exists on ai_artifacts';
@@ -243,6 +245,8 @@ BEGIN
     WHERE constraint_name = 'fk_contacts_location' AND table_name = 'contacts'
   ) THEN
     ALTER TABLE contacts 
+      DROP CONSTRAINT IF EXISTS fk_contacts_location;
+ALTER TABLE contacts 
       ADD CONSTRAINT fk_contacts_location 
       FOREIGN KEY (location_id) 
       REFERENCES locations(id) 
@@ -256,6 +260,8 @@ BEGIN
     WHERE constraint_name = 'fk_deals_location' AND table_name = 'deals'
   ) THEN
     ALTER TABLE deals 
+      DROP CONSTRAINT IF EXISTS fk_deals_location;
+ALTER TABLE deals 
       ADD CONSTRAINT fk_deals_location 
       FOREIGN KEY (location_id) 
       REFERENCES locations(id) 
@@ -269,6 +275,8 @@ BEGIN
     WHERE constraint_name = 'fk_pipelines_location' AND table_name = 'pipelines'
   ) THEN
     ALTER TABLE pipelines 
+      DROP CONSTRAINT IF EXISTS fk_pipelines_location;
+ALTER TABLE pipelines 
       ADD CONSTRAINT fk_pipelines_location 
       FOREIGN KEY (location_id) 
       REFERENCES locations(id) 
@@ -282,6 +290,8 @@ BEGIN
     WHERE constraint_name = 'fk_tasks_location' AND table_name = 'tasks'
   ) THEN
     ALTER TABLE tasks 
+      DROP CONSTRAINT IF EXISTS fk_tasks_location;
+ALTER TABLE tasks 
       ADD CONSTRAINT fk_tasks_location 
       FOREIGN KEY (location_id) 
       REFERENCES locations(id) 
@@ -295,6 +305,8 @@ BEGIN
     WHERE constraint_name = 'fk_activities_location' AND table_name = 'activities'
   ) THEN
     ALTER TABLE activities 
+      DROP CONSTRAINT IF EXISTS fk_activities_location;
+ALTER TABLE activities 
       ADD CONSTRAINT fk_activities_location 
       FOREIGN KEY (location_id) 
       REFERENCES locations(id) 
@@ -308,6 +320,8 @@ BEGIN
     WHERE constraint_name = 'fk_files_location' AND table_name = 'files'
   ) THEN
     ALTER TABLE files 
+      DROP CONSTRAINT IF EXISTS fk_files_location;
+ALTER TABLE files 
       ADD CONSTRAINT fk_files_location 
       FOREIGN KEY (location_id) 
       REFERENCES locations(id) 
@@ -321,6 +335,8 @@ BEGIN
     WHERE constraint_name = 'fk_ai_artifacts_location' AND table_name = 'ai_artifacts'
   ) THEN
     ALTER TABLE ai_artifacts 
+      DROP CONSTRAINT IF EXISTS fk_ai_artifacts_location;
+ALTER TABLE ai_artifacts 
       ADD CONSTRAINT fk_ai_artifacts_location 
       FOREIGN KEY (location_id) 
       REFERENCES locations(id) 

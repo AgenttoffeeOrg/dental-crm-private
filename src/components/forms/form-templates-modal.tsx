@@ -181,6 +181,10 @@ export function FormTemplatesModal({
       <div 
         className="fixed inset-0 bg-black/50 z-50 transition-opacity"
         onClick={onClose}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close form templates modal"
       />
 
       {/* Modal */}
@@ -273,6 +277,10 @@ export function FormTemplatesModal({
                   key={template.id}
                   className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => setSelectedTemplate(template)}
+                  onKeyDown={(e) => e.key === 'Enter' && setSelectedTemplate(template)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Select template ${template.name}`}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="p-2 bg-blue-100 rounded-lg">

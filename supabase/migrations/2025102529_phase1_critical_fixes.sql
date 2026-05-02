@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 1: CRITICAL MULTI-TENANT + MULTI-LOCATION FIXES
 -- Date: October 25, 2025
@@ -57,7 +59,8 @@ END $$;
 -- This ensures Phase 1 is self-contained and doesn't depend on external migrations
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS locations (
+DROP TABLE IF EXISTS locations CASCADE;
+CREATE TABLE locations (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -138,7 +141,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER locations_updated_at_trigger
+CREATE OR REPLACE TRIGGER locations_updated_at_trigger
   BEFORE UPDATE ON locations
   FOR EACH ROW
   EXECUTE FUNCTION update_locations_updated_at();
@@ -147,6 +150,7 @@ CREATE TRIGGER locations_updated_at_trigger
 ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only see locations in their active tenant
+DROP POLICY IF EXISTS locations_tenant_isolation ON locations;
 CREATE POLICY locations_tenant_isolation ON locations
   FOR ALL
   USING (tenant_id = public.get_user_tenant_id());
@@ -169,7 +173,8 @@ END $$;
 --
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS membership_locations (
+DROP TABLE IF EXISTS membership_locations CASCADE;
+CREATE TABLE membership_locations (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -215,7 +220,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER membership_locations_updated_at_trigger
+CREATE OR REPLACE TRIGGER membership_locations_updated_at_trigger
   BEFORE UPDATE ON membership_locations
   FOR EACH ROW
   EXECUTE FUNCTION update_membership_locations_updated_at();
@@ -224,6 +229,7 @@ CREATE TRIGGER membership_locations_updated_at_trigger
 ALTER TABLE membership_locations ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only see their own membership locations
+DROP POLICY IF EXISTS membership_locations_user_access ON membership_locations;
 CREATE POLICY membership_locations_user_access ON membership_locations
   FOR ALL
   USING (
@@ -456,7 +462,7 @@ ALTER TABLE user_tenant_memberships
 COMMENT ON COLUMN user_tenant_memberships.all_locations IS 
   'If true, user has access to ALL locations in this tenant. If false, check membership_locations.';
 
--- Create index for all_locations queries
+-- CREATE INDEX IF NOT EXISTS for all_locations queries
 CREATE INDEX IF NOT EXISTS idx_memberships_all_locations 
   ON user_tenant_memberships(user_id, tenant_id, all_locations) 
   WHERE all_locations = true;
@@ -482,7 +488,7 @@ INSERT INTO user_tenant_memberships (
 SELECT 
   au.id AS user_id,
   au.tenant_id,
-  COALESCE(au.role::text, 'staff') AS role,
+  COALESCE(au.role::text::membership_role, 'staff'::membership_role) AS role,
   'active' AS status,
   true AS all_locations,  -- Legacy users get all locations
   COALESCE(au.created_at, NOW()) AS created_at

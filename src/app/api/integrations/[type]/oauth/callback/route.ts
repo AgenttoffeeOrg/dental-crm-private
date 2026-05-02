@@ -64,9 +64,11 @@ export async function GET(
     const tokens = await exchangeCodeForTokens(type, code, redirectUri, state)
 
     // Get granted scopes from token response
-    const grantedScopes = tokens.scope 
-      ? (Array.isArray(tokens.scope) ? tokens.scope : tokens.scope.split(' '))
-      : []
+    const grantedScopes = (() => {
+      if (!tokens.scope) return []
+      if (Array.isArray(tokens.scope)) return tokens.scope
+      return tokens.scope.split(' ')
+    })()
 
     // Get integration group for this service
     const group = getGroupForService(type)

@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- Migration: Fix duplicate fields in get_onboarding_config function
 -- Date: 2025-10-26
 -- Description: 

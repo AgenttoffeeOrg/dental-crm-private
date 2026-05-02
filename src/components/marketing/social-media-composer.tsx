@@ -264,7 +264,12 @@ export function SocialMediaComposer({ onComplete, onCancel }: SocialMediaCompose
                 <Input
                   value={currentHashtag}
                   onChange={(e) => setCurrentHashtag(e.target.value.replace(/^#/, ''))}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addHashtag())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void addHashtag()
+                    }
+                  }}
                   placeholder="Type and press Enter"
                 />
                 <Button onClick={addHashtag} variant="outline">Add</Button>

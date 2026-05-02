@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 4: DATA MIGRATION & RECONCILIATION
 -- Fix misplaced data, reconcile cross-org records
@@ -20,7 +22,8 @@ BEGIN;
 -- =====================================================
 
 -- Track what we're fixing
-CREATE TABLE IF NOT EXISTS data_reconciliation_log (
+DROP TABLE IF EXISTS data_reconciliation_log CASCADE;
+CREATE TABLE data_reconciliation_log (
   id BIGSERIAL PRIMARY KEY,
   migration_batch TEXT DEFAULT 'phase_4_' || to_char(NOW(), 'YYYYMMDD_HH24MISS'),
   table_name TEXT NOT NULL,
@@ -37,7 +40,8 @@ CREATE INDEX IF NOT EXISTS idx_reconciliation_batch ON data_reconciliation_log(m
 CREATE INDEX IF NOT EXISTS idx_reconciliation_table ON data_reconciliation_log(table_name, action);
 
 -- Quarantine for records we can't auto-fix
-CREATE TABLE IF NOT EXISTS data_quarantine (
+DROP TABLE IF EXISTS data_quarantine CASCADE;
+CREATE TABLE data_quarantine (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   table_name TEXT NOT NULL,
   record_id UUID NOT NULL,

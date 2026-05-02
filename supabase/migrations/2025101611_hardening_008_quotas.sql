@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 3: Quotas & Billing Enforcement
 -- Date: October 16, 2025
@@ -191,7 +193,7 @@ END $$;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'marketing_campaign_sends') THEN
-    -- Create trigger function
+    -- CREATE OR REPLACE TRIGGER function
     CREATE OR REPLACE FUNCTION before_insert_marketing_send()
     RETURNS TRIGGER
     LANGUAGE plpgsql
@@ -222,7 +224,7 @@ BEGIN
 
     -- Attach trigger
     DROP TRIGGER IF EXISTS trig_quota_marketing_send ON marketing_campaign_sends;
-    CREATE TRIGGER trig_quota_marketing_send
+    CREATE OR REPLACE TRIGGER trig_quota_marketing_send
       BEFORE INSERT ON marketing_campaign_sends
       FOR EACH ROW
       EXECUTE FUNCTION before_insert_marketing_send();
@@ -240,7 +242,7 @@ END $$;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'marketing_campaigns') THEN
-    -- Create trigger function to count campaigns
+    -- CREATE OR REPLACE TRIGGER function to count campaigns
     CREATE OR REPLACE FUNCTION before_insert_marketing_campaign()
     RETURNS TRIGGER
     LANGUAGE plpgsql
@@ -256,7 +258,7 @@ BEGIN
 
     -- Note: Trigger creation commented out - enable if campaign count quota needed
     -- DROP TRIGGER IF EXISTS trig_quota_marketing_campaign ON marketing_campaigns;
-    -- CREATE TRIGGER trig_quota_marketing_campaign
+    -- CREATE OR REPLACE TRIGGER trig_quota_marketing_campaign
     --   BEFORE INSERT ON marketing_campaigns
     --   FOR EACH ROW
     --   EXECUTE FUNCTION before_insert_marketing_campaign();

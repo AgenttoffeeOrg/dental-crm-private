@@ -41,7 +41,13 @@ export function AuditReportEmail({
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         backgroundColor: '#f9fafb',
       }}>
-        <table width="100%" cellPadding="0" cellSpacing="0" style={{ backgroundColor: '#f9fafb' }}>
+        <table width="100%" cellPadding="0" cellSpacing="0" style={{ backgroundColor: '#f9fafb' }} role="presentation">
+          <thead>
+            <tr>
+              <th style={{ padding: '0', fontSize: '0', lineHeight: '0', height: '0' }} aria-hidden="true">Email Layout</th>
+            </tr>
+          </thead>
+          <tbody>
           <tr>
             <td align="center" style={{ padding: '40px 20px' }}>
               <table width="600" cellPadding="0" cellSpacing="0" style={{
@@ -113,7 +119,13 @@ export function AuditReportEmail({
                       <table width="100%" cellPadding="20" style={{
                         backgroundColor: '#f3f4f6',
                         borderRadius: '8px',
-                      }}>
+                      }} role="presentation">
+                        <thead>
+                          <tr>
+                            <th style={{ padding: '0 20px', textAlign: 'left', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}>Ranking</th>
+                          </tr>
+                        </thead>
+                        <tbody>
                         <tr>
                           <td align="center">
                             <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>
@@ -127,6 +139,7 @@ export function AuditReportEmail({
                             </div>
                           </td>
                         </tr>
+                        </tbody>
                       </table>
                     </td>
                   </tr>
@@ -234,6 +247,7 @@ export function AuditReportEmail({
               </table>
             </td>
           </tr>
+          </tbody>
         </table>
       </body>
     </html>

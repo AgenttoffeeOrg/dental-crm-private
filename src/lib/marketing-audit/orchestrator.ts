@@ -492,7 +492,7 @@ export class AuditOrchestrator {
    * Save all audit results to database
    */
   private async saveResults(auditId: string, results: any): Promise<void> {
-    const tenantId = results.metrics.technical.https ? 'tenant' : 'tenant'; // TODO: Get from context
+    const tenantId = 'tenant'; // TODO: Get from context (removed redundant conditional)
     
     // Save metrics (each metric as a row)
     const metricsToSave = this.flattenMetrics(auditId, results.metrics, tenantId);

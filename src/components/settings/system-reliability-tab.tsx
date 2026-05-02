@@ -283,8 +283,8 @@ export function SystemReliabilityTab() {
                         Threshold breach detected
                       </p>
                       <ul className="space-y-1">
-                        {evaluation.breaches.map((breach, idx) => (
-                          <li key={idx} className="flex justify-between gap-4">
+                        {evaluation.breaches.map((breach) => (
+                          <li key={breach.description || breach.actual} className="flex justify-between gap-4">
                             <span>{breach.description}</span>
                             <span className="font-medium text-amber-900">
                               {breach.actual} / {breach.threshold}

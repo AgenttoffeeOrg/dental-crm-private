@@ -106,7 +106,7 @@ export class NoOpSmsProvider implements ISmsProvider {
   calculateSegments(text: string): number {
     // Standard SMS = 160 chars per segment
     // Unicode/emoji = 70 chars per segment
-    const hasUnicode = /[^\x00-\x7F]/.test(text)
+    const hasUnicode = /[^\u0020-\u007E]/.test(text)
     const charsPerSegment = hasUnicode ? 70 : 160
     return Math.ceil(text.length / charsPerSegment)
   }
@@ -163,7 +163,7 @@ export class TwilioSmsProvider implements ISmsProvider {
   }
   
   calculateSegments(text: string): number {
-    const hasUnicode = /[^\x00-\x7F]/.test(text)
+    const hasUnicode = /[^\u0020-\u007E]/.test(text)
     const charsPerSegment = hasUnicode ? 70 : 160
     return Math.ceil(text.length / charsPerSegment)
   }

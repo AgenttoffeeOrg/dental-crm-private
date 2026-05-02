@@ -14,10 +14,13 @@ async function bootstrap() {
   console.log('[Engagement Worker] Autonomous engagement worker started')
 }
 
-bootstrap().catch((error) => {
+// Use top-level await instead of promise chain
+try {
+  await bootstrap()
+} catch (error) {
   console.error('[Engagement Worker] Fatal error', error)
   process.exit(1)
-})
+}
 
 
 

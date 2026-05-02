@@ -1,10 +1,13 @@
+SET search_path TO public, extensions;
+
 /**
  * Practice Branding Configuration Table
  * 
  * Store white-label branding settings for each practice.
  */
 
-CREATE TABLE IF NOT EXISTS public.practice_branding (
+DROP TABLE IF EXISTS public.practice_branding CASCADE;
+CREATE TABLE public.practice_branding (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   practice_id uuid REFERENCES public.practices(id) ON DELETE CASCADE NOT NULL UNIQUE,
   logo_url text,
@@ -16,15 +19,14 @@ CREATE TABLE IF NOT EXISTS public.practice_branding (
   updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- Create index
-CREATE INDEX idx_practice_branding_practice ON public.practice_branding(practice_id);
+-- CREATE INDEX IF NOT EXISTS idx_practice_branding_practice ON public.practice_branding(practice_id);
 
 -- Enable RLS
 ALTER TABLE public.practice_branding ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can view branding for their practice
-CREATE POLICY "Users can view own practice branding"
-  ON public.practice_branding
+DROP POLICY IF EXISTS "Users can view own practice branding" ON public.practice_branding;
+CREATE POLICY "Users can view own practice branding" ON public.practice_branding
   FOR SELECT
   USING (
     practice_id IN (
@@ -36,8 +38,8 @@ CREATE POLICY "Users can view own practice branding"
   );
 
 -- Policy: Users can update branding for their practice
-CREATE POLICY "Users can update own practice branding"
-  ON public.practice_branding
+DROP POLICY IF EXISTS "Users can update own practice branding" ON public.practice_branding;
+CREATE POLICY "Users can update own practice branding" ON public.practice_branding
   FOR UPDATE
   USING (
     practice_id IN (
@@ -49,8 +51,8 @@ CREATE POLICY "Users can update own practice branding"
   );
 
 -- Policy: Users can insert branding for their practice
-CREATE POLICY "Users can insert own practice branding"
-  ON public.practice_branding
+DROP POLICY IF EXISTS "Users can insert own practice branding" ON public.practice_branding;
+CREATE POLICY "Users can insert own practice branding" ON public.practice_branding
   FOR INSERT
   WITH CHECK (
     practice_id IN (

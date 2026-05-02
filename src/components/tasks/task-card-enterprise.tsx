@@ -70,7 +70,7 @@ export function TaskCardEnterprise({ task, onComplete, onClick, onQuickAction }:
     
     setIsCompleting(true)
     try {
-      await onComplete?.(task.id)
+      onComplete?.(task.id) // Removed await - function may return void
     } finally {
       setIsCompleting(false)
     }

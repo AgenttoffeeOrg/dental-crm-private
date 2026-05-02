@@ -466,6 +466,15 @@ export function UserManagementDashboard() {
                     handleChangeRole(selectedUser.id, role)
                     setShowEditDialog(false)
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleChangeRole(selectedUser.id, role)
+                      setShowEditDialog(false)
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Change role to ${role}`}
                 >
                   <p className="font-medium capitalize">{role}</p>
                   <p className="text-sm text-gray-600 mt-1">

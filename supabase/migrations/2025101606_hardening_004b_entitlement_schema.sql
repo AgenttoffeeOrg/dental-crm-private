@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 1.5: Entitlement Schema (PREREQUISITE)
 -- Date: October 16, 2025
@@ -9,7 +11,8 @@
 -- 1. FEATURES TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS features (
+DROP TABLE IF EXISTS features CASCADE;
+CREATE TABLE features (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
@@ -34,7 +37,8 @@ COMMENT ON TABLE features IS
 -- 2. TENANT_ENTITLEMENTS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS tenant_entitlements (
+DROP TABLE IF EXISTS tenant_entitlements CASCADE;
+CREATE TABLE tenant_entitlements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   feature_id UUID NOT NULL REFERENCES features(id) ON DELETE CASCADE,
@@ -126,11 +130,13 @@ ALTER TABLE tenant_entitlements ENABLE ROW LEVEL SECURITY;
 
 -- Features are visible to all authenticated users (read-only)
 DROP POLICY IF EXISTS features_select_all ON features;
+DROP POLICY IF EXISTS features_select_all ON features;
 CREATE POLICY features_select_all ON features
   FOR SELECT
   USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
 
 -- Service role can manage features
+DROP POLICY IF EXISTS features_service_role ON features;
 DROP POLICY IF EXISTS features_service_role ON features;
 CREATE POLICY features_service_role ON features
   FOR ALL
@@ -138,11 +144,13 @@ CREATE POLICY features_service_role ON features
 
 -- Users can view their tenant's entitlements
 DROP POLICY IF EXISTS entitlements_select ON tenant_entitlements;
+DROP POLICY IF EXISTS entitlements_select ON tenant_entitlements;
 CREATE POLICY entitlements_select ON tenant_entitlements
   FOR SELECT
   USING (tenant_id = current_tenant_id());
 
 -- Service role can manage entitlements
+DROP POLICY IF EXISTS entitlements_service_role ON tenant_entitlements;
 DROP POLICY IF EXISTS entitlements_service_role ON tenant_entitlements;
 CREATE POLICY entitlements_service_role ON tenant_entitlements
   FOR ALL

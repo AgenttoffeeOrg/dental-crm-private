@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         // Validate phone formats
         if (fieldValue && (fieldName.includes('phone') || fieldName === 'phone_number') && typeof fieldValue === 'string') {
           const phoneRegex = /^[\d\s\-\+\(\)]+$/
-          if (fieldValue && !phoneRegex.test(fieldValue)) {
+          if (!phoneRegex.test(fieldValue)) {
             errors.push({
               field: fieldName,
               message: 'Invalid phone number format'

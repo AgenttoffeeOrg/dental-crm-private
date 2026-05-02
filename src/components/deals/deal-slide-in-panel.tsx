@@ -70,7 +70,14 @@ export function DealSlideInPanel({ dealId, open, onClose, onDealUpdated }: DealS
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 z-40 animate-in fade-in duration-200" onClick={onClose} />
+      <div 
+        className="fixed inset-0 bg-black/50 z-40 animate-in fade-in duration-200" 
+        onClick={onClose}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close deal panel"
+      />
       
       <div className="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl z-50 animate-in slide-in-from-right duration-300">
         <div className="flex flex-col h-full">

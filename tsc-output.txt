@@ -1,0 +1,10 @@
+src/app/tasks/page.tsx(777,7): error TS1005: ')' expected.
+src/app/tasks/page.tsx(795,9): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/app/tasks/page.tsx(795,13): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/app/tasks/page.tsx(796,9): error TS17002: Expected corresponding JSX closing tag for 'DashboardLayout'.
+src/app/tasks/page.tsx(797,5): error TS1005: ')' expected.
+src/app/tasks/page.tsx(798,3): error TS1109: Expression expected.
+src/components/deals/deal-detail-view-modal.tsx(409,6): error TS17008: JSX element 'div' has no corresponding closing tag.
+src/components/deals/deal-detail-view-modal.tsx(1096,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/deals/deal-detail-view-modal.tsx(1097,1): error TS1005: '</' expected.
+src/lib/marketing-audit/email/audit-report-email.tsx(128,26): error TS17008: JSX element 'tbody' has no corresponding closing tag.

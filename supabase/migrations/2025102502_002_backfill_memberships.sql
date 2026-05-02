@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 1B: BACKFILL USER_TENANT_MEMBERSHIPS
 -- Purpose: Migrate existing app_users.tenant_id to new memberships table
@@ -72,7 +74,7 @@ SELECT
   au.id AS user_id,
   au.tenant_id,
   -- Handle role field (might be NULL in some old records)
-  COALESCE(au.role, 'staff') AS role,
+  COALESCE(au.role::membership_role, 'staff'::membership_role) AS role,
   'active' AS status,
   NULL AS invited_by,
   NULL AS invited_at,

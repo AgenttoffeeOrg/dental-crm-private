@@ -1,7 +1,10 @@
+SET search_path TO public, extensions;
+
 -- User Pipeline Preferences Table
 -- Stores user-specific preferences for pipeline ordering and views
 
-CREATE TABLE IF NOT EXISTS user_pipeline_preferences (
+DROP TABLE IF EXISTS user_pipeline_preferences CASCADE;
+CREATE TABLE user_pipeline_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   
@@ -37,27 +40,27 @@ CREATE INDEX IF NOT EXISTS idx_user_pipeline_prefs_last_selected ON user_pipelin
 ALTER TABLE user_pipeline_preferences ENABLE ROW LEVEL SECURITY;
 
 -- Users can view their own preferences
-CREATE POLICY "Users can view their own pipeline preferences"
-  ON user_pipeline_preferences
+DROP POLICY IF EXISTS "Users can view their own pipeline preferences" ON user_pipeline_preferences;
+CREATE POLICY "Users can view their own pipeline preferences" ON user_pipeline_preferences
   FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Users can insert their own preferences
-CREATE POLICY "Users can insert their own pipeline preferences"
-  ON user_pipeline_preferences
+DROP POLICY IF EXISTS "Users can insert their own pipeline preferences" ON user_pipeline_preferences;
+CREATE POLICY "Users can insert their own pipeline preferences" ON user_pipeline_preferences
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Users can update their own preferences
-CREATE POLICY "Users can update their own pipeline preferences"
-  ON user_pipeline_preferences
+DROP POLICY IF EXISTS "Users can update their own pipeline preferences" ON user_pipeline_preferences;
+CREATE POLICY "Users can update their own pipeline preferences" ON user_pipeline_preferences
   FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 -- Users can delete their own preferences
-CREATE POLICY "Users can delete their own pipeline preferences"
-  ON user_pipeline_preferences
+DROP POLICY IF EXISTS "Users can delete their own pipeline preferences" ON user_pipeline_preferences;
+CREATE POLICY "Users can delete their own pipeline preferences" ON user_pipeline_preferences
   FOR DELETE
   USING (auth.uid() = user_id);
 
@@ -70,7 +73,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_user_pipeline_prefs_updated_at
+CREATE OR REPLACE TRIGGER update_user_pipeline_prefs_updated_at
   BEFORE UPDATE ON user_pipeline_preferences
   FOR EACH ROW
   EXECUTE FUNCTION update_user_pipeline_prefs_updated_at();

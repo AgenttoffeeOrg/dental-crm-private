@@ -141,7 +141,7 @@ export function ActivityTimelineEnterprise({
 
   const saveActivityEdit = async () => {
     if (editingActivity) {
-      await onEdit?.(editingActivity, {
+      onEdit?.(editingActivity, { // Removed await - function may return void
         subject: editedSubject,
         snippet: editedSnippet
       })

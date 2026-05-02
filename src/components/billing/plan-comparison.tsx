@@ -83,7 +83,7 @@ export function PlanComparison({
     setSelecting(planId)
     
     try {
-      await onSelectPlan?.(planId)
+      onSelectPlan?.(planId) // Removed await - function returns void
     } finally {
       setSelecting(null)
     }

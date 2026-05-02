@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- FIX: Update get_accessible_tenants() to use active_tenant_id
 -- =====================================================

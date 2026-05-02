@@ -349,7 +349,7 @@ export function getSettingsByCategory(category: string): SettingDefinition[] {
  */
 export function getAllCategories(): string[] {
   const categories = new Set(Object.values(SETTINGS_REGISTRY).map(s => s.category))
-  return Array.from(categories).sort()
+  return Array.from(categories).sort((a, b) => a.localeCompare(b))
 }
 
 /**

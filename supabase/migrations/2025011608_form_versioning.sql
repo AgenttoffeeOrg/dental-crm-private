@@ -28,14 +28,15 @@ CREATE TABLE IF NOT EXISTS public.form_versions (
 );
 
 -- Indexes
-CREATE INDEX idx_form_versions_form_id ON public.form_versions(form_id);
-CREATE INDEX idx_form_versions_created_at ON public.form_versions(created_at DESC);
-CREATE INDEX idx_form_versions_tenant ON public.form_versions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_form_versions_form_id ON public.form_versions(form_id);
+CREATE INDEX IF NOT EXISTS idx_form_versions_created_at ON public.form_versions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_form_versions_tenant ON public.form_versions(tenant_id);
 
 -- Enable RLS
 ALTER TABLE public.form_versions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Tenants can view their own form versions" ON public.form_versions;
 CREATE POLICY "Tenants can view their own form versions" ON public.form_versions
   FOR SELECT
   USING (
@@ -44,6 +45,7 @@ CREATE POLICY "Tenants can view their own form versions" ON public.form_versions
     )
   );
 
+DROP POLICY IF EXISTS "System can create form versions" ON public.form_versions;
 CREATE POLICY "System can create form versions" ON public.form_versions
   FOR INSERT
   WITH CHECK (
@@ -86,7 +88,7 @@ END;
 $$;
 
 -- Trigger: Create version on every form update
-CREATE TRIGGER create_form_version_trigger
+CREATE OR REPLACE TRIGGER create_form_version_trigger
   AFTER UPDATE ON public.marketing_forms
   FOR EACH ROW
   EXECUTE FUNCTION public.create_form_version();

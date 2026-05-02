@@ -29,10 +29,10 @@ export interface QueueDefinition<T = any> {
 
 export class QueueManager {
   private static instance: QueueManager | null = null
-  private queues: Map<string, Queue> = new Map()
-  private queueEvents: Map<string, QueueEvents> = new Map()
-  private scheduler: Map<string, InstanceType<QueueSchedulerCtor>> = new Map()
-  private workers: Map<string, Worker> = new Map()
+  private readonly queues: Map<string, Queue> = new Map()
+  private readonly queueEvents: Map<string, QueueEvents> = new Map()
+  private readonly scheduler: Map<string, InstanceType<QueueSchedulerCtor>> = new Map()
+  private readonly workers: Map<string, Worker> = new Map()
 
   private constructor() {}
 

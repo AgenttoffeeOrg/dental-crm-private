@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- Patch validate_activity_tenant_relationships to use agent_user_id column
 CREATE OR REPLACE FUNCTION validate_activity_tenant_relationships()
 RETURNS TRIGGER

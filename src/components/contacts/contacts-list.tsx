@@ -50,7 +50,7 @@ type SortType = 'name' | 'created' | 'activity' | 'value'
 
 interface ContactsListProps {}
 
-export function ContactsList({}: ContactsListProps) {
+export function ContactsList() {
   const { orgId, isLoading: tenantLoading } = useTenantContext()
   const [contacts, setContacts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

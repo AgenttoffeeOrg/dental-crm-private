@@ -46,6 +46,10 @@ export function ContactSlideInPanel({ contactId, open, onClose, onContactUpdated
       <div 
         className="fixed inset-0 bg-black/50 z-40 animate-in fade-in duration-200"
         onClick={onClose}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close contact panel"
       />
 
       {/* Slide-in Panel */}

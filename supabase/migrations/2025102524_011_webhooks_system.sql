@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- ============================================================================
 -- Step 10: Webhooks - External Event Notifications
 -- ============================================================================
@@ -21,7 +23,8 @@
 -- 1. Webhook Endpoints Table
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS webhook_endpoints (
+DROP TABLE IF EXISTS webhook_endpoints CASCADE;
+CREATE TABLE webhook_endpoints (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     
@@ -56,21 +59,25 @@ CREATE TABLE IF NOT EXISTS webhook_endpoints (
 );
 
 -- Indexes
-CREATE INDEX idx_webhook_endpoints_tenant ON webhook_endpoints(tenant_id);
-CREATE INDEX idx_webhook_endpoints_enabled ON webhook_endpoints(enabled) WHERE enabled;
+CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_tenant ON webhook_endpoints(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_enabled ON webhook_endpoints(enabled) WHERE enabled;
 
 -- RLS
 ALTER TABLE webhook_endpoints ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS webhook_endpoints_select_policy ON webhook_endpoints;
 CREATE POLICY webhook_endpoints_select_policy ON webhook_endpoints
     FOR SELECT USING (tenant_id = get_user_tenant_id_compat());
 
+DROP POLICY IF EXISTS webhook_endpoints_insert_policy ON webhook_endpoints;
 CREATE POLICY webhook_endpoints_insert_policy ON webhook_endpoints
     FOR INSERT WITH CHECK (tenant_id = get_user_tenant_id_compat());
 
+DROP POLICY IF EXISTS webhook_endpoints_update_policy ON webhook_endpoints;
 CREATE POLICY webhook_endpoints_update_policy ON webhook_endpoints
     FOR UPDATE USING (tenant_id = get_user_tenant_id_compat());
 
+DROP POLICY IF EXISTS webhook_endpoints_delete_policy ON webhook_endpoints;
 CREATE POLICY webhook_endpoints_delete_policy ON webhook_endpoints
     FOR DELETE USING (tenant_id = get_user_tenant_id_compat());
 
@@ -78,7 +85,8 @@ CREATE POLICY webhook_endpoints_delete_policy ON webhook_endpoints
 -- 2. Webhook Deliveries Table (Audit Log)
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS webhook_deliveries (
+DROP TABLE IF EXISTS webhook_deliveries CASCADE;
+CREATE TABLE webhook_deliveries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     webhook_endpoint_id UUID NOT NULL REFERENCES webhook_endpoints(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -111,15 +119,16 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
 );
 
 -- Indexes
-CREATE INDEX idx_webhook_deliveries_endpoint ON webhook_deliveries(webhook_endpoint_id);
-CREATE INDEX idx_webhook_deliveries_status ON webhook_deliveries(status);
-CREATE INDEX idx_webhook_deliveries_next_retry ON webhook_deliveries(next_retry_at) 
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint ON webhook_deliveries(webhook_endpoint_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_status ON webhook_deliveries(status);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_next_retry ON webhook_deliveries(next_retry_at) 
     WHERE status = 'retrying' AND next_retry_at IS NOT NULL;
-CREATE INDEX idx_webhook_deliveries_created_at ON webhook_deliveries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_created_at ON webhook_deliveries(created_at DESC);
 
 -- RLS
 ALTER TABLE webhook_deliveries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS webhook_deliveries_select_policy ON webhook_deliveries;
 CREATE POLICY webhook_deliveries_select_policy ON webhook_deliveries
     FOR SELECT USING (tenant_id = get_user_tenant_id_compat());
 
@@ -127,7 +136,8 @@ CREATE POLICY webhook_deliveries_select_policy ON webhook_deliveries
 -- 3. Webhook Event Types (Reference Data)
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS webhook_event_types (
+DROP TABLE IF EXISTS webhook_event_types CASCADE;
+CREATE TABLE webhook_event_types (
     event_type TEXT PRIMARY KEY,
     category TEXT NOT NULL,
     description TEXT NOT NULL,
@@ -328,7 +338,8 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 -- 8. Webhook Statistics View
 -- ============================================================================
 
-CREATE OR REPLACE VIEW webhook_statistics AS
+DROP VIEW IF EXISTS webhook_statistics CASCADE;
+CREATE VIEW webhook_statistics AS
 SELECT 
     we.id as endpoint_id,
     we.tenant_id,
@@ -362,7 +373,6 @@ SELECT
      AND status = 'success'
      AND sent_at IS NOT NULL
      AND completed_at IS NOT NULL
-     ORDER BY created_at DESC
      LIMIT 100) as avg_response_time_ms
 
 FROM webhook_endpoints we;

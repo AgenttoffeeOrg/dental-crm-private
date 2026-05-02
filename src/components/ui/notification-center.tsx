@@ -85,6 +85,10 @@ export function NotificationCenter() {
                   !notification.read ? 'bg-blue-50' : ''
                 }`}
                 onClick={() => markAsRead(notification.id)}
+                onKeyDown={(e) => e.key === 'Enter' && markAsRead(notification.id)}
+                role="button"
+                tabIndex={0}
+                aria-label={`Mark notification as read: ${notification.title || 'Notification'}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

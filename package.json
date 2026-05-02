@@ -52,7 +52,8 @@
     "investor:pack": "npm run screens:all && npm run diagram:build && tsx tools/stack-cost-export.ts && tsx tools/feature-matrix.ts",
     "analyze:architecture": "node scripts/architecture-analysis.js",
     "analyze:dependencies": "depcruise --output-type dot src/ | dot -T svg > architecture-reports/dependency-graph.svg && depcruise --validate .dependency-cruiser.js src/",
-    "analyze:sonarcloud": "bash scripts/run-sonarcloud.sh"
+    "analyze:sonarcloud": "bash scripts/run-sonarcloud.sh",
+    "prepare": "husky"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.569.0",
@@ -148,8 +149,10 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.18",
     "glob": "^10.3.10",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "lint-staged": "^16.4.0",
     "postcss": "^8",
     "prettier": "^3.1.1",
     "sonarqube-scanner": "^4.3.2",
@@ -158,6 +161,11 @@
     "ts-jest": "^29.4.5",
     "tsx": "^4.7.0",
     "typescript": "^5"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --max-warnings=0 --no-warn-ignored"
+    ]
   },
   "engines": {
     "node": ">=20.0.0",

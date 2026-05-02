@@ -13,10 +13,13 @@ async function bootstrap() {
   console.log('[Analytics Worker] Learning loop queue registered and ready.')
 }
 
-bootstrap().catch((error) => {
+// Use top-level await instead of promise chain
+try {
+  await bootstrap()
+} catch (error) {
   console.error('[Analytics Worker] Failed to bootstrap', error)
   process.exit(1)
-})
+}
 
 
 

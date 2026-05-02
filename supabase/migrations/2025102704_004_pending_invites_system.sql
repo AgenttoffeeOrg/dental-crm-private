@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =============================================================================================================
 -- MIGRATION: 20251027_004_pending_invites_system.sql
 -- PURPOSE: Create comprehensive invite system for organization onboarding
@@ -23,7 +25,8 @@ END $$;
 -- =====================================================================================================
 -- 2. CREATE pending_invites TABLE
 -- =====================================================================================================
-CREATE TABLE IF NOT EXISTS pending_invites (
+DROP TABLE IF EXISTS pending_invites CASCADE;
+CREATE TABLE pending_invites (
   -- Identity
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   invite_code TEXT UNIQUE NOT NULL,
@@ -235,9 +238,9 @@ BEGIN
 END;
 $$;
 
--- Create trigger to run periodically (on any insert/update to pending_invites)
+-- CREATE OR REPLACE TRIGGER to run periodically (on any insert/update to pending_invites)
 DROP TRIGGER IF EXISTS trg_expire_old_invites ON pending_invites;
-CREATE TRIGGER trg_expire_old_invites
+CREATE OR REPLACE TRIGGER trg_expire_old_invites
 AFTER INSERT OR UPDATE ON pending_invites
 FOR EACH STATEMENT
 EXECUTE FUNCTION expire_old_invites();
@@ -253,8 +256,8 @@ ALTER TABLE pending_invites ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can view invites sent to their email
 DROP POLICY IF EXISTS "Users can view invites sent to them" ON pending_invites;
-CREATE POLICY "Users can view invites sent to them"
-  ON pending_invites
+DROP POLICY IF EXISTS "Users can view invites sent to them" ON pending_invites;
+CREATE POLICY "Users can view invites sent to them" ON pending_invites
   FOR SELECT
   USING (
     invited_email = (SELECT email FROM auth.users WHERE id = auth.uid())
@@ -262,8 +265,8 @@ CREATE POLICY "Users can view invites sent to them"
 
 -- Policy: Tenant admins can view all invites for their tenant
 DROP POLICY IF EXISTS "Admins can view tenant invites" ON pending_invites;
-CREATE POLICY "Admins can view tenant invites"
-  ON pending_invites
+DROP POLICY IF EXISTS "Admins can view tenant invites" ON pending_invites;
+CREATE POLICY "Admins can view tenant invites" ON pending_invites
   FOR SELECT
   USING (
     tenant_id IN (
@@ -277,8 +280,8 @@ CREATE POLICY "Admins can view tenant invites"
 
 -- Policy: Admins can create invites for their tenant
 DROP POLICY IF EXISTS "Admins can create invites" ON pending_invites;
-CREATE POLICY "Admins can create invites"
-  ON pending_invites
+DROP POLICY IF EXISTS "Admins can create invites" ON pending_invites;
+CREATE POLICY "Admins can create invites" ON pending_invites
   FOR INSERT
   WITH CHECK (
     invited_by = auth.uid()
@@ -293,8 +296,8 @@ CREATE POLICY "Admins can create invites"
 
 -- Policy: Admins can cancel invites for their tenant
 DROP POLICY IF EXISTS "Admins can cancel invites" ON pending_invites;
-CREATE POLICY "Admins can cancel invites"
-  ON pending_invites
+DROP POLICY IF EXISTS "Admins can cancel invites" ON pending_invites;
+CREATE POLICY "Admins can cancel invites" ON pending_invites
   FOR UPDATE
   USING (
     tenant_id IN (

@@ -1,0 +1,26 @@
+{
+  "total_bugs": 16,
+  "total_smells": 484,
+  "bug_summary": [
+    [
+      {
+        "rule": "typescript:S6440",
+        "count": 10,
+        "severity": "MAJOR",
+        "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+      },
+      {
+        "rule": "typescript:S1082",
+        "count": 4,
+        "severity": "MINOR",
+        "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+      },
+      {
+        "rule": "typescript:S6959",
+        "count": 2,
+        "severity": "MAJOR",
+        "message": "Add an initial value to this \"reduce()\" call."
+      }
+    ]
+  ]
+}

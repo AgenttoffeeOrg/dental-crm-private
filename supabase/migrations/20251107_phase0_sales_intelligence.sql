@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 0 FOUNDATION: SALES INTELLIGENCE & CONTEXTUAL DATA
 -- -----------------------------------------------------
@@ -9,7 +11,7 @@
 -- Row-Level Security is enforced for every new table.
 --
 -- NOTE: This migration assumes prior hardening migrations
--- (updated_at / tenant protection triggers, auth.get_user_org_id()).
+-- (updated_at / tenant protection triggers, public.get_user_org_id()).
 -- =====================================================
 
 BEGIN;
@@ -18,7 +20,8 @@ BEGIN;
 -- 1. SALES SCRIPT LIBRARY & METRICS
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS sales_scripts (
+DROP TABLE IF EXISTS sales_scripts CASCADE;
+CREATE TABLE sales_scripts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -40,7 +43,8 @@ CREATE INDEX IF NOT EXISTS idx_sales_scripts_tenant_active
   ON sales_scripts(tenant_id, is_active)
   WHERE deleted_at IS NULL;
 
-CREATE TABLE IF NOT EXISTS sales_script_versions (
+DROP TABLE IF EXISTS sales_script_versions CASCADE;
+CREATE TABLE sales_script_versions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   script_id UUID NOT NULL REFERENCES sales_scripts(id) ON DELETE CASCADE,
@@ -65,7 +69,8 @@ CREATE INDEX IF NOT EXISTS idx_sales_script_versions_tenant
   ON sales_script_versions(tenant_id, script_id)
   WHERE deleted_at IS NULL;
 
-CREATE TABLE IF NOT EXISTS sales_script_tests (
+DROP TABLE IF EXISTS sales_script_tests CASCADE;
+CREATE TABLE sales_script_tests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -85,7 +90,8 @@ CREATE INDEX IF NOT EXISTS idx_sales_script_tests_tenant_status
   ON sales_script_tests(tenant_id, status)
   WHERE deleted_at IS NULL;
 
-CREATE TABLE IF NOT EXISTS sales_script_metrics (
+DROP TABLE IF EXISTS sales_script_metrics CASCADE;
+CREATE TABLE sales_script_metrics (
   id BIGSERIAL PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   script_version_id UUID NOT NULL REFERENCES sales_script_versions(id) ON DELETE CASCADE,
@@ -109,7 +115,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_sales_script_metrics_version_date
   ON sales_script_metrics(script_version_id, metric_date);
 
 -- Associate versions to tests (many-to-many)
-CREATE TABLE IF NOT EXISTS sales_script_test_variants (
+DROP TABLE IF EXISTS sales_script_test_variants CASCADE;
+CREATE TABLE sales_script_test_variants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   test_id UUID NOT NULL REFERENCES sales_script_tests(id) ON DELETE CASCADE,
@@ -125,7 +132,8 @@ CREATE TABLE IF NOT EXISTS sales_script_test_variants (
 -- 2. CONVERSATION SESSION PRIMITIVES
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS conversation_sessions (
+DROP TABLE IF EXISTS conversation_sessions CASCADE;
+CREATE TABLE conversation_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   contact_id UUID REFERENCES contacts(id) ON DELETE SET NULL,
@@ -155,7 +163,8 @@ CREATE INDEX IF NOT EXISTS idx_conversation_sessions_contact
   ON conversation_sessions(contact_id)
   WHERE deleted_at IS NULL;
 
-CREATE TABLE IF NOT EXISTS conversation_messages (
+DROP TABLE IF EXISTS conversation_messages CASCADE;
+CREATE TABLE conversation_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   session_id UUID NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
@@ -182,7 +191,8 @@ CREATE INDEX IF NOT EXISTS idx_conversation_messages_session_time
   ON conversation_messages(session_id, occurred_at)
   WHERE deleted_at IS NULL;
 
-CREATE TABLE IF NOT EXISTS conversation_state_events (
+DROP TABLE IF EXISTS conversation_state_events CASCADE;
+CREATE TABLE conversation_state_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   session_id UUID NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
@@ -199,7 +209,8 @@ CREATE TABLE IF NOT EXISTS conversation_state_events (
 CREATE INDEX IF NOT EXISTS idx_conversation_state_events_session
   ON conversation_state_events(session_id, created_at);
 
-CREATE TABLE IF NOT EXISTS conversation_state_transitions (
+DROP TABLE IF EXISTS conversation_state_transitions CASCADE;
+CREATE TABLE conversation_state_transitions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   session_id UUID NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
@@ -215,7 +226,8 @@ CREATE TABLE IF NOT EXISTS conversation_state_transitions (
 CREATE INDEX IF NOT EXISTS idx_conversation_state_transitions_session
   ON conversation_state_transitions(session_id, created_at);
 
-CREATE TABLE IF NOT EXISTS receptionist_feedback (
+DROP TABLE IF EXISTS receptionist_feedback CASCADE;
+CREATE TABLE receptionist_feedback (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   session_id UUID NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
@@ -232,7 +244,8 @@ CREATE TABLE IF NOT EXISTS receptionist_feedback (
 -- 3. PSYCHOLOGICAL PROFILES
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS contact_psych_profiles (
+DROP TABLE IF EXISTS contact_psych_profiles CASCADE;
+CREATE TABLE contact_psych_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
@@ -254,7 +267,8 @@ CREATE INDEX IF NOT EXISTS idx_contact_psych_profiles_contact
   ON contact_psych_profiles(contact_id)
   WHERE deleted_at IS NULL;
 
-CREATE TABLE IF NOT EXISTS contact_psych_profile_history (
+DROP TABLE IF EXISTS contact_psych_profile_history CASCADE;
+CREATE TABLE contact_psych_profile_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
@@ -269,7 +283,8 @@ CREATE TABLE IF NOT EXISTS contact_psych_profile_history (
 -- 4. CONVERSION ATTRIBUTION & FEEDBACK
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS conversion_attributions (
+DROP TABLE IF EXISTS conversion_attributions CASCADE;
+CREATE TABLE conversion_attributions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   contact_id UUID REFERENCES contacts(id) ON DELETE SET NULL,
@@ -298,7 +313,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_conversion_attributions_tuple
 -- 5. COMPETITOR INTELLIGENCE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS competitors (
+DROP TABLE IF EXISTS competitors CASCADE;
+CREATE TABLE competitors (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -316,7 +332,8 @@ CREATE INDEX IF NOT EXISTS idx_competitors_tenant_active
   ON competitors(tenant_id, is_active)
   WHERE deleted_at IS NULL;
 
-CREATE TABLE IF NOT EXISTS competitor_price_points (
+DROP TABLE IF EXISTS competitor_price_points CASCADE;
+CREATE TABLE competitor_price_points (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   competitor_id UUID NOT NULL REFERENCES competitors(id) ON DELETE CASCADE,
@@ -335,7 +352,8 @@ CREATE INDEX IF NOT EXISTS idx_competitor_price_points_competitor
   ON competitor_price_points(competitor_id, collected_at)
   WHERE deleted_at IS NULL;
 
-CREATE TABLE IF NOT EXISTS competitor_touchpoints (
+DROP TABLE IF EXISTS competitor_touchpoints CASCADE;
+CREATE TABLE competitor_touchpoints (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   competitor_id UUID NOT NULL REFERENCES competitors(id) ON DELETE CASCADE,
@@ -402,8 +420,8 @@ END $$;
 
 -- contact_psych_profile_history needs insert WHEN parent profile exists with same tenant
 DROP POLICY IF EXISTS "Tenant isolation INSERT contact_psych_profile_history" ON contact_psych_profile_history;
-CREATE POLICY "Tenant isolation INSERT contact_psych_profile_history"
-  ON contact_psych_profile_history
+DROP POLICY IF EXISTS "Tenant isolation INSERT contact_psych_profile_history" ON contact_psych_profile_history;
+CREATE POLICY "Tenant isolation INSERT contact_psych_profile_history" ON contact_psych_profile_history
   FOR INSERT
   WITH CHECK (
     tenant_id = public.get_user_org_id()

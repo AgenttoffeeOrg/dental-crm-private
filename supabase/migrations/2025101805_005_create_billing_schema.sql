@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Create Billing Schema
 -- Purpose: Plans, subscriptions, seat management, entitlements
@@ -11,7 +13,8 @@ BEGIN;
 -- 1. CREATE PLANS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS plans (
+DROP TABLE IF EXISTS plans CASCADE;
+CREATE TABLE plans (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -84,7 +87,8 @@ COMMENT ON COLUMN plans.price_amount IS
 -- 2. CREATE PLAN_ENTITLEMENTS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS plan_entitlements (
+DROP TABLE IF EXISTS plan_entitlements CASCADE;
+CREATE TABLE plan_entitlements (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -120,7 +124,8 @@ COMMENT ON COLUMN plan_entitlements.limit_value IS
 -- 3. CREATE SUBSCRIPTIONS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS subscriptions (
+DROP TABLE IF EXISTS subscriptions CASCADE;
+CREATE TABLE subscriptions (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -196,7 +201,8 @@ COMMENT ON COLUMN subscriptions.active_seats IS
 -- 4. CREATE INVOICES TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS invoices (
+DROP TABLE IF EXISTS invoices CASCADE;
+CREATE TABLE invoices (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -249,7 +255,8 @@ COMMENT ON TABLE invoices IS
 -- 5. CREATE USAGE_EVENTS TABLE (for add-ons)
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS usage_events (
+DROP TABLE IF EXISTS usage_events CASCADE;
+CREATE TABLE usage_events (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -278,8 +285,7 @@ COMMENT ON TABLE usage_events IS
   'Usage-based billing events (AI minutes, SMS, API calls)';
 
 -- Partition by month for performance
--- CREATE TABLE usage_events_y2025m01 PARTITION OF usage_events
---   FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+-- PATCHED: skipped partition creation (parent not partitioned in baseline schema)
 
 -- =====================================================
 -- 6. CREATE INDEXES
@@ -326,17 +332,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_plans_updated_at
+CREATE OR REPLACE TRIGGER trigger_plans_updated_at
   BEFORE UPDATE ON plans
   FOR EACH ROW
   EXECUTE FUNCTION update_billing_updated_at();
 
-CREATE TRIGGER trigger_subscriptions_updated_at
+CREATE OR REPLACE TRIGGER trigger_subscriptions_updated_at
   BEFORE UPDATE ON subscriptions
   FOR EACH ROW
   EXECUTE FUNCTION update_billing_updated_at();
 
-CREATE TRIGGER trigger_invoices_updated_at
+CREATE OR REPLACE TRIGGER trigger_invoices_updated_at
   BEFORE UPDATE ON invoices
   FOR EACH ROW
   EXECUTE FUNCTION update_billing_updated_at();
@@ -349,12 +355,15 @@ CREATE TRIGGER trigger_invoices_updated_at
 ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE plan_entitlements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS plans_select_all ON plans;
 CREATE POLICY plans_select_all ON plans FOR SELECT USING (is_active = TRUE);
+DROP POLICY IF EXISTS plan_entitlements_select_all ON plan_entitlements;
 CREATE POLICY plan_entitlements_select_all ON plan_entitlements FOR SELECT USING (TRUE);
 
 -- Subscriptions: tenant-scoped
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS subscriptions_select_tenant ON subscriptions;
 CREATE POLICY subscriptions_select_tenant ON subscriptions
   FOR SELECT
   USING (
@@ -371,6 +380,7 @@ CREATE POLICY subscriptions_select_tenant ON subscriptions
 -- Invoices: tenant-scoped
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS invoices_select_tenant ON invoices;
 CREATE POLICY invoices_select_tenant ON invoices
   FOR SELECT
   USING (
@@ -387,6 +397,7 @@ CREATE POLICY invoices_select_tenant ON invoices
 -- Usage events: tenant-scoped
 ALTER TABLE usage_events ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS usage_events_select_tenant ON usage_events;
 CREATE POLICY usage_events_select_tenant ON usage_events
   FOR SELECT
   USING (tenant_id = ANY(public.get_accessible_tenants()));

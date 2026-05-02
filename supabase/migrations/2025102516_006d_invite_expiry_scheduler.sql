@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 5D: INVITE EXPIRY SCHEDULER
 -- Purpose: Automated expiry and cleanup for invitations

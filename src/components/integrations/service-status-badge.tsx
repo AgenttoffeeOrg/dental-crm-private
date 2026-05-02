@@ -51,12 +51,17 @@ export function ServiceStatusBadge({
   }
 
   const badgeContent = getBadgeContent()
-  const tooltipText = 
-    status === 'pending_verification' 
-      ? 'This service requires app verification. It will be available after Google reviews our application (usually 2-6 weeks).'
-      : status === 'missing_scopes'
-      ? `Missing permissions: ${missingScopes.slice(0, 2).join(', ')}${missingScopes.length > 2 ? '...' : ''}. Click "Enable" to grant access.`
-      : ''
+  const tooltipText = (() => {
+    if (status === 'pending_verification') {
+      return 'This service requires app verification. It will be available after Google reviews our application (usually 2-6 weeks).'
+    }
+    if (status === 'missing_scopes') {
+      const scopeText = missingScopes.slice(0, 2).join(', ')
+      const ellipsis = missingScopes.length > 2 ? '...' : ''
+      return `Missing permissions: ${scopeText}${ellipsis}. Click "Enable" to grant access.`
+    }
+    return ''
+  })()
 
   const badge = (
     <Badge variant="outline" className={badgeContent.className}>

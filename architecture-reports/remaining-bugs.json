@@ -1,0 +1,945 @@
+{
+  "file": "src/lib/integrations/migration-helper.ts",
+  "line": 65,
+  "severity": "MAJOR",
+  "rule": "typescript:S6959",
+  "message": "Add an initial value to this \"reduce()\" call."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 81,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 82,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 83,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 84,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 85,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 86,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 87,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 88,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 89,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 97,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useTaskMutation\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 274,
+  "severity": "MAJOR",
+  "rule": "typescript:S6959",
+  "message": "Add an initial value to this \"reduce()\" call."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 1357,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/pipeline/deal-card-minimal.tsx",
+  "line": 81,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/pipeline/deal-card-minimal.tsx",
+  "line": 92,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/dashboard/page.tsx",
+  "line": 256,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 504,
+  "severity": "CRITICAL",
+  "rule": "typescript:S2871",
+  "message": "Provide a compare function that depends on \"String.localeCompare\", to reliably sort elements alphabetically."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1418,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1583,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1892,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/ui/simple-dropdown-menu.tsx",
+  "line": 58,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 77,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 886,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 1246,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/settings/settings-sidebar.tsx",
+  "line": 94,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/treatment-routing/bulk-import-export.tsx",
+  "line": 181,
+  "severity": "MAJOR",
+  "rule": "typescript:S5850",
+  "message": "Group parts of the regex together to make the intended operator precedence explicit."
+}
+{
+  "file": "src/components/treatment-routing/routing-analytics.tsx",
+  "line": 696,
+  "severity": "MAJOR",
+  "rule": "typescript:S6439",
+  "message": "Convert the conditional to a boolean to avoid leaked value"
+}
+{
+  "file": "src/components/multi-location/location-switcher.tsx",
+  "line": 49,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useEffect\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/components/multi-location/location-switcher.tsx",
+  "line": 56,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useEffect\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/lib/domain-utils.ts",
+  "line": 217,
+  "severity": "MAJOR",
+  "rule": "typescript:S5850",
+  "message": "Group parts of the regex together to make the intended operator precedence explicit."
+}
+{
+  "file": "src/components/contacts/contacts-list.tsx",
+  "line": 53,
+  "severity": "MAJOR",
+  "rule": "typescript:S3799",
+  "message": "Unexpected empty object pattern."
+}
+{
+  "file": "src/components/pipeline/pipeline-board.tsx",
+  "line": 339,
+  "severity": "MAJOR",
+  "rule": "typescript:S3799",
+  "message": "Unexpected empty object pattern."
+}
+{
+  "file": "src/components/calendar/calendar-agenda-view.tsx",
+  "line": 75,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/calendar/calendar-day-view.tsx",
+  "line": 86,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/calendar/calendar-month-view.tsx",
+  "line": 79,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/calendar/calendar-week-view.tsx",
+  "line": 100,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/calendar/page.tsx",
+  "line": 64,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/calendar/page.tsx",
+  "line": 67,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/calendar/page.tsx",
+  "line": 68,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/calendar/page.tsx",
+  "line": 62,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/calendar/page.tsx",
+  "line": 63,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/calendar/page.tsx",
+  "line": 65,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/calendar/page.tsx",
+  "line": 66,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/calendar/page.tsx",
+  "line": 70,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useEffect\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/components/calendar/calendar-month-view.tsx",
+  "line": 52,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/automations/page.tsx",
+  "line": 78,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/components/automations/create-automation-slide-over.tsx",
+  "line": 195,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/automations/page.tsx",
+  "line": 74,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/automations/page.tsx",
+  "line": 75,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/automations/page.tsx",
+  "line": 76,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/automations/page.tsx",
+  "line": 77,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/automations/page.tsx",
+  "line": 80,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useFeatureFlags\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/automations/page.tsx",
+  "line": 82,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useEffect\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/components/notifications/notifications-drawer.tsx",
+  "line": 255,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/analytics/natural-language-query.tsx",
+  "line": 155,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useExampleQuery\" cannot be called inside a callback. React Hooks must be called in a React function component or a custom React Hook function."
+}
+{
+  "file": "src/lib/integrations/webhook-security.ts",
+  "line": 53,
+  "severity": "CRITICAL",
+  "rule": "typescript:S2871",
+  "message": "Provide a compare function that depends on \"String.localeCompare\", to reliably sort elements alphabetically."
+}
+{
+  "file": "src/components/forms/form-submissions-modal.tsx",
+  "line": 134,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/forms/form-templates-modal.tsx",
+  "line": 181,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/forms/create-form-slide-over.tsx",
+  "line": 275,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/forms/form-builder-old.tsx",
+  "line": 505,
+  "severity": "MAJOR",
+  "rule": "typescript:S3923",
+  "message": "Remove this conditional structure or edit its code blocks so that they're not all the same."
+}
+{
+  "file": "src/app/marketing-audit/error.tsx",
+  "line": 3,
+  "severity": "MAJOR",
+  "rule": "typescript:S2137",
+  "message": "Do not use \"Error\" to declare a function - use another name."
+}
+{
+  "file": "src/components/marketing-audit/competitors/competitors-tab.tsx",
+  "line": 158,
+  "severity": "MAJOR",
+  "rule": "typescript:S6439",
+  "message": "Convert the conditional to a boolean to avoid leaked value"
+}
+{
+  "file": "src/components/marketing-audit/competitors/competitors-tab.tsx",
+  "line": 159,
+  "severity": "MAJOR",
+  "rule": "typescript:S6439",
+  "message": "Convert the conditional to a boolean to avoid leaked value"
+}
+{
+  "file": "src/components/marketing-audit/shared/tooltip.tsx",
+  "line": 92,
+  "severity": "MAJOR",
+  "rule": "typescript:S1534",
+  "message": "Duplicate name 'left'."
+}
+{
+  "file": "src/components/marketing-audit/shared/tooltip.tsx",
+  "line": 93,
+  "severity": "MAJOR",
+  "rule": "typescript:S1534",
+  "message": "Duplicate name 'top'."
+}
+{
+  "file": "src/components/marketing-audit/ui-polish/modal-transitions.tsx",
+  "line": 65,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/lib/marketing-audit/email/audit-report-email.tsx",
+  "line": 44,
+  "severity": "MAJOR",
+  "rule": "typescript:S5256",
+  "message": "Add a valid header row or column to this \"<table>\"."
+}
+{
+  "file": "src/lib/marketing-audit/email/audit-report-email.tsx",
+  "line": 113,
+  "severity": "MAJOR",
+  "rule": "typescript:S5256",
+  "message": "Add a valid header row or column to this \"<table>\"."
+}
+{
+  "file": "src/lib/marketing-audit/orchestrator.ts",
+  "line": 495,
+  "severity": "MAJOR",
+  "rule": "typescript:S3923",
+  "message": "This conditional operation returns the same value whether the condition is \"true\" or \"false\"."
+}
+{
+  "file": "src/components/contacts/create-contact-slide-over.tsx",
+  "line": 365,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/dashboard/page.old.tsx",
+  "line": 126,
+  "severity": "MAJOR",
+  "rule": "typescript:S6544",
+  "message": "Promise-returning function provided to property where a void return was expected."
+}
+{
+  "file": "src/app/dashboard/page.tsx",
+  "line": 111,
+  "severity": "MAJOR",
+  "rule": "typescript:S6544",
+  "message": "Promise-returning function provided to property where a void return was expected."
+}
+{
+  "file": "src/app/dashboard-new/page.tsx",
+  "line": 106,
+  "severity": "MAJOR",
+  "rule": "typescript:S6544",
+  "message": "Promise-returning function provided to property where a void return was expected."
+}
+{
+  "file": "src/components/dashboard/live-notification-badge.tsx",
+  "line": 106,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/deals/create-deal-slide-over.tsx",
+  "line": 487,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/tasks/create-task-slide-over.tsx",
+  "line": 231,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/config/settings-registry.ts",
+  "line": 352,
+  "severity": "CRITICAL",
+  "rule": "typescript:S2871",
+  "message": "Provide a compare function that depends on \"String.localeCompare\", to reliably sort elements alphabetically."
+}
+{
+  "file": "src/lib/email-queue.ts",
+  "line": 178,
+  "severity": "MAJOR",
+  "rule": "typescript:S3923",
+  "message": "This conditional operation returns the same value whether the condition is \"true\" or \"false\"."
+}
+{
+  "file": "src/components/layout/dashboard-layout.tsx",
+  "line": 414,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/(auth)/sign-in/page.tsx",
+  "line": 124,
+  "severity": "MAJOR",
+  "rule": "typescript:S6544",
+  "message": "Promise-returning function provided to property where a void return was expected."
+}
+{
+  "file": "src/components/onboarding/profile-setup-panel.tsx",
+  "line": 279,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/error.tsx",
+  "line": 7,
+  "severity": "MAJOR",
+  "rule": "typescript:S2137",
+  "message": "Do not use \"Error\" to declare a function - use another name."
+}
+{
+  "file": "src/components/contacts/contact-slide-in-panel.tsx",
+  "line": 46,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/deals/deal-slide-in-panel.tsx",
+  "line": 73,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/ui/notification-center.tsx",
+  "line": 82,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/marketing/page.tsx",
+  "line": 67,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/marketing/page.tsx",
+  "line": 78,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/marketing/page.tsx",
+  "line": 79,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/marketing/page.tsx",
+  "line": 81,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useEffect\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/components/marketing/social-media-composer.tsx",
+  "line": 267,
+  "severity": "MAJOR",
+  "rule": "typescript:S3699",
+  "message": "Remove this use of the output from \"addHashtag\"; \"addHashtag\" doesn't return anything."
+}
+{
+  "file": "src/components/settings/user-management-dashboard.tsx",
+  "line": 460,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/ui/data-table.tsx",
+  "line": 209,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/pipeline/deal-card-fixed.tsx",
+  "line": 197,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/lib/marketing/contact-mapper.ts",
+  "line": 206,
+  "severity": "CRITICAL",
+  "rule": "typescript:S2871",
+  "message": "Provide a compare function to avoid sorting elements alphabetically."
+}
+{
+  "file": "src/lib/marketing/sms-provider.ts",
+  "line": 109,
+  "severity": "MAJOR",
+  "rule": "typescript:S6324",
+  "message": "Remove this control character."
+}
+{
+  "file": "src/lib/marketing/sms-provider.ts",
+  "line": 166,
+  "severity": "MAJOR",
+  "rule": "typescript:S6324",
+  "message": "Remove this control character."
+}
+{
+  "file": "src/components/activities/activity-feed-enterprise.tsx",
+  "line": 335,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/communications/activity-detail-slide-in.tsx",
+  "line": 231,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/communications/activity-detail-slide-in.tsx",
+  "line": 240,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/communications/click-to-call-dialer.tsx",
+  "line": 169,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/communications/email-composer-panel.tsx",
+  "line": 141,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/communications/sms-composer-panel.tsx",
+  "line": 100,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/communications/whatsapp-composer-panel.tsx",
+  "line": 100,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 1482,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/pipeline/deal-card-fixed.tsx",
+  "line": 184,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/search/universal-search-bar.tsx",
+  "line": 222,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/contacts/contacts-list.tsx",
+  "line": 396,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/contacts/contacts-list.tsx",
+  "line": 420,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/contacts/contacts-list.tsx",
+  "line": 484,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/deals/deal-tasks.tsx",
+  "line": 266,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/deals/deal-tasks.tsx",
+  "line": 278,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 95,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 94,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/components/tasks/task-calendar-view.tsx",
+  "line": 93,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/tasks/task-calendar-view.tsx",
+  "line": 119,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 93,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 129,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useEffect\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 79,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 91,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 92,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 90,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 76,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 78,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 80,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 103,
+  "severity": "MAJOR",
+  "rule": "typescript:S6440",
+  "message": "React Hook \"useEffect\" is called conditionally. React Hooks must be called in the exact same order in every component render."
+}
+{
+  "file": "src/components/tasks/task-card-enterprise.tsx",
+  "line": 89,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/layout/dashboard-layout-old.tsx",
+  "line": 56,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/settings/permission-matrix-modal.tsx",
+  "line": 275,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/settings/permission-matrix-modal.tsx",
+  "line": 286,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/settings/audit-trail-viewer.tsx",
+  "line": 373,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/app/globals.css",
+  "line": 4,
+  "severity": "MAJOR",
+  "rule": "css:S4662",
+  "message": "Unexpected unknown at-rule \"@custom-variant\""
+}
+{
+  "file": "src/components/audio/audio-upload.tsx",
+  "line": 154,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/deals/deal-detail-view.tsx",
+  "line": 338,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/pipeline/pipeline-board.tsx",
+  "line": 191,
+  "severity": "MINOR",
+  "rule": "typescript:S1082",
+  "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
+}
+{
+  "file": "src/components/ui/table.tsx",
+  "line": 13,
+  "severity": "MAJOR",
+  "rule": "typescript:S5256",
+  "message": "Add a valid header row or column to this \"<table>\"."
+}

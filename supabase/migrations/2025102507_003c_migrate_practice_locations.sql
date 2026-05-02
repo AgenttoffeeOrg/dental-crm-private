@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 2C: MIGRATE PRACTICE_LOCATIONS (IF EXISTS) - FIXED
 -- Purpose: Migrate existing practice_locations data to new locations table
@@ -168,8 +170,9 @@ BEGIN
   ) THEN
     -- Add foreign key constraint
     ALTER TABLE app_users 
-      ADD CONSTRAINT fk_app_users_default_location
-      FOREIGN KEY (default_location_id) 
+      DROP CONSTRAINT IF EXISTS fk_app_users_default_location;
+ALTER TABLE app_users 
+      ADD CONSTRAINT fk_app_users_default_location       FOREIGN KEY (default_location_id) 
       REFERENCES locations(id) 
       ON DELETE SET NULL;
     

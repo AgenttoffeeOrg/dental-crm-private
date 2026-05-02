@@ -25,22 +25,22 @@ CREATE TABLE IF NOT EXISTS automation_test_runs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_automation_test_runs_tenant ON automation_test_runs(tenant_id);
-CREATE INDEX idx_automation_test_runs_automation ON automation_test_runs(automation_id);
-CREATE INDEX idx_automation_test_runs_type ON automation_test_runs(test_type);
-CREATE INDEX idx_automation_test_runs_created ON automation_test_runs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_automation_test_runs_tenant ON automation_test_runs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_automation_test_runs_automation ON automation_test_runs(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_test_runs_type ON automation_test_runs(test_type);
+CREATE INDEX IF NOT EXISTS idx_automation_test_runs_created ON automation_test_runs(created_at DESC);
 
 -- RLS Policies
 ALTER TABLE automation_test_runs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their tenant's test runs"
-    ON automation_test_runs FOR SELECT
+DROP POLICY IF EXISTS "Users can view their tenant's test runs" ON automation_test_runs;
+CREATE POLICY "Users can view their tenant's test runs" ON automation_test_runs FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "Users can create test runs"
-    ON automation_test_runs FOR INSERT
+DROP POLICY IF EXISTS "Users can create test runs" ON automation_test_runs;
+CREATE POLICY "Users can create test runs" ON automation_test_runs FOR INSERT
     WITH CHECK (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));

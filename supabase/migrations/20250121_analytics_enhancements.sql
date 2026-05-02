@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- ANALYTICS ENHANCEMENTS
 -- =====================================================
@@ -12,7 +14,8 @@ BEGIN;
 -- 1. THRESHOLD ALERTS
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS analytics_threshold_alerts (
+DROP TABLE IF EXISTS analytics_threshold_alerts CASCADE;
+CREATE TABLE analytics_threshold_alerts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   
@@ -41,8 +44,8 @@ CREATE TABLE IF NOT EXISTS analytics_threshold_alerts (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_threshold_alerts_tenant ON analytics_threshold_alerts(tenant_id);
-CREATE INDEX idx_threshold_alerts_enabled ON analytics_threshold_alerts(tenant_id, is_enabled);
+CREATE INDEX IF NOT EXISTS idx_threshold_alerts_tenant ON analytics_threshold_alerts(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_threshold_alerts_enabled ON analytics_threshold_alerts(tenant_id, is_enabled);
 
 COMMENT ON TABLE analytics_threshold_alerts IS 'Threshold-based alerts for KPI monitoring';
 
@@ -50,7 +53,8 @@ COMMENT ON TABLE analytics_threshold_alerts IS 'Threshold-based alerts for KPI m
 -- 2. SAVED VIEWS
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS analytics_saved_views (
+DROP TABLE IF EXISTS analytics_saved_views CASCADE;
+CREATE TABLE analytics_saved_views (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   user_id UUID REFERENCES app_users(id) ON DELETE CASCADE,
@@ -71,9 +75,9 @@ CREATE TABLE IF NOT EXISTS analytics_saved_views (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_saved_views_tenant ON analytics_saved_views(tenant_id);
-CREATE INDEX idx_saved_views_user ON analytics_saved_views(user_id);
-CREATE INDEX idx_saved_views_share_token ON analytics_saved_views(share_token);
+CREATE INDEX IF NOT EXISTS idx_saved_views_tenant ON analytics_saved_views(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_saved_views_user ON analytics_saved_views(user_id);
+CREATE INDEX IF NOT EXISTS idx_saved_views_share_token ON analytics_saved_views(share_token);
 
 COMMENT ON TABLE analytics_saved_views IS 'User-saved dashboard views and filter states';
 
@@ -81,7 +85,8 @@ COMMENT ON TABLE analytics_saved_views IS 'User-saved dashboard views and filter
 -- 3. SHAREABLE DASHBOARD LINKS
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS analytics_shared_dashboards (
+DROP TABLE IF EXISTS analytics_shared_dashboards CASCADE;
+CREATE TABLE analytics_shared_dashboards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   created_by UUID REFERENCES app_users(id),
@@ -111,8 +116,8 @@ CREATE TABLE IF NOT EXISTS analytics_shared_dashboards (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_shared_dashboards_token ON analytics_shared_dashboards(share_token);
-CREATE INDEX idx_shared_dashboards_tenant ON analytics_shared_dashboards(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_shared_dashboards_token ON analytics_shared_dashboards(share_token);
+CREATE INDEX IF NOT EXISTS idx_shared_dashboards_tenant ON analytics_shared_dashboards(tenant_id);
 
 COMMENT ON TABLE analytics_shared_dashboards IS 'Publicly shareable dashboard links';
 
@@ -120,7 +125,8 @@ COMMENT ON TABLE analytics_shared_dashboards IS 'Publicly shareable dashboard li
 -- 4. DATA QUALITY MONITORING
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS analytics_data_quality_log (
+DROP TABLE IF EXISTS analytics_data_quality_log CASCADE;
+CREATE TABLE analytics_data_quality_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   
@@ -149,9 +155,9 @@ CREATE TABLE IF NOT EXISTS analytics_data_quality_log (
   checked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_data_quality_tenant ON analytics_data_quality_log(tenant_id);
-CREATE INDEX idx_data_quality_source ON analytics_data_quality_log(source_type);
-CREATE INDEX idx_data_quality_checked_at ON analytics_data_quality_log(checked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_data_quality_tenant ON analytics_data_quality_log(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_data_quality_source ON analytics_data_quality_log(source_type);
+CREATE INDEX IF NOT EXISTS idx_data_quality_checked_at ON analytics_data_quality_log(checked_at DESC);
 
 COMMENT ON TABLE analytics_data_quality_log IS 'Data quality monitoring and validation results';
 
@@ -159,7 +165,8 @@ COMMENT ON TABLE analytics_data_quality_log IS 'Data quality monitoring and vali
 -- 5. ANOMALY DETECTION LOG
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS analytics_anomalies_detected (
+DROP TABLE IF EXISTS analytics_anomalies_detected CASCADE;
+CREATE TABLE analytics_anomalies_detected (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   
@@ -188,10 +195,10 @@ CREATE TABLE IF NOT EXISTS analytics_anomalies_detected (
   detected_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_anomalies_tenant ON analytics_anomalies_detected(tenant_id);
-CREATE INDEX idx_anomalies_metric ON analytics_anomalies_detected(metric);
-CREATE INDEX idx_anomalies_severity ON analytics_anomalies_detected(severity);
-CREATE INDEX idx_anomalies_acknowledged ON analytics_anomalies_detected(tenant_id, acknowledged);
+CREATE INDEX IF NOT EXISTS idx_anomalies_tenant ON analytics_anomalies_detected(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_anomalies_metric ON analytics_anomalies_detected(metric);
+CREATE INDEX IF NOT EXISTS idx_anomalies_severity ON analytics_anomalies_detected(severity);
+CREATE INDEX IF NOT EXISTS idx_anomalies_acknowledged ON analytics_anomalies_detected(tenant_id, acknowledged);
 
 COMMENT ON TABLE analytics_anomalies_detected IS 'AI-detected anomalies in metrics';
 
@@ -202,16 +209,16 @@ COMMENT ON TABLE analytics_anomalies_detected IS 'AI-detected anomalies in metri
 -- Threshold Alerts RLS
 ALTER TABLE analytics_threshold_alerts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY analytics_threshold_alerts_tenant_isolation
-  ON analytics_threshold_alerts
+DROP POLICY IF EXISTS analytics_threshold_alerts_tenant_isolation ON analytics_threshold_alerts;
+CREATE POLICY analytics_threshold_alerts_tenant_isolation ON analytics_threshold_alerts
   FOR ALL
   USING (tenant_id = (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 
 -- Saved Views RLS
 ALTER TABLE analytics_saved_views ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY analytics_saved_views_owner
-  ON analytics_saved_views
+DROP POLICY IF EXISTS analytics_saved_views_owner ON analytics_saved_views;
+CREATE POLICY analytics_saved_views_owner ON analytics_saved_views
   FOR ALL
   USING (
     user_id = auth.uid() 
@@ -221,8 +228,8 @@ CREATE POLICY analytics_saved_views_owner
 -- Shared Dashboards RLS
 ALTER TABLE analytics_shared_dashboards ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY analytics_shared_dashboards_access
-  ON analytics_shared_dashboards
+DROP POLICY IF EXISTS analytics_shared_dashboards_access ON analytics_shared_dashboards;
+CREATE POLICY analytics_shared_dashboards_access ON analytics_shared_dashboards
   FOR SELECT
   USING (
     -- Owner can always see
@@ -236,16 +243,16 @@ CREATE POLICY analytics_shared_dashboards_access
 -- Data Quality Log RLS
 ALTER TABLE analytics_data_quality_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY analytics_data_quality_tenant_isolation
-  ON analytics_data_quality_log
+DROP POLICY IF EXISTS analytics_data_quality_tenant_isolation ON analytics_data_quality_log;
+CREATE POLICY analytics_data_quality_tenant_isolation ON analytics_data_quality_log
   FOR ALL
   USING (tenant_id = (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 
 -- Anomalies RLS
 ALTER TABLE analytics_anomalies_detected ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY analytics_anomalies_tenant_isolation
-  ON analytics_anomalies_detected
+DROP POLICY IF EXISTS analytics_anomalies_tenant_isolation ON analytics_anomalies_detected;
+CREATE POLICY analytics_anomalies_tenant_isolation ON analytics_anomalies_detected
   FOR ALL
   USING (tenant_id = (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 

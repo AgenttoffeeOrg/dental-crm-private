@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 2B: MEMBERSHIP LOCATIONS (PER-LOCATION ROLES)
 -- Purpose: Enable users to have different roles at different locations
@@ -31,7 +33,8 @@ BEGIN;
 -- 1. CREATE MEMBERSHIP_LOCATIONS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS membership_locations (
+DROP TABLE IF EXISTS membership_locations CASCADE;
+CREATE TABLE membership_locations (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -120,7 +123,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_membership_locations_updated_at
+CREATE OR REPLACE TRIGGER trigger_membership_locations_updated_at
   BEFORE UPDATE ON membership_locations
   FOR EACH ROW
   EXECUTE FUNCTION update_membership_locations_updated_at();
@@ -322,8 +325,8 @@ $$;
 ALTER TABLE membership_locations ENABLE ROW LEVEL SECURITY;
 
 -- Policy 1: Users can view their own location assignments
-CREATE POLICY "Users can view own location assignments"
-  ON membership_locations
+DROP POLICY IF EXISTS "Users can view own location assignments" ON membership_locations;
+CREATE POLICY "Users can view own location assignments" ON membership_locations
   FOR SELECT
   USING (
     membership_id IN (
@@ -337,8 +340,8 @@ COMMENT ON POLICY "Users can view own location assignments" ON membership_locati
   'Users can see which locations they have access to';
 
 -- Policy 2: Tenant admins can view all location assignments
-CREATE POLICY "Tenant admins can view all assignments"
-  ON membership_locations
+DROP POLICY IF EXISTS "Tenant admins can view all assignments" ON membership_locations;
+CREATE POLICY "Tenant admins can view all assignments" ON membership_locations
   FOR SELECT
   USING (is_active_admin_for_location(location_id));
 
@@ -346,8 +349,8 @@ COMMENT ON POLICY "Tenant admins can view all assignments" ON membership_locatio
   'Admins can see all location assignments in their organization';
 
 -- Policy 3: Tenant admins can create location assignments
-CREATE POLICY "Tenant admins can create assignments"
-  ON membership_locations
+DROP POLICY IF EXISTS "Tenant admins can create assignments" ON membership_locations;
+CREATE POLICY "Tenant admins can create assignments" ON membership_locations
   FOR INSERT
   WITH CHECK (is_active_admin_for_location(location_id));
 
@@ -355,8 +358,8 @@ COMMENT ON POLICY "Tenant admins can create assignments" ON membership_locations
   'Admins can assign users to locations';
 
 -- Policy 4: Tenant admins can update location assignments
-CREATE POLICY "Tenant admins can update assignments"
-  ON membership_locations
+DROP POLICY IF EXISTS "Tenant admins can update assignments" ON membership_locations;
+CREATE POLICY "Tenant admins can update assignments" ON membership_locations
   FOR UPDATE
   USING (is_active_admin_for_location(location_id));
 
@@ -364,8 +367,8 @@ COMMENT ON POLICY "Tenant admins can update assignments" ON membership_locations
   'Admins can modify location assignments';
 
 -- Policy 5: Only owners can delete location assignments
-CREATE POLICY "Tenant owners can delete assignments"
-  ON membership_locations
+DROP POLICY IF EXISTS "Tenant owners can delete assignments" ON membership_locations;
+CREATE POLICY "Tenant owners can delete assignments" ON membership_locations
   FOR DELETE
   USING (is_active_owner_for_location(location_id));
 
@@ -373,8 +376,8 @@ COMMENT ON POLICY "Tenant owners can delete assignments" ON membership_locations
   'Only owners can remove location assignments';
 
 -- Policy 6: Service role can do anything
-CREATE POLICY "Service role can manage assignments"
-  ON membership_locations
+DROP POLICY IF EXISTS "Service role can manage assignments" ON membership_locations;
+CREATE POLICY "Service role can manage assignments" ON membership_locations
   FOR ALL
   USING (auth.role() = 'service_role');
 

@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- ============================================================================
 -- Step 12: Backup & Disaster Recovery - Per-Tenant Backup Policies
 -- ============================================================================
@@ -16,7 +18,8 @@
 -- 1. Backup Policies Table
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS backup_policies (
+DROP TABLE IF EXISTS backup_policies CASCADE;
+CREATE TABLE backup_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     
@@ -57,18 +60,21 @@ CREATE TABLE IF NOT EXISTS backup_policies (
 );
 
 -- Indexes
-CREATE INDEX idx_backup_policies_tenant ON backup_policies(tenant_id);
-CREATE INDEX idx_backup_policies_next_backup ON backup_policies(next_backup_at) WHERE enabled;
+CREATE INDEX IF NOT EXISTS idx_backup_policies_tenant ON backup_policies(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_backup_policies_next_backup ON backup_policies(next_backup_at) WHERE enabled;
 
 -- RLS
 ALTER TABLE backup_policies ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS backup_policies_select_policy ON backup_policies;
 CREATE POLICY backup_policies_select_policy ON backup_policies
     FOR SELECT USING (tenant_id = get_user_tenant_id_compat());
 
+DROP POLICY IF EXISTS backup_policies_insert_policy ON backup_policies;
 CREATE POLICY backup_policies_insert_policy ON backup_policies
     FOR INSERT WITH CHECK (tenant_id = get_user_tenant_id_compat());
 
+DROP POLICY IF EXISTS backup_policies_update_policy ON backup_policies;
 CREATE POLICY backup_policies_update_policy ON backup_policies
     FOR UPDATE USING (tenant_id = get_user_tenant_id_compat());
 
@@ -76,7 +82,8 @@ CREATE POLICY backup_policies_update_policy ON backup_policies
 -- 2. Backup Records Table
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS backup_records (
+DROP TABLE IF EXISTS backup_records CASCADE;
+CREATE TABLE backup_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     policy_id UUID REFERENCES backup_policies(id) ON DELETE SET NULL,
@@ -119,14 +126,15 @@ CREATE TABLE IF NOT EXISTS backup_records (
 );
 
 -- Indexes
-CREATE INDEX idx_backup_records_tenant ON backup_records(tenant_id);
-CREATE INDEX idx_backup_records_status ON backup_records(status);
-CREATE INDEX idx_backup_records_created_at ON backup_records(started_at DESC);
-CREATE INDEX idx_backup_records_expires_at ON backup_records(expires_at) WHERE status = 'completed';
+CREATE INDEX IF NOT EXISTS idx_backup_records_tenant ON backup_records(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_backup_records_status ON backup_records(status);
+CREATE INDEX IF NOT EXISTS idx_backup_records_created_at ON backup_records(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_backup_records_expires_at ON backup_records(expires_at) WHERE status = 'completed';
 
 -- RLS
 ALTER TABLE backup_records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS backup_records_select_policy ON backup_records;
 CREATE POLICY backup_records_select_policy ON backup_records
     FOR SELECT USING (tenant_id = get_user_tenant_id_compat());
 
@@ -134,7 +142,8 @@ CREATE POLICY backup_records_select_policy ON backup_records
 -- 3. Restore Requests Table
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS restore_requests (
+DROP TABLE IF EXISTS restore_requests CASCADE;
+CREATE TABLE restore_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     backup_id UUID NOT NULL REFERENCES backup_records(id) ON DELETE RESTRICT,
@@ -172,16 +181,18 @@ CREATE TABLE IF NOT EXISTS restore_requests (
 );
 
 -- Indexes
-CREATE INDEX idx_restore_requests_tenant ON restore_requests(tenant_id);
-CREATE INDEX idx_restore_requests_status ON restore_requests(status);
-CREATE INDEX idx_restore_requests_backup ON restore_requests(backup_id);
+CREATE INDEX IF NOT EXISTS idx_restore_requests_tenant ON restore_requests(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_restore_requests_status ON restore_requests(status);
+CREATE INDEX IF NOT EXISTS idx_restore_requests_backup ON restore_requests(backup_id);
 
 -- RLS
 ALTER TABLE restore_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS restore_requests_select_policy ON restore_requests;
 CREATE POLICY restore_requests_select_policy ON restore_requests
     FOR SELECT USING (tenant_id = get_user_tenant_id_compat());
 
+DROP POLICY IF EXISTS restore_requests_insert_policy ON restore_requests;
 CREATE POLICY restore_requests_insert_policy ON restore_requests
     FOR INSERT WITH CHECK (tenant_id = get_user_tenant_id_compat());
 
@@ -382,7 +393,8 @@ $$ LANGUAGE plpgsql;
 -- 7. Backup Statistics View
 -- ============================================================================
 
-CREATE OR REPLACE VIEW backup_statistics AS
+DROP VIEW IF EXISTS backup_statistics CASCADE;
+CREATE VIEW backup_statistics AS
 SELECT 
     t.id as tenant_id,
     t.name as tenant_name,

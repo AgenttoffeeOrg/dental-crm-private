@@ -52,13 +52,13 @@ CREATE TABLE IF NOT EXISTS automations (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_automations_tenant ON automations(tenant_id);
-CREATE INDEX idx_automations_category ON automations(category);
-CREATE INDEX idx_automations_status ON automations(status);
-CREATE INDEX idx_automations_trigger_type ON automations(trigger_type);
-CREATE INDEX idx_automations_tenant_category ON automations(tenant_id, category);
-CREATE INDEX idx_automations_tenant_status ON automations(tenant_id, status);
-CREATE INDEX idx_automations_is_template ON automations(is_template) WHERE is_template = true;
+CREATE INDEX IF NOT EXISTS idx_automations_tenant ON automations(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_automations_category ON automations(category);
+CREATE INDEX IF NOT EXISTS idx_automations_status ON automations(status);
+CREATE INDEX IF NOT EXISTS idx_automations_trigger_type ON automations(trigger_type);
+CREATE INDEX IF NOT EXISTS idx_automations_tenant_category ON automations(tenant_id, category);
+CREATE INDEX IF NOT EXISTS idx_automations_tenant_status ON automations(tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_automations_is_template ON automations(is_template) WHERE is_template = true;
 
 -- =====================================================
 -- 2. AUTOMATION NODES (Individual steps)
@@ -101,8 +101,8 @@ CREATE TABLE IF NOT EXISTS automation_nodes (
     UNIQUE(automation_id, node_key)
 );
 
-CREATE INDEX idx_automation_nodes_automation ON automation_nodes(automation_id);
-CREATE INDEX idx_automation_nodes_type ON automation_nodes(node_type);
+CREATE INDEX IF NOT EXISTS idx_automation_nodes_automation ON automation_nodes(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_nodes_type ON automation_nodes(node_type);
 
 -- =====================================================
 -- 3. AUTOMATION EDGES (Connections between nodes)
@@ -124,9 +124,9 @@ CREATE TABLE IF NOT EXISTS automation_edges (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_automation_edges_automation ON automation_edges(automation_id);
-CREATE INDEX idx_automation_edges_source ON automation_edges(source_node_key);
-CREATE INDEX idx_automation_edges_target ON automation_edges(target_node_key);
+CREATE INDEX IF NOT EXISTS idx_automation_edges_automation ON automation_edges(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_edges_source ON automation_edges(source_node_key);
+CREATE INDEX IF NOT EXISTS idx_automation_edges_target ON automation_edges(target_node_key);
 
 -- =====================================================
 -- 4. AUTOMATION RUNS (Execution tracking)
@@ -167,12 +167,12 @@ CREATE TABLE IF NOT EXISTS automation_runs (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_automation_runs_tenant ON automation_runs(tenant_id);
-CREATE INDEX idx_automation_runs_automation ON automation_runs(automation_id);
-CREATE INDEX idx_automation_runs_contact ON automation_runs(contact_id);
-CREATE INDEX idx_automation_runs_state ON automation_runs(state);
-CREATE INDEX idx_automation_runs_waiting ON automation_runs(waiting_until) WHERE state = 'waiting';
-CREATE INDEX idx_automation_runs_started ON automation_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_automation_runs_tenant ON automation_runs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_automation_runs_automation ON automation_runs(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_runs_contact ON automation_runs(contact_id);
+CREATE INDEX IF NOT EXISTS idx_automation_runs_state ON automation_runs(state);
+CREATE INDEX IF NOT EXISTS idx_automation_runs_waiting ON automation_runs(waiting_until) WHERE state = 'waiting';
+CREATE INDEX IF NOT EXISTS idx_automation_runs_started ON automation_runs(started_at DESC);
 
 -- =====================================================
 -- 5. AUTOMATION EXECUTION LOGS (Detailed audit trail)
@@ -201,11 +201,11 @@ CREATE TABLE IF NOT EXISTS automation_execution_logs (
     executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_automation_execution_logs_tenant ON automation_execution_logs(tenant_id);
-CREATE INDEX idx_automation_execution_logs_automation ON automation_execution_logs(automation_id);
-CREATE INDEX idx_automation_execution_logs_run ON automation_execution_logs(run_id);
-CREATE INDEX idx_automation_execution_logs_status ON automation_execution_logs(status);
-CREATE INDEX idx_automation_execution_logs_executed ON automation_execution_logs(executed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_automation_execution_logs_tenant ON automation_execution_logs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_automation_execution_logs_automation ON automation_execution_logs(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_execution_logs_run ON automation_execution_logs(run_id);
+CREATE INDEX IF NOT EXISTS idx_automation_execution_logs_status ON automation_execution_logs(status);
+CREATE INDEX IF NOT EXISTS idx_automation_execution_logs_executed ON automation_execution_logs(executed_at DESC);
 
 -- =====================================================
 -- RLS POLICIES (Row-Level Security)
@@ -218,41 +218,41 @@ ALTER TABLE automation_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE automation_execution_logs ENABLE ROW LEVEL SECURITY;
 
 -- Automations policies
-CREATE POLICY "Users can view their tenant's automations"
-    ON automations FOR SELECT
+DROP POLICY IF EXISTS "Users can view their tenant's automations" ON automations;
+CREATE POLICY "Users can view their tenant's automations" ON automations FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "Users can create automations"
-    ON automations FOR INSERT
+DROP POLICY IF EXISTS "Users can create automations" ON automations;
+CREATE POLICY "Users can create automations" ON automations FOR INSERT
     WITH CHECK (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "Users can update their automations"
-    ON automations FOR UPDATE
+DROP POLICY IF EXISTS "Users can update their automations" ON automations;
+CREATE POLICY "Users can update their automations" ON automations FOR UPDATE
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "Admins can delete automations"
-    ON automations FOR DELETE
+DROP POLICY IF EXISTS "Admins can delete automations" ON automations;
+CREATE POLICY "Admins can delete automations" ON automations FOR DELETE
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users 
         WHERE id = auth.uid() AND role IN ('owner', 'admin')
     ));
 
 -- Automation nodes policies
-CREATE POLICY "Users can view automation nodes"
-    ON automation_nodes FOR SELECT
+DROP POLICY IF EXISTS "Users can view automation nodes" ON automation_nodes;
+CREATE POLICY "Users can view automation nodes" ON automation_nodes FOR SELECT
     USING (automation_id IN (
         SELECT id FROM automations 
         WHERE tenant_id IN (SELECT tenant_id FROM app_users WHERE id = auth.uid())
     ));
 
-CREATE POLICY "Users can manage automation nodes"
-    ON automation_nodes FOR ALL
+DROP POLICY IF EXISTS "Users can manage automation nodes" ON automation_nodes;
+CREATE POLICY "Users can manage automation nodes" ON automation_nodes FOR ALL
     USING (automation_id IN (
         SELECT id FROM automations 
         WHERE tenant_id IN (SELECT tenant_id FROM app_users WHERE id = auth.uid())
@@ -263,15 +263,15 @@ CREATE POLICY "Users can manage automation nodes"
     ));
 
 -- Automation edges policies
-CREATE POLICY "Users can view automation edges"
-    ON automation_edges FOR SELECT
+DROP POLICY IF EXISTS "Users can view automation edges" ON automation_edges;
+CREATE POLICY "Users can view automation edges" ON automation_edges FOR SELECT
     USING (automation_id IN (
         SELECT id FROM automations 
         WHERE tenant_id IN (SELECT tenant_id FROM app_users WHERE id = auth.uid())
     ));
 
-CREATE POLICY "Users can manage automation edges"
-    ON automation_edges FOR ALL
+DROP POLICY IF EXISTS "Users can manage automation edges" ON automation_edges;
+CREATE POLICY "Users can manage automation edges" ON automation_edges FOR ALL
     USING (automation_id IN (
         SELECT id FROM automations 
         WHERE tenant_id IN (SELECT tenant_id FROM app_users WHERE id = auth.uid())
@@ -282,26 +282,26 @@ CREATE POLICY "Users can manage automation edges"
     ));
 
 -- Automation runs policies
-CREATE POLICY "Users can view their automation runs"
-    ON automation_runs FOR SELECT
+DROP POLICY IF EXISTS "Users can view their automation runs" ON automation_runs;
+CREATE POLICY "Users can view their automation runs" ON automation_runs FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "System can manage automation runs"
-    ON automation_runs FOR ALL
+DROP POLICY IF EXISTS "System can manage automation runs" ON automation_runs;
+CREATE POLICY "System can manage automation runs" ON automation_runs FOR ALL
     USING (true)
     WITH CHECK (true);
 
 -- Execution logs policies
-CREATE POLICY "Users can view execution logs"
-    ON automation_execution_logs FOR SELECT
+DROP POLICY IF EXISTS "Users can view execution logs" ON automation_execution_logs;
+CREATE POLICY "Users can view execution logs" ON automation_execution_logs FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "System can insert execution logs"
-    ON automation_execution_logs FOR INSERT
+DROP POLICY IF EXISTS "System can insert execution logs" ON automation_execution_logs;
+CREATE POLICY "System can insert execution logs" ON automation_execution_logs FOR INSERT
     WITH CHECK (true);
 
 -- =====================================================

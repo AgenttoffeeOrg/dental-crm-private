@@ -119,7 +119,7 @@ export async function sendFormSubmissionNotifications(params: {
     submissionData,
     submittedAt,
     isSpam,
-    spamScore,
+    // spamScore, // Removed - unused variable
     leadScore,
     leadCategory,
     assignedUserId,

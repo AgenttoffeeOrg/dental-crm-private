@@ -178,6 +178,10 @@ export function DealCard({ deal, isDragging = false, onDealUpdate, onDealClick }
         style={style}
         className="mb-2.5 hover:shadow-md transition-shadow group bg-white border border-gray-200 cursor-pointer"
         onClick={handleCardClick}
+        onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
+        role="button"
+        tabIndex={0}
+        aria-label={`View deal ${deal.title || deal.id}`}
       >
         <CardContent className="p-3.5">
           {/* Drag Handle */}

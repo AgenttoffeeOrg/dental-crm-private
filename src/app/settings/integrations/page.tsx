@@ -15,17 +15,14 @@ export default function IntegrationsPage() {
 
     if (error) {
       toast.error('Integration Error', {
-        description: error === 'missing_code_or_state' 
-          ? 'OAuth callback missing required parameters'
-          : error === 'user_not_found'
-          ? 'User account not found'
-          : error === 'no_organization'
-          ? 'Please select an organization first'
-          : error === 'storage_failed'
-          ? 'Failed to store integration credentials'
-          : error === 'callback_failed'
-          ? 'OAuth callback failed'
-          : 'An error occurred',
+        description: (() => {
+          if (error === 'missing_code_or_state') return 'OAuth callback missing required parameters'
+          if (error === 'user_not_found') return 'User account not found'
+          if (error === 'no_organization') return 'Please select an organization first'
+          if (error === 'storage_failed') return 'Failed to store integration credentials'
+          if (error === 'callback_failed') return 'OAuth callback failed'
+          return 'An error occurred'
+        })(),
       })
     }
 

@@ -168,3 +168,5 @@ npm run lighthouse
 
 I'll create a script that runs all these tools and generates a combined report.
 
+
+

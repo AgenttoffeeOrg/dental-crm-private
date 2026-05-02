@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 5C: BULK INVITE PROCESSING
 -- Purpose: Atomic bulk invite creation with batch tracking and rollback

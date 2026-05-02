@@ -1,3 +1,10 @@
+-- PATCHED: drop existing integration tables so the migration version wins
+DROP TABLE IF EXISTS public.integration_dlq CASCADE;
+DROP TABLE IF EXISTS public.integration_webhooks_log CASCADE;
+DROP TABLE IF EXISTS public.integration_rate_limits CASCADE;
+DROP TABLE IF EXISTS public.integration_logs CASCADE;
+DROP TABLE IF EXISTS public.integration_connections CASCADE;
+
 -- =====================================================
 -- INTEGRATION HARDENING - DATABASE SCHEMA
 -- =====================================================
@@ -14,7 +21,8 @@
 -- Central source of truth for all integration credentials and status
 -- Supports OAuth tokens, API keys, and webhook configs
 
-CREATE TABLE IF NOT EXISTS public.integration_connections (
+DROP TABLE IF EXISTS public.integration_connections CASCADE;
+CREATE TABLE public.integration_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
   
@@ -61,11 +69,11 @@ CREATE TABLE IF NOT EXISTS public.integration_connections (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_integration_connections_tenant ON public.integration_connections(tenant_id);
-CREATE INDEX idx_integration_connections_type ON public.integration_connections(integration_type);
-CREATE INDEX idx_integration_connections_status ON public.integration_connections(status) WHERE is_active = TRUE;
-CREATE INDEX idx_integration_connections_token_expiry ON public.integration_connections(token_expires_at) WHERE token_expires_at IS NOT NULL;
-CREATE INDEX idx_integration_connections_next_sync ON public.integration_connections(next_sync_at) WHERE next_sync_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_integration_connections_tenant ON public.integration_connections(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_integration_connections_type ON public.integration_connections(integration_type);
+CREATE INDEX IF NOT EXISTS idx_integration_connections_status ON public.integration_connections(status) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_integration_connections_token_expiry ON public.integration_connections(token_expires_at) WHERE token_expires_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_integration_connections_next_sync ON public.integration_connections(next_sync_at) WHERE next_sync_at IS NOT NULL;
 
 -- Auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_integration_connections_updated_at()
@@ -76,7 +84,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER integration_connections_updated_at
+CREATE OR REPLACE TRIGGER integration_connections_updated_at
   BEFORE UPDATE ON public.integration_connections
   FOR EACH ROW
   EXECUTE FUNCTION update_integration_connections_updated_at();
@@ -87,7 +95,8 @@ CREATE TRIGGER integration_connections_updated_at
 -- Audit trail of every API call made to/from integrations
 -- Used for debugging, monitoring, and compliance
 
-CREATE TABLE IF NOT EXISTS public.integration_logs (
+DROP TABLE IF EXISTS public.integration_logs CASCADE;
+CREATE TABLE public.integration_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
   connection_id UUID REFERENCES public.integration_connections(id) ON DELETE SET NULL,
@@ -126,11 +135,11 @@ CREATE TABLE IF NOT EXISTS public.integration_logs (
 );
 
 -- Indexes for queries
-CREATE INDEX idx_integration_logs_tenant ON public.integration_logs(tenant_id, created_at DESC);
-CREATE INDEX idx_integration_logs_type_status ON public.integration_logs(integration_type, status, created_at DESC);
-CREATE INDEX idx_integration_logs_connection ON public.integration_logs(connection_id, created_at DESC);
-CREATE INDEX idx_integration_logs_correlation ON public.integration_logs(correlation_id);
-CREATE INDEX idx_integration_logs_external_id ON public.integration_logs(integration_type, external_id);
+CREATE INDEX IF NOT EXISTS idx_integration_logs_tenant ON public.integration_logs(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_integration_logs_type_status ON public.integration_logs(integration_type, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_integration_logs_connection ON public.integration_logs(connection_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_integration_logs_correlation ON public.integration_logs(correlation_id);
+CREATE INDEX IF NOT EXISTS idx_integration_logs_external_id ON public.integration_logs(integration_type, external_id);
 
 -- Partition by date for performance (optional, for high-volume)
 -- ALTER TABLE public.integration_logs PARTITION BY RANGE (created_at);
@@ -171,9 +180,9 @@ CREATE TABLE IF NOT EXISTS public.integration_rate_limits (
 );
 
 -- Indexes
-CREATE INDEX idx_integration_rate_limits_tenant_type ON public.integration_rate_limits(tenant_id, integration_type);
-CREATE INDEX idx_integration_rate_limits_reset ON public.integration_rate_limits(reset_at);
-CREATE INDEX idx_integration_rate_limits_window ON public.integration_rate_limits(window_start DESC);
+CREATE INDEX IF NOT EXISTS idx_integration_rate_limits_tenant_type ON public.integration_rate_limits(tenant_id, integration_type);
+CREATE INDEX IF NOT EXISTS idx_integration_rate_limits_reset ON public.integration_rate_limits(reset_at);
+CREATE INDEX IF NOT EXISTS idx_integration_rate_limits_window ON public.integration_rate_limits(window_start DESC);
 
 -- Function to increment rate limit counter
 CREATE OR REPLACE FUNCTION increment_rate_limit(
@@ -284,11 +293,11 @@ CREATE TABLE IF NOT EXISTS public.integration_webhooks_log (
 );
 
 -- Indexes
-CREATE INDEX idx_integration_webhooks_tenant ON public.integration_webhooks_log(tenant_id, created_at DESC);
-CREATE INDEX idx_integration_webhooks_type_status ON public.integration_webhooks_log(integration_type, status);
-CREATE INDEX idx_integration_webhooks_external_id ON public.integration_webhooks_log(integration_type, external_id);
-CREATE INDEX idx_integration_webhooks_hash ON public.integration_webhooks_log(payload_hash);
-CREATE INDEX idx_integration_webhooks_idempotency ON public.integration_webhooks_log(idempotency_key) WHERE idempotency_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_integration_webhooks_tenant ON public.integration_webhooks_log(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_integration_webhooks_type_status ON public.integration_webhooks_log(integration_type, status);
+CREATE INDEX IF NOT EXISTS idx_integration_webhooks_external_id ON public.integration_webhooks_log(integration_type, external_id);
+CREATE INDEX IF NOT EXISTS idx_integration_webhooks_hash ON public.integration_webhooks_log(payload_hash);
+CREATE INDEX IF NOT EXISTS idx_integration_webhooks_idempotency ON public.integration_webhooks_log(idempotency_key) WHERE idempotency_key IS NOT NULL;
 
 -- Function to check if webhook already processed (idempotency check)
 CREATE OR REPLACE FUNCTION is_webhook_processed(
@@ -361,10 +370,10 @@ CREATE TABLE IF NOT EXISTS public.integration_dlq (
 );
 
 -- Indexes
-CREATE INDEX idx_integration_dlq_tenant_status ON public.integration_dlq(tenant_id, status);
-CREATE INDEX idx_integration_dlq_type_status ON public.integration_dlq(integration_type, status);
-CREATE INDEX idx_integration_dlq_next_retry ON public.integration_dlq(next_retry_at) WHERE status = 'pending' AND next_retry_at IS NOT NULL;
-CREATE INDEX idx_integration_dlq_created ON public.integration_dlq(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_integration_dlq_tenant_status ON public.integration_dlq(tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_integration_dlq_type_status ON public.integration_dlq(integration_type, status);
+CREATE INDEX IF NOT EXISTS idx_integration_dlq_next_retry ON public.integration_dlq(next_retry_at) WHERE status = 'pending' AND next_retry_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_integration_dlq_created ON public.integration_dlq(created_at DESC);
 
 -- Function to add item to DLQ
 CREATE OR REPLACE FUNCTION add_to_dlq(
@@ -427,8 +436,8 @@ ALTER TABLE public.integration_dlq ENABLE ROW LEVEL SECURITY;
 -- =====================================================
 
 -- Tenants can view their own connections
-CREATE POLICY "Tenants can view their own connections"
-  ON public.integration_connections
+DROP POLICY IF EXISTS "Tenants can view their own connections" ON public.integration_connections;
+CREATE POLICY "Tenants can view their own connections" ON public.integration_connections
   FOR SELECT
   USING (
     tenant_id IN (
@@ -437,8 +446,8 @@ CREATE POLICY "Tenants can view their own connections"
   );
 
 -- Tenants can create connections
-CREATE POLICY "Tenants can create connections"
-  ON public.integration_connections
+DROP POLICY IF EXISTS "Tenants can create connections" ON public.integration_connections;
+CREATE POLICY "Tenants can create connections" ON public.integration_connections
   FOR INSERT
   WITH CHECK (
     tenant_id IN (
@@ -447,8 +456,8 @@ CREATE POLICY "Tenants can create connections"
   );
 
 -- Tenants can update their own connections
-CREATE POLICY "Tenants can update their own connections"
-  ON public.integration_connections
+DROP POLICY IF EXISTS "Tenants can update their own connections" ON public.integration_connections;
+CREATE POLICY "Tenants can update their own connections" ON public.integration_connections
   FOR UPDATE
   USING (
     tenant_id IN (
@@ -457,8 +466,8 @@ CREATE POLICY "Tenants can update their own connections"
   );
 
 -- Tenants can delete their own connections
-CREATE POLICY "Tenants can delete their own connections"
-  ON public.integration_connections
+DROP POLICY IF EXISTS "Tenants can delete their own connections" ON public.integration_connections;
+CREATE POLICY "Tenants can delete their own connections" ON public.integration_connections
   FOR DELETE
   USING (
     tenant_id IN (
@@ -471,8 +480,8 @@ CREATE POLICY "Tenants can delete their own connections"
 -- =====================================================
 
 -- Tenants can view their own logs
-CREATE POLICY "Tenants can view their own logs"
-  ON public.integration_logs
+DROP POLICY IF EXISTS "Tenants can view their own logs" ON public.integration_logs;
+CREATE POLICY "Tenants can view their own logs" ON public.integration_logs
   FOR SELECT
   USING (
     tenant_id IN (
@@ -488,8 +497,8 @@ CREATE POLICY "Tenants can view their own logs"
 -- =====================================================
 
 -- Tenants can view their own rate limits
-CREATE POLICY "Tenants can view their own rate limits"
-  ON public.integration_rate_limits
+DROP POLICY IF EXISTS "Tenants can view their own rate limits" ON public.integration_rate_limits;
+CREATE POLICY "Tenants can view their own rate limits" ON public.integration_rate_limits
   FOR SELECT
   USING (
     tenant_id IN (
@@ -505,8 +514,8 @@ CREATE POLICY "Tenants can view their own rate limits"
 -- =====================================================
 
 -- Tenants can view their own webhook logs
-CREATE POLICY "Tenants can view their own webhook logs"
-  ON public.integration_webhooks_log
+DROP POLICY IF EXISTS "Tenants can view their own webhook logs" ON public.integration_webhooks_log;
+CREATE POLICY "Tenants can view their own webhook logs" ON public.integration_webhooks_log
   FOR SELECT
   USING (
     tenant_id IN (
@@ -522,8 +531,8 @@ CREATE POLICY "Tenants can view their own webhook logs"
 -- =====================================================
 
 -- Tenants can view their own DLQ items
-CREATE POLICY "Tenants can view their own DLQ items"
-  ON public.integration_dlq
+DROP POLICY IF EXISTS "Tenants can view their own DLQ items" ON public.integration_dlq;
+CREATE POLICY "Tenants can view their own DLQ items" ON public.integration_dlq
   FOR SELECT
   USING (
     tenant_id IN (
@@ -532,8 +541,8 @@ CREATE POLICY "Tenants can view their own DLQ items"
   );
 
 -- Tenants can update DLQ status (for manual resolution)
-CREATE POLICY "Tenants can update their own DLQ items"
-  ON public.integration_dlq
+DROP POLICY IF EXISTS "Tenants can update their own DLQ items" ON public.integration_dlq;
+CREATE POLICY "Tenants can update their own DLQ items" ON public.integration_dlq
   FOR UPDATE
   USING (
     tenant_id IN (

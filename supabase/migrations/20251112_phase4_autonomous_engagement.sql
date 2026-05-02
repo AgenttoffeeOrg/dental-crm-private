@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 4 – AUTONOMOUS ENGAGEMENT & BOT READINESS
 -- Adds campaign orchestration + bot conversation tables
@@ -9,7 +11,8 @@ BEGIN;
 -- 1. ENGAGEMENT CAMPAIGN TABLES
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS engagement_campaigns (
+DROP TABLE IF EXISTS engagement_campaigns CASCADE;
+CREATE TABLE engagement_campaigns (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -28,7 +31,8 @@ CREATE TABLE IF NOT EXISTS engagement_campaigns (
 CREATE INDEX IF NOT EXISTS idx_engagement_campaigns_tenant ON engagement_campaigns(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_engagement_campaigns_status ON engagement_campaigns(status);
 
-CREATE TABLE IF NOT EXISTS engagement_steps (
+DROP TABLE IF EXISTS engagement_steps CASCADE;
+CREATE TABLE engagement_steps (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   campaign_id UUID NOT NULL REFERENCES engagement_campaigns(id) ON DELETE CASCADE,
@@ -56,7 +60,8 @@ CREATE TABLE IF NOT EXISTS engagement_steps (
 
 CREATE INDEX IF NOT EXISTS idx_engagement_steps_campaign ON engagement_steps(campaign_id);
 
-CREATE TABLE IF NOT EXISTS engagement_enrollments (
+DROP TABLE IF EXISTS engagement_enrollments CASCADE;
+CREATE TABLE engagement_enrollments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   campaign_id UUID NOT NULL REFERENCES engagement_campaigns(id) ON DELETE CASCADE,
@@ -78,7 +83,8 @@ CREATE INDEX IF NOT EXISTS idx_engagement_enrollments_campaign ON engagement_enr
 CREATE INDEX IF NOT EXISTS idx_engagement_enrollments_status ON engagement_enrollments(status);
 CREATE INDEX IF NOT EXISTS idx_engagement_enrollments_due ON engagement_enrollments(next_run_at) WHERE next_run_at IS NOT NULL;
 
-CREATE TABLE IF NOT EXISTS engagement_events (
+DROP TABLE IF EXISTS engagement_events CASCADE;
+CREATE TABLE engagement_events (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   campaign_id UUID REFERENCES engagement_campaigns(id) ON DELETE SET NULL,
@@ -98,7 +104,8 @@ CREATE INDEX IF NOT EXISTS idx_engagement_events_type ON engagement_events(event
 -- 2. BOT CONVERSATION TABLES
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS bot_sessions (
+DROP TABLE IF EXISTS bot_sessions CASCADE;
+CREATE TABLE bot_sessions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   contact_id UUID REFERENCES contacts(id) ON DELETE SET NULL,
@@ -121,7 +128,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_bot_sessions_active_unique
   ON bot_sessions (tenant_id, contact_id, channel)
   WHERE status IN ('active', 'paused');
 
-CREATE TABLE IF NOT EXISTS bot_turns (
+DROP TABLE IF EXISTS bot_turns CASCADE;
+CREATE TABLE bot_turns (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   session_id UUID NOT NULL REFERENCES bot_sessions(id) ON DELETE CASCADE,
@@ -136,7 +144,8 @@ CREATE TABLE IF NOT EXISTS bot_turns (
 CREATE INDEX IF NOT EXISTS idx_bot_turns_session ON bot_turns(session_id);
 CREATE INDEX IF NOT EXISTS idx_bot_turns_role ON bot_turns(role);
 
-CREATE TABLE IF NOT EXISTS bot_escalations (
+DROP TABLE IF EXISTS bot_escalations CASCADE;
+CREATE TABLE bot_escalations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   session_id UUID NOT NULL REFERENCES bot_sessions(id) ON DELETE CASCADE,
@@ -167,51 +176,51 @@ ALTER TABLE bot_turns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bot_escalations ENABLE ROW LEVEL SECURITY;
 
 -- Service role full access
-CREATE POLICY IF NOT EXISTS "Service role manages engagement campaigns"
-  ON engagement_campaigns
+DROP POLICY IF EXISTS "Service role manages engagement campaigns" ON engagement_campaigns;
+CREATE POLICY "Service role manages engagement campaigns" ON engagement_campaigns
   FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
-CREATE POLICY IF NOT EXISTS "Service role manages engagement steps"
-  ON engagement_steps
+DROP POLICY IF EXISTS "Service role manages engagement steps" ON engagement_steps;
+CREATE POLICY "Service role manages engagement steps" ON engagement_steps
   FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
-CREATE POLICY IF NOT EXISTS "Service role manages engagement enrollments"
-  ON engagement_enrollments
+DROP POLICY IF EXISTS "Service role manages engagement enrollments" ON engagement_enrollments;
+CREATE POLICY "Service role manages engagement enrollments" ON engagement_enrollments
   FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
-CREATE POLICY IF NOT EXISTS "Service role manages engagement events"
-  ON engagement_events
+DROP POLICY IF EXISTS "Service role manages engagement events" ON engagement_events;
+CREATE POLICY "Service role manages engagement events" ON engagement_events
   FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
-CREATE POLICY IF NOT EXISTS "Service role manages bot sessions"
-  ON bot_sessions
+DROP POLICY IF EXISTS "Service role manages bot sessions" ON bot_sessions;
+CREATE POLICY "Service role manages bot sessions" ON bot_sessions
   FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
-CREATE POLICY IF NOT EXISTS "Service role manages bot turns"
-  ON bot_turns
+DROP POLICY IF EXISTS "Service role manages bot turns" ON bot_turns;
+CREATE POLICY "Service role manages bot turns" ON bot_turns
   FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
-CREATE POLICY IF NOT EXISTS "Service role manages bot escalations"
-  ON bot_escalations
+DROP POLICY IF EXISTS "Service role manages bot escalations" ON bot_escalations;
+CREATE POLICY "Service role manages bot escalations" ON bot_escalations
   FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
 -- Tenant member policies
-CREATE POLICY IF NOT EXISTS "Tenant members read engagement campaigns"
-  ON engagement_campaigns
+DROP POLICY IF EXISTS "Tenant members read engagement campaigns" ON engagement_campaigns;
+CREATE POLICY "Tenant members read engagement campaigns" ON engagement_campaigns
   FOR SELECT
   USING (
     EXISTS (
@@ -222,8 +231,8 @@ CREATE POLICY IF NOT EXISTS "Tenant members read engagement campaigns"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Tenant members modify engagement campaigns"
-  ON engagement_campaigns
+DROP POLICY IF EXISTS "Tenant members modify engagement campaigns" ON engagement_campaigns;
+CREATE POLICY "Tenant members modify engagement campaigns" ON engagement_campaigns
   FOR INSERT
   WITH CHECK (
     EXISTS (
@@ -234,8 +243,8 @@ CREATE POLICY IF NOT EXISTS "Tenant members modify engagement campaigns"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Tenant members update engagement campaigns"
-  ON engagement_campaigns
+DROP POLICY IF EXISTS "Tenant members update engagement campaigns" ON engagement_campaigns;
+CREATE POLICY "Tenant members update engagement campaigns" ON engagement_campaigns
   FOR UPDATE
   USING (
     EXISTS (
@@ -254,8 +263,8 @@ CREATE POLICY IF NOT EXISTS "Tenant members update engagement campaigns"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Tenant members delete engagement campaigns"
-  ON engagement_campaigns
+DROP POLICY IF EXISTS "Tenant members delete engagement campaigns" ON engagement_campaigns;
+CREATE POLICY "Tenant members delete engagement campaigns" ON engagement_campaigns
   FOR DELETE
   USING (
     EXISTS (
@@ -266,8 +275,8 @@ CREATE POLICY IF NOT EXISTS "Tenant members delete engagement campaigns"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Tenant members access engagement steps"
-  ON engagement_steps
+DROP POLICY IF EXISTS "Tenant members access engagement steps" ON engagement_steps;
+CREATE POLICY "Tenant members access engagement steps" ON engagement_steps
   FOR ALL
   USING (
     EXISTS (
@@ -286,8 +295,8 @@ CREATE POLICY IF NOT EXISTS "Tenant members access engagement steps"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Tenant members access engagement enrollments"
-  ON engagement_enrollments
+DROP POLICY IF EXISTS "Tenant members access engagement enrollments" ON engagement_enrollments;
+CREATE POLICY "Tenant members access engagement enrollments" ON engagement_enrollments
   FOR ALL
   USING (
     EXISTS (
@@ -306,8 +315,8 @@ CREATE POLICY IF NOT EXISTS "Tenant members access engagement enrollments"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Tenant members access engagement events"
-  ON engagement_events
+DROP POLICY IF EXISTS "Tenant members access engagement events" ON engagement_events;
+CREATE POLICY "Tenant members access engagement events" ON engagement_events
   FOR SELECT
   USING (
     EXISTS (
@@ -318,8 +327,8 @@ CREATE POLICY IF NOT EXISTS "Tenant members access engagement events"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Tenant members insert engagement events"
-  ON engagement_events
+DROP POLICY IF EXISTS "Tenant members insert engagement events" ON engagement_events;
+CREATE POLICY "Tenant members insert engagement events" ON engagement_events
   FOR INSERT
   WITH CHECK (
     EXISTS (
@@ -330,8 +339,8 @@ CREATE POLICY IF NOT EXISTS "Tenant members insert engagement events"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Tenant members access bot sessions"
-  ON bot_sessions
+DROP POLICY IF EXISTS "Tenant members access bot sessions" ON bot_sessions;
+CREATE POLICY "Tenant members access bot sessions" ON bot_sessions
   FOR ALL
   USING (
     EXISTS (
@@ -350,8 +359,8 @@ CREATE POLICY IF NOT EXISTS "Tenant members access bot sessions"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Tenant members access bot turns"
-  ON bot_turns
+DROP POLICY IF EXISTS "Tenant members access bot turns" ON bot_turns;
+CREATE POLICY "Tenant members access bot turns" ON bot_turns
   FOR ALL
   USING (
     EXISTS (
@@ -370,8 +379,8 @@ CREATE POLICY IF NOT EXISTS "Tenant members access bot turns"
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Tenant members access bot escalations"
-  ON bot_escalations
+DROP POLICY IF EXISTS "Tenant members access bot escalations" ON bot_escalations;
+CREATE POLICY "Tenant members access bot escalations" ON bot_escalations
   FOR ALL
   USING (
     EXISTS (

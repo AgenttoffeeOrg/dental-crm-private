@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 5: Data Quality - Email/Phone Normalization
 -- Date: October 16, 2025
@@ -162,7 +164,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trig_contacts_normalize ON contacts;
-CREATE TRIGGER trig_contacts_normalize
+CREATE OR REPLACE TRIGGER trig_contacts_normalize
   BEFORE INSERT OR UPDATE OF primary_email, primary_phone ON contacts
   FOR EACH ROW
   EXECUTE FUNCTION contacts_normalize_fields();

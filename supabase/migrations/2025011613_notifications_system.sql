@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- NOTIFICATIONS SYSTEM - ENTERPRISE DATABASE SCHEMA
 -- =====================================================
@@ -14,7 +16,8 @@ BEGIN;
 -- =====================================================
 -- Core table storing all notification records
 
-CREATE TABLE IF NOT EXISTS notifications (
+DROP TABLE IF EXISTS notifications CASCADE;
+CREATE TABLE notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
@@ -72,7 +75,8 @@ COMMENT ON TABLE notifications IS 'Core notifications table with full event cont
 -- =====================================================
 -- User-level preferences for notification delivery
 
-CREATE TABLE IF NOT EXISTS notification_preferences (
+DROP TABLE IF EXISTS notification_preferences CASCADE;
+CREATE TABLE notification_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES app_users(id) ON DELETE CASCADE,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -128,7 +132,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS notification_preferences_updated_at ON notification_preferences;
-CREATE TRIGGER notification_preferences_updated_at
+CREATE OR REPLACE TRIGGER notification_preferences_updated_at
   BEFORE UPDATE ON notification_preferences
   FOR EACH ROW
   EXECUTE FUNCTION update_notification_preferences_updated_at();
@@ -138,7 +142,8 @@ CREATE TRIGGER notification_preferences_updated_at
 -- =====================================================
 -- Tenant/org-level policies for notification governance
 
-CREATE TABLE IF NOT EXISTS notification_policies (
+DROP TABLE IF EXISTS notification_policies CASCADE;
+CREATE TABLE notification_policies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL UNIQUE REFERENCES tenants(id) ON DELETE CASCADE,
   
@@ -182,7 +187,8 @@ COMMENT ON TABLE notification_policies IS 'Org-level policies for role defaults,
 -- =====================================================
 -- Delivery tracking for multi-channel notifications
 
-CREATE TABLE IF NOT EXISTS notification_delivery_log (
+DROP TABLE IF EXISTS notification_delivery_log CASCADE;
+CREATE TABLE notification_delivery_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   notification_id UUID NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
   
@@ -379,22 +385,22 @@ ALTER TABLE notification_delivery_log ENABLE ROW LEVEL SECURITY;
 
 -- Notifications: Users can only see their own
 DROP POLICY IF EXISTS notifications_user_isolation ON notifications;
-CREATE POLICY notifications_user_isolation
-  ON notifications
+DROP POLICY IF EXISTS notifications_user_isolation ON notifications;
+CREATE POLICY notifications_user_isolation ON notifications
   FOR ALL
   USING (user_id = auth.uid());
 
 -- Preferences: Users can manage their own
 DROP POLICY IF EXISTS preferences_user_isolation ON notification_preferences;
-CREATE POLICY preferences_user_isolation
-  ON notification_preferences
+DROP POLICY IF EXISTS preferences_user_isolation ON notification_preferences;
+CREATE POLICY preferences_user_isolation ON notification_preferences
   FOR ALL
   USING (user_id = auth.uid());
 
 -- Policies: Only admins can view/edit
 DROP POLICY IF EXISTS policies_admin_only ON notification_policies;
-CREATE POLICY policies_admin_only
-  ON notification_policies
+DROP POLICY IF EXISTS policies_admin_only ON notification_policies;
+CREATE POLICY policies_admin_only ON notification_policies
   FOR ALL
   USING (
     tenant_id IN (
@@ -406,8 +412,8 @@ CREATE POLICY policies_admin_only
 
 -- Delivery Log: Users can see logs for their notifications
 DROP POLICY IF EXISTS delivery_log_user_isolation ON notification_delivery_log;
-CREATE POLICY delivery_log_user_isolation
-  ON notification_delivery_log
+DROP POLICY IF EXISTS delivery_log_user_isolation ON notification_delivery_log;
+CREATE POLICY delivery_log_user_isolation ON notification_delivery_log
   FOR SELECT
   USING (
     notification_id IN (

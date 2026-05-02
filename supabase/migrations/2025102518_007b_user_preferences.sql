@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 6B: USER PREFERENCES & DEFAULTS
 -- Purpose: Smart defaults and user preferences for context management
@@ -49,6 +51,8 @@ BEGIN;
 -- =====================================================
 
 DO $$
+DECLARE
+  separator CONSTANT TEXT := repeat('=', 60);
 BEGIN
   RAISE NOTICE '';
   RAISE NOTICE '%', separator;
@@ -57,7 +61,8 @@ BEGIN
   RAISE NOTICE '';
 END $$;
 
-CREATE TABLE IF NOT EXISTS user_org_preferences (
+DROP TABLE IF EXISTS user_org_preferences CASCADE;
+CREATE TABLE user_org_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -93,13 +98,13 @@ CREATE INDEX IF NOT EXISTS idx_user_org_preferences_last_visited
 ALTER TABLE user_org_preferences ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies
-CREATE POLICY "Users can view their own org preferences"
-  ON user_org_preferences
+DROP POLICY IF EXISTS "Users can view their own org preferences" ON user_org_preferences;
+CREATE POLICY "Users can view their own org preferences" ON user_org_preferences
   FOR SELECT
   USING (user_id = auth.uid());
 
-CREATE POLICY "Users can manage their own org preferences"
-  ON user_org_preferences
+DROP POLICY IF EXISTS "Users can manage their own org preferences" ON user_org_preferences;
+CREATE POLICY "Users can manage their own org preferences" ON user_org_preferences
   FOR ALL
   USING (user_id = auth.uid());
 
@@ -116,7 +121,8 @@ END $$;
 -- 2. CREATE RECENT_ORGS VIEW
 -- =====================================================
 
-CREATE OR REPLACE VIEW user_recent_orgs AS
+DROP VIEW IF EXISTS user_recent_orgs CASCADE;
+CREATE VIEW user_recent_orgs AS
 SELECT 
   uop.user_id,
   uop.tenant_id,
@@ -474,6 +480,7 @@ END $$;
 
 DO $$
 DECLARE
+  separator CONSTANT TEXT := repeat('=', 60);
   preferences_table_exists BOOLEAN;
   recent_orgs_view_exists BOOLEAN;
   function_count INTEGER;
@@ -525,6 +532,8 @@ COMMIT;
 -- =====================================================
 
 DO $$
+DECLARE
+  separator CONSTANT TEXT := repeat('=', 60);
 BEGIN
   RAISE NOTICE '';
   RAISE NOTICE '%', separator;

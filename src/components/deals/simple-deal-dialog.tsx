@@ -867,8 +867,7 @@ export function SimpleDealDialog({
                 >
                   <SelectTrigger
                     className={`h-11 ${
-                      pipelineSuggestion &&
-                      pipelineSuggestion.pipeline_id === form.watch('pipeline_id') &&
+                      pipelineSuggestion?.pipeline_id === form.watch('pipeline_id') &&
                       !userOverridePipeline
                         ? 'border-blue-500 bg-blue-50'
                         : ''

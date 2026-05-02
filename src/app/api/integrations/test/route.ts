@@ -8,6 +8,66 @@ import { getAllServiceStatuses } from '@/lib/integrations/scope-checker'
  * Test integration system
  * GET /api/integrations/test
  */
+// Helper functions to reduce cognitive complexity
+async function testTableExists(serviceSupabase: ReturnType<typeof createServiceClient>): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error: tableError } = await serviceSupabase
+      .from('integration_connections')
+      .select('id')
+      .limit(1)
+
+    if (tableError?.code === '42P01') {
+      return { success: false, error: 'integration_connections table does not exist' }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: `Table check failed: ${error instanceof Error ? error.message : 'Unknown'}` }
+  }
+}
+
+async function testConnectionsLoad(serviceSupabase: ReturnType<typeof createServiceClient>, tenantId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error: connError } = await serviceSupabase
+      .from('integration_connections')
+      .select('*')
+      .eq('tenant_id', tenantId)
+
+    if (connError) {
+      return { success: false, error: `Failed to load connections: ${connError.message}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: `Connection load failed: ${error instanceof Error ? error.message : 'Unknown'}` }
+  }
+}
+
+function testUnifiedScopes(): { success: boolean; error?: string } {
+  try {
+    const googleGroup = INTEGRATION_GROUPS.google
+    if (!googleGroup) {
+      return { success: false, error: 'Google integration group not found' }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: `Unified scopes test failed: ${error instanceof Error ? error.message : 'Unknown'}` }
+  }
+}
+
+function testServiceStatus(): { success: boolean; error?: string } {
+  try {
+    const statuses = getAllServiceStatuses('google', [
+      'https://www.googleapis.com/auth/gmail.send',
+      'https://www.googleapis.com/auth/analytics.readonly',
+    ])
+    if (statuses.length > 0) {
+      return { success: true }
+    }
+    return { success: false, error: 'No service statuses returned' }
+  } catch (error) {
+    return { success: false, error: `Service status test failed: ${error instanceof Error ? error.message : 'Unknown'}` }
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
@@ -44,62 +104,22 @@ export async function GET(request: NextRequest) {
       errors: [] as string[],
     }
 
-    // Test 1: Check if integration_connections table exists
-    try {
-      const { error: tableError } = await serviceSupabase
-        .from('integration_connections')
-        .select('id')
-        .limit(1)
+    // Run tests using helper functions
+    const tableTest = await testTableExists(serviceSupabase)
+    tests.tableExists = tableTest.success
+    if (tableTest.error) tests.errors.push(tableTest.error)
 
-      if (tableError && tableError.code === '42P01') {
-        tests.errors.push('integration_connections table does not exist')
-      } else {
-        tests.tableExists = true
-      }
-    } catch (error) {
-      tests.errors.push(`Table check failed: ${error instanceof Error ? error.message : 'Unknown'}`)
-    }
+    const connectionsTest = await testConnectionsLoad(serviceSupabase, tenantId)
+    tests.connectionsLoaded = connectionsTest.success
+    if (connectionsTest.error) tests.errors.push(connectionsTest.error)
 
-    // Test 2: Load connections
-    try {
-      const { data: connections, error: connError } = await serviceSupabase
-        .from('integration_connections')
-        .select('*')
-        .eq('tenant_id', tenantId)
+    const scopesTest = testUnifiedScopes()
+    tests.unifiedScopes = scopesTest.success
+    if (scopesTest.error) tests.errors.push(scopesTest.error)
 
-      if (connError) {
-        tests.errors.push(`Failed to load connections: ${connError.message}`)
-      } else {
-        tests.connectionsLoaded = true
-      }
-    } catch (error) {
-      tests.errors.push(`Connection load failed: ${error instanceof Error ? error.message : 'Unknown'}`)
-    }
-
-    // Test 3: Test unified scopes
-    try {
-      const googleGroup = INTEGRATION_GROUPS.google
-      if (!googleGroup) {
-        tests.errors.push('Google integration group not found')
-      } else {
-        tests.unifiedScopes = true
-      }
-    } catch (error) {
-      tests.errors.push(`Unified scopes test failed: ${error instanceof Error ? error.message : 'Unknown'}`)
-    }
-
-    // Test 4: Test service status checking
-    try {
-      const statuses = getAllServiceStatuses('google', [
-        'https://www.googleapis.com/auth/gmail.send',
-        'https://www.googleapis.com/auth/analytics.readonly',
-      ])
-      if (statuses.length > 0) {
-        tests.serviceStatus = true
-      }
-    } catch (error) {
-      tests.errors.push(`Service status test failed: ${error instanceof Error ? error.message : 'Unknown'}`)
-    }
+    const statusTest = testServiceStatus()
+    tests.serviceStatus = statusTest.success
+    if (statusTest.error) tests.errors.push(statusTest.error)
 
     const allTestsPassed = tests.tableExists && tests.connectionsLoaded && tests.unifiedScopes && tests.serviceStatus
 

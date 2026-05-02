@@ -72,12 +72,12 @@ export function FeatureFlagsGovernanceTab() {
       }
       groups.get(key)!.push(flag)
     })
-    return Array.from(groups.entries())
+    const sortedItems = Array.from(groups.entries())
       .map(([category, items]) => ({
         category,
-        items: items.sort((a, b) => a.name.localeCompare(b.name)),
+        items: items.toSorted((a, b) => a.name.localeCompare(b.name)),
       }))
-      .sort((a, b) => a.category.localeCompare(b.category))
+    return sortedItems.toSorted((a, b) => a.category.localeCompare(b.category))
   }, [flags])
 
   const loadFlags = async () => {

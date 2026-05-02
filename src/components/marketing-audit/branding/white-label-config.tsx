@@ -52,7 +52,7 @@ export function WhiteLabelConfig({ practiceId, currentConfig, onSave }: WhiteLab
   
   const handleSave = async () => {
     setSaving(true);
-    await onSave?.(config);
+    onSave?.(config); // Removed await - function may return void
     setSaving(false);
   };
   

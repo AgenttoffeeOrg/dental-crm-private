@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- FIX: Remove Infinite Recursion in RLS Policy
 -- =====================================================
@@ -18,9 +20,11 @@ BEGIN;
 -- Drop the problematic policy
 DROP POLICY IF EXISTS "Tenant admins can view tenant memberships" ON user_tenant_memberships;
 
+DO $nb$ BEGIN
 RAISE NOTICE '✅ Removed recursive RLS policy';
 RAISE NOTICE '📊 Users can still view their own memberships';
 RAISE NOTICE '🔧 Admins should use service role or helper functions for tenant member lists';
+END $nb$;
 
 COMMIT;
 

@@ -77,11 +77,23 @@ export function DealCardMinimal({ deal, isDragging = false, onDealClick }: DealC
   else if (daysInStage > 14) agingColor = 'bg-orange-50 text-orange-600 border border-orange-100'
   else if (daysInStage > 7) agingColor = 'bg-amber-50 text-amber-600 border border-amber-100'
 
+  const handleClick = () => onDealClick(deal.id)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onDealClick(deal.id)
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      onClick={() => onDealClick(deal.id)}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`View deal ${deal.name || deal.id}`}
       className={cn(
         'group relative cursor-pointer rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200',
         'hover:border-blue-300 hover:shadow-md',

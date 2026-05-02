@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 1: ENHANCED ONBOARDING WIZARD - DATABASE SCHEMA
 -- Migration 3 of 3: Default Configurations, Functions & RLS
@@ -295,6 +297,7 @@ DROP POLICY IF EXISTS onboarding_progress_read_policy ON onboarding_progress;
 DROP POLICY IF EXISTS onboarding_progress_write_policy ON onboarding_progress;
 
 -- Policy: Users can read their tenant's field config OR global defaults
+DROP POLICY IF EXISTS onboarding_field_config_read_policy ON onboarding_field_config;
 CREATE POLICY onboarding_field_config_read_policy ON onboarding_field_config
   FOR SELECT
   USING (
@@ -305,6 +308,7 @@ CREATE POLICY onboarding_field_config_read_policy ON onboarding_field_config
   );
 
 -- Policy: Only super admins can modify field config
+DROP POLICY IF EXISTS onboarding_field_config_write_policy ON onboarding_field_config;
 CREATE POLICY onboarding_field_config_write_policy ON onboarding_field_config
   FOR ALL
   USING (
@@ -317,16 +321,19 @@ CREATE POLICY onboarding_field_config_write_policy ON onboarding_field_config
   );
 
 -- Policy: Everyone can read step definitions
+DROP POLICY IF EXISTS onboarding_step_definitions_read_policy ON onboarding_step_definitions;
 CREATE POLICY onboarding_step_definitions_read_policy ON onboarding_step_definitions
   FOR SELECT
   USING (true);
 
 -- Policy: Users can read their own onboarding progress
+DROP POLICY IF EXISTS onboarding_progress_read_policy ON onboarding_progress;
 CREATE POLICY onboarding_progress_read_policy ON onboarding_progress
   FOR SELECT
   USING (user_id = auth.uid());
 
 -- Policy: Users can update their own onboarding progress
+DROP POLICY IF EXISTS onboarding_progress_write_policy ON onboarding_progress;
 CREATE POLICY onboarding_progress_write_policy ON onboarding_progress
   FOR ALL
   USING (user_id = auth.uid());

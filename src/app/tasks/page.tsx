@@ -64,15 +64,7 @@ export default function TasksPage() {
   const { appUser, loading: authLoading } = useAuth()
   const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
   
-  // Show empty state if user has no tenant
-  if (!hasTenant && !authLoading) {
-    return (
-      <DashboardLayout>
-        <NoOrgEmptyState title="Tasks" />
-      </DashboardLayout>
-    )
-  }
-
+  // All hooks must be called before any conditional returns
   const [tasks, setTasks] = useState<any[]>([])
   const [locations, setLocations] = useState<any[]>([]) // NEW: Locations for filtering
   const [loading, setLoading] = useState(true)
@@ -100,12 +92,6 @@ export default function TasksPage() {
     },
   })
 
-  useEffect(() => {
-    loadTasks()
-    loadLocations()
-    loadFilterData()
-  }, [])
-
   const loadFilterData = async () => {
     if (!appUser?.tenant_id) return
     
@@ -124,6 +110,12 @@ export default function TasksPage() {
       console.error('Error loading filter data:', error)
     }
   }
+
+  useEffect(() => {
+    loadTasks()
+    loadLocations()
+    loadFilterData()
+  }, [])
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -610,22 +602,24 @@ export default function TasksPage() {
               setCreateDialogOpen(true)
             }}
           />
-        ) : viewMode === 'analytics' ? (
-          <TaskAnalyticsDashboard />
-        ) : loading ? (
-          <LoadingState message="Loading your tasks..." size="md" />
-        ) : filteredTasks.length === 0 ? (
-          <EmptyState
-            icon={CheckSquare}
-            title="No tasks in this view"
-            description="Get started by creating a new task or adjust your filters."
-            action={{
-              label: "Create Task",
-              onClick: () => setCreateDialogOpen(true)
-            }}
-          />
-        ) : (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        ) : (() => {
+          if (viewMode === 'analytics') return <TaskAnalyticsDashboard />
+          if (loading) return <LoadingState message="Loading your tasks..." size="md" />
+          if (filteredTasks.length === 0) {
+            return (
+              <EmptyState
+                icon={CheckSquare}
+                title="No tasks in this view"
+                description="Get started by creating a new task or adjust your filters."
+                action={{
+                  label: "Create Task",
+                  onClick: () => setCreateDialogOpen(true)
+                }}
+              />
+            )
+          }
+          return (
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {/* Table Header */}
             <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-700 uppercase tracking-wide">
               <div className="col-span-1 flex items-center">
@@ -779,7 +773,7 @@ export default function TasksPage() {
               })}
             </div>
           </div>
-        )}
+        )})()}
       </div>
 
       {/* Create Task Slide-Over */}

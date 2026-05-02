@@ -80,7 +80,7 @@ export async function POST(
     }
 
     // 7. Track event
-    await trackEvent(user.id, 'invite_revoked', {
+    trackEvent(user.id, 'invite_revoked', {
       invite_id: inviteId,
       tenant_id: appUser.active_tenant_id,
       invitee_email: invite.invitee_email,

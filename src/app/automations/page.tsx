@@ -62,15 +62,7 @@ export default function AutomationsPage() {
   const { appUser, loading: authLoading } = useAuth()
   const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
   
-  // Show empty state if user has no tenant
-  if (!hasTenant && !authLoading) {
-    return (
-      <DashboardLayout>
-        <NoOrgEmptyState title="Automations" />
-      </DashboardLayout>
-    )
-  }
-
+  // All hooks must be called before any conditional returns
   const [activeTab, setActiveTab] = useState<'deal' | 'pipeline' | 'task' | 'marketing'>('deal')
   const [automations, setAutomations] = useState<Automation[]>([])
   const [stats, setStats] = useState<CategoryStats[]>([])
@@ -86,6 +78,15 @@ export default function AutomationsPage() {
       fetchStats()
     }
   }, [appUser?.active_tenant_id, appUser?.tenant_id, authLoading])
+
+  // Show empty state if user has no tenant (after all hooks)
+  if (!hasTenant && !authLoading) {
+    return (
+      <DashboardLayout>
+        <NoOrgEmptyState title="Automations" />
+      </DashboardLayout>
+    )
+  }
 
   const fetchAutomations = async () => {
     const tenantId = appUser?.active_tenant_id || appUser?.tenant_id

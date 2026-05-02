@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- FIX: Remove restrictive app_users RLS policy
 -- =====================================================

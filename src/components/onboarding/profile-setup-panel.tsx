@@ -279,6 +279,10 @@ export function ProfileSetupPanel({ isOpen, onClose, onComplete }: ProfileSetupP
       <div 
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 animate-in fade-in duration-200"
         onClick={handleSkip}
+        onKeyDown={(e) => e.key === 'Escape' && handleSkip()}
+        role="button"
+        tabIndex={0}
+        aria-label="Skip profile setup"
       />
 
       {/* Slide-over Panel */}

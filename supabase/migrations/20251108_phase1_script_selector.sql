@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 1: SCRIPT LIBRARY & RECOMMENDATION FOUNDATIONS
 -- -----------------------------------------------------
@@ -32,6 +34,8 @@ BEGIN
     WHERE conname = 'sales_scripts_tenant_slug_key'
   ) THEN
     ALTER TABLE sales_scripts
+      DROP CONSTRAINT IF EXISTS sales_scripts_tenant_slug_key;
+ALTER TABLE sales_scripts
       ADD CONSTRAINT sales_scripts_tenant_slug_key UNIQUE (tenant_id, slug);
   END IF;
 END $$;
@@ -67,6 +71,8 @@ BEGIN
     WHERE conname = 'sales_script_versions_unique_slug'
   ) THEN
     ALTER TABLE sales_script_versions
+      DROP CONSTRAINT IF EXISTS sales_script_versions_unique_slug;
+ALTER TABLE sales_script_versions
       ADD CONSTRAINT sales_script_versions_unique_slug UNIQUE (tenant_id, slug);
   END IF;
 END $$;
@@ -79,7 +85,8 @@ CREATE INDEX IF NOT EXISTS idx_sales_script_versions_trigger
 -- 3. Script usage + outcomes tables
 -- -----------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS sales_script_usages (
+DROP TABLE IF EXISTS sales_script_usages CASCADE;
+CREATE TABLE sales_script_usages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   script_id UUID NOT NULL REFERENCES sales_scripts(id) ON DELETE CASCADE,
@@ -107,7 +114,8 @@ CREATE INDEX IF NOT EXISTS idx_script_usages_contact
 CREATE INDEX IF NOT EXISTS idx_script_usages_deal
   ON sales_script_usages(deal_id, used_at DESC);
 
-CREATE TABLE IF NOT EXISTS conversation_outcomes (
+DROP TABLE IF EXISTS conversation_outcomes CASCADE;
+CREATE TABLE conversation_outcomes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   usage_id UUID REFERENCES sales_script_usages(id) ON DELETE CASCADE,
@@ -180,7 +188,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_after_sales_script_usage ON sales_script_usages;
-CREATE TRIGGER trg_after_sales_script_usage
+CREATE OR REPLACE TRIGGER trg_after_sales_script_usage
 AFTER INSERT OR UPDATE OR DELETE ON sales_script_usages
 FOR EACH ROW EXECUTE FUNCTION trg_refresh_sales_script_stats();
 
@@ -192,56 +200,56 @@ ALTER TABLE sales_script_usages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversation_outcomes ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Tenant isolation SELECT sales_script_usages" ON sales_script_usages;
-CREATE POLICY "Tenant isolation SELECT sales_script_usages"
-  ON sales_script_usages
+DROP POLICY IF EXISTS "Tenant isolation SELECT sales_script_usages" ON sales_script_usages;
+CREATE POLICY "Tenant isolation SELECT sales_script_usages" ON sales_script_usages
   FOR SELECT USING (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Tenant isolation INSERT sales_script_usages" ON sales_script_usages;
-CREATE POLICY "Tenant isolation INSERT sales_script_usages"
-  ON sales_script_usages
+DROP POLICY IF EXISTS "Tenant isolation INSERT sales_script_usages" ON sales_script_usages;
+CREATE POLICY "Tenant isolation INSERT sales_script_usages" ON sales_script_usages
   FOR INSERT WITH CHECK (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Tenant isolation UPDATE sales_script_usages" ON sales_script_usages;
-CREATE POLICY "Tenant isolation UPDATE sales_script_usages"
-  ON sales_script_usages
+DROP POLICY IF EXISTS "Tenant isolation UPDATE sales_script_usages" ON sales_script_usages;
+CREATE POLICY "Tenant isolation UPDATE sales_script_usages" ON sales_script_usages
   FOR UPDATE USING (tenant_id = public.get_user_org_id())
   WITH CHECK (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Tenant isolation DELETE sales_script_usages" ON sales_script_usages;
-CREATE POLICY "Tenant isolation DELETE sales_script_usages"
-  ON sales_script_usages
+DROP POLICY IF EXISTS "Tenant isolation DELETE sales_script_usages" ON sales_script_usages;
+CREATE POLICY "Tenant isolation DELETE sales_script_usages" ON sales_script_usages
   FOR DELETE USING (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Service role bypass sales_script_usages" ON sales_script_usages;
-CREATE POLICY "Service role bypass sales_script_usages"
-  ON sales_script_usages
+DROP POLICY IF EXISTS "Service role bypass sales_script_usages" ON sales_script_usages;
+CREATE POLICY "Service role bypass sales_script_usages" ON sales_script_usages
   FOR ALL USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
 DROP POLICY IF EXISTS "Tenant isolation SELECT conversation_outcomes" ON conversation_outcomes;
-CREATE POLICY "Tenant isolation SELECT conversation_outcomes"
-  ON conversation_outcomes
+DROP POLICY IF EXISTS "Tenant isolation SELECT conversation_outcomes" ON conversation_outcomes;
+CREATE POLICY "Tenant isolation SELECT conversation_outcomes" ON conversation_outcomes
   FOR SELECT USING (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Tenant isolation INSERT conversation_outcomes" ON conversation_outcomes;
-CREATE POLICY "Tenant isolation INSERT conversation_outcomes"
-  ON conversation_outcomes
+DROP POLICY IF EXISTS "Tenant isolation INSERT conversation_outcomes" ON conversation_outcomes;
+CREATE POLICY "Tenant isolation INSERT conversation_outcomes" ON conversation_outcomes
   FOR INSERT WITH CHECK (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Tenant isolation UPDATE conversation_outcomes" ON conversation_outcomes;
-CREATE POLICY "Tenant isolation UPDATE conversation_outcomes"
-  ON conversation_outcomes
+DROP POLICY IF EXISTS "Tenant isolation UPDATE conversation_outcomes" ON conversation_outcomes;
+CREATE POLICY "Tenant isolation UPDATE conversation_outcomes" ON conversation_outcomes
   FOR UPDATE USING (tenant_id = public.get_user_org_id())
   WITH CHECK (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Tenant isolation DELETE conversation_outcomes" ON conversation_outcomes;
-CREATE POLICY "Tenant isolation DELETE conversation_outcomes"
-  ON conversation_outcomes
+DROP POLICY IF EXISTS "Tenant isolation DELETE conversation_outcomes" ON conversation_outcomes;
+CREATE POLICY "Tenant isolation DELETE conversation_outcomes" ON conversation_outcomes
   FOR DELETE USING (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Service role bypass conversation_outcomes" ON conversation_outcomes;
-CREATE POLICY "Service role bypass conversation_outcomes"
-  ON conversation_outcomes
+DROP POLICY IF EXISTS "Service role bypass conversation_outcomes" ON conversation_outcomes;
+CREATE POLICY "Service role bypass conversation_outcomes" ON conversation_outcomes
   FOR ALL USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 

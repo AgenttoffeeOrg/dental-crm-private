@@ -1,10 +1,13 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- TASK AUTOMATION RULES
 -- Migration: Task escalation, dependencies, and auto-management
 -- =====================================================
 
 -- Task Escalation Rules
-CREATE TABLE IF NOT EXISTS task_escalation_rules (
+DROP TABLE IF EXISTS task_escalation_rules CASCADE;
+CREATE TABLE task_escalation_rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     
@@ -26,14 +29,15 @@ CREATE TABLE IF NOT EXISTS task_escalation_rules (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_task_escalation_tenant ON task_escalation_rules(tenant_id);
-CREATE INDEX idx_task_escalation_priority ON task_escalation_rules(priority);
-CREATE INDEX idx_task_escalation_active ON task_escalation_rules(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_task_escalation_tenant ON task_escalation_rules(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_task_escalation_priority ON task_escalation_rules(priority);
+CREATE INDEX IF NOT EXISTS idx_task_escalation_active ON task_escalation_rules(is_active) WHERE is_active = true;
 
 -- Task Dependencies (Sequential task chains)
 -- Drop and recreate to ensure clean state
 DROP TABLE IF EXISTS task_dependencies CASCADE;
 
+DROP TABLE IF EXISTS task_dependencies CASCADE;
 CREATE TABLE task_dependencies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -50,11 +54,12 @@ CREATE TABLE task_dependencies (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_task_dependencies_tenant ON task_dependencies(tenant_id);
-CREATE INDEX idx_task_dependencies_parent ON task_dependencies(parent_task_id);
+CREATE INDEX IF NOT EXISTS idx_task_dependencies_tenant ON task_dependencies(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_task_dependencies_parent ON task_dependencies(parent_task_id);
 
 -- Task Reminder Settings (per tenant)
-CREATE TABLE IF NOT EXISTS task_reminder_settings (
+DROP TABLE IF EXISTS task_reminder_settings CASCADE;
+CREATE TABLE task_reminder_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     
@@ -86,14 +91,14 @@ ALTER TABLE task_escalation_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_dependencies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_reminder_settings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their tenant's task escalation rules"
-    ON task_escalation_rules FOR SELECT
+DROP POLICY IF EXISTS "Users can view their tenant's task escalation rules" ON task_escalation_rules;
+CREATE POLICY "Users can view their tenant's task escalation rules" ON task_escalation_rules FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "Admins can manage task escalation rules"
-    ON task_escalation_rules FOR ALL
+DROP POLICY IF EXISTS "Admins can manage task escalation rules" ON task_escalation_rules;
+CREATE POLICY "Admins can manage task escalation rules" ON task_escalation_rules FOR ALL
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users 
         WHERE id = auth.uid() AND role IN ('owner', 'admin')
@@ -103,14 +108,14 @@ CREATE POLICY "Admins can manage task escalation rules"
         WHERE id = auth.uid() AND role IN ('owner', 'admin')
     ));
 
-CREATE POLICY "Users can view their tenant's task dependencies"
-    ON task_dependencies FOR SELECT
+DROP POLICY IF EXISTS "Users can view their tenant's task dependencies" ON task_dependencies;
+CREATE POLICY "Users can view their tenant's task dependencies" ON task_dependencies FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "Users can manage task dependencies"
-    ON task_dependencies FOR ALL
+DROP POLICY IF EXISTS "Users can manage task dependencies" ON task_dependencies;
+CREATE POLICY "Users can manage task dependencies" ON task_dependencies FOR ALL
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ))
@@ -118,14 +123,14 @@ CREATE POLICY "Users can manage task dependencies"
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "Users can view their tenant's reminder settings"
-    ON task_reminder_settings FOR SELECT
+DROP POLICY IF EXISTS "Users can view their tenant's reminder settings" ON task_reminder_settings;
+CREATE POLICY "Users can view their tenant's reminder settings" ON task_reminder_settings FOR SELECT
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users WHERE id = auth.uid()
     ));
 
-CREATE POLICY "Admins can manage reminder settings"
-    ON task_reminder_settings FOR ALL
+DROP POLICY IF EXISTS "Admins can manage reminder settings" ON task_reminder_settings;
+CREATE POLICY "Admins can manage reminder settings" ON task_reminder_settings FOR ALL
     USING (tenant_id IN (
         SELECT tenant_id FROM app_users 
         WHERE id = auth.uid() AND role IN ('owner', 'admin')

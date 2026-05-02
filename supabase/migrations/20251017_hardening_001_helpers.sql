@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 1.1: Canonical Helper Functions
 -- Date: October 16, 2025
@@ -9,8 +11,8 @@
 -- =====================================================
 
 -- Drop existing helpers if they have different signatures
-DROP FUNCTION IF EXISTS current_tenant_id();
-DROP FUNCTION IF EXISTS current_role_name();
+DROP FUNCTION IF EXISTS current_tenant_id() CASCADE;
+DROP FUNCTION IF EXISTS current_role_name() CASCADE;
 
 -- Canonical function to get current user's tenant_id
 -- This replaces all variants (get_user_tenant_id, get_user_org_id, etc.)

@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 5 – RELIABILITY & OPERATIONS
 -- Queue alert rules, incident tracking, backup verification
@@ -6,7 +8,8 @@
 begin;
 
 -- 1. Queue Alert Rules
-create table if not exists queue_alert_rules (
+DROP TABLE IF EXISTS queue_alert_rules CASCADE;
+CREATE TABLE queue_alert_rules (
     id uuid primary key default uuid_generate_v4(),
     tenant_id uuid references tenants(id) on delete cascade,
     queue_name text not null,
@@ -28,7 +31,8 @@ create index if not exists idx_queue_alert_rules_queue on queue_alert_rules(queu
 create index if not exists idx_queue_alert_rules_tenant on queue_alert_rules(tenant_id);
 
 -- 2. Queue Health Incidents
-create table if not exists queue_health_incidents (
+DROP TABLE IF EXISTS queue_health_incidents CASCADE;
+CREATE TABLE queue_health_incidents (
     id uuid primary key default uuid_generate_v4(),
     rule_id uuid references queue_alert_rules(id) on delete set null,
     tenant_id uuid references tenants(id) on delete cascade,
@@ -51,7 +55,8 @@ create index if not exists idx_queue_health_incidents_status on queue_health_inc
 create index if not exists idx_queue_health_incidents_rule on queue_health_incidents(rule_id);
 
 -- 3. Backup Verification Runs
-create table if not exists backup_verification_runs (
+DROP TABLE IF EXISTS backup_verification_runs CASCADE;
+CREATE TABLE backup_verification_runs (
     id uuid primary key default uuid_generate_v4(),
     tenant_id uuid references tenants(id) on delete cascade,
     environment text not null default 'production',
@@ -75,30 +80,30 @@ alter table backup_verification_runs enable row level security;
 
 -- Service role full access
 drop policy if exists "Service role manages queue alert rules" on queue_alert_rules;
-create policy "Service role manages queue alert rules"
-    on queue_alert_rules
+DROP POLICY IF EXISTS "Service role manages queue alert rules" ON queue_alert_rules;
+CREATE POLICY "Service role manages queue alert rules" ON queue_alert_rules
     for all
     using (auth.role() = 'service_role')
     with check (auth.role() = 'service_role');
 
 drop policy if exists "Service role manages queue health incidents" on queue_health_incidents;
-create policy "Service role manages queue health incidents"
-    on queue_health_incidents
+DROP POLICY IF EXISTS "Service role manages queue health incidents" ON queue_health_incidents;
+CREATE POLICY "Service role manages queue health incidents" ON queue_health_incidents
     for all
     using (auth.role() = 'service_role')
     with check (auth.role() = 'service_role');
 
 drop policy if exists "Service role manages backup verification runs" on backup_verification_runs;
-create policy "Service role manages backup verification runs"
-    on backup_verification_runs
+DROP POLICY IF EXISTS "Service role manages backup verification runs" ON backup_verification_runs;
+CREATE POLICY "Service role manages backup verification runs" ON backup_verification_runs
     for all
     using (auth.role() = 'service_role')
     with check (auth.role() = 'service_role');
 
 -- Tenant member policies
 drop policy if exists "Tenant members read queue alert rules" on queue_alert_rules;
-create policy "Tenant members read queue alert rules"
-    on queue_alert_rules
+DROP POLICY IF EXISTS "Tenant members read queue alert rules" ON queue_alert_rules;
+CREATE POLICY "Tenant members read queue alert rules" ON queue_alert_rules
     for select
     using (
         tenant_id is null
@@ -111,8 +116,8 @@ create policy "Tenant members read queue alert rules"
     );
 
 drop policy if exists "Tenant members upsert queue alert rules" on queue_alert_rules;
-create policy "Tenant members upsert queue alert rules"
-    on queue_alert_rules
+DROP POLICY IF EXISTS "Tenant members upsert queue alert rules" ON queue_alert_rules;
+CREATE POLICY "Tenant members upsert queue alert rules" ON queue_alert_rules
     for insert
     with check (
         tenant_id is null
@@ -125,8 +130,8 @@ create policy "Tenant members upsert queue alert rules"
     );
 
 drop policy if exists "Tenant members update queue alert rules" on queue_alert_rules;
-create policy "Tenant members update queue alert rules"
-    on queue_alert_rules
+DROP POLICY IF EXISTS "Tenant members update queue alert rules" ON queue_alert_rules;
+CREATE POLICY "Tenant members update queue alert rules" ON queue_alert_rules
     for update
     using (
         tenant_id is null
@@ -148,8 +153,8 @@ create policy "Tenant members update queue alert rules"
     );
 
 drop policy if exists "Tenant members delete queue alert rules" on queue_alert_rules;
-create policy "Tenant members delete queue alert rules"
-    on queue_alert_rules
+DROP POLICY IF EXISTS "Tenant members delete queue alert rules" ON queue_alert_rules;
+CREATE POLICY "Tenant members delete queue alert rules" ON queue_alert_rules
     for delete
     using (
         tenant_id is null
@@ -162,8 +167,8 @@ create policy "Tenant members delete queue alert rules"
     );
 
 drop policy if exists "Tenant members read queue health incidents" on queue_health_incidents;
-create policy "Tenant members read queue health incidents"
-    on queue_health_incidents
+DROP POLICY IF EXISTS "Tenant members read queue health incidents" ON queue_health_incidents;
+CREATE POLICY "Tenant members read queue health incidents" ON queue_health_incidents
     for select
     using (
         tenant_id is null
@@ -176,8 +181,8 @@ create policy "Tenant members read queue health incidents"
     );
 
 drop policy if exists "Tenant members update queue health incidents" on queue_health_incidents;
-create policy "Tenant members update queue health incidents"
-    on queue_health_incidents
+DROP POLICY IF EXISTS "Tenant members update queue health incidents" ON queue_health_incidents;
+CREATE POLICY "Tenant members update queue health incidents" ON queue_health_incidents
     for update
     using (
         tenant_id is null
@@ -199,8 +204,8 @@ create policy "Tenant members update queue health incidents"
     );
 
 drop policy if exists "Tenant members insert queue health incidents" on queue_health_incidents;
-create policy "Tenant members insert queue health incidents"
-    on queue_health_incidents
+DROP POLICY IF EXISTS "Tenant members insert queue health incidents" ON queue_health_incidents;
+CREATE POLICY "Tenant members insert queue health incidents" ON queue_health_incidents
     for insert
     with check (
         tenant_id is null
@@ -213,8 +218,8 @@ create policy "Tenant members insert queue health incidents"
     );
 
 drop policy if exists "Tenant members read backup verification runs" on backup_verification_runs;
-create policy "Tenant members read backup verification runs"
-    on backup_verification_runs
+DROP POLICY IF EXISTS "Tenant members read backup verification runs" ON backup_verification_runs;
+CREATE POLICY "Tenant members read backup verification runs" ON backup_verification_runs
     for select
     using (
         tenant_id is null
@@ -227,8 +232,8 @@ create policy "Tenant members read backup verification runs"
     );
 
 drop policy if exists "Tenant members insert backup verification runs" on backup_verification_runs;
-create policy "Tenant members insert backup verification runs"
-    on backup_verification_runs
+DROP POLICY IF EXISTS "Tenant members insert backup verification runs" ON backup_verification_runs;
+CREATE POLICY "Tenant members insert backup verification runs" ON backup_verification_runs
     for insert
     with check (
         tenant_id is null

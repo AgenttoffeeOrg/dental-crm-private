@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 4A: ORGANIZATION VALIDATION LIFECYCLE
 -- Purpose: Add validation workflow with reminders and grace periods
@@ -89,7 +91,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'tenants' AND column_name = 'validation_status'
   ) THEN
-    ALTER TABLE tenants ADD COLUMN validation_status validation_status_type 
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS validation_status validation_status_type 
       DEFAULT 'VALIDATED';
     RAISE NOTICE '✅ Added validation_status to tenants';
   ELSE
@@ -104,7 +106,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'tenants' AND column_name = 'validation_email'
   ) THEN
-    ALTER TABLE tenants ADD COLUMN validation_email TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS validation_email TEXT;
     RAISE NOTICE '✅ Added validation_email to tenants';
   ELSE
     RAISE NOTICE 'ℹ️  validation_email already exists on tenants';
@@ -118,7 +120,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'tenants' AND column_name = 'validated_at'
   ) THEN
-    ALTER TABLE tenants ADD COLUMN validated_at TIMESTAMPTZ;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS validated_at TIMESTAMPTZ;
     RAISE NOTICE '✅ Added validated_at to tenants';
   ELSE
     RAISE NOTICE 'ℹ️  validated_at already exists on tenants';
@@ -132,7 +134,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'tenants' AND column_name = 'grace_period_ends_at'
   ) THEN
-    ALTER TABLE tenants ADD COLUMN grace_period_ends_at TIMESTAMPTZ;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS grace_period_ends_at TIMESTAMPTZ;
     RAISE NOTICE '✅ Added grace_period_ends_at to tenants';
   ELSE
     RAISE NOTICE 'ℹ️  grace_period_ends_at already exists on tenants';
@@ -146,7 +148,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'tenants' AND column_name = 'last_reminder_sent_at'
   ) THEN
-    ALTER TABLE tenants ADD COLUMN last_reminder_sent_at TIMESTAMPTZ;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS last_reminder_sent_at TIMESTAMPTZ;
     RAISE NOTICE '✅ Added last_reminder_sent_at to tenants';
   ELSE
     RAISE NOTICE 'ℹ️  last_reminder_sent_at already exists on tenants';
@@ -160,14 +162,14 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'tenants' AND column_name = 'reminder_count'
   ) THEN
-    ALTER TABLE tenants ADD COLUMN reminder_count INTEGER DEFAULT 0;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS reminder_count INTEGER DEFAULT 0;
     RAISE NOTICE '✅ Added reminder_count to tenants';
   ELSE
     RAISE NOTICE 'ℹ️  reminder_count already exists on tenants';
   END IF;
 END $$;
 
--- Create index for validation queries
+-- CREATE INDEX IF NOT EXISTS for validation queries
 CREATE INDEX IF NOT EXISTS idx_tenants_validation_status 
   ON tenants(validation_status) WHERE validation_status != 'VALIDATED'::validation_status_type;
 
@@ -198,7 +200,8 @@ END $$;
 -- 2. CREATE ORG_VALIDATION_EVENTS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS org_validation_events (
+DROP TABLE IF EXISTS org_validation_events CASCADE;
+CREATE TABLE org_validation_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   event_type org_validation_event_type NOT NULL,
@@ -220,13 +223,13 @@ CREATE INDEX IF NOT EXISTS idx_org_validation_events_type
 ALTER TABLE org_validation_events ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies
-CREATE POLICY "Users can view validation events for their tenant"
-  ON org_validation_events
+DROP POLICY IF EXISTS "Users can view validation events for their tenant" ON org_validation_events;
+CREATE POLICY "Users can view validation events for their tenant" ON org_validation_events
   FOR SELECT
   USING (tenant_id = public.get_user_tenant_id_compat());
 
-CREATE POLICY "Service role can manage validation events"
-  ON org_validation_events
+DROP POLICY IF EXISTS "Service role can manage validation events" ON org_validation_events;
+CREATE POLICY "Service role can manage validation events" ON org_validation_events
   FOR ALL
   USING (auth.role() = 'service_role');
 
@@ -490,7 +493,7 @@ BEGIN
     validated_at = created_at,
     validation_email = (
       SELECT email FROM app_users 
-      WHERE tenant_id = tenants.id AND role = role_owner 
+      WHERE tenant_id = tenants.id AND role::text = role_owner::text 
       LIMIT 1
     )
   WHERE validation_status IS NULL 

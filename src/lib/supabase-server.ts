@@ -4,7 +4,7 @@ import type { Database } from '@/types/database'
 
 // Server client for server-side operations (Route Handlers, Server Components)
 export async function createServerSupabaseClient() {
-  const cookieStore = await cookies()
+  const cookieStore = cookies() // cookies() is synchronous in Next.js 14
   let headerStore: Headers | null = null
 
   try {

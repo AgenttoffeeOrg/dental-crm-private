@@ -1,9 +1,12 @@
+SET search_path TO public, extensions;
+
 -- Integration configuration scaffolding
 -- Stores tenant-level channel toggles and encrypted provider credentials
 
 BEGIN;
 
-CREATE TABLE IF NOT EXISTS integration_channel_settings (
+DROP TABLE IF EXISTS integration_channel_settings CASCADE;
+CREATE TABLE integration_channel_settings (
     tenant_id UUID PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
     twilio_voice_enabled BOOLEAN DEFAULT FALSE,
     twilio_sms_enabled BOOLEAN DEFAULT FALSE,
@@ -16,7 +19,8 @@ CREATE TABLE IF NOT EXISTS integration_channel_settings (
     updated_by UUID REFERENCES app_users(id)
 );
 
-CREATE TABLE IF NOT EXISTS integration_secret_vault (
+DROP TABLE IF EXISTS integration_secret_vault CASCADE;
+CREATE TABLE integration_secret_vault (
     tenant_id UUID PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
     encrypted_credentials BYTEA NOT NULL,
     credential_version INTEGER NOT NULL DEFAULT 1,
@@ -27,13 +31,13 @@ CREATE TABLE IF NOT EXISTS integration_secret_vault (
 ALTER TABLE integration_channel_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE integration_secret_vault ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow service role to manage channel settings"
-    ON integration_channel_settings
+DROP POLICY IF EXISTS "Allow service role to manage channel settings" ON integration_channel_settings;
+CREATE POLICY "Allow service role to manage channel settings" ON integration_channel_settings
     FOR ALL
     USING (auth.role() = 'service_role')
     WITH CHECK (auth.role() = 'service_role');
-CREATE POLICY "Channel settings visible to tenant members"
-    ON integration_channel_settings
+DROP POLICY IF EXISTS "Channel settings visible to tenant members" ON integration_channel_settings;
+CREATE POLICY "Channel settings visible to tenant members" ON integration_channel_settings
     FOR SELECT
     USING (
         EXISTS (
@@ -46,8 +50,8 @@ CREATE POLICY "Channel settings visible to tenant members"
 
 
 -- Secrets should only be visible to the service role (backend)
-CREATE POLICY "Service role can manage integration secrets"
-    ON integration_secret_vault
+DROP POLICY IF EXISTS "Service role can manage integration secrets" ON integration_secret_vault;
+CREATE POLICY "Service role can manage integration secrets" ON integration_secret_vault
     FOR ALL
     USING (auth.role() = 'service_role')
     WITH CHECK (auth.role() = 'service_role');

@@ -65,6 +65,10 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', footer }:
           <div
             className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
             onClick={onClose}
+            onKeyDown={(e) => e.key === 'Escape' && onClose()}
+            role="button"
+            tabIndex={0}
+            aria-label="Close modal"
           />
         </Transition.Child>
         

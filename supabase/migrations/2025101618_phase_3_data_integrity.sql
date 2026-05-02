@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 3: DATA INTEGRITY & REFERENTIAL CONSTRAINTS
 -- Enforce same-org relationships and prevent orphans
@@ -92,6 +94,8 @@ BEGIN
     WHERE constraint_name = 'deals_contact_id_fkey'
   ) THEN
     ALTER TABLE deals 
+      DROP CONSTRAINT IF EXISTS deals_contact_id_fkey;
+ALTER TABLE deals 
       ADD CONSTRAINT deals_contact_id_fkey 
       FOREIGN KEY (contact_id) 
       REFERENCES contacts(id) 
@@ -107,6 +111,8 @@ BEGIN
     WHERE constraint_name = 'deals_pipeline_id_fkey'
   ) THEN
     ALTER TABLE deals 
+      DROP CONSTRAINT IF EXISTS deals_pipeline_id_fkey;
+ALTER TABLE deals 
       ADD CONSTRAINT deals_pipeline_id_fkey 
       FOREIGN KEY (pipeline_id) 
       REFERENCES pipelines(id) 
@@ -122,6 +128,8 @@ BEGIN
     WHERE constraint_name = 'deals_stage_id_fkey'
   ) THEN
     ALTER TABLE deals 
+      DROP CONSTRAINT IF EXISTS deals_stage_id_fkey;
+ALTER TABLE deals 
       ADD CONSTRAINT deals_stage_id_fkey 
       FOREIGN KEY (stage_id) 
       REFERENCES pipeline_stages(id) 
@@ -137,6 +145,8 @@ BEGIN
     WHERE constraint_name = 'tasks_deal_id_fkey'
   ) THEN
     ALTER TABLE tasks 
+      DROP CONSTRAINT IF EXISTS tasks_deal_id_fkey;
+ALTER TABLE tasks 
       ADD CONSTRAINT tasks_deal_id_fkey 
       FOREIGN KEY (deal_id) 
       REFERENCES deals(id) 
@@ -152,6 +162,8 @@ BEGIN
     WHERE constraint_name = 'tasks_contact_id_fkey'
   ) THEN
     ALTER TABLE tasks 
+      DROP CONSTRAINT IF EXISTS tasks_contact_id_fkey;
+ALTER TABLE tasks 
       ADD CONSTRAINT tasks_contact_id_fkey 
       FOREIGN KEY (contact_id) 
       REFERENCES contacts(id) 
@@ -206,7 +218,7 @@ $$ LANGUAGE plpgsql;
 
 -- Apply trigger to deals table
 DROP TRIGGER IF EXISTS validate_deal_relationships ON deals;
-CREATE TRIGGER validate_deal_relationships
+CREATE OR REPLACE TRIGGER validate_deal_relationships
   BEFORE INSERT OR UPDATE ON deals
   FOR EACH ROW
   EXECUTE FUNCTION validate_deal_contact_same_org();
@@ -243,7 +255,7 @@ $$ LANGUAGE plpgsql;
 
 -- Apply trigger to tasks table
 DROP TRIGGER IF EXISTS validate_task_relationships ON tasks;
-CREATE TRIGGER validate_task_relationships
+CREATE OR REPLACE TRIGGER validate_task_relationships
   BEFORE INSERT OR UPDATE ON tasks
   FOR EACH ROW
   EXECUTE FUNCTION validate_task_relationships();
@@ -265,25 +277,25 @@ $$ LANGUAGE plpgsql;
 
 -- Apply to all critical tables
 DROP TRIGGER IF EXISTS prevent_tenant_change_contacts ON contacts;
-CREATE TRIGGER prevent_tenant_change_contacts
+CREATE OR REPLACE TRIGGER prevent_tenant_change_contacts
   BEFORE UPDATE ON contacts
   FOR EACH ROW
   EXECUTE FUNCTION prevent_tenant_id_change();
 
 DROP TRIGGER IF EXISTS prevent_tenant_change_deals ON deals;
-CREATE TRIGGER prevent_tenant_change_deals
+CREATE OR REPLACE TRIGGER prevent_tenant_change_deals
   BEFORE UPDATE ON deals
   FOR EACH ROW
   EXECUTE FUNCTION prevent_tenant_id_change();
 
 DROP TRIGGER IF EXISTS prevent_tenant_change_tasks ON tasks;
-CREATE TRIGGER prevent_tenant_change_tasks
+CREATE OR REPLACE TRIGGER prevent_tenant_change_tasks
   BEFORE UPDATE ON tasks
   FOR EACH ROW
   EXECUTE FUNCTION prevent_tenant_id_change();
 
 DROP TRIGGER IF EXISTS prevent_tenant_change_pipelines ON pipelines;
-CREATE TRIGGER prevent_tenant_change_pipelines
+CREATE OR REPLACE TRIGGER prevent_tenant_change_pipelines
   BEFORE UPDATE ON pipelines
   FOR EACH ROW
   EXECUTE FUNCTION prevent_tenant_id_change();

@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- SETTINGS VERSIONING & GOVERNANCE
 -- =====================================================
@@ -12,7 +14,8 @@ BEGIN;
 -- 1. LOCATIONS TABLE (Must be created FIRST)
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS locations (
+DROP TABLE IF EXISTS locations CASCADE;
+CREATE TABLE locations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   
@@ -52,9 +55,9 @@ CREATE TABLE IF NOT EXISTS locations (
   UNIQUE(tenant_id, name)
 );
 
-CREATE INDEX idx_locations_tenant ON locations(tenant_id);
-CREATE INDEX idx_locations_active ON locations(tenant_id, is_active);
-CREATE INDEX idx_locations_primary ON locations(tenant_id, is_primary);
+CREATE INDEX IF NOT EXISTS idx_locations_tenant ON locations(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_locations_active ON locations(tenant_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_locations_primary ON locations(tenant_id, is_primary);
 
 COMMENT ON TABLE locations IS 'Physical locations for multi-location practices';
 
@@ -62,7 +65,8 @@ COMMENT ON TABLE locations IS 'Physical locations for multi-location practices';
 -- 2. SETTINGS_VERSIONS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS settings_versions (
+DROP TABLE IF EXISTS settings_versions CASCADE;
+CREATE TABLE settings_versions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   location_id UUID REFERENCES locations(id) ON DELETE CASCADE, -- For location-specific settings
@@ -101,10 +105,10 @@ CREATE TABLE IF NOT EXISTS settings_versions (
   UNIQUE(tenant_id, setting_key, version_number)
 );
 
-CREATE INDEX idx_settings_versions_tenant ON settings_versions(tenant_id);
-CREATE INDEX idx_settings_versions_key ON settings_versions(setting_key);
-CREATE INDEX idx_settings_versions_changed_at ON settings_versions(changed_at DESC);
-CREATE INDEX idx_settings_versions_rollback ON settings_versions(is_rolled_back);
+CREATE INDEX IF NOT EXISTS idx_settings_versions_tenant ON settings_versions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_settings_versions_key ON settings_versions(setting_key);
+CREATE INDEX IF NOT EXISTS idx_settings_versions_changed_at ON settings_versions(changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_settings_versions_rollback ON settings_versions(is_rolled_back);
 
 COMMENT ON TABLE settings_versions IS 'Complete version history of all settings changes with rollback capability';
 
@@ -113,7 +117,8 @@ COMMENT ON TABLE settings_versions IS 'Complete version history of all settings 
 -- =====================================================
 -- For settings that require approval before taking effect
 
-CREATE TABLE IF NOT EXISTS settings_approvals (
+DROP TABLE IF EXISTS settings_approvals CASCADE;
+CREATE TABLE settings_approvals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   
@@ -144,9 +149,9 @@ CREATE TABLE IF NOT EXISTS settings_approvals (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_settings_approvals_tenant_status ON settings_approvals(tenant_id, status);
-CREATE INDEX idx_settings_approvals_requester ON settings_approvals(requested_by);
-CREATE INDEX idx_settings_approvals_reviewer ON settings_approvals(reviewed_by);
+CREATE INDEX IF NOT EXISTS idx_settings_approvals_tenant_status ON settings_approvals(tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_settings_approvals_requester ON settings_approvals(requested_by);
+CREATE INDEX IF NOT EXISTS idx_settings_approvals_reviewer ON settings_approvals(reviewed_by);
 
 COMMENT ON TABLE settings_approvals IS 'Approval workflow for critical settings changes';
 
@@ -316,20 +321,20 @@ ALTER TABLE settings_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
 
 -- Settings Versions RLS
-CREATE POLICY settings_versions_tenant_isolation
-  ON settings_versions
+DROP POLICY IF EXISTS settings_versions_tenant_isolation ON settings_versions;
+CREATE POLICY settings_versions_tenant_isolation ON settings_versions
   FOR ALL
   USING (tenant_id = (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 
 -- Settings Approvals RLS
-CREATE POLICY settings_approvals_tenant_isolation
-  ON settings_approvals
+DROP POLICY IF EXISTS settings_approvals_tenant_isolation ON settings_approvals;
+CREATE POLICY settings_approvals_tenant_isolation ON settings_approvals
   FOR ALL
   USING (tenant_id = (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 
 -- Locations RLS
-CREATE POLICY locations_tenant_isolation
-  ON locations
+DROP POLICY IF EXISTS locations_tenant_isolation ON locations;
+CREATE POLICY locations_tenant_isolation ON locations
   FOR ALL
   USING (tenant_id = (SELECT tenant_id FROM app_users WHERE id = auth.uid()));
 

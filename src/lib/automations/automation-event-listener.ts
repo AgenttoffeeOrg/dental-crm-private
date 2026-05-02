@@ -84,8 +84,8 @@ const EVENT_TO_TRIGGER_MAP: Partial<Record<keyof EventMap, string>> = {
 // =====================================================
 
 export class AutomationEventListener {
-  private supabase = createClient()
-  private automationEngine: AutomationEngine
+  private readonly supabase = createClient()
+  private readonly automationEngine: AutomationEngine
   private unsubscribers: Array<() => void> = []
   private isListening = false
 

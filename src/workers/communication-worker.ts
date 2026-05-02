@@ -15,10 +15,13 @@ async function bootstrap() {
   console.log('[Worker] Communication worker started')
 }
 
-bootstrap().catch((error) => {
+// Use top-level await instead of promise chain
+try {
+  await bootstrap()
+} catch (error) {
   console.error('[Worker] Fatal error', error)
   process.exit(1)
-})
+}
 
 
 

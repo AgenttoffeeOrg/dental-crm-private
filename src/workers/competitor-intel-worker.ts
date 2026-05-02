@@ -16,10 +16,13 @@ async function bootstrap() {
   console.log('[competitor-intel-worker] Competitor intelligence worker started')
 }
 
-bootstrap().catch((error) => {
+// Use top-level await instead of promise chain
+try {
+  await bootstrap()
+} catch (error) {
   console.error('[competitor-intel-worker] Fatal error', error)
   process.exit(1)
-})
+}
 
 
 

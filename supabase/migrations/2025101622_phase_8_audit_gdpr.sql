@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 8: ENHANCED AUDIT LOGS & GDPR COMPLIANCE
 -- Comprehensive audit trail and data privacy controls
@@ -36,7 +38,8 @@ BEGIN
 EXCEPTION
   WHEN undefined_table THEN
     -- Create audit_trail if it doesn't exist
-    CREATE TABLE audit_trail (
+    DROP TABLE IF EXISTS audit_trail CASCADE;
+CREATE TABLE audit_trail (
       id BIGSERIAL PRIMARY KEY,
       tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
       user_id UUID REFERENCES app_users(id),
@@ -59,18 +62,19 @@ EXCEPTION
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     );
     
-    CREATE INDEX idx_audit_trail_tenant ON audit_trail(tenant_id, created_at DESC);
-    CREATE INDEX idx_audit_trail_user ON audit_trail(user_id, created_at DESC);
-    CREATE INDEX idx_audit_trail_resource ON audit_trail(resource_type, resource_id);
-    CREATE INDEX idx_audit_trail_correlation ON audit_trail(correlation_id);
-    CREATE INDEX idx_audit_trail_severity ON audit_trail(severity, created_at DESC) WHERE severity IN ('error', 'critical');
+    CREATE INDEX IF NOT EXISTS idx_audit_trail_tenant ON audit_trail(tenant_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_audit_trail_user ON audit_trail(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_audit_trail_resource ON audit_trail(resource_type, resource_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_trail_correlation ON audit_trail(correlation_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_trail_severity ON audit_trail(severity, created_at DESC) WHERE severity IN ('error', 'critical');
 END $$;
 
 -- =====================================================
 -- 2. DATA ACCESS LOG (Who Viewed What)
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS data_access_log (
+DROP TABLE IF EXISTS data_access_log CASCADE;
+CREATE TABLE data_access_log (
   id BIGSERIAL PRIMARY KEY,
   tenant_id UUID NOT NULL REFERENCES tenants(id),
   user_id UUID NOT NULL REFERENCES app_users(id),
@@ -93,7 +97,8 @@ CREATE INDEX IF NOT EXISTS idx_data_access_sensitive ON data_access_log(created_
 -- 3. GDPR CONSENT MANAGEMENT
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS consent_records (
+DROP TABLE IF EXISTS consent_records CASCADE;
+CREATE TABLE consent_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   contact_id UUID REFERENCES contacts(id) ON DELETE CASCADE,
@@ -119,7 +124,8 @@ CREATE INDEX IF NOT EXISTS idx_consent_active ON consent_records(contact_id, con
 -- 4. GDPR DATA EXPORT REQUESTS
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS gdpr_export_requests (
+DROP TABLE IF EXISTS gdpr_export_requests CASCADE;
+CREATE TABLE gdpr_export_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id),
   requested_by_user_id UUID NOT NULL REFERENCES app_users(id),
@@ -144,7 +150,8 @@ CREATE INDEX IF NOT EXISTS idx_gdpr_exports_status ON gdpr_export_requests(statu
 -- 5. GDPR DATA DELETION REQUESTS
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS gdpr_deletion_requests (
+DROP TABLE IF EXISTS gdpr_deletion_requests CASCADE;
+CREATE TABLE gdpr_deletion_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id),
   requested_by_user_id UUID NOT NULL REFERENCES app_users(id),
@@ -168,7 +175,8 @@ CREATE INDEX IF NOT EXISTS idx_gdpr_deletions_status ON gdpr_deletion_requests(s
 -- 6. DATA RETENTION POLICIES
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS data_retention_policies (
+DROP TABLE IF EXISTS data_retention_policies CASCADE;
+CREATE TABLE data_retention_policies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   table_name TEXT NOT NULL,
@@ -190,7 +198,8 @@ CREATE INDEX IF NOT EXISTS idx_retention_policies_enabled ON data_retention_poli
 -- 7. PRIVACY SETTINGS PER TENANT
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS privacy_settings (
+DROP TABLE IF EXISTS privacy_settings CASCADE;
+CREATE TABLE privacy_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL UNIQUE REFERENCES tenants(id) ON DELETE CASCADE,
   
@@ -450,7 +459,8 @@ $$;
 -- 11. BREACH NOTIFICATION TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS security_breaches (
+DROP TABLE IF EXISTS security_breaches CASCADE;
+CREATE TABLE security_breaches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id),
   breach_type TEXT NOT NULL CHECK (breach_type IN ('data_leak', 'unauthorized_access', 'data_loss', 'ransomware', 'phishing', 'other')),
@@ -482,90 +492,106 @@ CREATE INDEX IF NOT EXISTS idx_breaches_severity ON security_breaches(severity, 
 -- Data Access Log
 ALTER TABLE data_access_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Auditors can view access logs" ON data_access_log;
 CREATE POLICY "Auditors can view access logs" ON data_access_log
   FOR SELECT USING (
     tenant_id = public.get_user_org_id()
     AND public.user_has_permission(auth.uid(), tenant_id, 'audit.view')
   );
 
+DROP POLICY IF EXISTS "Service role bypass access_log" ON data_access_log;
 CREATE POLICY "Service role bypass access_log" ON data_access_log
   FOR ALL USING (auth.role() = 'service_role');
 
 -- Consent Records
 ALTER TABLE consent_records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view tenant consents" ON consent_records;
 CREATE POLICY "Users can view tenant consents" ON consent_records
   FOR SELECT USING (tenant_id = public.get_user_org_id());
 
+DROP POLICY IF EXISTS "Admins can manage consents" ON consent_records;
 CREATE POLICY "Admins can manage consents" ON consent_records
   FOR ALL USING (
     tenant_id = public.get_user_org_id()
     AND public.user_has_permission(auth.uid(), tenant_id, 'settings.team.manage')
   );
 
+DROP POLICY IF EXISTS "Service role bypass consents" ON consent_records;
 CREATE POLICY "Service role bypass consents" ON consent_records
   FOR ALL USING (auth.role() = 'service_role');
 
 -- GDPR Export Requests
 ALTER TABLE gdpr_export_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own export requests" ON gdpr_export_requests;
 CREATE POLICY "Users can view own export requests" ON gdpr_export_requests
   FOR SELECT USING (
     tenant_id = public.get_user_org_id()
     AND (requested_by_user_id = auth.uid() OR public.user_has_permission(auth.uid(), tenant_id, 'audit.view'))
   );
 
+DROP POLICY IF EXISTS "Users can create export requests" ON gdpr_export_requests;
 CREATE POLICY "Users can create export requests" ON gdpr_export_requests
   FOR INSERT WITH CHECK (
     tenant_id = public.get_user_org_id()
     AND requested_by_user_id = auth.uid()
   );
 
+DROP POLICY IF EXISTS "Service role bypass gdpr_exports" ON gdpr_export_requests;
 CREATE POLICY "Service role bypass gdpr_exports" ON gdpr_export_requests
   FOR ALL USING (auth.role() = 'service_role');
 
 -- GDPR Deletion Requests
 ALTER TABLE gdpr_deletion_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can manage deletion requests" ON gdpr_deletion_requests;
 CREATE POLICY "Admins can manage deletion requests" ON gdpr_deletion_requests
   FOR ALL USING (
     tenant_id = public.get_user_org_id()
     AND public.user_has_permission(auth.uid(), tenant_id, 'settings.team.manage')
   );
 
+DROP POLICY IF EXISTS "Service role bypass gdpr_deletions" ON gdpr_deletion_requests;
 CREATE POLICY "Service role bypass gdpr_deletions" ON gdpr_deletion_requests
   FOR ALL USING (auth.role() = 'service_role');
 
 -- Privacy Settings
 ALTER TABLE privacy_settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own privacy settings" ON privacy_settings;
 CREATE POLICY "Users can view own privacy settings" ON privacy_settings
   FOR SELECT USING (tenant_id = public.get_user_org_id());
 
+DROP POLICY IF EXISTS "Admins can manage privacy settings" ON privacy_settings;
 CREATE POLICY "Admins can manage privacy settings" ON privacy_settings
   FOR ALL USING (
     tenant_id = public.get_user_org_id()
     AND public.user_has_permission(auth.uid(), tenant_id, 'settings.security.manage')
   );
 
+DROP POLICY IF EXISTS "Service role bypass privacy_settings" ON privacy_settings;
 CREATE POLICY "Service role bypass privacy_settings" ON privacy_settings
   FOR ALL USING (auth.role() = 'service_role');
 
 -- Security Breaches
 ALTER TABLE security_breaches ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can view security breaches" ON security_breaches;
 CREATE POLICY "Admins can view security breaches" ON security_breaches
   FOR SELECT USING (
     tenant_id = public.get_user_org_id()
     AND public.user_has_permission(auth.uid(), tenant_id, 'audit.view')
   );
 
+DROP POLICY IF EXISTS "Admins can manage breaches" ON security_breaches;
 CREATE POLICY "Admins can manage breaches" ON security_breaches
   FOR ALL USING (
     tenant_id = public.get_user_org_id()
     AND public.user_has_permission(auth.uid(), tenant_id, 'settings.security.manage')
   );
 
+DROP POLICY IF EXISTS "Service role bypass breaches" ON security_breaches;
 CREATE POLICY "Service role bypass breaches" ON security_breaches
   FOR ALL USING (auth.role() = 'service_role');
 

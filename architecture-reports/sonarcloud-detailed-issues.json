@@ -1,0 +1,286 @@
+[
+  {
+    "rule": "typescript:S1082",
+    "count": 59,
+    "severity": "MINOR",
+    "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener.",
+    "files": [
+      {
+        "file": "src/app/dashboard/page.tsx",
+        "line": 256
+      },
+      {
+        "file": "src/components/activities/activity-feed-enterprise.tsx",
+        "line": 335
+      },
+      {
+        "file": "src/components/audio/audio-upload.tsx",
+        "line": 154
+      },
+      {
+        "file": "src/components/automations/create-automation-slide-over.tsx",
+        "line": 195
+      },
+      {
+        "file": "src/components/calendar/calendar-agenda-view.tsx",
+        "line": 75
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S6440",
+    "count": 45,
+    "severity": "MAJOR",
+    "message": "React Hook \"useState\" is called conditionally. React Hooks must be called in the exact same order in every component render.",
+    "files": [
+      {
+        "file": "src/app/automations/page.tsx",
+        "line": 74
+      },
+      {
+        "file": "src/app/automations/page.tsx",
+        "line": 75
+      },
+      {
+        "file": "src/app/automations/page.tsx",
+        "line": 76
+      },
+      {
+        "file": "src/app/automations/page.tsx",
+        "line": 77
+      },
+      {
+        "file": "src/app/automations/page.tsx",
+        "line": 78
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S6544",
+    "count": 4,
+    "severity": "MAJOR",
+    "message": "Promise-returning function provided to property where a void return was expected.",
+    "files": [
+      {
+        "file": "src/app/(auth)/sign-in/page.tsx",
+        "line": 124
+      },
+      {
+        "file": "src/app/dashboard-new/page.tsx",
+        "line": 106
+      },
+      {
+        "file": "src/app/dashboard/page.old.tsx",
+        "line": 126
+      },
+      {
+        "file": "src/app/dashboard/page.tsx",
+        "line": 111
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S2871",
+    "count": 4,
+    "severity": "CRITICAL",
+    "message": "Provide a compare function that depends on \"String.localeCompare\", to reliably sort elements alphabetically.",
+    "files": [
+      {
+        "file": "src/components/deals/enterprise-deals-table.tsx",
+        "line": 504
+      },
+      {
+        "file": "src/config/settings-registry.ts",
+        "line": 352
+      },
+      {
+        "file": "src/lib/integrations/webhook-security.ts",
+        "line": 53
+      },
+      {
+        "file": "src/lib/marketing/contact-mapper.ts",
+        "line": 206
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S6439",
+    "count": 3,
+    "severity": "MAJOR",
+    "message": "Convert the conditional to a boolean to avoid leaked value",
+    "files": [
+      {
+        "file": "src/components/marketing-audit/competitors/competitors-tab.tsx",
+        "line": 158
+      },
+      {
+        "file": "src/components/marketing-audit/competitors/competitors-tab.tsx",
+        "line": 159
+      },
+      {
+        "file": "src/components/treatment-routing/routing-analytics.tsx",
+        "line": 696
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S5256",
+    "count": 3,
+    "severity": "MAJOR",
+    "message": "Add a valid header row or column to this \"<table>\".",
+    "files": [
+      {
+        "file": "src/components/ui/table.tsx",
+        "line": 13
+      },
+      {
+        "file": "src/lib/marketing-audit/email/audit-report-email.tsx",
+        "line": 44
+      },
+      {
+        "file": "src/lib/marketing-audit/email/audit-report-email.tsx",
+        "line": 113
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S3923",
+    "count": 3,
+    "severity": "MAJOR",
+    "message": "Remove this conditional structure or edit its code blocks so that they're not all the same.",
+    "files": [
+      {
+        "file": "src/components/forms/form-builder-old.tsx",
+        "line": 505
+      },
+      {
+        "file": "src/lib/email-queue.ts",
+        "line": 178
+      },
+      {
+        "file": "src/lib/marketing-audit/orchestrator.ts",
+        "line": 495
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S6959",
+    "count": 2,
+    "severity": "MAJOR",
+    "message": "Add an initial value to this \"reduce()\" call.",
+    "files": [
+      {
+        "file": "src/components/contacts/contact-detail-view.tsx",
+        "line": 274
+      },
+      {
+        "file": "src/lib/integrations/migration-helper.ts",
+        "line": 65
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S6324",
+    "count": 2,
+    "severity": "MAJOR",
+    "message": "Remove this control character.",
+    "files": [
+      {
+        "file": "src/lib/marketing/sms-provider.ts",
+        "line": 109
+      },
+      {
+        "file": "src/lib/marketing/sms-provider.ts",
+        "line": 166
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S5850",
+    "count": 2,
+    "severity": "MAJOR",
+    "message": "Group parts of the regex together to make the intended operator precedence explicit.",
+    "files": [
+      {
+        "file": "src/components/treatment-routing/bulk-import-export.tsx",
+        "line": 181
+      },
+      {
+        "file": "src/lib/domain-utils.ts",
+        "line": 217
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S3799",
+    "count": 2,
+    "severity": "MAJOR",
+    "message": "Unexpected empty object pattern.",
+    "files": [
+      {
+        "file": "src/components/contacts/contacts-list.tsx",
+        "line": 53
+      },
+      {
+        "file": "src/components/pipeline/pipeline-board.tsx",
+        "line": 339
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S2137",
+    "count": 2,
+    "severity": "MAJOR",
+    "message": "Do not use \"Error\" to declare a function - use another name.",
+    "files": [
+      {
+        "file": "src/app/error.tsx",
+        "line": 7
+      },
+      {
+        "file": "src/app/marketing-audit/error.tsx",
+        "line": 3
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S1534",
+    "count": 2,
+    "severity": "MAJOR",
+    "message": "Duplicate name 'left'.",
+    "files": [
+      {
+        "file": "src/components/marketing-audit/shared/tooltip.tsx",
+        "line": 92
+      },
+      {
+        "file": "src/components/marketing-audit/shared/tooltip.tsx",
+        "line": 93
+      }
+    ]
+  },
+  {
+    "rule": "typescript:S3699",
+    "count": 1,
+    "severity": "MAJOR",
+    "message": "Remove this use of the output from \"addHashtag\"; \"addHashtag\" doesn't return anything.",
+    "files": [
+      {
+        "file": "src/components/marketing/social-media-composer.tsx",
+        "line": 267
+      }
+    ]
+  },
+  {
+    "rule": "css:S4662",
+    "count": 1,
+    "severity": "MAJOR",
+    "message": "Unexpected unknown at-rule \"@custom-variant\"",
+    "files": [
+      {
+        "file": "src/app/globals.css",
+        "line": 4
+      }
+    ]
+  }
+]

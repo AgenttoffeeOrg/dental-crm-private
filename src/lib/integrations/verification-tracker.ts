@@ -20,7 +20,7 @@ export interface VerificationStatus {
  */
 export function needsVerification(provider: string): boolean {
   const group = INTEGRATION_GROUPS[provider]
-  if (!group || !group.sensitiveScopes) return false
+  if (!group?.sensitiveScopes) return false
   return group.sensitiveScopes.length > 0
 }
 

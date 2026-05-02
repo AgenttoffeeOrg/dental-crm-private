@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 2.3: Automations RLS (SAFE VERSION)
 -- Date: October 16, 2025
@@ -31,7 +33,8 @@ BEGIN
 
     -- SELECT: Requires automations entitlement
     -- If category='marketing', also requires marketing entitlement
-    CREATE POLICY automations_select ON automations
+    DROP POLICY IF EXISTS automations_select ON automations;
+CREATE POLICY automations_select ON automations
       FOR SELECT
       USING (
         tenant_id = current_tenant_id()
@@ -44,7 +47,8 @@ BEGIN
         )
       );
 
-    CREATE POLICY automations_insert ON automations
+    DROP POLICY IF EXISTS automations_insert ON automations;
+CREATE POLICY automations_insert ON automations
       FOR INSERT
       WITH CHECK (
         tenant_id = current_tenant_id()
@@ -57,7 +61,8 @@ BEGIN
         )
       );
 
-    CREATE POLICY automations_update ON automations
+    DROP POLICY IF EXISTS automations_update ON automations;
+CREATE POLICY automations_update ON automations
       FOR UPDATE
       USING (
         tenant_id = current_tenant_id()
@@ -70,7 +75,8 @@ BEGIN
         )
       );
 
-    CREATE POLICY automations_delete ON automations
+    DROP POLICY IF EXISTS automations_delete ON automations;
+CREATE POLICY automations_delete ON automations
       FOR DELETE
       USING (
         tenant_id = current_tenant_id()
@@ -83,7 +89,8 @@ BEGIN
         )
       );
 
-    CREATE POLICY automations_service_role ON automations
+    DROP POLICY IF EXISTS automations_service_role ON automations;
+CREATE POLICY automations_service_role ON automations
       FOR ALL
       USING (auth.role() = 'service_role');
 
@@ -116,21 +123,24 @@ BEGIN
     DROP POLICY IF EXISTS automation_logs_insert ON automation_execution_logs;
     DROP POLICY IF EXISTS automation_logs_service_role ON automation_execution_logs;
 
-    CREATE POLICY automation_logs_select ON automation_execution_logs
+    DROP POLICY IF EXISTS automation_logs_select ON automation_execution_logs;
+CREATE POLICY automation_logs_select ON automation_execution_logs
       FOR SELECT
       USING (
         tenant_id = current_tenant_id()
         AND check_entitlement('automations', false)
       );
 
-    CREATE POLICY automation_logs_insert ON automation_execution_logs
+    DROP POLICY IF EXISTS automation_logs_insert ON automation_execution_logs;
+CREATE POLICY automation_logs_insert ON automation_execution_logs
       FOR INSERT
       WITH CHECK (
         tenant_id = current_tenant_id()
         AND check_entitlement('automations', false)
       );
 
-    CREATE POLICY automation_logs_service_role ON automation_execution_logs
+    DROP POLICY IF EXISTS automation_logs_service_role ON automation_execution_logs;
+CREATE POLICY automation_logs_service_role ON automation_execution_logs
       FOR ALL
       USING (auth.role() = 'service_role');
 
@@ -161,21 +171,24 @@ BEGIN
     DROP POLICY IF EXISTS automation_runs_insert ON automation_runs;
     DROP POLICY IF EXISTS automation_runs_service ON automation_runs;
 
-    CREATE POLICY automation_runs_select ON automation_runs
+    DROP POLICY IF EXISTS automation_runs_select ON automation_runs;
+CREATE POLICY automation_runs_select ON automation_runs
       FOR SELECT
       USING (
         tenant_id = current_tenant_id()
         AND check_entitlement('automations', false)
       );
 
-    CREATE POLICY automation_runs_insert ON automation_runs
+    DROP POLICY IF EXISTS automation_runs_insert ON automation_runs;
+CREATE POLICY automation_runs_insert ON automation_runs
       FOR INSERT
       WITH CHECK (
         tenant_id = current_tenant_id()
         AND check_entitlement('automations', false)
       );
 
-    CREATE POLICY automation_runs_service ON automation_runs
+    DROP POLICY IF EXISTS automation_runs_service ON automation_runs;
+CREATE POLICY automation_runs_service ON automation_runs
       FOR ALL
       USING (auth.role() = 'service_role');
 

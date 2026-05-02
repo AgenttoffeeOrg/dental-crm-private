@@ -41,11 +41,6 @@ export function LocationSwitcher({
   const router = useRouter()
   const { refreshUser } = useAuth()
 
-  // Don't render if not multi-location
-  if (!isMultiLocation) {
-    return null
-  }
-
   useEffect(() => {
     if (isOpen && locations.length === 0) {
       loadLocations()
@@ -65,6 +60,11 @@ export function LocationSwitcher({
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isOpen])
+
+  // Don't render if not multi-location (after all hooks)
+  if (!isMultiLocation) {
+    return null
+  }
 
   const loadLocations = async () => {
     setLoading(true)

@@ -121,7 +121,7 @@ export default function SignInPage() {
             duration: 6000,
             action: {
               label: 'Resend',
-              onClick: () => handleResendConfirmation()
+              onClick: () => { void handleResendConfirmation() }
             }
           })
           return

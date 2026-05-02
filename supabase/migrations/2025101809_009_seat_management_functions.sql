@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Seat Management Functions
 -- Purpose: Atomic operations for seat counting

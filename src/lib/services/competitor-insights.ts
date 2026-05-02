@@ -168,9 +168,9 @@ export async function getCompetitorInsights(
   const competitorsArray = Array.from(competitorMap.values())
     .map((competitor) => ({
       ...competitor,
-      latestPrices: competitor.latestPrices.sort((a, b) => compareTimestamps(b.collectedAt, a.collectedAt)),
+      latestPrices: competitor.latestPrices.toSorted((a, b) => compareTimestamps(b.collectedAt, a.collectedAt)),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const sortedCompetitors = competitorsArray.toSorted((a, b) => a.name.localeCompare(b.name))
 
   const summary = {
     totalCompetitors: competitorsArray.length,
@@ -179,9 +179,9 @@ export async function getCompetitorInsights(
     topCompetitor: determineTopCompetitor(competitorsArray, touchpointTotals),
   }
 
-  const touchpointsByType: CompetitorTouchpointSummary[] = Array.from(touchpointTypeTotals.entries())
+  const touchpointEntries = Array.from(touchpointTypeTotals.entries())
     .map(([type, count]) => ({ type, count }))
-    .sort((a, b) => b.count - a.count)
+  const touchpointsByType: CompetitorTouchpointSummary[] = touchpointEntries.toSorted((a, b) => b.count - a.count)
 
   const recentJobs: IngestionJobSummary[] = jobs.map((job) => {
     const rows = typeof job.payload?.rows === 'number' ? job.payload.rows : parseInt(job.payload?.rows as any, 10) || null
@@ -204,7 +204,7 @@ export async function getCompetitorInsights(
 
   return {
     summary,
-    competitors: competitorsArray,
+    competitors: sortedCompetitors,
     touchpointsByType,
     recentJobs,
   }

@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- MIGRATION: Disable Auto-Tenant Creation
 -- Date: October 30, 2025
@@ -75,7 +77,8 @@ BEGIN
     EXECUTE format('ALTER TABLE app_users DROP CONSTRAINT IF EXISTS %I', v_pk_constraint_name);
     
     -- Create primary key on just (id)
-    ALTER TABLE app_users ADD CONSTRAINT app_users_pkey PRIMARY KEY (id);
+    ALTER TABLE app_users DROP CONSTRAINT IF EXISTS app_users_pkey;
+ALTER TABLE app_users ADD CONSTRAINT app_users_pkey PRIMARY KEY (id);
     
     RAISE NOTICE '   ✅ Created new primary key on (id) only';
   END IF;

@@ -76,8 +76,16 @@ export async function POST(request: NextRequest) {
     }
 
     const toList = Array.isArray(to) ? to : [to]
-    const ccList = Array.isArray(cc) ? cc : cc ? [cc] : []
-    const bccList = Array.isArray(bcc) ? bcc : bcc ? [bcc] : []
+    const ccList = (() => {
+      if (Array.isArray(cc)) return cc
+      if (cc) return [cc]
+      return []
+    })()
+    const bccList = (() => {
+      if (Array.isArray(bcc)) return bcc
+      if (bcc) return [bcc]
+      return []
+    })()
     const aiPurpose = extractEmailPurpose(subject, emailBody)
 
     if (queueManager.isEnabled() && QUEUE_ENABLED) {

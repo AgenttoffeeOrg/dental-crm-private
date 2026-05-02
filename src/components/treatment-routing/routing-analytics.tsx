@@ -693,7 +693,7 @@ export function RoutingAnalytics({ tenantId }: { tenantId: string }) {
                     <span>→ {log.pipeline?.name || 'Unknown Pipeline'}</span>
                     {log.stage && <span>• {log.stage.name}</span>}
                     <span>• Confidence: {log.confidence_score}%</span>
-                    {log.routing_duration_ms && <span>• {log.routing_duration_ms}ms</span>}
+                    {log.routing_duration_ms != null && log.routing_duration_ms > 0 && <span>• {log.routing_duration_ms}ms</span>}
                     {log.deal_treatment_tags.length > 0 && (
                       <span>• Tags: {log.deal_treatment_tags.join(', ')}</span>
                     )}

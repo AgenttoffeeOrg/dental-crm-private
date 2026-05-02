@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 /**
  * Marketing Audit - Share Links Table
  * 
@@ -5,7 +7,8 @@
  */
 
 -- Create shares table
-CREATE TABLE IF NOT EXISTS public.marketing_audit_shares (
+DROP TABLE IF EXISTS public.marketing_audit_shares CASCADE;
+CREATE TABLE public.marketing_audit_shares (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   audit_id uuid REFERENCES public.marketing_audit_runs(id) ON DELETE CASCADE NOT NULL,
   share_token text NOT NULL UNIQUE,
@@ -17,18 +20,18 @@ CREATE TABLE IF NOT EXISTS public.marketing_audit_shares (
   created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- Create index on share_token for fast lookups
-CREATE INDEX idx_audit_shares_token ON public.marketing_audit_shares(share_token);
+-- CREATE INDEX IF NOT EXISTS on share_token for fast lookups
+CREATE INDEX IF NOT EXISTS idx_audit_shares_token ON public.marketing_audit_shares(share_token);
 
--- Create index on expires_at for cleanup jobs
-CREATE INDEX idx_audit_shares_expires ON public.marketing_audit_shares(expires_at);
+-- CREATE INDEX IF NOT EXISTS on expires_at for cleanup jobs
+CREATE INDEX IF NOT EXISTS idx_audit_shares_expires ON public.marketing_audit_shares(expires_at);
 
 -- Enable RLS
 ALTER TABLE public.marketing_audit_shares ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can create shares for their own audits
-CREATE POLICY "Users can create shares for own audits"
-  ON public.marketing_audit_shares
+DROP POLICY IF EXISTS "Users can create shares for own audits" ON public.marketing_audit_shares;
+CREATE POLICY "Users can create shares for own audits" ON public.marketing_audit_shares
   FOR INSERT
   WITH CHECK (
     created_by = auth.uid()
@@ -40,20 +43,20 @@ CREATE POLICY "Users can create shares for own audits"
   );
 
 -- Policy: Users can view shares they created
-CREATE POLICY "Users can view own shares"
-  ON public.marketing_audit_shares
+DROP POLICY IF EXISTS "Users can view own shares" ON public.marketing_audit_shares;
+CREATE POLICY "Users can view own shares" ON public.marketing_audit_shares
   FOR SELECT
   USING (created_by = auth.uid());
 
 -- Policy: Users can delete shares they created
-CREATE POLICY "Users can delete own shares"
-  ON public.marketing_audit_shares
+DROP POLICY IF EXISTS "Users can delete own shares" ON public.marketing_audit_shares;
+CREATE POLICY "Users can delete own shares" ON public.marketing_audit_shares
   FOR DELETE
   USING (created_by = auth.uid());
 
 -- Policy: Public can view non-expired shares (for shared links)
-CREATE POLICY "Public can view valid shares"
-  ON public.marketing_audit_shares
+DROP POLICY IF EXISTS "Public can view valid shares" ON public.marketing_audit_shares;
+CREATE POLICY "Public can view valid shares" ON public.marketing_audit_shares
   FOR SELECT
   USING (
     expires_at > now()

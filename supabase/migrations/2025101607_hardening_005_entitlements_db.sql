@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 2.1: Entitlement Function Refactor
 -- Date: October 16, 2025

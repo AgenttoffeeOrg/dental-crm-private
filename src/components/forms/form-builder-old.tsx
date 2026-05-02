@@ -502,18 +502,10 @@ export function FormBuilder({ tenantId }: FormBuilderProps) {
     if (!selectedForm) return
     
     try {
-      if (isCreating) {
-        // Form already created in createNewForm, just update it
-        const updated = await updateForm(selectedForm.id, selectedForm)
-        if (updated) {
-          setSelectedForm(updated)
-        }
-      } else {
-        // Update existing form
-        const updated = await updateForm(selectedForm.id, selectedForm)
-        if (updated) {
-          setSelectedForm(updated)
-        }
+      // Update form (both creating and editing paths do the same thing)
+      const updated = await updateForm(selectedForm.id, selectedForm)
+      if (updated) {
+        setSelectedForm(updated)
       }
       setIsCreating(false)
       setIsEditing(false)

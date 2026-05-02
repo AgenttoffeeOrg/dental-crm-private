@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- ORGANIZATION PROFILE ENHANCEMENT MIGRATION
 -- =====================================================
@@ -91,7 +93,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS set_organization_updated_at ON tenants;
-CREATE TRIGGER set_organization_updated_at
+CREATE OR REPLACE TRIGGER set_organization_updated_at
 BEFORE UPDATE ON tenants
 FOR EACH ROW
 EXECUTE FUNCTION update_organization_updated_at();

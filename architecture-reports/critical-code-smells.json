@@ -1,0 +1,924 @@
+{
+  "file": "src/app/api/locations/switch/route.ts",
+  "line": 18,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+}
+{
+  "file": "src/app/api/marketing/forms/submit/route.ts",
+  "line": 15,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed."
+}
+{
+  "file": "src/components/forms/form-renderer.tsx",
+  "line": 81,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/components/integrations/unified-integrations-hub.tsx",
+  "line": 134,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/components/integrations/unified-integrations-hub.tsx",
+  "line": 146,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/app/api/integrations/test/route.ts",
+  "line": 11,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed."
+}
+{
+  "file": "src/lib/integrations/migration-helper.ts",
+  "line": 20,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 34 to the 15 allowed."
+}
+{
+  "file": "src/components/integrations/integrations-hub-grouped.tsx",
+  "line": 98,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/components/integrations/integrations-hub-user-friendly.tsx",
+  "line": 267,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed."
+}
+{
+  "file": "src/app/api/integrations/[type]/oauth/callback/route.ts",
+  "line": 10,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+}
+{
+  "file": "src/app/api/integrations/[type]/test/route.ts",
+  "line": 8,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/app/api/integrations/[type]/connect/route.ts",
+  "line": 152,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed."
+}
+{
+  "file": "src/app/settings/integrations/page.tsx",
+  "line": 12,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed."
+}
+{
+  "file": "src/app/api/activities/[id]/route.ts",
+  "line": 68,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+}
+{
+  "file": "src/app/api/activities/route.ts",
+  "line": 5,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed."
+}
+{
+  "file": "src/app/api/deals/[id]/route.ts",
+  "line": 74,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 33 to the 15 allowed."
+}
+{
+  "file": "src/app/api/deals/route.ts",
+  "line": 9,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed."
+}
+{
+  "file": "src/app/api/marketing-audit/[id]/recommendations/[recId]/create-task/route.ts",
+  "line": 14,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/app/api/onboarding/complete/route.ts",
+  "line": 18,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/app/api/onboarding/save-progress/route.ts",
+  "line": 25,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 118 to the 15 allowed."
+}
+{
+  "file": "src/app/api/tasks/[id]/route.ts",
+  "line": 68,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 38 to the 15 allowed."
+}
+{
+  "file": "src/app/api/tasks/route.ts",
+  "line": 5,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed."
+}
+{
+  "file": "src/app/api/tasks/route.ts",
+  "line": 121,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+}
+{
+  "file": "src/app/engagement/page.tsx",
+  "line": 347,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/app/tasks/page.tsx",
+  "line": 63,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed."
+}
+{
+  "file": "src/components/analytics/competitive-insights-dashboard.tsx",
+  "line": 42,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/components/call-coaching/call-coaching-workspace.tsx",
+  "line": 45,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 65,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 79 to the 15 allowed."
+}
+{
+  "file": "src/components/deals/simple-deal-dialog.tsx",
+  "line": 107,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed."
+}
+{
+  "file": "src/components/engagement/campaigns-panel.tsx",
+  "line": 95,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/components/onboarding/steps/company-info-step.tsx",
+  "line": 47,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 39 to the 15 allowed."
+}
+{
+  "file": "src/components/onboarding/steps/first-location-step.tsx",
+  "line": 48,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 95 to the 15 allowed."
+}
+{
+  "file": "src/components/pipeline/pipeline-board.tsx",
+  "line": 339,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 33 to the 15 allowed."
+}
+{
+  "file": "src/components/pipeline/pipeline-board.tsx",
+  "line": 979,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/components/reception/reception-workspace.tsx",
+  "line": 128,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 75 to the 15 allowed."
+}
+{
+  "file": "src/lib/communications/dispatcher.ts",
+  "line": 16,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed."
+}
+{
+  "file": "src/lib/communications/dispatcher.ts",
+  "line": 496,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/lib/engagement/conversation-state-machine.ts",
+  "line": 80,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/lib/marketing/form-processor.ts",
+  "line": 40,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 47 to the 15 allowed."
+}
+{
+  "file": "src/lib/monitoring/queue-alert-service.ts",
+  "line": 55,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed."
+}
+{
+  "file": "src/lib/services/competitor-insights.ts",
+  "line": 54,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed."
+}
+{
+  "file": "src/lib/services/competitor-intel.ts",
+  "line": 74,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 34 to the 15 allowed."
+}
+{
+  "file": "src/lib/services/learning-loop.ts",
+  "line": 19,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed."
+}
+{
+  "file": "src/lib/services/psychological-analyzer.ts",
+  "line": 84,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed."
+}
+{
+  "file": "src/app/api/onboarding/resume/route.ts",
+  "line": 21,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/app/api/onboarding/status/route.ts",
+  "line": 26,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed."
+}
+{
+  "file": "src/app/api/onboarding/validate-step/route.ts",
+  "line": 22,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 44 to the 15 allowed."
+}
+{
+  "file": "src/components/onboarding/steps/personal-info-step.tsx",
+  "line": 42,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 56 to the 15 allowed."
+}
+{
+  "file": "src/components/onboarding/wizard-progress-bar.tsx",
+  "line": 74,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed."
+}
+{
+  "file": "src/app/(auth)/sign-up/page.tsx",
+  "line": 90,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 207,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 41 to the 15 allowed."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 510,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 38 to the 15 allowed."
+}
+{
+  "file": "src/components/deals/enterprise-deals-table.tsx",
+  "line": 1283,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/types/enterprise-deals-table.ts",
+  "line": 357,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed."
+}
+{
+  "file": "src/app/api/contacts/route.ts",
+  "line": 36,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/app/api/invites/[id]/resend/route.ts",
+  "line": 96,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/app/api/invites/[id]/revoke/route.ts",
+  "line": 83,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/app/api/invites/accept/route.ts",
+  "line": 57,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+}
+{
+  "file": "src/app/api/locations/switch/route.ts",
+  "line": 168,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/app/api/org/switch/route.ts",
+  "line": 113,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/components/invites/invite-detection-banner.tsx",
+  "line": 164,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/components/invites/invite-detection-banner.tsx",
+  "line": 257,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/components/verification/verification-banners.tsx",
+  "line": 33,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed."
+}
+{
+  "file": "src/components/verification/verification-banners.tsx",
+  "line": 177,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 45 to the 15 allowed."
+}
+{
+  "file": "src/lib/services/tenant-context.ts",
+  "line": 50,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed."
+}
+{
+  "file": "src/app/api/integrations/pms/webhooks/treatment-proposed/route.ts",
+  "line": 14,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed."
+}
+{
+  "file": "src/app/api/treatment-routing/bulk-reroute/route.ts",
+  "line": 108,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 55 to the 15 allowed."
+}
+{
+  "file": "src/app/api/webhooks/form-submission/route.ts",
+  "line": 18,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 58 to the 15 allowed."
+}
+{
+  "file": "src/app/api/webhooks/lead-intake/route.ts",
+  "line": 70,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 34 to the 15 allowed."
+}
+{
+  "file": "src/components/deals/simple-deal-dialog.tsx",
+  "line": 169,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed."
+}
+{
+  "file": "src/components/deals/simple-deal-dialog.tsx",
+  "line": 300,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/components/treatment-routing/deal-audit-panel.tsx",
+  "line": 579,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/components/treatment-routing/migration-wizard.tsx",
+  "line": 208,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed."
+}
+{
+  "file": "src/components/treatment-routing/pipeline-mapping-settings.tsx",
+  "line": 208,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed."
+}
+{
+  "file": "src/lib/conversation-analyzer.ts",
+  "line": 209,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/lib/deal-categorization.ts",
+  "line": 74,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed."
+}
+{
+  "file": "src/lib/integrations/pms/sync-engine.ts",
+  "line": 216,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/lib/treatment-routing/adapter.ts",
+  "line": 144,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed."
+}
+{
+  "file": "src/lib/treatment-routing/ai-extractor.ts",
+  "line": 291,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/lib/treatment-routing/routing-engine.ts",
+  "line": 528,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 42 to the 15 allowed."
+}
+{
+  "file": "src/app/api/organizations/discover/route.ts",
+  "line": 19,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/app/api/users/invite/route.ts",
+  "line": 15,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed."
+}
+{
+  "file": "src/components/billing/plan-comparison.tsx",
+  "line": 86,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/components/billing/plan-comparison.tsx",
+  "line": 222,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/components/settings/communications-integrations-tab.tsx",
+  "line": 60,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed."
+}
+{
+  "file": "src/components/team/seat-usage-display.tsx",
+  "line": 21,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+}
+{
+  "file": "src/components/deals/simple-deal-dialog.tsx",
+  "line": 518,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 33 to the 15 allowed."
+}
+{
+  "file": "src/components/deals/deal-profile-dialog.tsx",
+  "line": 270,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed."
+}
+{
+  "file": "src/lib/automations/automation-simulator.ts",
+  "line": 37,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 31 to the 15 allowed."
+}
+{
+  "file": "src/lib/automations/automation-validator.ts",
+  "line": 76,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed."
+}
+{
+  "file": "src/lib/automations/task-automation-actions.ts",
+  "line": 35,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed."
+}
+{
+  "file": "src/lib/ai-proactive-monitor.ts",
+  "line": 12,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed."
+}
+{
+  "file": "src/lib/automations/deal-sla-monitor.ts",
+  "line": 30,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/lib/automations/stage-auto-move.ts",
+  "line": 111,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed."
+}
+{
+  "file": "src/lib/automations/automation-event-listener.ts",
+  "line": 290,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+}
+{
+  "file": "src/lib/notifications/notification-router.ts",
+  "line": 164,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed."
+}
+{
+  "file": "src/lib/notifications/notification-router.ts",
+  "line": 321,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed."
+}
+{
+  "file": "src/lib/analytics/anomaly-detection.ts",
+  "line": 159,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed."
+}
+{
+  "file": "src/hooks/use-analytics-drilldown.ts",
+  "line": 144,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/lib/integrations/alerting.ts",
+  "line": 95,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/lib/integrations/sync-scheduler.ts",
+  "line": 308,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed."
+}
+{
+  "file": "src/app/api/webhooks/meta-lead-ads/route.ts",
+  "line": 32,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed."
+}
+{
+  "file": "src/app/api/webhooks/voice/route.ts",
+  "line": 25,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed."
+}
+{
+  "file": "src/app/api/webhooks/whatsapp/route.ts",
+  "line": 24,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/lib/integrations/retry-utility.ts",
+  "line": 194,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/app/api/webhooks/sms/route.ts",
+  "line": 24,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/components/forms/create-form-slide-over.tsx",
+  "line": 301,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 45 to the 15 allowed."
+}
+{
+  "file": "src/components/forms/form-builder-old.tsx",
+  "line": 558,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed."
+}
+{
+  "file": "src/components/forms/offline-indicator.tsx",
+  "line": 44,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/lib/forms/lead-deduplication.ts",
+  "line": 19,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/components/forms/form-renderer.tsx",
+  "line": 96,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed."
+}
+{
+  "file": "src/components/marketing-audit/dashboard/composite-score-card.tsx",
+  "line": 24,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed."
+}
+{
+  "file": "src/components/marketing-audit/branding/white-label-config.tsx",
+  "line": 55,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/components/marketing-audit/bulk/bulk-operations-panel.tsx",
+  "line": 57,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/components/marketing-audit/bulk/bulk-operations-panel.tsx",
+  "line": 60,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/components/marketing-audit/bulk/bulk-operations-panel.tsx",
+  "line": 63,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/components/marketing-audit/history/regression-detector.tsx",
+  "line": 22,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed."
+}
+{
+  "file": "src/lib/marketing-audit/accessibility/aria-helper.tsx",
+  "line": 13,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/app/dashboard/page.old.tsx",
+  "line": 75,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed."
+}
+{
+  "file": "src/hooks/use-keyboard-shortcuts.ts",
+  "line": 93,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/lib/dashboard-priorities.ts",
+  "line": 72,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+}
+{
+  "file": "src/lib/import-service.ts",
+  "line": 39,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+}
+{
+  "file": "src/components/analytics/executive-dashboard-v2.tsx",
+  "line": 102,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/components/marketing/csv-import-wizard.tsx",
+  "line": 111,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/components/marketing/csv-import-wizard.tsx",
+  "line": 113,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/components/marketing/deliverability-dashboard.tsx",
+  "line": 39,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/components/marketing/email-builder-advanced.tsx",
+  "line": 183,
+  "rule": "typescript:S2004",
+  "message": "Refactor this code to not nest functions more than 4 levels deep."
+}
+{
+  "file": "src/components/marketing/modern-campaign-builder.tsx",
+  "line": 35,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed."
+}
+{
+  "file": "src/lib/marketing/conflict-resolution.ts",
+  "line": 81,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/app/api/webhooks/voicestack/route.ts",
+  "line": 17,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 38 to the 15 allowed."
+}
+{
+  "file": "src/components/activities/activity-feed-enterprise.tsx",
+  "line": 327,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 40 to the 15 allowed."
+}
+{
+  "file": "src/components/communications/activity-detail-slide-in.tsx",
+  "line": 61,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 59 to the 15 allowed."
+}
+{
+  "file": "src/components/communications/click-to-call-dialer.tsx",
+  "line": 39,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed."
+}
+{
+  "file": "src/components/activities/log-activity-panel.tsx",
+  "line": 68,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 1351,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 31 to the 15 allowed."
+}
+{
+  "file": "src/components/activities/activity-timeline-enterprise.tsx",
+  "line": 144,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/components/tasks/task-card-enterprise.tsx",
+  "line": 73,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/lib/ai-context-builder.ts",
+  "line": 93,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/components/deals/deal-intelligence-card.tsx",
+  "line": 84,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed."
+}
+{
+  "file": "src/app/api/setup/enterprise/route.ts",
+  "line": 6,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed."
+}
+{
+  "file": "src/app/api/categorize-deals/route.ts",
+  "line": 12,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed."
+}
+{
+  "file": "src/app/api/categorize-deals/route.ts",
+  "line": 14,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}
+{
+  "file": "src/lib/conversation-analyzer.ts",
+  "line": 140,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed."
+}
+{
+  "file": "src/app/api/process-audio-direct/route.ts",
+  "line": 15,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed."
+}
+{
+  "file": "src/app/api/setup/disable-rls/route.ts",
+  "line": 4,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/app/api/setup/storage/route.ts",
+  "line": 4,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed."
+}
+{
+  "file": "src/app/api/test/create-30-patients/route.ts",
+  "line": 4,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/app/api/test/create-complete-practice-data/route.ts",
+  "line": 4,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed."
+}
+{
+  "file": "src/app/api/test/create-deals-correct-schema/route.ts",
+  "line": 4,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+}
+{
+  "file": "src/app/api/test/create-full-practice/route.ts",
+  "line": 4,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 880,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 31 to the 15 allowed."
+}
+{
+  "file": "src/components/contacts/contact-detail-view.tsx",
+  "line": 1240,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 31 to the 15 allowed."
+}
+{
+  "file": "src/components/contacts/contact-profile-dialog.tsx",
+  "line": 268,
+  "rule": "typescript:S3776",
+  "message": "Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed."
+}
+{
+  "file": "src/lib/supabase-server.ts",
+  "line": 7,
+  "rule": "typescript:S4123",
+  "message": "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+}

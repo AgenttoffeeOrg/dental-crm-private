@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Backfill Existing Data
 -- Purpose: Safely populate new fields for existing tenants and users
@@ -124,7 +126,7 @@ WHERE s.tenant_id IS NOT NULL;
   -- Note: This is handled by migration 001a automatically
   -- Just verify they exist
   
-  RAISE NOTICE '✅ Tenant admins already created by migration 001a';
+  DO $tnotice$ BEGIN RAISE NOTICE '✅ Tenant admins already created by migration 001a'; END $tnotice$;
 
 -- =====================================================
 -- 6. VERIFICATION: Count backfilled records

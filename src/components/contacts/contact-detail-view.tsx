@@ -273,7 +273,7 @@ export function ContactDetailView({
     if (timestamps.length === 0) return null
     return timestamps.reduce((latest, current) =>
       new Date(current) > new Date(latest) ? current : latest
-    )
+    , timestamps[0]) // Add initial value
   }, [contact?.updated_at, deals, psychHistory])
 
   const lastInteractionLabel = useMemo(() => {
@@ -551,8 +551,8 @@ export function ContactDetailView({
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-3">Tags</h3>
                   <div className="flex flex-wrap gap-1">
-                    {contact.tags.map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
+                    {contact.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-xs">
                         {tag}
                       </Badge>
                     ))}
@@ -639,11 +639,15 @@ export function ContactDetailView({
                             />
                           </div>
                           <p className="mt-2 text-xs text-red-700">
-                            {psychProfile.anxiety_level >= 70
-                              ? 'High anxiety — lead with reassurance and allow space for questions.'
-                              : psychProfile.anxiety_level >= 45
-                              ? 'Moderate anxiety — acknowledge concerns and set clear expectations.'
-                              : 'Low anxiety — focus on outcomes and keep momentum.'}
+                            {(() => {
+                              if (psychProfile.anxiety_level >= 70) {
+                                return 'High anxiety — lead with reassurance and allow space for questions.'
+                              }
+                              if (psychProfile.anxiety_level >= 45) {
+                                return 'Moderate anxiety — acknowledge concerns and set clear expectations.'
+                              }
+                              return 'Low anxiety — focus on outcomes and keep momentum.'
+                            })()}
                           </p>
                         </div>
                       )}
@@ -665,11 +669,15 @@ export function ContactDetailView({
                             />
                           </div>
                           <p className="mt-2 text-xs text-emerald-700">
-                            {psychProfile.trust_score >= 70
-                              ? 'High trust — you can recommend next steps confidently.'
-                              : psychProfile.trust_score >= 45
-                              ? 'Building trust — reinforce credibility with social proof.'
-                              : 'Low trust — invest time in rapport and validation.'}
+                            {(() => {
+                              if (psychProfile.trust_score >= 70) {
+                                return 'High trust — you can recommend next steps confidently.'
+                              }
+                              if (psychProfile.trust_score >= 45) {
+                                return 'Building trust — reinforce credibility with social proof.'
+                              }
+                              return 'Low trust — invest time in rapport and validation.'
+                            })()}
                           </p>
                         </div>
                       )}
@@ -751,8 +759,8 @@ export function ContactDetailView({
                             Primary Concerns
                           </p>
                           <ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">
-                            {psychProfile.snapshot.primary_concerns.map((concern: string, idx: number) => (
-                              <li key={idx}>{concern}</li>
+                            {psychProfile.snapshot.primary_concerns.map((concern: string) => (
+                              <li key={concern}>{concern}</li>
                             ))}
                           </ul>
                         </div>
@@ -886,6 +894,10 @@ export function ContactDetailView({
                         <div
                           key={deal.id}
                           onClick={() => router.push(`/deals/${deal.id}`)}
+                          onKeyDown={(e) => e.key === 'Enter' && router.push(`/deals/${deal.id}`)}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`View deal ${deal.name || deal.id}`}
                           className={`p-3 rounded-lg border cursor-pointer group transition-all hover:shadow-sm ${
                             isActive ? 'bg-blue-50 border-blue-200 hover:border-blue-300 hover:bg-blue-100' :
                             isWon ? 'bg-green-50 border-green-200 hover:border-green-300' :
@@ -1246,6 +1258,10 @@ export function ContactDetailView({
                         <div
                           key={deal.id}
                           onClick={() => router.push(`/deals/${deal.id}`)}
+                          onKeyDown={(e) => e.key === 'Enter' && router.push(`/deals/${deal.id}`)}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`View deal ${deal.name || deal.id}`}
                           className={`p-4 rounded-lg border cursor-pointer group transition-all hover:shadow-md ${
                             isActive ? 'bg-blue-50 border-blue-200 hover:border-blue-300' :
                             isWon ? 'bg-green-50 border-green-200 hover:border-green-300' :
@@ -1357,6 +1373,10 @@ export function ContactDetailView({
                       <div
                         key={deal.id}
                         onClick={() => router.push(`/deals/${deal.id}`)}
+                        onKeyDown={(e) => e.key === 'Enter' && router.push(`/deals/${deal.id}`)}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`View deal ${deal.name || deal.id}`}
                         className={`p-4 rounded-lg border cursor-pointer group transition-all hover:shadow-md ${
                           isActive ? 'bg-white border-blue-200 hover:border-blue-300' :
                           isWon ? 'bg-green-50 border-green-200 hover:border-green-300' :

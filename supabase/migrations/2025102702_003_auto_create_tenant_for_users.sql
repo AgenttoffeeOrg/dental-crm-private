@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- FIX: AUTO-CREATE TENANT FOR NEW USERS
 -- =====================================================
@@ -100,7 +102,7 @@ BEGIN
 END $$;
 
 -- =====================================================
--- PART 2: CREATE TRIGGER FOR FUTURE SIGN-UPS
+-- PART 2: CREATE OR REPLACE TRIGGER FOR FUTURE SIGN-UPS
 -- =====================================================
 
 -- Function to auto-create tenant for new users
@@ -186,9 +188,9 @@ BEGIN
 END;
 $$;
 
--- Create trigger on app_users INSERT
+-- CREATE OR REPLACE TRIGGER on app_users INSERT
 DROP TRIGGER IF EXISTS trigger_auto_create_tenant_for_new_user ON app_users;
-CREATE TRIGGER trigger_auto_create_tenant_for_new_user
+CREATE OR REPLACE TRIGGER trigger_auto_create_tenant_for_new_user
   BEFORE INSERT ON app_users
   FOR EACH ROW
   EXECUTE FUNCTION auto_create_tenant_for_new_user();

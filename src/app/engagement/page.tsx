@@ -1002,8 +1002,12 @@ function BotConsolePanel({
 }
 
 function ChannelBadge({ channel }: { channel: BotSession['channel'] }) {
-  const Icon =
-    channel === 'sms' ? Smartphone : channel === 'voice' ? Phone : channel === 'whatsapp' ? MessageCircle : Bot
+  const Icon = (() => {
+    if (channel === 'sms') return Smartphone
+    if (channel === 'voice') return Phone
+    if (channel === 'whatsapp') return MessageCircle
+    return Bot
+  })()
   return (
     <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600">
       <Icon className="h-3 w-3" />
@@ -1184,8 +1188,9 @@ function CreateCampaignDialog({ open, onOpenChange, form, onFormChange, onSubmit
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Campaign Name</label>
+            <label htmlFor="campaign-name" className="text-sm font-medium text-gray-700 mb-1 block">Campaign Name</label>
             <Input
+              id="campaign-name"
               value={form.name}
               onChange={(event) => onFormChange({ ...form, name: event.target.value })}
               placeholder="e.g., New Patient Reactivation"
@@ -1193,8 +1198,9 @@ function CreateCampaignDialog({ open, onOpenChange, form, onFormChange, onSubmit
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Description</label>
+            <label htmlFor="campaign-description" className="text-sm font-medium text-gray-700 mb-1 block">Description</label>
             <Textarea
+              id="campaign-description"
               rows={4}
               value={form.description}
               onChange={(event) => onFormChange({ ...form, description: event.target.value })}
@@ -1204,9 +1210,9 @@ function CreateCampaignDialog({ open, onOpenChange, form, onFormChange, onSubmit
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">Goal</label>
+              <label htmlFor="campaign-goal" className="text-sm font-medium text-gray-700 mb-1 block">Goal</label>
               <Select value={form.goal} onValueChange={(value) => onFormChange({ ...form, goal: value })}>
-                <SelectTrigger>
+                <SelectTrigger id="campaign-goal" aria-labelledby="campaign-goal-label">
                   <SelectValue placeholder="Select goal" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1220,9 +1226,9 @@ function CreateCampaignDialog({ open, onOpenChange, form, onFormChange, onSubmit
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">Trigger</label>
+              <label id="campaign-trigger-label" htmlFor="campaign-trigger" className="text-sm font-medium text-gray-700 mb-1 block">Trigger</label>
               <Select value={form.trigger} onValueChange={(value) => onFormChange({ ...form, trigger: value })}>
-                <SelectTrigger>
+                <SelectTrigger id="campaign-trigger" aria-labelledby="campaign-trigger-label">
                   <SelectValue placeholder="Select trigger" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1237,9 +1243,9 @@ function CreateCampaignDialog({ open, onOpenChange, form, onFormChange, onSubmit
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Timezone</label>
+            <label id="campaign-timezone-label" htmlFor="campaign-timezone" className="text-sm font-medium text-gray-700 mb-1 block">Timezone</label>
             <Select value={form.timezone} onValueChange={(value) => onFormChange({ ...form, timezone: value })}>
-              <SelectTrigger>
+              <SelectTrigger id="campaign-timezone" aria-labelledby="campaign-timezone-label">
                 <SelectValue placeholder="Select timezone" />
               </SelectTrigger>
               <SelectContent>

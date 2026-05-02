@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 1: USER TENANT MEMBERSHIPS
 -- Purpose: Enable true multi-org membership (one user → many orgs)
@@ -48,7 +50,8 @@ COMMENT ON TYPE membership_status IS
 -- 1. CREATE USER_TENANT_MEMBERSHIPS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS user_tenant_memberships (
+DROP TABLE IF EXISTS user_tenant_memberships CASCADE;
+CREATE TABLE user_tenant_memberships (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -143,7 +146,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_memberships_updated_at
+CREATE OR REPLACE TRIGGER trigger_memberships_updated_at
   BEFORE UPDATE ON user_tenant_memberships
   FOR EACH ROW
   EXECUTE FUNCTION update_memberships_updated_at();
@@ -233,8 +236,8 @@ COMMENT ON FUNCTION count_user_memberships(UUID) IS
 ALTER TABLE user_tenant_memberships ENABLE ROW LEVEL SECURITY;
 
 -- Policy 1: Users can view their own memberships
-CREATE POLICY "Users can view own memberships"
-  ON user_tenant_memberships
+DROP POLICY IF EXISTS "Users can view own memberships" ON user_tenant_memberships;
+CREATE POLICY "Users can view own memberships" ON user_tenant_memberships
   FOR SELECT
   USING (user_id = auth.uid());
 
@@ -242,8 +245,8 @@ COMMENT ON POLICY "Users can view own memberships" ON user_tenant_memberships IS
   'Users can see all organizations they belong to';
 
 -- Policy 2: Tenant admins can view all memberships in their tenant
-CREATE POLICY "Tenant admins can view tenant memberships"
-  ON user_tenant_memberships
+DROP POLICY IF EXISTS "Tenant admins can view tenant memberships" ON user_tenant_memberships;
+CREATE POLICY "Tenant admins can view tenant memberships" ON user_tenant_memberships
   FOR SELECT
   USING (
     tenant_id IN (
@@ -259,8 +262,8 @@ COMMENT ON POLICY "Tenant admins can view tenant memberships" ON user_tenant_mem
   'Owners and admins can see all members of their organization';
 
 -- Policy 3: Service role (migrations, API) can do anything
-CREATE POLICY "Service role can manage memberships"
-  ON user_tenant_memberships
+DROP POLICY IF EXISTS "Service role can manage memberships" ON user_tenant_memberships;
+CREATE POLICY "Service role can manage memberships" ON user_tenant_memberships
   FOR ALL
   USING (auth.role() = 'service_role');
 
@@ -268,8 +271,8 @@ COMMENT ON POLICY "Service role can manage memberships" ON user_tenant_membershi
   'Backend services can create/update/delete memberships';
 
 -- Policy 4: Tenant admins can insert new memberships (invites)
-CREATE POLICY "Tenant admins can create memberships"
-  ON user_tenant_memberships
+DROP POLICY IF EXISTS "Tenant admins can create memberships" ON user_tenant_memberships;
+CREATE POLICY "Tenant admins can create memberships" ON user_tenant_memberships
   FOR INSERT
   WITH CHECK (
     tenant_id IN (
@@ -285,8 +288,8 @@ COMMENT ON POLICY "Tenant admins can create memberships" ON user_tenant_membersh
   'Owners and admins can invite users to their organization';
 
 -- Policy 5: Users can update their own membership (accept invite, etc)
-CREATE POLICY "Users can update own memberships"
-  ON user_tenant_memberships
+DROP POLICY IF EXISTS "Users can update own memberships" ON user_tenant_memberships;
+CREATE POLICY "Users can update own memberships" ON user_tenant_memberships
   FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
@@ -295,8 +298,8 @@ COMMENT ON POLICY "Users can update own memberships" ON user_tenant_memberships 
   'Users can accept invitations and update their own membership details';
 
 -- Policy 6: Tenant owners can update any membership in their tenant
-CREATE POLICY "Tenant owners can update tenant memberships"
-  ON user_tenant_memberships
+DROP POLICY IF EXISTS "Tenant owners can update tenant memberships" ON user_tenant_memberships;
+CREATE POLICY "Tenant owners can update tenant memberships" ON user_tenant_memberships
   FOR UPDATE
   USING (
     tenant_id IN (
@@ -312,8 +315,8 @@ COMMENT ON POLICY "Tenant owners can update tenant memberships" ON user_tenant_m
   'Owners can change roles, suspend members, etc';
 
 -- Policy 7: Tenant owners can delete memberships (remove users)
-CREATE POLICY "Tenant owners can remove members"
-  ON user_tenant_memberships
+DROP POLICY IF EXISTS "Tenant owners can remove members" ON user_tenant_memberships;
+CREATE POLICY "Tenant owners can remove members" ON user_tenant_memberships
   FOR DELETE
   USING (
     tenant_id IN (

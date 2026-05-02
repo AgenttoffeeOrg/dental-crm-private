@@ -155,8 +155,8 @@ export function CompetitorsTab({
                     </div>
                     <div className="text-xs text-gray-500">
                       {comp.distance_miles} miles away
-                      {comp.metrics.reviews_count && ` • ${comp.metrics.reviews_count} reviews`}
-                      {comp.metrics.avg_rating && ` • ${comp.metrics.avg_rating.toFixed(1)}★`}
+                      {comp.metrics.reviews_count != null && comp.metrics.reviews_count > 0 && ` • ${comp.metrics.reviews_count} reviews`}
+                      {comp.metrics.avg_rating != null && comp.metrics.avg_rating > 0 && ` • ${comp.metrics.avg_rating.toFixed(1)}★`}
                     </div>
                   </div>
                 </div>

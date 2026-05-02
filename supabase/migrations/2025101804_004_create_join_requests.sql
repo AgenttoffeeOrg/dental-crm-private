@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Create Organization Join Requests Table
 -- Purpose: Allow users to request joining existing organizations
@@ -11,7 +13,8 @@ BEGIN;
 -- 1. CREATE ORGANIZATION_JOIN_REQUESTS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS organization_join_requests (
+DROP TABLE IF EXISTS organization_join_requests CASCADE;
+CREATE TABLE organization_join_requests (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -109,7 +112,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_join_requests_updated_at
+CREATE OR REPLACE TRIGGER trigger_join_requests_updated_at
   BEFORE UPDATE ON organization_join_requests
   FOR EACH ROW
   EXECUTE FUNCTION update_join_requests_updated_at();
@@ -122,6 +125,7 @@ CREATE TRIGGER trigger_join_requests_updated_at
 ALTER TABLE organization_join_requests ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Requesters can see their own requests
+DROP POLICY IF EXISTS join_requests_select_own ON organization_join_requests;
 CREATE POLICY join_requests_select_own ON organization_join_requests
   FOR SELECT
   USING (
@@ -136,6 +140,7 @@ CREATE POLICY join_requests_select_own ON organization_join_requests
   );
 
 -- Policy: Admins can see requests for their organizations
+DROP POLICY IF EXISTS join_requests_select_admin ON organization_join_requests;
 CREATE POLICY join_requests_select_admin ON organization_join_requests
   FOR SELECT
   USING (
@@ -160,11 +165,13 @@ CREATE POLICY join_requests_select_admin ON organization_join_requests
   );
 
 -- Policy: Anyone can INSERT a join request
+DROP POLICY IF EXISTS join_requests_insert_anyone ON organization_join_requests;
 CREATE POLICY join_requests_insert_anyone ON organization_join_requests
   FOR INSERT
   WITH CHECK (TRUE);
 
 -- Policy: Only admins can UPDATE (approve/reject)
+DROP POLICY IF EXISTS join_requests_update_admin ON organization_join_requests;
 CREATE POLICY join_requests_update_admin ON organization_join_requests
   FOR UPDATE
   USING (

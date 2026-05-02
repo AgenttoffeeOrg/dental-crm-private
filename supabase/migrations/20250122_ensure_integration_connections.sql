@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- ENSURE INTEGRATION_CONNECTIONS TABLE EXISTS
 -- =====================================================
@@ -7,7 +9,8 @@
 -- =====================================================
 
 -- Create integration_connections table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.integration_connections (
+DROP TABLE IF EXISTS public.integration_connections CASCADE;
+CREATE TABLE public.integration_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
   
@@ -77,7 +80,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS integration_connections_updated_at ON public.integration_connections;
 
-CREATE TRIGGER integration_connections_updated_at
+CREATE OR REPLACE TRIGGER integration_connections_updated_at
   BEFORE UPDATE ON public.integration_connections
   FOR EACH ROW
   EXECUTE FUNCTION update_integration_connections_updated_at();
@@ -91,8 +94,8 @@ DROP POLICY IF EXISTS "Tenant isolation ALL connections" ON public.integration_c
 DROP POLICY IF EXISTS "Service role bypass connections" ON public.integration_connections;
 
 -- RLS Policies
-CREATE POLICY "Tenant isolation SELECT connections"
-  ON public.integration_connections FOR SELECT
+DROP POLICY IF EXISTS "Tenant isolation SELECT connections" ON public.integration_connections;
+CREATE POLICY "Tenant isolation SELECT connections" ON public.integration_connections FOR SELECT
   USING (
     tenant_id IN (
       SELECT active_tenant_id FROM app_users WHERE id = auth.uid()
@@ -101,8 +104,8 @@ CREATE POLICY "Tenant isolation SELECT connections"
     )
   );
 
-CREATE POLICY "Tenant isolation ALL connections"
-  ON public.integration_connections FOR ALL
+DROP POLICY IF EXISTS "Tenant isolation ALL connections" ON public.integration_connections;
+CREATE POLICY "Tenant isolation ALL connections" ON public.integration_connections FOR ALL
   USING (
     tenant_id IN (
       SELECT active_tenant_id FROM app_users WHERE id = auth.uid()

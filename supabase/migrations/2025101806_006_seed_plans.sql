@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Seed Default Plans
 -- Purpose: Populate plans table with default subscription tiers

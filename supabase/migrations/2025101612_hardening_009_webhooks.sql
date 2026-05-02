@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 4: Webhook Security & Idempotency
 -- Date: October 16, 2025
@@ -8,7 +10,8 @@
 -- 1. WEBHOOK EVENTS TABLE (Idempotency Store)
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS webhook_events (
+DROP TABLE IF EXISTS webhook_events CASCADE;
+CREATE TABLE webhook_events (
   id TEXT PRIMARY KEY, -- External event ID from provider (e.g., Twilio, Stripe)
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   
@@ -61,14 +64,17 @@ DROP POLICY IF EXISTS webhook_events_select ON webhook_events;
 DROP POLICY IF EXISTS webhook_events_insert ON webhook_events;
 DROP POLICY IF EXISTS webhook_events_service ON webhook_events;
 
+DROP POLICY IF EXISTS webhook_events_select ON webhook_events;
 CREATE POLICY webhook_events_select ON webhook_events
   FOR SELECT
   USING (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS webhook_events_insert ON webhook_events;
 CREATE POLICY webhook_events_insert ON webhook_events
   FOR INSERT
   WITH CHECK (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS webhook_events_service ON webhook_events;
 CREATE POLICY webhook_events_service ON webhook_events
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -234,7 +240,8 @@ END $$;
 -- 6. WEBHOOK STATS VIEW
 -- =====================================================
 
-CREATE OR REPLACE VIEW webhook_stats AS
+DROP VIEW IF EXISTS webhook_stats CASCADE;
+CREATE VIEW webhook_stats AS
 SELECT
   source,
   event_type,

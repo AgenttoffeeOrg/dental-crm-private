@@ -55,15 +55,7 @@ export default function MarketingDashboard() {
   const { appUser, loading: authLoading } = useAuth()
   const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
   
-  // Show empty state if user has no tenant
-  if (!hasTenant && !authLoading) {
-    return (
-      <DashboardLayout>
-        <NoOrgEmptyState title="Marketing" />
-      </DashboardLayout>
-    )
-  }
-
+  // All hooks must be called before any conditional returns
   const [stats, setStats] = useState<MarketingStats>({
     totalContacts: 0,
     activeCampaigns: 0,
@@ -86,6 +78,15 @@ export default function MarketingDashboard() {
       setLoading(false)
     }
   }, [appUser?.active_tenant_id, appUser?.tenant_id, authLoading])
+
+  // Show empty state if user has no tenant (after all hooks)
+  if (!hasTenant && !authLoading) {
+    return (
+      <DashboardLayout>
+        <NoOrgEmptyState title="Marketing" />
+      </DashboardLayout>
+    )
+  }
 
   const loadStats = async () => {
     const tenantId = appUser?.active_tenant_id || appUser?.tenant_id

@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 5A: ENHANCED USER INVITATIONS SYSTEM
 -- Purpose: Polish invite system with collision handling, caps, expiry, and bulk support
@@ -63,10 +65,12 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'user_invitations' AND column_name = 'location_id'
   ) THEN
-    ALTER TABLE user_invitations ADD COLUMN location_id UUID;
+    ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS location_id UUID;
     -- Add FK if locations table exists
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'locations') THEN
       ALTER TABLE user_invitations 
+        DROP CONSTRAINT IF EXISTS fk_user_invitations_location;
+ALTER TABLE user_invitations 
         ADD CONSTRAINT fk_user_invitations_location 
         FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL;
     END IF;
@@ -83,7 +87,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'user_invitations' AND column_name = 'cancelled_at'
   ) THEN
-    ALTER TABLE user_invitations ADD COLUMN cancelled_at TIMESTAMPTZ;
+    ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
     RAISE NOTICE '✅ Added cancelled_at to user_invitations';
   ELSE
     RAISE NOTICE 'ℹ️  cancelled_at already exists on user_invitations';
@@ -97,7 +101,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'user_invitations' AND column_name = 'cancelled_by'
   ) THEN
-    ALTER TABLE user_invitations ADD COLUMN cancelled_by UUID REFERENCES app_users(id);
+    ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS cancelled_by UUID REFERENCES app_users(id);
     RAISE NOTICE '✅ Added cancelled_by to user_invitations';
   ELSE
     RAISE NOTICE 'ℹ️  cancelled_by already exists on user_invitations';
@@ -111,7 +115,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'user_invitations' AND column_name = 'resend_count'
   ) THEN
-    ALTER TABLE user_invitations ADD COLUMN resend_count INTEGER DEFAULT 0;
+    ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS resend_count INTEGER DEFAULT 0;
     RAISE NOTICE '✅ Added resend_count to user_invitations';
   ELSE
     RAISE NOTICE 'ℹ️  resend_count already exists on user_invitations';
@@ -125,7 +129,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'user_invitations' AND column_name = 'last_sent_at'
   ) THEN
-    ALTER TABLE user_invitations ADD COLUMN last_sent_at TIMESTAMPTZ;
+    ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS last_sent_at TIMESTAMPTZ;
     RAISE NOTICE '✅ Added last_sent_at to user_invitations';
   ELSE
     RAISE NOTICE 'ℹ️  last_sent_at already exists on user_invitations';
@@ -139,7 +143,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'user_invitations' AND column_name = 'batch_id'
   ) THEN
-    ALTER TABLE user_invitations ADD COLUMN batch_id UUID;
+    ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS batch_id UUID;
     RAISE NOTICE '✅ Added batch_id to user_invitations';
   ELSE
     RAISE NOTICE 'ℹ️  batch_id already exists on user_invitations';
@@ -153,7 +157,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'user_invitations' AND column_name = 'metadata'
   ) THEN
-    ALTER TABLE user_invitations ADD COLUMN metadata JSONB DEFAULT '{}';
+    ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
     RAISE NOTICE '✅ Added metadata to user_invitations';
   ELSE
     RAISE NOTICE 'ℹ️  metadata already exists on user_invitations';
@@ -167,8 +171,8 @@ BEGIN
   ALTER TABLE user_invitations DROP CONSTRAINT IF EXISTS user_invitations_status_check;
   
   -- Add new constraint with 'bounced' status
-  ALTER TABLE user_invitations ADD CONSTRAINT user_invitations_status_check
-    CHECK (status IN ('pending', 'accepted', 'expired', 'cancelled', 'bounced'));
+  ALTER TABLE user_invitations DROP CONSTRAINT IF EXISTS user_invitations_status_check;
+ALTER TABLE user_invitations ADD CONSTRAINT user_invitations_status_check     CHECK (status IN ('pending', 'accepted', 'expired', 'cancelled', 'bounced'));
   
   RAISE NOTICE '✅ Updated status constraint to include bounced';
 END $$;
@@ -218,7 +222,8 @@ END $$;
 -- 2. CREATE INVITE_BATCHES TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS invite_batches (
+DROP TABLE IF EXISTS invite_batches CASCADE;
+CREATE TABLE invite_batches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   created_by UUID NOT NULL REFERENCES app_users(id),
@@ -247,13 +252,13 @@ CREATE INDEX IF NOT EXISTS idx_invite_batches_status
 ALTER TABLE invite_batches ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies
-CREATE POLICY "Users can view batches in their tenant"
-  ON invite_batches
+DROP POLICY IF EXISTS "Users can view batches in their tenant" ON invite_batches;
+CREATE POLICY "Users can view batches in their tenant" ON invite_batches
   FOR SELECT
   USING (tenant_id = public.get_user_tenant_id_compat());
 
-CREATE POLICY "Admins can create batches"
-  ON invite_batches
+DROP POLICY IF EXISTS "Admins can create batches" ON invite_batches;
+CREATE POLICY "Admins can create batches" ON invite_batches
   FOR INSERT
   WITH CHECK (
     tenant_id = public.get_user_tenant_id_compat()
@@ -266,8 +271,8 @@ CREATE POLICY "Admins can create batches"
     )
   );
 
-CREATE POLICY "Service role can manage batches"
-  ON invite_batches
+DROP POLICY IF EXISTS "Service role can manage batches" ON invite_batches;
+CREATE POLICY "Service role can manage batches" ON invite_batches
   FOR ALL
   USING (auth.role() = 'service_role');
 
@@ -284,7 +289,8 @@ END $$;
 -- 3. CREATE INVITE_SETTINGS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS invite_settings (
+DROP TABLE IF EXISTS invite_settings CASCADE;
+CREATE TABLE invite_settings (
   tenant_id UUID PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
   max_pending_invites INTEGER DEFAULT 50,
   invite_expiry_days INTEGER DEFAULT 7,
@@ -302,13 +308,13 @@ CREATE TABLE IF NOT EXISTS invite_settings (
 ALTER TABLE invite_settings ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies
-CREATE POLICY "Users can view settings for their tenant"
-  ON invite_settings
+DROP POLICY IF EXISTS "Users can view settings for their tenant" ON invite_settings;
+CREATE POLICY "Users can view settings for their tenant" ON invite_settings
   FOR SELECT
   USING (tenant_id = public.get_user_tenant_id_compat());
 
-CREATE POLICY "Admins can manage settings"
-  ON invite_settings
+DROP POLICY IF EXISTS "Admins can manage settings" ON invite_settings;
+CREATE POLICY "Admins can manage settings" ON invite_settings
   FOR ALL
   USING (
     tenant_id = public.get_user_tenant_id_compat()

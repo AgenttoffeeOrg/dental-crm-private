@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 2A: LOCATIONS TABLE (ULTRA-PRECISE FIX)
 -- Purpose: Create or update locations table with all required columns
@@ -46,7 +48,8 @@ BEGIN
 END $$;
 
 -- Create table (will skip if exists)
-CREATE TABLE IF NOT EXISTS locations (
+DROP TABLE IF EXISTS locations CASCADE;
+CREATE TABLE locations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -81,7 +84,8 @@ BEGIN
     SELECT 1 FROM pg_constraint 
     WHERE conname = 'locations_tenant_id_name_key'
   ) THEN
-    ALTER TABLE locations ADD CONSTRAINT locations_tenant_id_name_key UNIQUE(tenant_id, name);
+    ALTER TABLE locations DROP CONSTRAINT IF EXISTS locations_tenant_id_name_key;
+ALTER TABLE locations ADD CONSTRAINT locations_tenant_id_name_key UNIQUE(tenant_id, name);
     RAISE NOTICE 'Added unique constraint: locations_tenant_id_name_key';
   END IF;
   
@@ -90,7 +94,8 @@ BEGIN
     SELECT 1 FROM pg_constraint 
     WHERE conname = 'locations_name_check'
   ) THEN
-    ALTER TABLE locations ADD CONSTRAINT locations_name_check CHECK (length(trim(name)) > 0);
+    ALTER TABLE locations DROP CONSTRAINT IF EXISTS locations_name_check;
+ALTER TABLE locations ADD CONSTRAINT locations_name_check CHECK (length(trim(name)) > 0);
     RAISE NOTICE 'Added check constraint: locations_name_check';
   END IF;
 EXCEPTION
@@ -173,7 +178,7 @@ $$ LANGUAGE plpgsql;
 -- Drop trigger if exists (to recreate)
 DROP TRIGGER IF EXISTS trigger_locations_updated_at ON locations;
 
-CREATE TRIGGER trigger_locations_updated_at
+CREATE OR REPLACE TRIGGER trigger_locations_updated_at
   BEFORE UPDATE ON locations
   FOR EACH ROW
   EXECUTE FUNCTION update_locations_updated_at();
@@ -272,8 +277,8 @@ DROP POLICY IF EXISTS "Tenant owners can delete locations" ON locations;
 DROP POLICY IF EXISTS "Service role can manage locations" ON locations;
 
 -- Policy 1: Users can view locations for their tenant(s)
-CREATE POLICY "Users can view tenant locations"
-  ON locations
+DROP POLICY IF EXISTS "Users can view tenant locations" ON locations;
+CREATE POLICY "Users can view tenant locations" ON locations
   FOR SELECT
   USING (
     tenant_id IN (
@@ -288,8 +293,8 @@ COMMENT ON POLICY "Users can view tenant locations" ON locations IS
   'Users can see locations for organizations they belong to';
 
 -- Policy 2: Tenant admins can create locations
-CREATE POLICY "Tenant admins can create locations"
-  ON locations
+DROP POLICY IF EXISTS "Tenant admins can create locations" ON locations;
+CREATE POLICY "Tenant admins can create locations" ON locations
   FOR INSERT
   WITH CHECK (
     tenant_id IN (
@@ -305,8 +310,8 @@ COMMENT ON POLICY "Tenant admins can create locations" ON locations IS
   'Owners and admins can create new locations for their organization';
 
 -- Policy 3: Tenant admins can update locations
-CREATE POLICY "Tenant admins can update locations"
-  ON locations
+DROP POLICY IF EXISTS "Tenant admins can update locations" ON locations;
+CREATE POLICY "Tenant admins can update locations" ON locations
   FOR UPDATE
   USING (
     tenant_id IN (
@@ -322,8 +327,8 @@ COMMENT ON POLICY "Tenant admins can update locations" ON locations IS
   'Owners and admins can modify locations in their organization';
 
 -- Policy 4: Only owners can delete locations
-CREATE POLICY "Tenant owners can delete locations"
-  ON locations
+DROP POLICY IF EXISTS "Tenant owners can delete locations" ON locations;
+CREATE POLICY "Tenant owners can delete locations" ON locations
   FOR DELETE
   USING (
     tenant_id IN (
@@ -339,8 +344,8 @@ COMMENT ON POLICY "Tenant owners can delete locations" ON locations IS
   'Only owners can delete locations (destructive operation)';
 
 -- Policy 5: Service role can do anything
-CREATE POLICY "Service role can manage locations"
-  ON locations
+DROP POLICY IF EXISTS "Service role can manage locations" ON locations;
+CREATE POLICY "Service role can manage locations" ON locations
   FOR ALL
   USING (auth.role() = 'service_role');
 

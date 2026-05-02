@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 1.3: RLS Policy Reset & Consistency
 -- Date: October 16, 2025
@@ -25,18 +27,22 @@ DROP POLICY IF EXISTS contacts_update ON contacts;
 DROP POLICY IF EXISTS contacts_delete ON contacts;
 DROP POLICY IF EXISTS contacts_service_role ON contacts;
 
+DROP POLICY IF EXISTS contacts_select ON contacts;
 CREATE POLICY contacts_select ON contacts
   FOR SELECT
   USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at));
 
+DROP POLICY IF EXISTS contacts_insert ON contacts;
 CREATE POLICY contacts_insert ON contacts
   FOR INSERT
   WITH CHECK (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS contacts_update ON contacts;
 CREATE POLICY contacts_update ON contacts
   FOR UPDATE
   USING (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS contacts_delete ON contacts;
 CREATE POLICY contacts_delete ON contacts
   FOR DELETE
   USING (
@@ -45,6 +51,7 @@ CREATE POLICY contacts_delete ON contacts
   );
 
 -- Service role bypass
+DROP POLICY IF EXISTS contacts_service_role ON contacts;
 CREATE POLICY contacts_service_role ON contacts
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -61,18 +68,22 @@ DROP POLICY IF EXISTS deals_update ON deals;
 DROP POLICY IF EXISTS deals_delete ON deals;
 DROP POLICY IF EXISTS deals_service_role ON deals;
 
+DROP POLICY IF EXISTS deals_select ON deals;
 CREATE POLICY deals_select ON deals
   FOR SELECT
   USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at));
 
+DROP POLICY IF EXISTS deals_insert ON deals;
 CREATE POLICY deals_insert ON deals
   FOR INSERT
   WITH CHECK (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS deals_update ON deals;
 CREATE POLICY deals_update ON deals
   FOR UPDATE
   USING (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS deals_delete ON deals;
 CREATE POLICY deals_delete ON deals
   FOR DELETE
   USING (
@@ -80,6 +91,7 @@ CREATE POLICY deals_delete ON deals
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS deals_service_role ON deals;
 CREATE POLICY deals_service_role ON deals
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -96,10 +108,12 @@ DROP POLICY IF EXISTS pipelines_update ON pipelines;
 DROP POLICY IF EXISTS pipelines_delete ON pipelines;
 DROP POLICY IF EXISTS pipelines_service_role ON pipelines;
 
+DROP POLICY IF EXISTS pipelines_select ON pipelines;
 CREATE POLICY pipelines_select ON pipelines
   FOR SELECT
   USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at));
 
+DROP POLICY IF EXISTS pipelines_insert ON pipelines;
 CREATE POLICY pipelines_insert ON pipelines
   FOR INSERT
   WITH CHECK (
@@ -107,6 +121,7 @@ CREATE POLICY pipelines_insert ON pipelines
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'manager'])
   );
 
+DROP POLICY IF EXISTS pipelines_update ON pipelines;
 CREATE POLICY pipelines_update ON pipelines
   FOR UPDATE
   USING (
@@ -114,6 +129,7 @@ CREATE POLICY pipelines_update ON pipelines
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'manager'])
   );
 
+DROP POLICY IF EXISTS pipelines_delete ON pipelines;
 CREATE POLICY pipelines_delete ON pipelines
   FOR DELETE
   USING (
@@ -121,6 +137,7 @@ CREATE POLICY pipelines_delete ON pipelines
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS pipelines_service_role ON pipelines;
 CREATE POLICY pipelines_service_role ON pipelines
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -137,10 +154,12 @@ DROP POLICY IF EXISTS pipeline_stages_update ON pipeline_stages;
 DROP POLICY IF EXISTS pipeline_stages_delete ON pipeline_stages;
 DROP POLICY IF EXISTS pipeline_stages_service_role ON pipeline_stages;
 
+DROP POLICY IF EXISTS pipeline_stages_select ON pipeline_stages;
 CREATE POLICY pipeline_stages_select ON pipeline_stages
   FOR SELECT
   USING (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS pipeline_stages_insert ON pipeline_stages;
 CREATE POLICY pipeline_stages_insert ON pipeline_stages
   FOR INSERT
   WITH CHECK (
@@ -148,6 +167,7 @@ CREATE POLICY pipeline_stages_insert ON pipeline_stages
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'manager'])
   );
 
+DROP POLICY IF EXISTS pipeline_stages_update ON pipeline_stages;
 CREATE POLICY pipeline_stages_update ON pipeline_stages
   FOR UPDATE
   USING (
@@ -155,6 +175,7 @@ CREATE POLICY pipeline_stages_update ON pipeline_stages
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'manager'])
   );
 
+DROP POLICY IF EXISTS pipeline_stages_delete ON pipeline_stages;
 CREATE POLICY pipeline_stages_delete ON pipeline_stages
   FOR DELETE
   USING (
@@ -162,6 +183,7 @@ CREATE POLICY pipeline_stages_delete ON pipeline_stages
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS pipeline_stages_service_role ON pipeline_stages;
 CREATE POLICY pipeline_stages_service_role ON pipeline_stages
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -178,18 +200,22 @@ DROP POLICY IF EXISTS tasks_update ON tasks;
 DROP POLICY IF EXISTS tasks_delete ON tasks;
 DROP POLICY IF EXISTS tasks_service_role ON tasks;
 
+DROP POLICY IF EXISTS tasks_select ON tasks;
 CREATE POLICY tasks_select ON tasks
   FOR SELECT
   USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at));
 
+DROP POLICY IF EXISTS tasks_insert ON tasks;
 CREATE POLICY tasks_insert ON tasks
   FOR INSERT
   WITH CHECK (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS tasks_update ON tasks;
 CREATE POLICY tasks_update ON tasks
   FOR UPDATE
   USING (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS tasks_delete ON tasks;
 CREATE POLICY tasks_delete ON tasks
   FOR DELETE
   USING (
@@ -197,6 +223,7 @@ CREATE POLICY tasks_delete ON tasks
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS tasks_service_role ON tasks;
 CREATE POLICY tasks_service_role ON tasks
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -213,18 +240,22 @@ DROP POLICY IF EXISTS activities_update ON activities;
 DROP POLICY IF EXISTS activities_delete ON activities;
 DROP POLICY IF EXISTS activities_service_role ON activities;
 
+DROP POLICY IF EXISTS activities_select ON activities;
 CREATE POLICY activities_select ON activities
   FOR SELECT
   USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at));
 
+DROP POLICY IF EXISTS activities_insert ON activities;
 CREATE POLICY activities_insert ON activities
   FOR INSERT
   WITH CHECK (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS activities_update ON activities;
 CREATE POLICY activities_update ON activities
   FOR UPDATE
   USING (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS activities_delete ON activities;
 CREATE POLICY activities_delete ON activities
   FOR DELETE
   USING (
@@ -232,6 +263,7 @@ CREATE POLICY activities_delete ON activities
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS activities_service_role ON activities;
 CREATE POLICY activities_service_role ON activities
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -248,18 +280,22 @@ DROP POLICY IF EXISTS calls_update ON calls;
 DROP POLICY IF EXISTS calls_delete ON calls;
 DROP POLICY IF EXISTS calls_service_role ON calls;
 
+DROP POLICY IF EXISTS calls_select ON calls;
 CREATE POLICY calls_select ON calls
   FOR SELECT
   USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at));
 
+DROP POLICY IF EXISTS calls_insert ON calls;
 CREATE POLICY calls_insert ON calls
   FOR INSERT
   WITH CHECK (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS calls_update ON calls;
 CREATE POLICY calls_update ON calls
   FOR UPDATE
   USING (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS calls_delete ON calls;
 CREATE POLICY calls_delete ON calls
   FOR DELETE
   USING (
@@ -267,6 +303,7 @@ CREATE POLICY calls_delete ON calls
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS calls_service_role ON calls;
 CREATE POLICY calls_service_role ON calls
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -283,18 +320,22 @@ DROP POLICY IF EXISTS files_update ON files;
 DROP POLICY IF EXISTS files_delete ON files;
 DROP POLICY IF EXISTS files_service_role ON files;
 
+DROP POLICY IF EXISTS files_select ON files;
 CREATE POLICY files_select ON files
   FOR SELECT
   USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at));
 
+DROP POLICY IF EXISTS files_insert ON files;
 CREATE POLICY files_insert ON files
   FOR INSERT
   WITH CHECK (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS files_update ON files;
 CREATE POLICY files_update ON files
   FOR UPDATE
   USING (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS files_delete ON files;
 CREATE POLICY files_delete ON files
   FOR DELETE
   USING (
@@ -302,6 +343,7 @@ CREATE POLICY files_delete ON files
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS files_service_role ON files;
 CREATE POLICY files_service_role ON files
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -318,18 +360,22 @@ DROP POLICY IF EXISTS notes_update ON notes;
 DROP POLICY IF EXISTS notes_delete ON notes;
 DROP POLICY IF EXISTS notes_service_role ON notes;
 
+DROP POLICY IF EXISTS notes_select ON notes;
 CREATE POLICY notes_select ON notes
   FOR SELECT
   USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at));
 
+DROP POLICY IF EXISTS notes_insert ON notes;
 CREATE POLICY notes_insert ON notes
   FOR INSERT
   WITH CHECK (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS notes_update ON notes;
 CREATE POLICY notes_update ON notes
   FOR UPDATE
   USING (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS notes_delete ON notes;
 CREATE POLICY notes_delete ON notes
   FOR DELETE
   USING (
@@ -337,6 +383,7 @@ CREATE POLICY notes_delete ON notes
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS notes_service_role ON notes;
 CREATE POLICY notes_service_role ON notes
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -353,10 +400,12 @@ DROP POLICY IF EXISTS locations_update ON locations;
 DROP POLICY IF EXISTS locations_delete ON locations;
 DROP POLICY IF EXISTS locations_service_role ON locations;
 
+DROP POLICY IF EXISTS locations_select ON locations;
 CREATE POLICY locations_select ON locations
   FOR SELECT
   USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at));
 
+DROP POLICY IF EXISTS locations_insert ON locations;
 CREATE POLICY locations_insert ON locations
   FOR INSERT
   WITH CHECK (
@@ -364,6 +413,7 @@ CREATE POLICY locations_insert ON locations
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS locations_update ON locations;
 CREATE POLICY locations_update ON locations
   FOR UPDATE
   USING (
@@ -371,6 +421,7 @@ CREATE POLICY locations_update ON locations
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS locations_delete ON locations;
 CREATE POLICY locations_delete ON locations
   FOR DELETE
   USING (
@@ -378,6 +429,7 @@ CREATE POLICY locations_delete ON locations
     AND user_has_role(ARRAY['owner', 'super_admin'])
   );
 
+DROP POLICY IF EXISTS locations_service_role ON locations;
 CREATE POLICY locations_service_role ON locations
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -394,10 +446,12 @@ DROP POLICY IF EXISTS automations_update ON automations;
 DROP POLICY IF EXISTS automations_delete ON automations;
 DROP POLICY IF EXISTS automations_service_role ON automations;
 
+DROP POLICY IF EXISTS automations_select ON automations;
 CREATE POLICY automations_select ON automations
   FOR SELECT
   USING (tenant_id = current_tenant_id() AND is_not_deleted(deleted_at));
 
+DROP POLICY IF EXISTS automations_insert ON automations;
 CREATE POLICY automations_insert ON automations
   FOR INSERT
   WITH CHECK (
@@ -405,6 +459,7 @@ CREATE POLICY automations_insert ON automations
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'manager'])
   );
 
+DROP POLICY IF EXISTS automations_update ON automations;
 CREATE POLICY automations_update ON automations
   FOR UPDATE
   USING (
@@ -412,6 +467,7 @@ CREATE POLICY automations_update ON automations
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'manager'])
   );
 
+DROP POLICY IF EXISTS automations_delete ON automations;
 CREATE POLICY automations_delete ON automations
   FOR DELETE
   USING (
@@ -419,6 +475,7 @@ CREATE POLICY automations_delete ON automations
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin'])
   );
 
+DROP POLICY IF EXISTS automations_service_role ON automations;
 CREATE POLICY automations_service_role ON automations
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -433,14 +490,17 @@ DROP POLICY IF EXISTS automation_logs_select ON automation_execution_logs;
 DROP POLICY IF EXISTS automation_logs_insert ON automation_execution_logs;
 DROP POLICY IF EXISTS automation_logs_service_role ON automation_execution_logs;
 
+DROP POLICY IF EXISTS automation_logs_select ON automation_execution_logs;
 CREATE POLICY automation_logs_select ON automation_execution_logs
   FOR SELECT
   USING (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS automation_logs_insert ON automation_execution_logs;
 CREATE POLICY automation_logs_insert ON automation_execution_logs
   FOR INSERT
   WITH CHECK (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS automation_logs_service_role ON automation_execution_logs;
 CREATE POLICY automation_logs_service_role ON automation_execution_logs
   FOR ALL
   USING (auth.role() = 'service_role');

@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, Home } from 'lucide-react'
 
-export default function Error({
+export default function GlobalErrorPage({
   error,
   reset,
 }: {

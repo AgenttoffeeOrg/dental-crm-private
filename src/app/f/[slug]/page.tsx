@@ -32,7 +32,7 @@ export default function PublicFormPage() {
         .eq('is_published', true)
 
       // Check if slug looks like a UUID (has dashes and is 36 chars)
-      const isUUID = params.slug && params.slug.length === 36 && params.slug.includes('-')
+      const isUUID = params.slug?.length === 36 && params.slug.includes('-')
       
       if (isUUID) {
         // Try ID lookup first

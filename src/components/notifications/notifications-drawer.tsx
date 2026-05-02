@@ -255,6 +255,10 @@ export function NotificationsDrawer({ isOpen, onClose }: NotificationsDrawerProp
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close notifications drawer"
       />
       
       {/* Drawer */}

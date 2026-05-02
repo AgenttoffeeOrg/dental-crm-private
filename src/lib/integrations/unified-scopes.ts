@@ -181,7 +181,7 @@ export function getActivableServices(
  */
 export function isSensitiveScope(scope: string, provider: string): boolean {
   const group = INTEGRATION_GROUPS[provider]
-  if (!group || !group.sensitiveScopes) return false
+  if (!group?.sensitiveScopes) return false
   
   return group.sensitiveScopes.includes(scope)
 }

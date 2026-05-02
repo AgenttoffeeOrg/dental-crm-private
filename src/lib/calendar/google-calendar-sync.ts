@@ -16,8 +16,8 @@ export interface GoogleCalendarConfig {
 }
 
 export class GoogleCalendarSync {
-  private supabase = createClient()
-  private apiBase = 'https://www.googleapis.com/calendar/v3'
+  private readonly supabase = createClient()
+  private readonly apiBase = 'https://www.googleapis.com/calendar/v3'
 
   /**
    * Initialize OAuth flow

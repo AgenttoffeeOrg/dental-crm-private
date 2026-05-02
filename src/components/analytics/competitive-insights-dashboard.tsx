@@ -29,7 +29,9 @@ function formatCurrency(cents?: number | null) {
 function formatDelta(delta?: number | null) {
   if (typeof delta !== 'number') return '—'
   const formatted = formatCurrency(Math.abs(delta))
-  return delta === 0 ? formatted : `${delta > 0 ? '+' : '-'}${formatted}`
+  if (delta === 0) return formatted
+  const sign = delta > 0 ? '+' : '-'
+  return `${sign}${formatted}`
 }
 
 function deltaColor(delta?: number | null) {
@@ -83,8 +85,8 @@ export function CompetitiveInsightsDashboard({ tenantId }: { tenantId?: string }
       })
     })
 
-    return entries
-      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    const sortedEntries = entries.toSorted((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    return sortedEntries
       .slice(0, 8)
       .map((entry) => ({
         label: `${entry.name} • ${entry.treatment}`,
@@ -148,7 +150,11 @@ export function CompetitiveInsightsDashboard({ tenantId }: { tenantId?: string }
           title="Avg Price Delta"
           value={formatCurrency(data.summary.avgPriceDelta)}
           icon={ArrowUpRight}
-          trend={data.summary.avgPriceDelta > 0 ? 'up' : data.summary.avgPriceDelta < 0 ? 'down' : 'neutral'}
+          trend={(() => {
+            if (data.summary.avgPriceDelta > 0) return 'up'
+            if (data.summary.avgPriceDelta < 0) return 'down'
+            return 'neutral'
+          })()}
           change={
             data.summary.avgPriceDelta !== 0
               ? {
@@ -302,17 +308,17 @@ function CompetitorRow({ competitor }: { competitor: CompetitorInsightRow }) {
 
       {competitor.latestPrices.length > 0 ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {competitor.latestPrices.map((price, index) => (
-            <div key={index} className="rounded-md border border-gray-100 bg-gray-50 p-3">
+          {competitor.latestPrices.map((price) => (
+            <div key={`${price.treatmentName}-${price.collectedAt}`} className="rounded-md border border-gray-100 bg-gray-50 p-3">
               <p className="text-xs uppercase text-gray-500">{price.treatmentName || 'General'}</p>
               <p className="text-lg font-semibold text-gray-900">{formatCurrency(price.priceCents)}</p>
               {typeof price.deltaCents === 'number' && price.previousPriceCents != null && (
                 <div className="mt-1 flex items-center gap-1 text-xs">
-                  {price.deltaCents > 0 ? (
-                    <ArrowUpRight className="h-3 w-3 text-red-600" />
-                  ) : price.deltaCents < 0 ? (
-                    <ArrowDownRight className="h-3 w-3 text-emerald-600" />
-                  ) : null}
+                  {(() => {
+                    if (price.deltaCents > 0) return <ArrowUpRight className="h-3 w-3 text-red-600" />
+                    if (price.deltaCents < 0) return <ArrowDownRight className="h-3 w-3 text-emerald-600" />
+                    return null
+                  })()}
                   <span className={deltaColor(price.deltaCents)}>{formatDelta(price.deltaCents)} vs. last</span>
                 </div>
               )}

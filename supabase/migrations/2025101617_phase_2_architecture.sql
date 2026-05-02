@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 2: ENTERPRISE MULTI-TENANT ARCHITECTURE
 -- Organization memberships, roles, and proper tenant model
@@ -35,7 +37,7 @@ END;
 $$ language 'plpgsql';
 
 DROP TRIGGER IF EXISTS update_tenants_updated_at ON tenants;
-CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants
+CREATE OR REPLACE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
@@ -51,7 +53,8 @@ CREATE INDEX IF NOT EXISTS idx_locations_active ON locations(tenant_id, is_activ
 
 -- This allows users to belong to multiple organizations
 -- with different roles and location access in each
-CREATE TABLE IF NOT EXISTS org_memberships (
+DROP TABLE IF EXISTS org_memberships CASCADE;
+CREATE TABLE org_memberships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -75,7 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_org_memberships_status ON org_memberships(status)
 CREATE INDEX IF NOT EXISTS idx_org_memberships_user_active ON org_memberships(user_id, tenant_id) WHERE status = 'active';
 
 DROP TRIGGER IF EXISTS update_org_memberships_updated_at ON org_memberships;
-CREATE TRIGGER update_org_memberships_updated_at BEFORE UPDATE ON org_memberships
+CREATE OR REPLACE TRIGGER update_org_memberships_updated_at BEFORE UPDATE ON org_memberships
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
@@ -116,7 +119,8 @@ UPDATE app_users SET current_org_id = tenant_id WHERE current_org_id IS NULL;
 -- 6. USER INVITATIONS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS user_invitations (
+DROP TABLE IF EXISTS user_invitations CASCADE;
+CREATE TABLE user_invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
@@ -217,13 +221,13 @@ $$;
 ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view org locations" ON locations;
-CREATE POLICY "Users can view org locations"
-  ON locations FOR SELECT
+DROP POLICY IF EXISTS "Users can view org locations" ON locations;
+CREATE POLICY "Users can view org locations" ON locations FOR SELECT
   USING (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Admins can manage org locations" ON locations;
-CREATE POLICY "Admins can manage org locations"
-  ON locations FOR ALL
+DROP POLICY IF EXISTS "Admins can manage org locations" ON locations;
+CREATE POLICY "Admins can manage org locations" ON locations FOR ALL
   USING (
     tenant_id = public.get_user_org_id() 
     AND public.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
@@ -233,13 +237,13 @@ CREATE POLICY "Admins can manage org locations"
 ALTER TABLE org_memberships ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view org memberships" ON org_memberships;
-CREATE POLICY "Users can view org memberships"
-  ON org_memberships FOR SELECT
+DROP POLICY IF EXISTS "Users can view org memberships" ON org_memberships;
+CREATE POLICY "Users can view org memberships" ON org_memberships FOR SELECT
   USING (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Admins can manage org memberships" ON org_memberships;
-CREATE POLICY "Admins can manage org memberships"
-  ON org_memberships FOR ALL
+DROP POLICY IF EXISTS "Admins can manage org memberships" ON org_memberships;
+CREATE POLICY "Admins can manage org memberships" ON org_memberships FOR ALL
   USING (
     tenant_id = public.get_user_org_id() 
     AND public.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
@@ -249,25 +253,28 @@ CREATE POLICY "Admins can manage org memberships"
 ALTER TABLE user_invitations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view org invitations" ON user_invitations;
-CREATE POLICY "Users can view org invitations"
-  ON user_invitations FOR SELECT
+DROP POLICY IF EXISTS "Users can view org invitations" ON user_invitations;
+CREATE POLICY "Users can view org invitations" ON user_invitations FOR SELECT
   USING (tenant_id = public.get_user_org_id());
 
 DROP POLICY IF EXISTS "Admins can manage org invitations" ON user_invitations;
-CREATE POLICY "Admins can manage org invitations"
-  ON user_invitations FOR ALL
+DROP POLICY IF EXISTS "Admins can manage org invitations" ON user_invitations;
+CREATE POLICY "Admins can manage org invitations" ON user_invitations FOR ALL
   USING (
     tenant_id = public.get_user_org_id() 
     AND public.get_user_role_in_org(tenant_id) IN ('owner', 'super_admin', 'admin')
   );
 
 -- Service role bypass for all
+DROP POLICY IF EXISTS "Service role bypass locations" ON locations;
 CREATE POLICY "Service role bypass locations" ON locations
   FOR ALL USING (auth.role() = 'service_role');
   
+DROP POLICY IF EXISTS "Service role bypass memberships" ON org_memberships;
 CREATE POLICY "Service role bypass memberships" ON org_memberships
   FOR ALL USING (auth.role() = 'service_role');
   
+DROP POLICY IF EXISTS "Service role bypass invitations" ON user_invitations;
 CREATE POLICY "Service role bypass invitations" ON user_invitations
   FOR ALL USING (auth.role() = 'service_role');
 
@@ -275,7 +282,8 @@ CREATE POLICY "Service role bypass invitations" ON user_invitations
 -- 9. AUDIT LOG FOR ORG CONTEXT SWITCHES
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS org_access_log (
+DROP TABLE IF EXISTS org_access_log CASCADE;
+CREATE TABLE org_access_log (
   id BIGSERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES app_users(id),
   from_org_id UUID REFERENCES tenants(id),
@@ -296,7 +304,8 @@ CREATE INDEX IF NOT EXISTS idx_org_access_log_suspicious ON org_access_log(creat
 -- 10. ISOLATION VIOLATION LOG (Security Monitoring)
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS isolation_violations (
+DROP TABLE IF EXISTS isolation_violations CASCADE;
+CREATE TABLE isolation_violations (
   id BIGSERIAL PRIMARY KEY,
   user_id UUID REFERENCES app_users(id),
   user_org_id UUID REFERENCES tenants(id),

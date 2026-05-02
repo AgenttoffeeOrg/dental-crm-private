@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Extend Tenants Table
 -- Purpose: Add fields for domain discovery, billing, and multi-location support
@@ -138,7 +140,8 @@ BEGIN
     WHERE conname = 'check_verification_method' 
       AND conrelid = 'tenants'::regclass
   ) THEN
-    ALTER TABLE tenants ADD CONSTRAINT check_verification_method 
+    ALTER TABLE tenants DROP CONSTRAINT IF EXISTS check_verification_method;
+ALTER TABLE tenants ADD CONSTRAINT check_verification_method 
       CHECK (verification_method IN ('email', 'dns', 'html') OR verification_method IS NULL);
     RAISE NOTICE '✅ Added constraint: check_verification_method';
   ELSE
@@ -151,7 +154,8 @@ BEGIN
     WHERE conname = 'check_currency_code' 
       AND conrelid = 'tenants'::regclass
   ) THEN
-    ALTER TABLE tenants ADD CONSTRAINT check_currency_code 
+    ALTER TABLE tenants DROP CONSTRAINT IF EXISTS check_currency_code;
+ALTER TABLE tenants ADD CONSTRAINT check_currency_code 
       CHECK (currency_code ~ '^[A-Z]{3}$');
     RAISE NOTICE '✅ Added constraint: check_currency_code';
   ELSE
@@ -164,7 +168,8 @@ BEGIN
     WHERE conname = 'check_locale' 
       AND conrelid = 'tenants'::regclass
   ) THEN
-    ALTER TABLE tenants ADD CONSTRAINT check_locale 
+    ALTER TABLE tenants DROP CONSTRAINT IF EXISTS check_locale;
+ALTER TABLE tenants ADD CONSTRAINT check_locale 
       CHECK (locale ~ '^[a-z]{2}-[A-Z]{2}$');
     RAISE NOTICE '✅ Added constraint: check_locale';
   ELSE

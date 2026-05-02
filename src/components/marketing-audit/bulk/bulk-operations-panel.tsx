@@ -54,13 +54,13 @@ export function BulkOperationsPanel({
     try {
       switch (action) {
         case 'dismiss':
-          await onBulkDismiss?.(ids);
+          onBulkDismiss?.(ids); // Removed await - function may return void
           break;
         case 'create-tasks':
-          await onBulkCreateTasks?.(ids);
+          onBulkCreateTasks?.(ids); // Removed await - function may return void
           break;
         case 'export':
-          await onBulkExport?.(ids);
+          onBulkExport?.(ids); // Removed await - function may return void
           break;
       }
       

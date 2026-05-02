@@ -429,11 +429,15 @@ function StepSummary({ step }: { step: EngagementStep }) {
       return (
         <p className="text-sm text-gray-600">
           <span className="font-semibold text-gray-800">Delay:</span>{' '}
-          {step.config?.wait_seconds
-            ? `${Math.round(step.config.wait_seconds / 60)} minutes`
-            : step.wait_duration_seconds
-            ? `${Math.round(step.wait_duration_seconds / 60)} minutes`
-            : '—'}
+          {(() => {
+            if (step.config?.wait_seconds) {
+              return `${Math.round(step.config.wait_seconds / 60)} minutes`
+            }
+            if (step.wait_duration_seconds) {
+              return `${Math.round(step.wait_duration_seconds / 60)} minutes`
+            }
+            return '—'
+          })()}
         </p>
       )
     case 'notify_human':
@@ -529,9 +533,9 @@ function AddStepButton({ onSubmit }: { onSubmit: (form: CampaignStepForm) => Pro
         <div className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">Step Type</label>
+              <label id="step-type-label" htmlFor="step-type" className="text-sm font-medium text-gray-700 mb-1 block">Step Type</label>
               <Select value={type} onValueChange={(value) => setType(value as typeof type)}>
-                <SelectTrigger>
+                <SelectTrigger id="step-type" aria-labelledby="step-type-label">
                   <SelectValue placeholder="Select step type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -546,8 +550,9 @@ function AddStepButton({ onSubmit }: { onSubmit: (form: CampaignStepForm) => Pro
             {type === 'wait' && (
               <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Amount</label>
+                  <label htmlFor="wait-amount" className="text-sm font-medium text-gray-700 mb-1 block">Amount</label>
                   <Input
+                    id="wait-amount"
                     type="number"
                     min={1}
                     value={waitAmount}
@@ -555,9 +560,9 @@ function AddStepButton({ onSubmit }: { onSubmit: (form: CampaignStepForm) => Pro
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Unit</label>
+                  <label id="wait-unit-label" htmlFor="wait-unit" className="text-sm font-medium text-gray-700 mb-1 block">Unit</label>
                   <Select value={waitUnit} onValueChange={(value) => setWaitUnit(value as typeof waitUnit)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="wait-unit" aria-labelledby="wait-unit-label">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

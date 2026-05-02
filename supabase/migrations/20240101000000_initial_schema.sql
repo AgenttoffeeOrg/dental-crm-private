@@ -166,13 +166,13 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 DROP TRIGGER IF EXISTS update_contacts_updated_at ON contacts;
-CREATE TRIGGER update_contacts_updated_at BEFORE UPDATE ON contacts
+CREATE OR REPLACE TRIGGER update_contacts_updated_at BEFORE UPDATE ON contacts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_deals_updated_at ON deals;
-CREATE TRIGGER update_deals_updated_at BEFORE UPDATE ON deals
+CREATE OR REPLACE TRIGGER update_deals_updated_at BEFORE UPDATE ON deals
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_tasks_updated_at ON tasks;
-CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks
+CREATE OR REPLACE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

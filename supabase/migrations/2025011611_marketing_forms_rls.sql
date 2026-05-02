@@ -11,6 +11,7 @@
 ALTER TABLE public.marketing_forms ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Tenants can view their own forms
+DROP POLICY IF EXISTS "Tenants can view their own forms" ON public.marketing_forms;
 CREATE POLICY "Tenants can view their own forms" ON public.marketing_forms
   FOR SELECT
   USING (
@@ -20,6 +21,7 @@ CREATE POLICY "Tenants can view their own forms" ON public.marketing_forms
   );
 
 -- Policy: Tenants can create forms
+DROP POLICY IF EXISTS "Tenants can create forms" ON public.marketing_forms;
 CREATE POLICY "Tenants can create forms" ON public.marketing_forms
   FOR INSERT
   WITH CHECK (
@@ -29,6 +31,7 @@ CREATE POLICY "Tenants can create forms" ON public.marketing_forms
   );
 
 -- Policy: Tenants can update their own forms
+DROP POLICY IF EXISTS "Tenants can update their own forms" ON public.marketing_forms;
 CREATE POLICY "Tenants can update their own forms" ON public.marketing_forms
   FOR UPDATE
   USING (
@@ -43,6 +46,7 @@ CREATE POLICY "Tenants can update their own forms" ON public.marketing_forms
   );
 
 -- Policy: Tenants can delete (archive) their own forms
+DROP POLICY IF EXISTS "Tenants can delete their own forms" ON public.marketing_forms;
 CREATE POLICY "Tenants can delete their own forms" ON public.marketing_forms
   FOR DELETE
   USING (
@@ -59,6 +63,7 @@ CREATE POLICY "Tenants can delete their own forms" ON public.marketing_forms
 ALTER TABLE public.marketing_form_submissions ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Tenants can view their own submissions
+DROP POLICY IF EXISTS "Tenants can view their own submissions" ON public.marketing_form_submissions;
 CREATE POLICY "Tenants can view their own submissions" ON public.marketing_form_submissions
   FOR SELECT
   USING (
@@ -69,11 +74,13 @@ CREATE POLICY "Tenants can view their own submissions" ON public.marketing_form_
 
 -- Policy: Allow public form submissions (no auth required for submitting)
 -- This is needed for public forms embedded on websites
+DROP POLICY IF EXISTS "Allow public form submissions" ON public.marketing_form_submissions;
 CREATE POLICY "Allow public form submissions" ON public.marketing_form_submissions
   FOR INSERT
   WITH CHECK (true);
 
 -- Policy: Tenants can update their own submissions
+DROP POLICY IF EXISTS "Tenants can update their own submissions" ON public.marketing_form_submissions;
 CREATE POLICY "Tenants can update their own submissions" ON public.marketing_form_submissions
   FOR UPDATE
   USING (
@@ -94,7 +101,8 @@ BEGIN
   ) THEN
     ALTER TABLE public.marketing_landing_pages ENABLE ROW LEVEL SECURITY;
     
-    CREATE POLICY "Tenants can view their own landing pages" ON public.marketing_landing_pages
+    DROP POLICY IF EXISTS "Tenants can view their own landing pages" ON public.marketing_landing_pages;
+CREATE POLICY "Tenants can view their own landing pages" ON public.marketing_landing_pages
       FOR SELECT
       USING (
         tenant_id IN (
@@ -102,7 +110,8 @@ BEGIN
         )
       );
     
-    CREATE POLICY "Tenants can create landing pages" ON public.marketing_landing_pages
+    DROP POLICY IF EXISTS "Tenants can create landing pages" ON public.marketing_landing_pages;
+CREATE POLICY "Tenants can create landing pages" ON public.marketing_landing_pages
       FOR INSERT
       WITH CHECK (
         tenant_id IN (
@@ -110,7 +119,8 @@ BEGIN
         )
       );
     
-    CREATE POLICY "Tenants can update their own landing pages" ON public.marketing_landing_pages
+    DROP POLICY IF EXISTS "Tenants can update their own landing pages" ON public.marketing_landing_pages;
+CREATE POLICY "Tenants can update their own landing pages" ON public.marketing_landing_pages
       FOR UPDATE
       USING (
         tenant_id IN (
@@ -118,7 +128,8 @@ BEGIN
         )
       );
     
-    CREATE POLICY "Tenants can delete their own landing pages" ON public.marketing_landing_pages
+    DROP POLICY IF EXISTS "Tenants can delete their own landing pages" ON public.marketing_landing_pages;
+CREATE POLICY "Tenants can delete their own landing pages" ON public.marketing_landing_pages
       FOR DELETE
       USING (
         tenant_id IN (

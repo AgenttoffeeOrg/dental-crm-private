@@ -61,12 +61,13 @@ export async function migrateToUnifiedOAuth(tenantId: string): Promise<Migration
 
     // Migrate each provider group
     for (const [provider, providerConnections] of providerGroups) {
+      if (providerConnections.length === 0) continue
       // Find the connection with the most scopes (likely the main one)
       const mainConnection = providerConnections.reduce((prev, curr) => {
         const prevScopes = prev.scopes?.length || 0
         const currScopes = curr.scopes?.length || 0
         return currScopes > prevScopes ? curr : prev
-      })
+      }, providerConnections[0]) // Initial value guaranteed by check above
 
       if (!mainConnection.scopes || mainConnection.scopes.length === 0) {
         result.skipped++

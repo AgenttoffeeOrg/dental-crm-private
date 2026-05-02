@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 1: USER PROFILE ENHANCEMENT
 -- Migration: Add comprehensive user profile fields
@@ -43,7 +45,7 @@ COMMENT ON COLUMN app_users.sms_signature IS 'User SMS signature text';
 COMMENT ON COLUMN app_users.two_factor_enabled IS 'Whether 2FA is enabled for this user';
 COMMENT ON COLUMN app_users.profile_updated_at IS 'Last time profile was updated';
 
--- Create trigger to auto-update profile_updated_at
+-- CREATE OR REPLACE TRIGGER to auto-update profile_updated_at
 CREATE OR REPLACE FUNCTION update_app_users_profile_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -53,7 +55,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS update_app_users_profile_timestamp_trigger ON app_users;
-CREATE TRIGGER update_app_users_profile_timestamp_trigger
+CREATE OR REPLACE TRIGGER update_app_users_profile_timestamp_trigger
   BEFORE UPDATE ON app_users
   FOR EACH ROW
   EXECUTE FUNCTION update_app_users_profile_timestamp();

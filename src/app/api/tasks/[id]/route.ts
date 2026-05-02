@@ -113,7 +113,7 @@ export async function PATCH(
         .eq('tenant_id', tenantId)
         .single()
 
-      if (contact && contact.location_id) {
+      if (contact?.location_id) {
         resolvedLocationId = resolvedLocationId ?? contact.location_id
       }
     }
@@ -128,7 +128,7 @@ export async function PATCH(
         .eq('tenant_id', tenantId)
         .single()
 
-      if (deal && deal.location_id) {
+      if (deal?.location_id) {
         resolvedLocationId = resolvedLocationId ?? deal.location_id
       }
     }

@@ -83,7 +83,7 @@ function CreateRoleDialog({ open, onOpenChange, tenantId, onCreated, editingRole
           .order('display_order', { ascending: false })
           .limit(1)
 
-        const maxOrder = roles && roles[0] ? roles[0].display_order : 0
+        const maxOrder = roles?.[0]?.display_order ?? 0
 
         const { error } = await supabase
           .from('custom_roles')

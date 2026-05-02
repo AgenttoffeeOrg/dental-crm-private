@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
             if (locError) {
               console.error('[API] Error saving location data:', locError)
             }
-          } else if (tenantId && Object.keys(locationUpdate).length > 0) {
+          } else if (Object.keys(locationUpdate).length > 0) {
             // Create new location if none exists
             const { data: newLocation, error: locCreateError } = await supabase
               .from('locations')

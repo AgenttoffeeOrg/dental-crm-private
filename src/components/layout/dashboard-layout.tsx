@@ -414,6 +414,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
           onClick={() => setMobileMenuOpen(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setMobileMenuOpen(false)}
+          role="button"
+          tabIndex={0}
+          aria-label="Close mobile menu"
         />
       )}
 

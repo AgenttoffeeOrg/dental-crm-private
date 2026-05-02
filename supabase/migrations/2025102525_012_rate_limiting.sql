@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- ============================================================================
 -- Step 11: API Rate Limiting - Per-Tenant Quotas
 -- ============================================================================
@@ -15,7 +17,8 @@
 -- 1. Rate Limit Plans Table
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS rate_limit_plans (
+DROP TABLE IF EXISTS rate_limit_plans CASCADE;
+CREATE TABLE rate_limit_plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
     description TEXT,
@@ -53,7 +56,8 @@ ON CONFLICT (name) DO NOTHING;
 -- 2. Tenant Rate Limits Table
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS tenant_rate_limits (
+DROP TABLE IF EXISTS tenant_rate_limits CASCADE;
+CREATE TABLE tenant_rate_limits (
     tenant_id UUID PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
     plan_id UUID NOT NULL REFERENCES rate_limit_plans(id),
     
@@ -83,13 +87,14 @@ CREATE TABLE IF NOT EXISTS tenant_rate_limits (
 );
 
 -- Index
-CREATE INDEX idx_tenant_rate_limits_blocked ON tenant_rate_limits(is_blocked) WHERE is_blocked = true;
+CREATE INDEX IF NOT EXISTS idx_tenant_rate_limits_blocked ON tenant_rate_limits(is_blocked) WHERE is_blocked = true;
 
 -- ============================================================================
 -- 3. API Request Log (for analytics)
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS api_request_log (
+DROP TABLE IF EXISTS api_request_log CASCADE;
+CREATE TABLE api_request_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
     user_id UUID REFERENCES app_users(id) ON DELETE SET NULL,
@@ -111,9 +116,9 @@ CREATE TABLE IF NOT EXISTS api_request_log (
 );
 
 -- Indexes
-CREATE INDEX idx_api_request_log_tenant_created ON api_request_log(tenant_id, created_at DESC);
-CREATE INDEX idx_api_request_log_created_at ON api_request_log(created_at DESC);
-CREATE INDEX idx_api_request_log_rate_limited ON api_request_log(rate_limited) WHERE rate_limited = true;
+CREATE INDEX IF NOT EXISTS idx_api_request_log_tenant_created ON api_request_log(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_api_request_log_created_at ON api_request_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_api_request_log_rate_limited ON api_request_log(rate_limited) WHERE rate_limited = true;
 
 -- Partition by month (optional, for high volume)
 -- This would require additional setup for automatic partition management
@@ -311,7 +316,8 @@ $$ LANGUAGE plpgsql;
 -- 7. Rate Limit Usage View
 -- ============================================================================
 
-CREATE OR REPLACE VIEW rate_limit_usage AS
+DROP VIEW IF EXISTS rate_limit_usage CASCADE;
+CREATE VIEW rate_limit_usage AS
 SELECT 
     t.id as tenant_id,
     t.name as tenant_name,

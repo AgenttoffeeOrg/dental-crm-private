@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- FIX: Remove Old Broken RLS Policies on Deals Table
 -- =====================================================

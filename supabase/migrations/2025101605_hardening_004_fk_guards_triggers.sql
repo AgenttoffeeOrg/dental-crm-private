@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 1.4: Foreign Key Tenant Guards (TRIGGER VERSION)
 -- Date: October 16, 2025
@@ -90,7 +92,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS validate_deal_tenant_fks ON deals;
-CREATE TRIGGER validate_deal_tenant_fks
+CREATE OR REPLACE TRIGGER validate_deal_tenant_fks
   BEFORE INSERT OR UPDATE ON deals
   FOR EACH ROW
   EXECUTE FUNCTION validate_deal_tenant_relationships();
@@ -155,7 +157,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS validate_task_tenant_fks ON tasks;
-CREATE TRIGGER validate_task_tenant_fks
+CREATE OR REPLACE TRIGGER validate_task_tenant_fks
   BEFORE INSERT OR UPDATE ON tasks
   FOR EACH ROW
   EXECUTE FUNCTION validate_task_tenant_relationships();
@@ -199,7 +201,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS validate_activity_tenant_fks ON activities;
-CREATE TRIGGER validate_activity_tenant_fks
+CREATE OR REPLACE TRIGGER validate_activity_tenant_fks
   BEFORE INSERT OR UPDATE ON activities
   FOR EACH ROW
   EXECUTE FUNCTION validate_activity_tenant_relationships();
@@ -227,7 +229,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS validate_stage_tenant_fks ON pipeline_stages;
-CREATE TRIGGER validate_stage_tenant_fks
+CREATE OR REPLACE TRIGGER validate_stage_tenant_fks
   BEFORE INSERT OR UPDATE ON pipeline_stages
   FOR EACH ROW
   EXECUTE FUNCTION validate_pipeline_stage_tenant();
@@ -258,7 +260,7 @@ BEGIN
     $func$;
 
     DROP TRIGGER IF EXISTS validate_automation_log_tenant_fks ON automation_execution_logs;
-    CREATE TRIGGER validate_automation_log_tenant_fks
+    CREATE OR REPLACE TRIGGER validate_automation_log_tenant_fks
       BEFORE INSERT OR UPDATE ON automation_execution_logs
       FOR EACH ROW
       EXECUTE FUNCTION validate_automation_log_tenant();

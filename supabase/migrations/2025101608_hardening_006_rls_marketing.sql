@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 2.2: Marketing RLS with Entitlement Checks
 -- Date: October 16, 2025
@@ -21,6 +23,7 @@ DROP POLICY IF EXISTS marketing_campaigns_update ON marketing_campaigns;
 DROP POLICY IF EXISTS marketing_campaigns_delete ON marketing_campaigns;
 DROP POLICY IF EXISTS marketing_campaigns_service ON marketing_campaigns;
 
+DROP POLICY IF EXISTS marketing_campaigns_select ON marketing_campaigns;
 CREATE POLICY marketing_campaigns_select ON marketing_campaigns
   FOR SELECT
   USING (
@@ -29,6 +32,7 @@ CREATE POLICY marketing_campaigns_select ON marketing_campaigns
     AND is_not_deleted(deleted_at)
   );
 
+DROP POLICY IF EXISTS marketing_campaigns_insert ON marketing_campaigns;
 CREATE POLICY marketing_campaigns_insert ON marketing_campaigns
   FOR INSERT
   WITH CHECK (
@@ -36,6 +40,7 @@ CREATE POLICY marketing_campaigns_insert ON marketing_campaigns
     AND check_entitlement('marketing', false)
   );
 
+DROP POLICY IF EXISTS marketing_campaigns_update ON marketing_campaigns;
 CREATE POLICY marketing_campaigns_update ON marketing_campaigns
   FOR UPDATE
   USING (
@@ -43,6 +48,7 @@ CREATE POLICY marketing_campaigns_update ON marketing_campaigns
     AND check_entitlement('marketing', false)
   );
 
+DROP POLICY IF EXISTS marketing_campaigns_delete ON marketing_campaigns;
 CREATE POLICY marketing_campaigns_delete ON marketing_campaigns
   FOR DELETE
   USING (
@@ -51,6 +57,7 @@ CREATE POLICY marketing_campaigns_delete ON marketing_campaigns
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'marketing'])
   );
 
+DROP POLICY IF EXISTS marketing_campaigns_service ON marketing_campaigns;
 CREATE POLICY marketing_campaigns_service ON marketing_campaigns
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -72,6 +79,7 @@ DROP POLICY IF EXISTS marketing_templates_update ON marketing_templates;
 DROP POLICY IF EXISTS marketing_templates_delete ON marketing_templates;
 DROP POLICY IF EXISTS marketing_templates_service ON marketing_templates;
 
+DROP POLICY IF EXISTS marketing_templates_select ON marketing_templates;
 CREATE POLICY marketing_templates_select ON marketing_templates
   FOR SELECT
   USING (
@@ -80,6 +88,7 @@ CREATE POLICY marketing_templates_select ON marketing_templates
     AND is_not_deleted(deleted_at)
   );
 
+DROP POLICY IF EXISTS marketing_templates_insert ON marketing_templates;
 CREATE POLICY marketing_templates_insert ON marketing_templates
   FOR INSERT
   WITH CHECK (
@@ -87,6 +96,7 @@ CREATE POLICY marketing_templates_insert ON marketing_templates
     AND check_entitlement('marketing', false)
   );
 
+DROP POLICY IF EXISTS marketing_templates_update ON marketing_templates;
 CREATE POLICY marketing_templates_update ON marketing_templates
   FOR UPDATE
   USING (
@@ -94,6 +104,7 @@ CREATE POLICY marketing_templates_update ON marketing_templates
     AND check_entitlement('marketing', false)
   );
 
+DROP POLICY IF EXISTS marketing_templates_delete ON marketing_templates;
 CREATE POLICY marketing_templates_delete ON marketing_templates
   FOR DELETE
   USING (
@@ -102,6 +113,7 @@ CREATE POLICY marketing_templates_delete ON marketing_templates
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'marketing'])
   );
 
+DROP POLICY IF EXISTS marketing_templates_service ON marketing_templates;
 CREATE POLICY marketing_templates_service ON marketing_templates
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -123,6 +135,7 @@ DROP POLICY IF EXISTS marketing_segments_update ON marketing_segments;
 DROP POLICY IF EXISTS marketing_segments_delete ON marketing_segments;
 DROP POLICY IF EXISTS marketing_segments_service ON marketing_segments;
 
+DROP POLICY IF EXISTS marketing_segments_select ON marketing_segments;
 CREATE POLICY marketing_segments_select ON marketing_segments
   FOR SELECT
   USING (
@@ -131,6 +144,7 @@ CREATE POLICY marketing_segments_select ON marketing_segments
     AND is_not_deleted(deleted_at)
   );
 
+DROP POLICY IF EXISTS marketing_segments_insert ON marketing_segments;
 CREATE POLICY marketing_segments_insert ON marketing_segments
   FOR INSERT
   WITH CHECK (
@@ -138,6 +152,7 @@ CREATE POLICY marketing_segments_insert ON marketing_segments
     AND check_entitlement('marketing', false)
   );
 
+DROP POLICY IF EXISTS marketing_segments_update ON marketing_segments;
 CREATE POLICY marketing_segments_update ON marketing_segments
   FOR UPDATE
   USING (
@@ -145,6 +160,7 @@ CREATE POLICY marketing_segments_update ON marketing_segments
     AND check_entitlement('marketing', false)
   );
 
+DROP POLICY IF EXISTS marketing_segments_delete ON marketing_segments;
 CREATE POLICY marketing_segments_delete ON marketing_segments
   FOR DELETE
   USING (
@@ -153,6 +169,7 @@ CREATE POLICY marketing_segments_delete ON marketing_segments
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'marketing'])
   );
 
+DROP POLICY IF EXISTS marketing_segments_service ON marketing_segments;
 CREATE POLICY marketing_segments_service ON marketing_segments
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -174,6 +191,7 @@ DROP POLICY IF EXISTS marketing_journeys_update ON marketing_journeys;
 DROP POLICY IF EXISTS marketing_journeys_delete ON marketing_journeys;
 DROP POLICY IF EXISTS marketing_journeys_service ON marketing_journeys;
 
+DROP POLICY IF EXISTS marketing_journeys_select ON marketing_journeys;
 CREATE POLICY marketing_journeys_select ON marketing_journeys
   FOR SELECT
   USING (
@@ -182,6 +200,7 @@ CREATE POLICY marketing_journeys_select ON marketing_journeys
     AND is_not_deleted(deleted_at)
   );
 
+DROP POLICY IF EXISTS marketing_journeys_insert ON marketing_journeys;
 CREATE POLICY marketing_journeys_insert ON marketing_journeys
   FOR INSERT
   WITH CHECK (
@@ -189,6 +208,7 @@ CREATE POLICY marketing_journeys_insert ON marketing_journeys
     AND check_entitlement('marketing', false)
   );
 
+DROP POLICY IF EXISTS marketing_journeys_update ON marketing_journeys;
 CREATE POLICY marketing_journeys_update ON marketing_journeys
   FOR UPDATE
   USING (
@@ -196,6 +216,7 @@ CREATE POLICY marketing_journeys_update ON marketing_journeys
     AND check_entitlement('marketing', false)
   );
 
+DROP POLICY IF EXISTS marketing_journeys_delete ON marketing_journeys;
 CREATE POLICY marketing_journeys_delete ON marketing_journeys
   FOR DELETE
   USING (
@@ -204,6 +225,7 @@ CREATE POLICY marketing_journeys_delete ON marketing_journeys
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'marketing'])
   );
 
+DROP POLICY IF EXISTS marketing_journeys_service ON marketing_journeys;
 CREATE POLICY marketing_journeys_service ON marketing_journeys
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -225,6 +247,7 @@ DROP POLICY IF EXISTS marketing_forms_update ON marketing_forms;
 DROP POLICY IF EXISTS marketing_forms_delete ON marketing_forms;
 DROP POLICY IF EXISTS marketing_forms_service ON marketing_forms;
 
+DROP POLICY IF EXISTS marketing_forms_select ON marketing_forms;
 CREATE POLICY marketing_forms_select ON marketing_forms
   FOR SELECT
   USING (
@@ -233,6 +256,7 @@ CREATE POLICY marketing_forms_select ON marketing_forms
     AND is_not_deleted(deleted_at)
   );
 
+DROP POLICY IF EXISTS marketing_forms_insert ON marketing_forms;
 CREATE POLICY marketing_forms_insert ON marketing_forms
   FOR INSERT
   WITH CHECK (
@@ -240,6 +264,7 @@ CREATE POLICY marketing_forms_insert ON marketing_forms
     AND check_entitlement('marketing', false)
   );
 
+DROP POLICY IF EXISTS marketing_forms_update ON marketing_forms;
 CREATE POLICY marketing_forms_update ON marketing_forms
   FOR UPDATE
   USING (
@@ -247,6 +272,7 @@ CREATE POLICY marketing_forms_update ON marketing_forms
     AND check_entitlement('marketing', false)
   );
 
+DROP POLICY IF EXISTS marketing_forms_delete ON marketing_forms;
 CREATE POLICY marketing_forms_delete ON marketing_forms
   FOR DELETE
   USING (
@@ -255,6 +281,7 @@ CREATE POLICY marketing_forms_delete ON marketing_forms
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'marketing'])
   );
 
+DROP POLICY IF EXISTS marketing_forms_service ON marketing_forms;
 CREATE POLICY marketing_forms_service ON marketing_forms
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -278,21 +305,24 @@ BEGIN
     EXECUTE 'DROP POLICY IF EXISTS marketing_sends_insert ON marketing_campaign_sends';
     EXECUTE 'DROP POLICY IF EXISTS marketing_sends_service ON marketing_campaign_sends';
 
-    EXECUTE 'CREATE POLICY marketing_sends_select ON marketing_campaign_sends
+    EXECUTE 'DROP POLICY IF EXISTS marketing_sends_select ON marketing_campaign_sends;
+CREATE POLICY marketing_sends_select ON marketing_campaign_sends
       FOR SELECT
       USING (
         tenant_id = current_tenant_id()
         AND check_entitlement(''marketing'', false)
       )';
 
-    EXECUTE 'CREATE POLICY marketing_sends_insert ON marketing_campaign_sends
+    EXECUTE 'DROP POLICY IF EXISTS marketing_sends_insert ON marketing_campaign_sends;
+CREATE POLICY marketing_sends_insert ON marketing_campaign_sends
       FOR INSERT
       WITH CHECK (
         tenant_id = current_tenant_id()
         AND check_entitlement(''marketing'', false)
       )';
 
-    EXECUTE 'CREATE POLICY marketing_sends_service ON marketing_campaign_sends
+    EXECUTE 'DROP POLICY IF EXISTS marketing_sends_service ON marketing_campaign_sends;
+CREATE POLICY marketing_sends_service ON marketing_campaign_sends
       FOR ALL
       USING (auth.role() = ''service_role'')';
 
@@ -313,21 +343,24 @@ BEGIN
     EXECUTE 'DROP POLICY IF EXISTS marketing_events_insert ON marketing_campaign_events';
     EXECUTE 'DROP POLICY IF EXISTS marketing_events_service ON marketing_campaign_events';
 
-    EXECUTE 'CREATE POLICY marketing_events_select ON marketing_campaign_events
+    EXECUTE 'DROP POLICY IF EXISTS marketing_events_select ON marketing_campaign_events;
+CREATE POLICY marketing_events_select ON marketing_campaign_events
       FOR SELECT
       USING (
         tenant_id = current_tenant_id()
         AND check_entitlement(''marketing'', false)
       )';
 
-    EXECUTE 'CREATE POLICY marketing_events_insert ON marketing_campaign_events
+    EXECUTE 'DROP POLICY IF EXISTS marketing_events_insert ON marketing_campaign_events;
+CREATE POLICY marketing_events_insert ON marketing_campaign_events
       FOR INSERT
       WITH CHECK (
         tenant_id = current_tenant_id()
         AND check_entitlement(''marketing'', false)
       )';
 
-    EXECUTE 'CREATE POLICY marketing_events_service ON marketing_campaign_events
+    EXECUTE 'DROP POLICY IF EXISTS marketing_events_service ON marketing_campaign_events;
+CREATE POLICY marketing_events_service ON marketing_campaign_events
       FOR ALL
       USING (auth.role() = ''service_role'')';
 

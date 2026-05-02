@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Fix get_user_accessible_locations column reference
 -- Purpose: Update function to use status='active' instead of is_active=true

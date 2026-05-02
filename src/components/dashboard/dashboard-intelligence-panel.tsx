@@ -111,11 +111,14 @@ export function DashboardIntelligencePanel({
         revenueCents: value.revenueCents,
       }))
 
-      const topPerformer = scripts
-        .filter((item) => item.usages >= 5)
-        .sort((a, b) => b.successRate - a.successRate)[0]
-      const adoptionLeader = scripts.sort((a, b) => b.usages - a.usages)[0]
-      const revenueLeader = scripts.sort((a, b) => b.revenueCents - a.revenueCents)[0]
+      const filteredScripts = scripts.filter((item) => item.usages >= 5)
+      const sortedBySuccess = filteredScripts.toSorted((a, b) => b.successRate - a.successRate)
+      const topPerformer = sortedBySuccess[0]
+      
+      const sortedByUsages = scripts.toSorted((a, b) => b.usages - a.usages)
+      const adoptionLeader = sortedByUsages[0]
+      const sortedByRevenue = scripts.toSorted((a, b) => b.revenueCents - a.revenueCents)
+      const revenueLeader = sortedByRevenue[0]
 
       const personaCounts = new Map<string, number>()
       personaData.forEach((row: any) => {
@@ -130,7 +133,8 @@ export function DashboardIntelligencePanel({
 
       let leadingPersonaTag: string | null = null
       if (personaCounts.size > 0) {
-        leadingPersonaTag = Array.from(personaCounts.entries()).sort((a, b) => b[1] - a[1])[0][0]
+        const sortedPersonaEntries = Array.from(personaCounts.entries()).toSorted((a, b) => b[1] - a[1])
+        leadingPersonaTag = sortedPersonaEntries[0][0]
       }
 
       setInsights({

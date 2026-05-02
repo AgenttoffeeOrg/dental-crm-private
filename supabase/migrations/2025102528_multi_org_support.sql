@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- MIGRATION: Enable Multi-Organization Memberships
 -- Purpose: Change app_users to support multiple orgs per user
@@ -7,7 +9,7 @@
 BEGIN;
 
 -- Step 1: Drop the existing primary key constraint
-ALTER TABLE app_users DROP CONSTRAINT app_users_pkey;
+ALTER TABLE app_users DROP CONSTRAINT app_users_pkey CASCADE;
 
 -- Step 2: Add a new composite primary key on (id, tenant_id)
 -- This allows one user to have multiple app_users records (one per tenant)

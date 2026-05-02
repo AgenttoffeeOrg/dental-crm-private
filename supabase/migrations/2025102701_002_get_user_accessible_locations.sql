@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: get_user_accessible_locations RPC
 -- Purpose: Helper function to fetch locations accessible to a user in a given tenant

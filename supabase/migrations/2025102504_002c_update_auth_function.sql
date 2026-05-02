@@ -1,7 +1,9 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 1D: ADD MULTI-ORG TENANT RESOLUTION (NO AUTH SCHEMA CHANGES)
 -- Purpose: Create multi-org aware functions WITHOUT modifying auth schema
--- Safety: Zero changes to existing auth.get_user_tenant_id() function
+-- Safety: Zero changes to existing public.get_user_tenant_id() function
 -- =====================================================
 --
 -- WHAT THIS DOES:
@@ -12,7 +14,7 @@
 -- 5. Existing RLS policies continue using old auth function (dual-read period)
 --
 -- WHY THIS IS SAFE:
--- - auth.get_user_tenant_id() unchanged (RLS policies work)
+-- - public.get_user_tenant_id() unchanged (RLS policies work)
 -- - New functions in public schema (we have permission)
 -- - Application will call public functions directly
 -- - Gradual migration path
@@ -125,7 +127,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.get_user_tenant_id_v2(UUID) IS
-  'Multi-org aware tenant resolution. Fallback: active > membership > legacy. Respects use_legacy_membership flag. Application code should use this instead of auth.get_user_tenant_id().';
+  'Multi-org aware tenant resolution. Fallback: active > membership > legacy. Respects use_legacy_membership flag. Application code should use this instead of public.get_user_tenant_id().';
 
 -- =====================================================
 -- 2. ADD HELPER FUNCTION: SET ACTIVE TENANT
@@ -261,7 +263,7 @@ DECLARE
   verification_header CONSTANT TEXT := '========================================';
   verification_title CONSTANT TEXT := 'FUNCTION VERIFICATION';
 BEGIN
-  -- Check if auth.get_user_tenant_id() exists
+  -- Check if public.get_user_tenant_id() exists
   SELECT EXISTS (
     SELECT 1 FROM pg_proc p
     JOIN pg_namespace n ON p.pronamespace = n.oid
@@ -278,9 +280,9 @@ BEGIN
   RAISE NOTICE '%', verification_header;
   
   IF auth_function_exists THEN
-    RAISE NOTICE '✅ auth.get_user_tenant_id() exists (unchanged)';
+    RAISE NOTICE '✅ public.get_user_tenant_id() exists (unchanged)';
   ELSE
-    RAISE NOTICE '⚠️  auth.get_user_tenant_id() not found';
+    RAISE NOTICE '⚠️  public.get_user_tenant_id() not found';
   END IF;
   
   IF test_user_id IS NOT NULL THEN
@@ -332,7 +334,7 @@ BEGIN
   RAISE NOTICE '✅ public.set_active_tenant() - Switch organizations';
   RAISE NOTICE '✅ public.get_active_tenant_for_user() - Get any user tenant';
   RAISE NOTICE '';
-  RAISE NOTICE '🔒 auth.get_user_tenant_id() UNCHANGED';
+  RAISE NOTICE '🔒 public.get_user_tenant_id() UNCHANGED';
   RAISE NOTICE '   - RLS policies continue working';
   RAISE NOTICE '   - No permission errors';
   RAISE NOTICE '   - Legacy system intact';

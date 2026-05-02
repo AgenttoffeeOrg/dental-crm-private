@@ -195,7 +195,7 @@ export async function dispatchEmail(options: {
 
   const settings = await loadTenantIntegrationSettings(context.tenantId, { supabase })
 
-  if (!settings || !settings.is_email_configured) {
+  if (!settings?.is_email_configured) {
     recordProviderFailure('email', 'send', 'Email integration not configured')
     throw new Error('Email integration not configured. Please configure in Settings → Integrations.')
   }
@@ -315,7 +315,7 @@ export async function dispatchSms(options: {
 
   const settings = await loadTenantIntegrationSettings(context.tenantId, { supabase })
 
-  if (!settings || !settings.is_sms_configured) {
+  if (!settings?.is_sms_configured) {
     recordProviderFailure('twilio_sms', 'send', 'SMS integration not configured')
     throw new Error('SMS integration not configured. Please configure in Settings → Integrations.')
   }
@@ -408,7 +408,7 @@ export async function dispatchWhatsApp(options: {
 
   const settings = await loadTenantIntegrationSettings(context.tenantId, { supabase })
 
-  if (!settings || !settings.is_whatsapp_configured) {
+  if (!settings?.is_whatsapp_configured) {
     recordProviderFailure('twilio_whatsapp', 'send', 'WhatsApp integration not configured')
     throw new Error('WhatsApp integration not configured. Please configure in Settings → Integrations.')
   }

@@ -50,7 +50,7 @@ export function verifyTwilioSignature(
 
   try {
     // Step 1: Sort parameters alphabetically by key
-    const sortedKeys = Object.keys(params).sort()
+    const sortedKeys = Object.keys(params).sort((a, b) => a.localeCompare(b))
     
     // Step 2: Concatenate URL with sorted key-value pairs
     let data = url

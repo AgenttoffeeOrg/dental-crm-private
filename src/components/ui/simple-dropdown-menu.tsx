@@ -62,6 +62,18 @@ export function SimpleDropdownMenu({
           console.log('[SimpleDropdown] Toggle clicked, current state:', isOpen)
           setIsOpen(!isOpen)
         }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            e.stopPropagation()
+            console.log('[SimpleDropdown] Toggle key pressed, current state:', isOpen)
+            setIsOpen(!isOpen)
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Toggle dropdown menu"
+        aria-expanded={isOpen}
       >
         {trigger}
       </div>

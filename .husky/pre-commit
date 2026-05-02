@@ -1,0 +1,19 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh" 2>/dev/null || true
+
+echo "Running pre-commit checks..."
+npx lint-staged
+
+echo ""
+echo "Verifying TypeScript error count has not increased..."
+CURRENT=$(npx tsc --noEmit 2>&1 | grep -c "error TS" || echo "0")
+BASELINE=$(cat .tsc-baseline.txt 2>/dev/null || echo "999999")
+
+if [ "$CURRENT" -gt "$BASELINE" ]; then
+  echo ""
+  echo "FAIL: TypeScript errors increased from $BASELINE to $CURRENT"
+  echo "Either fix the new errors before committing, or update .tsc-baseline.txt if intentional."
+  exit 1
+fi
+
+echo "PASS: TypeScript error count is $CURRENT (baseline: $BASELINE)"

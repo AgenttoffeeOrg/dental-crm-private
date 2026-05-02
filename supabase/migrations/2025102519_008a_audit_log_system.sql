@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 7A: COMPREHENSIVE AUDIT LOG SYSTEM
 -- Purpose: Enterprise-grade audit logging with export capabilities
@@ -46,6 +48,8 @@ BEGIN;
 -- =====================================================
 
 DO $$
+DECLARE
+  separator CONSTANT TEXT := repeat('=', 60);
 BEGIN
   RAISE NOTICE '';
   RAISE NOTICE '%', separator;
@@ -73,7 +77,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_audits AND column_name = 'exported_at'
   ) THEN
-    EXECUTE format('ALTER TABLE %I ADD COLUMN exported_at TIMESTAMPTZ', table_name_audits);
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS exported_at TIMESTAMPTZ', table_name_audits);
     RAISE NOTICE '✅ Added exported_at to audits';
   ELSE
     RAISE NOTICE 'ℹ️  exported_at already exists on audits';
@@ -84,7 +88,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_audits AND column_name = 'export_batch_id'
   ) THEN
-    EXECUTE format('ALTER TABLE %I ADD COLUMN export_batch_id UUID', table_name_audits);
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS export_batch_id UUID', table_name_audits);
     RAISE NOTICE '✅ Added export_batch_id to audits';
   ELSE
     RAISE NOTICE 'ℹ️  export_batch_id already exists on audits';
@@ -95,7 +99,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_audits AND column_name = 'severity'
   ) THEN
-    EXECUTE format('ALTER TABLE %I ADD COLUMN severity TEXT CHECK (severity IN (''info'', ''warning'', ''error'', ''critical''))', table_name_audits);
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS severity TEXT CHECK (severity IN (''info'', ''warning'', ''error'', ''critical''))', table_name_audits);
     RAISE NOTICE '✅ Added severity to audits';
   ELSE
     RAISE NOTICE 'ℹ️  severity already exists on audits';
@@ -106,7 +110,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = table_name_audits AND column_name = 'category'
   ) THEN
-    EXECUTE format('ALTER TABLE %I ADD COLUMN category TEXT CHECK (category IN (%L, %L, %L, %L, %L, %L))', 
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS category TEXT CHECK (category IN (%L, %L, %L, %L, %L, %L))', 
       table_name_audits, category_auth, category_authorization, category_data, 
       category_system, category_security, category_compliance);
     RAISE NOTICE '✅ Added category to audits';
@@ -122,7 +126,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'audits' AND column_name = 'tags'
   ) THEN
-    ALTER TABLE audits ADD COLUMN tags TEXT[];
+    ALTER TABLE audits ADD COLUMN IF NOT EXISTS tags TEXT[];
     RAISE NOTICE '✅ Added tags to audits';
   ELSE
     RAISE NOTICE 'ℹ️  tags already exists on audits';
@@ -136,7 +140,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'audits' AND column_name = 'retention_until'
   ) THEN
-    ALTER TABLE audits ADD COLUMN retention_until TIMESTAMPTZ;
+    ALTER TABLE audits ADD COLUMN IF NOT EXISTS retention_until TIMESTAMPTZ;
     RAISE NOTICE '✅ Added retention_until to audits';
   ELSE
     RAISE NOTICE 'ℹ️  retention_until already exists on audits';
@@ -192,7 +196,8 @@ END $$;
 -- 2. CREATE AUDIT_EXPORT_REQUESTS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS audit_export_requests (
+DROP TABLE IF EXISTS audit_export_requests CASCADE;
+CREATE TABLE audit_export_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   requested_by UUID NOT NULL REFERENCES app_users(id),
@@ -246,13 +251,13 @@ CREATE INDEX IF NOT EXISTS idx_audit_export_requests_batch
 ALTER TABLE audit_export_requests ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies
-CREATE POLICY "Users can view export requests for their tenant"
-  ON audit_export_requests
+DROP POLICY IF EXISTS "Users can view export requests for their tenant" ON audit_export_requests;
+CREATE POLICY "Users can view export requests for their tenant" ON audit_export_requests
   FOR SELECT
   USING (tenant_id = public.get_user_tenant_id_compat());
 
-CREATE POLICY "Admins can create export requests"
-  ON audit_export_requests
+DROP POLICY IF EXISTS "Admins can create export requests" ON audit_export_requests;
+CREATE POLICY "Admins can create export requests" ON audit_export_requests
   FOR INSERT
   WITH CHECK (
     tenant_id = public.get_user_tenant_id_compat()
@@ -265,8 +270,8 @@ CREATE POLICY "Admins can create export requests"
     )
   );
 
-CREATE POLICY "Service role can manage export requests"
-  ON audit_export_requests
+DROP POLICY IF EXISTS "Service role can manage export requests" ON audit_export_requests;
+CREATE POLICY "Service role can manage export requests" ON audit_export_requests
   FOR ALL
   USING (auth.role() = 'service_role');
 
@@ -283,7 +288,8 @@ END $$;
 -- 3. CREATE AUDIT_RETENTION_POLICIES TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS audit_retention_policies (
+DROP TABLE IF EXISTS audit_retention_policies CASCADE;
+CREATE TABLE audit_retention_policies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   category TEXT,
@@ -306,13 +312,13 @@ CREATE INDEX IF NOT EXISTS idx_audit_retention_policies_tenant
 ALTER TABLE audit_retention_policies ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies
-CREATE POLICY "Users can view retention policies for their tenant"
-  ON audit_retention_policies
+DROP POLICY IF EXISTS "Users can view retention policies for their tenant" ON audit_retention_policies;
+CREATE POLICY "Users can view retention policies for their tenant" ON audit_retention_policies
   FOR SELECT
   USING (tenant_id = public.get_user_tenant_id_compat());
 
-CREATE POLICY "Owners can manage retention policies"
-  ON audit_retention_policies
+DROP POLICY IF EXISTS "Owners can manage retention policies" ON audit_retention_policies;
+CREATE POLICY "Owners can manage retention policies" ON audit_retention_policies
   FOR ALL
   USING (
     tenant_id = public.get_user_tenant_id_compat()
@@ -404,6 +410,7 @@ END $$;
 
 DO $$
 DECLARE
+  separator CONSTANT TEXT := repeat('=', 60);
   exported_at_exists BOOLEAN;
   severity_exists BOOLEAN;
   category_exists BOOLEAN;
@@ -474,6 +481,8 @@ COMMIT;
 -- =====================================================
 
 DO $$
+DECLARE
+  separator CONSTANT TEXT := repeat('=', 60);
 BEGIN
   RAISE NOTICE '';
   RAISE NOTICE '%', separator;

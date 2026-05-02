@@ -1,0 +1,59 @@
+---
+description: Project-wide rules for dental-crm. Applied to every Cursor session.
+globs:
+alwaysApply: true
+---
+
+# dental-crm Project Rules
+
+These rules apply to every Cursor session in this project. They exist because this codebase has known failure modes from prior fast AI-assisted development. Follow them strictly.
+
+## TypeScript Discipline
+- Never add `any` type annotations. Use `unknown` if truly unknown, then narrow it with type guards.
+- Never use `// @ts-ignore` or `// @ts-expect-error` to silence errors. Fix the underlying type.
+- Never use `as any` to silence type errors. If you cannot type something correctly, stop and ask the user.
+- After modifying any .ts or .tsx file, run `npx tsc --noEmit 2>&1 | grep -c "error TS"` and report the count. Confirm it has not increased from the baseline in `.tsc-baseline.txt`.
+
+## Multi-tenancy
+This codebase has a known mid-cutover state between legacy `app_users.tenant_id` and new `user_tenant_memberships`.
+- Every Supabase query that touches tenant-scoped data must filter by tenant_id derived from the request context.
+- Never default tenant_id to '', null, or a hardcoded value.
+- Use tenant context helpers from `src/lib/auth` or `src/lib/services/tenant-context`, not direct table access.
+- If you cannot resolve tenant_id from context in a route, stop and ask the user. Do not write a TODO and continue.
+
+## Supabase Types
+- Always use generated types from `src/types/` (look for supabase.ts or database.ts).
+- If a property is missing from a generated type, regenerate types — do not cast or extend manually.
+- Never use `Database['public']['Tables']['x']['Row'] as any` patterns or similar workarounds.
+
+## File Modifications
+- Before editing any file, run `git diff <file>` and tell the user what is already modified in the working tree.
+- Never modify more than 5 files in a single response without explicit user approval.
+- Never run `git add`, `git commit`, `git stash`, `git checkout`, `git reset`, or `git rebase` without explicit user permission for that specific command.
+- Never delete files without explicit user permission.
+
+## Logging and Debugging
+- Never use `console.log`, `console.warn`, or `console.error` in `src/` code. Use the existing logger in `src/lib/logger`.
+- Never commit code with `debugger` statements.
+- Never leave commented-out code blocks. Delete them or use git history.
+
+## Documentation
+- Never create new markdown files at the project root (`.md` files in `dental-crm/`).
+- If documentation is needed, place it in `docs/` and only after asking the user.
+- Never create files like FIX_COMPLETE.md, ALL_TASKS_DONE.md, FINAL_SUMMARY.md, or other self-congratulatory documentation.
+- If you make a notable change, mention it in the conversation, not in a new markdown file.
+
+## Code Quality
+- Never write a TODO comment without an associated GitHub issue number, formatted as `// TODO(#123): description`.
+- Before adding any new dependency, check `package.json` for an existing equivalent. This codebase has a history of duplicate libraries (email providers, charting libraries) and you must not add to the duplication.
+- Never create files named `something-new.tsx`, `something-v2.tsx`, or `something-old.tsx` alongside the original. Modify in place or rename the original.
+
+## When To Stop and Ask
+Stop and ask the user before:
+- Introducing a new dependency (npm package).
+- Modifying any config file: `next.config.js`, `tsconfig.json`, `package.json`, `.eslintrc*`, `eslint.config.*`.
+- Modifying any file under `supabase/migrations/` (these are append-only once deployed).
+- Making changes that affect more than 5 files.
+- Running any command that modifies git state.
+
+If a user request would violate any rule above, do not silently work around it. Tell the user the rule, explain why it applies, and ask how to proceed.

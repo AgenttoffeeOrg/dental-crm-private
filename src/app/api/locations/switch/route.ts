@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Set cookie for immediate context
-    const cookieStore = await cookies()
+    const cookieStore = cookies()
     cookieStore.set('active_location_id', location_id, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

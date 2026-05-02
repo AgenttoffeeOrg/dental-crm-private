@@ -123,7 +123,7 @@ export function CreateTaskPanel({
       }
 
       if (resolvedLocationId && resolvedLocationId !== formData.location_id) {
-        setFormData(prev => ({ ...prev, location_id: resolvedLocationId || '' }))
+        setFormData(prev => ({ ...prev, location_id: resolvedLocationId }))
       }
     }
 

@@ -105,7 +105,7 @@ export function NaturalLanguageQuery({ tenantId }: { tenantId?: string }) {
     }
   }
   
-  const useExampleQuery = (exampleQuery: string) => {
+  const handleExampleQuery = (exampleQuery: string) => {
     setQuery(exampleQuery)
   }
   
@@ -152,7 +152,7 @@ export function NaturalLanguageQuery({ tenantId }: { tenantId?: string }) {
                 key={index}
                 variant="outline"
                 className="cursor-pointer hover:bg-gray-100"
-                onClick={() => useExampleQuery(example)}
+                onClick={() => handleExampleQuery(example)}
               >
                 {example}
               </Badge>

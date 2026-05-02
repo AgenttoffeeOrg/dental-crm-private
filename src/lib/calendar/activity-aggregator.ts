@@ -33,7 +33,7 @@ export interface CalendarActivity {
 }
 
 export class ActivityAggregator {
-  private supabase = createClient()
+  private readonly supabase = createClient()
 
   /**
    * Get all activities for a date range

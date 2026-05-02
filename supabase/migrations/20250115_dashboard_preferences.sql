@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS user_dashboard_preferences (
   UNIQUE(user_id)
 );
 
--- Create index for faster lookups
+-- CREATE INDEX IF NOT EXISTS for faster lookups
 CREATE INDEX IF NOT EXISTS idx_dashboard_prefs_user_id 
   ON user_dashboard_preferences(user_id);
 
@@ -54,27 +54,27 @@ DROP POLICY IF EXISTS "Users can insert own dashboard preferences" ON user_dashb
 DROP POLICY IF EXISTS "Users can delete own dashboard preferences" ON user_dashboard_preferences;
 
 -- RLS Policies: Users can only manage their own preferences
-CREATE POLICY "Users can view own dashboard preferences"
-  ON user_dashboard_preferences
+DROP POLICY IF EXISTS "Users can view own dashboard preferences" ON user_dashboard_preferences;
+CREATE POLICY "Users can view own dashboard preferences" ON user_dashboard_preferences
   FOR SELECT
   TO authenticated
   USING (user_id = auth.uid());
 
-CREATE POLICY "Users can insert own dashboard preferences"
-  ON user_dashboard_preferences
+DROP POLICY IF EXISTS "Users can insert own dashboard preferences" ON user_dashboard_preferences;
+CREATE POLICY "Users can insert own dashboard preferences" ON user_dashboard_preferences
   FOR INSERT
   TO authenticated
   WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update own dashboard preferences"
-  ON user_dashboard_preferences
+DROP POLICY IF EXISTS "Users can update own dashboard preferences" ON user_dashboard_preferences;
+CREATE POLICY "Users can update own dashboard preferences" ON user_dashboard_preferences
   FOR UPDATE
   TO authenticated
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can delete own dashboard preferences"
-  ON user_dashboard_preferences
+DROP POLICY IF EXISTS "Users can delete own dashboard preferences" ON user_dashboard_preferences;
+CREATE POLICY "Users can delete own dashboard preferences" ON user_dashboard_preferences
   FOR DELETE
   TO authenticated
   USING (user_id = auth.uid());
@@ -90,7 +90,7 @@ $$ LANGUAGE plpgsql;
 
 -- Trigger to auto-update updated_at
 DROP TRIGGER IF EXISTS update_dashboard_prefs_timestamp ON user_dashboard_preferences;
-CREATE TRIGGER update_dashboard_prefs_timestamp
+CREATE OR REPLACE TRIGGER update_dashboard_prefs_timestamp
   BEFORE UPDATE ON user_dashboard_preferences
   FOR EACH ROW
   EXECUTE FUNCTION update_dashboard_prefs_updated_at();

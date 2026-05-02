@@ -175,7 +175,7 @@ export class EmailQueue {
       await supabase
         .from('email_logs')
         .update({
-          status: shouldRetry ? 'failed' : 'failed',
+          status: 'failed', // Removed redundant conditional
           failed_at: new Date().toISOString(),
           error_message: error.message,
           error_code: error.code,

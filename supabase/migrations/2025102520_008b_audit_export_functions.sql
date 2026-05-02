@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 7B: AUDIT LOG EXPORT FUNCTIONS
 -- Purpose: Generate audit log exports in multiple formats
@@ -600,6 +602,8 @@ COMMIT;
 -- =====================================================
 
 DO $$
+DECLARE
+  separator CONSTANT TEXT := repeat('=', 60);
 BEGIN
   RAISE NOTICE '';
   RAISE NOTICE '%', separator;

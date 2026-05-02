@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 1C: ADD ACTIVE TENANT CONTEXT TO APP_USERS
 -- Purpose: Store user's current session context (which org they're viewing)
@@ -125,7 +127,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Apply trigger to enforce validation
-CREATE TRIGGER trigger_validate_active_tenant
+CREATE OR REPLACE TRIGGER trigger_validate_active_tenant
   BEFORE INSERT OR UPDATE OF active_tenant_id ON app_users
   FOR EACH ROW
   EXECUTE FUNCTION validate_active_tenant();

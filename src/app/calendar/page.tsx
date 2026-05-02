@@ -50,15 +50,7 @@ export default function CalendarPage() {
   const { appUser, loading: authLoading } = useAuth()
   const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
   
-  // Show empty state if user has no tenant
-  if (!hasTenant && !authLoading) {
-    return (
-      <DashboardLayout>
-        <NoOrgEmptyState title="Calendar" />
-      </DashboardLayout>
-    )
-  }
-
+  // All hooks must be called before any conditional returns
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [activities, setActivities] = useState<CalendarActivity[]>([])
@@ -74,6 +66,15 @@ export default function CalendarPage() {
       loadBookingUrl()
     }
   }, [currentDate, viewMode, appUser?.active_tenant_id, appUser?.tenant_id, authLoading])
+
+  // Show empty state if user has no tenant (after all hooks)
+  if (!hasTenant && !authLoading) {
+    return (
+      <DashboardLayout>
+        <NoOrgEmptyState title="Calendar" />
+      </DashboardLayout>
+    )
+  }
 
   const loadData = async () => {
     const tenantId = appUser?.active_tenant_id || appUser?.tenant_id

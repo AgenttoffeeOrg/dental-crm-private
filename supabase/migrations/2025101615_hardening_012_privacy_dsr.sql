@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 8: Privacy, DSR & GDPR Compliance
 -- Date: October 16, 2025
@@ -8,7 +10,8 @@
 -- 1. ERASURE TOMBSTONES TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS erasure_tombstones (
+DROP TABLE IF EXISTS erasure_tombstones CASCADE;
+CREATE TABLE erasure_tombstones (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   
@@ -48,7 +51,8 @@ END $$;
 -- 2. DATA SUBJECT REQUESTS (DSR) TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS data_subject_requests (
+DROP TABLE IF EXISTS data_subject_requests CASCADE;
+CREATE TABLE data_subject_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   
@@ -113,6 +117,7 @@ END $$;
 
 ALTER TABLE erasure_tombstones ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tombstones_admin_only ON erasure_tombstones;
+DROP POLICY IF EXISTS tombstones_admin_only ON erasure_tombstones;
 CREATE POLICY tombstones_admin_only ON erasure_tombstones
   FOR ALL
   USING (
@@ -121,6 +126,7 @@ CREATE POLICY tombstones_admin_only ON erasure_tombstones
   );
 
 ALTER TABLE data_subject_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS dsr_admin_only ON data_subject_requests;
 DROP POLICY IF EXISTS dsr_admin_only ON data_subject_requests;
 CREATE POLICY dsr_admin_only ON data_subject_requests
   FOR ALL

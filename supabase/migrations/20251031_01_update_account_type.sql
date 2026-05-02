@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 1: ENHANCED ONBOARDING WIZARD - DATABASE SCHEMA
 -- Migration 1 of 3: Update Account Type Enum
@@ -21,7 +23,7 @@ BEGIN
     WHERE table_name = 'tenants' 
     AND column_name = 'account_type'
   ) THEN
-    ALTER TABLE tenants ADD COLUMN account_type TEXT DEFAULT 'organization';
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS account_type TEXT DEFAULT 'organization';
   END IF;
 
   -- Update any existing 'practice' values to 'organization'
@@ -37,6 +39,7 @@ END $$;
 ALTER TABLE tenants DROP CONSTRAINT IF EXISTS tenants_account_type_check;
 
 -- Add new constraint with updated values
+ALTER TABLE tenants DROP CONSTRAINT IF EXISTS tenants_account_type_check;
 ALTER TABLE tenants ADD CONSTRAINT tenants_account_type_check 
   CHECK (account_type IN ('organization', 'solo'));
 
@@ -44,7 +47,7 @@ ALTER TABLE tenants ADD CONSTRAINT tenants_account_type_check
 COMMENT ON COLUMN tenants.account_type IS 
   'Type of account: organization (for companies/practices with team) or solo (for individual users)';
 
--- Step 4: Create index for better query performance
+-- Step 4: CREATE INDEX IF NOT EXISTS for better query performance
 CREATE INDEX IF NOT EXISTS idx_tenants_account_type ON tenants(account_type);
 
 -- Step 5: Log the migration

@@ -178,7 +178,7 @@ interface CacheEntry<T> {
 }
 
 class RoutingCache {
-  private cache = new Map<string, CacheEntry<any>>()
+  private readonly cache = new Map<string, CacheEntry<any>>()
   private readonly DEFAULT_TTL = 5 * 60 * 1000 // 5 minutes
 
   set<T>(key: string, data: T, ttl = this.DEFAULT_TTL): void {

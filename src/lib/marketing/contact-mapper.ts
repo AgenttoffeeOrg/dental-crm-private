@@ -203,7 +203,7 @@ export async function getAllContactTags(tenantId: string): Promise<string[]> {
   const allTags = data
     .flatMap(c => c.tags || [])
     .filter((tag, index, self) => self.indexOf(tag) === index)
-    .sort()
+    .sort((a, b) => a.localeCompare(b))
   
   return allTags
 }

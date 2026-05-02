@@ -365,6 +365,10 @@ export function CreateContactSlideOver({
       <div
         className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity"
         onClick={onClose}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close contact creation panel"
       />
 
       {/* Slide-over Panel */}

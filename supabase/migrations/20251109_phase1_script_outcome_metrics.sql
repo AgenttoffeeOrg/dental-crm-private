@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- PHASE 1: Script Outcome Metrics & Triggers
 -- -----------------------------------------------------
@@ -124,16 +126,18 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_after_sales_script_usage ON sales_script_usages;
-CREATE TRIGGER trg_after_sales_script_usage
+CREATE OR REPLACE TRIGGER trg_after_sales_script_usage
 AFTER INSERT OR UPDATE OR DELETE ON sales_script_usages
 FOR EACH ROW EXECUTE FUNCTION trg_refresh_sales_script_stats();
 
 DROP TRIGGER IF EXISTS trg_after_conversation_outcomes ON conversation_outcomes;
-CREATE TRIGGER trg_after_conversation_outcomes
+CREATE OR REPLACE TRIGGER trg_after_conversation_outcomes
 AFTER INSERT OR UPDATE OR DELETE ON conversation_outcomes
 FOR EACH ROW EXECUTE FUNCTION trg_refresh_sales_script_stats_from_outcome();
 
 COMMIT;
+
+
 
 
 

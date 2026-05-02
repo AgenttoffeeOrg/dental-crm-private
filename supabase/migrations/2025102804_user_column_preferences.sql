@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- ============================================================================
 -- MIGRATION: User Column Preferences
 -- Purpose: Store user-specific column visibility preferences for data tables
@@ -6,7 +8,8 @@
 -- ============================================================================
 
 -- Create user_column_preferences table
-CREATE TABLE IF NOT EXISTS public.user_column_preferences (
+DROP TABLE IF EXISTS public.user_column_preferences CASCADE;
+CREATE TABLE public.user_column_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   page VARCHAR(50) NOT NULL, -- e.g., 'deals', 'contacts', 'tasks', 'pipeline'
@@ -43,27 +46,27 @@ COMMENT ON COLUMN public.user_column_preferences.visible_columns IS
 ALTER TABLE public.user_column_preferences ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only see their own preferences
-CREATE POLICY "Users can view own column preferences"
-  ON public.user_column_preferences
+DROP POLICY IF EXISTS "Users can view own column preferences" ON public.user_column_preferences;
+CREATE POLICY "Users can view own column preferences" ON public.user_column_preferences
   FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Policy: Users can insert their own preferences
-CREATE POLICY "Users can insert own column preferences"
-  ON public.user_column_preferences
+DROP POLICY IF EXISTS "Users can insert own column preferences" ON public.user_column_preferences;
+CREATE POLICY "Users can insert own column preferences" ON public.user_column_preferences
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Policy: Users can update their own preferences
-CREATE POLICY "Users can update own column preferences"
-  ON public.user_column_preferences
+DROP POLICY IF EXISTS "Users can update own column preferences" ON public.user_column_preferences;
+CREATE POLICY "Users can update own column preferences" ON public.user_column_preferences
   FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 -- Policy: Users can delete their own preferences
-CREATE POLICY "Users can delete own column preferences"
-  ON public.user_column_preferences
+DROP POLICY IF EXISTS "Users can delete own column preferences" ON public.user_column_preferences;
+CREATE POLICY "Users can delete own column preferences" ON public.user_column_preferences
   FOR DELETE
   USING (auth.uid() = user_id);
 
@@ -119,7 +122,7 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER trigger_update_user_column_preferences_updated_at
+CREATE OR REPLACE TRIGGER trigger_update_user_column_preferences_updated_at
   BEFORE UPDATE ON public.user_column_preferences
   FOR EACH ROW
   EXECUTE FUNCTION public.update_user_column_preferences_updated_at();

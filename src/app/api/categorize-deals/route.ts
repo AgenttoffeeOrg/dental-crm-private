@@ -11,8 +11,9 @@ import { categorizeDeal, autoTagDeal } from '@/lib/deal-categorization'
  */
 export async function POST() {
   try {
-    const supabase = await createServiceClient()
-    const tenantId = appUser.tenant_id
+    const supabase = createServiceClient() // Removed await - function is synchronous
+    // TODO: Get tenantId from request context
+    const tenantId = '' // appUser.tenant_id - appUser not defined in this scope
 
     console.log('🔄 Starting auto-categorization of deals...')
 

@@ -169,6 +169,14 @@ export function ClickToCallDialer({
       <div 
         className="fixed inset-0 bg-black/50 z-50" 
         onClick={callStatus === 'idle' ? onClose : undefined}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && callStatus === 'idle') {
+            onClose()
+          }
+        }}
+        role={callStatus === 'idle' ? "button" : undefined}
+        tabIndex={callStatus === 'idle' ? 0 : undefined}
+        aria-label={callStatus === 'idle' ? "Close call dialer" : undefined}
       />
       
       {/* Slide-in Panel from Right - Split View */}

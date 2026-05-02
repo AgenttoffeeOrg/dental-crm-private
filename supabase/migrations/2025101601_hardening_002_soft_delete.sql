@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 1.2: Soft Delete & Updated At
 -- Date: October 16, 2025
@@ -154,9 +156,9 @@ BEGIN
     -- Drop existing trigger if it exists
     EXECUTE format('DROP TRIGGER IF EXISTS %I ON %I', v_trigger_name, r.table_name);
     
-    -- Create trigger
+    -- CREATE OR REPLACE TRIGGER
     EXECUTE format(
-      'CREATE TRIGGER %I BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION set_updated_at()',
+      'CREATE OR REPLACE TRIGGER %I BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION set_updated_at()',
       v_trigger_name,
       r.table_name
     );
@@ -195,9 +197,9 @@ BEGIN
     -- Drop existing trigger if it exists
     EXECUTE format('DROP TRIGGER IF EXISTS %I ON %I', v_trigger_name, r.table_name);
     
-    -- Create trigger
+    -- CREATE OR REPLACE TRIGGER
     EXECUTE format(
-      'CREATE TRIGGER %I BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION prevent_tenant_id_change()',
+      'CREATE OR REPLACE TRIGGER %I BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION prevent_tenant_id_change()',
       v_trigger_name,
       r.table_name
     );

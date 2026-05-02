@@ -234,6 +234,10 @@ export function ActivityDetailSlideIn({
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={onClose}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close activity detail panel"
       />
 
       {/* Slide-in Panel */}

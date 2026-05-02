@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- Migration: Create User Location Access Table
 -- Purpose: Track which users can access which locations (multi-location ONLY)
@@ -11,7 +13,8 @@ BEGIN;
 -- 1. CREATE USER_LOCATION_ACCESS TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS user_location_access (
+DROP TABLE IF EXISTS user_location_access CASCADE;
+CREATE TABLE user_location_access (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -97,7 +100,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_user_location_access_updated_at
+CREATE OR REPLACE TRIGGER trigger_user_location_access_updated_at
   BEFORE UPDATE ON user_location_access
   FOR EACH ROW
   EXECUTE FUNCTION update_user_location_access_updated_at();
@@ -110,11 +113,13 @@ CREATE TRIGGER trigger_user_location_access_updated_at
 ALTER TABLE user_location_access ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can see their own access records
+DROP POLICY IF EXISTS user_location_access_select_own ON user_location_access;
 CREATE POLICY user_location_access_select_own ON user_location_access
   FOR SELECT
   USING (user_id = auth.uid());
 
 -- Policy: Tenant Admins can see all access for their locations
+DROP POLICY IF EXISTS user_location_access_select_admin ON user_location_access;
 CREATE POLICY user_location_access_select_admin ON user_location_access
   FOR SELECT
   USING (
@@ -127,6 +132,7 @@ CREATE POLICY user_location_access_select_admin ON user_location_access
   );
 
 -- Policy: Only Tenant Admins can grant/revoke access
+DROP POLICY IF EXISTS user_location_access_insert_admin ON user_location_access;
 CREATE POLICY user_location_access_insert_admin ON user_location_access
   FOR INSERT
   WITH CHECK (
@@ -138,6 +144,7 @@ CREATE POLICY user_location_access_insert_admin ON user_location_access
     )
   );
 
+DROP POLICY IF EXISTS user_location_access_update_admin ON user_location_access;
 CREATE POLICY user_location_access_update_admin ON user_location_access
   FOR UPDATE
   USING (

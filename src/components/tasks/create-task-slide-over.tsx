@@ -116,7 +116,7 @@ export function CreateTaskSlideOver({
       }
 
       if (resolvedLocationId && resolvedLocationId !== formData.location_id) {
-        setFormData(prev => ({ ...prev, location_id: resolvedLocationId || '' }))
+        setFormData(prev => ({ ...prev, location_id: resolvedLocationId }))
       }
     }
 
@@ -231,6 +231,10 @@ export function CreateTaskSlideOver({
       <div 
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 animate-in fade-in duration-200"
         onClick={handleCancel}
+        onKeyDown={(e) => e.key === 'Escape' && handleCancel()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close task creation panel"
       />
 
       {/* Slide-over Panel from RIGHT */}

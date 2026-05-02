@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- HARDENING PHASE 6: Automations Hardening
 -- Date: October 16, 2025
@@ -34,7 +36,8 @@ END $$;
 -- 2. AUTOMATION DEAD LETTER QUEUE (DLQ)
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS automation_dlq (
+DROP TABLE IF EXISTS automation_dlq CASCADE;
+CREATE TABLE automation_dlq (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   automation_id UUID NOT NULL REFERENCES automations(id) ON DELETE CASCADE,
@@ -82,6 +85,7 @@ DROP POLICY IF EXISTS automation_dlq_insert ON automation_dlq;
 DROP POLICY IF EXISTS automation_dlq_update ON automation_dlq;
 DROP POLICY IF EXISTS automation_dlq_service ON automation_dlq;
 
+DROP POLICY IF EXISTS automation_dlq_select ON automation_dlq;
 CREATE POLICY automation_dlq_select ON automation_dlq
   FOR SELECT
   USING (
@@ -89,10 +93,12 @@ CREATE POLICY automation_dlq_select ON automation_dlq
     AND check_entitlement('automations', false)
   );
 
+DROP POLICY IF EXISTS automation_dlq_insert ON automation_dlq;
 CREATE POLICY automation_dlq_insert ON automation_dlq
   FOR INSERT
   WITH CHECK (tenant_id = current_tenant_id());
 
+DROP POLICY IF EXISTS automation_dlq_update ON automation_dlq;
 CREATE POLICY automation_dlq_update ON automation_dlq
   FOR UPDATE
   USING (
@@ -100,6 +106,7 @@ CREATE POLICY automation_dlq_update ON automation_dlq
     AND user_has_role(ARRAY['owner', 'super_admin', 'admin', 'manager'])
   );
 
+DROP POLICY IF EXISTS automation_dlq_service ON automation_dlq;
 CREATE POLICY automation_dlq_service ON automation_dlq
   FOR ALL
   USING (auth.role() = 'service_role');
@@ -368,7 +375,8 @@ END $$;
 -- 8. CONCURRENCY LEASE TABLE (Per-tenant concurrency limiting)
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS automation_concurrency_leases (
+DROP TABLE IF EXISTS automation_concurrency_leases CASCADE;
+CREATE TABLE automation_concurrency_leases (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   lease_key TEXT NOT NULL, -- e.g., 'tenant:{tenant_id}'

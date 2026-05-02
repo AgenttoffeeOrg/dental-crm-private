@@ -339,6 +339,10 @@ const sanitizedContactPhone = useMemo(
           "hover:shadow-md hover:border-blue-300 hover:bg-blue-50/20"
         )}
         onClick={() => setSelectedActivityId(activity.id)}
+        onKeyDown={(e) => e.key === 'Enter' && setSelectedActivityId(activity.id)}
+        role="button"
+        tabIndex={0}
+        aria-label={`View ${activity.type} activity`}
       >
         <div className="flex items-start gap-3">
           {/* Activity Type Icon - Smaller, Sleeker */}

@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 5B: INVITE COLLISION DETECTION & VALIDATION
 -- Purpose: Comprehensive collision detection and smart invite handling

@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- STEP 6A: ORG SWITCHER CONTEXT MANAGEMENT
 -- Purpose: Seamless organization switching with context persistence
@@ -47,6 +49,8 @@ BEGIN;
 -- =====================================================
 
 DO $$
+DECLARE
+  separator CONSTANT TEXT := repeat('=', 60);
 BEGIN
   RAISE NOTICE '';
   RAISE NOTICE '%', separator;
@@ -65,7 +69,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'app_users' AND column_name = 'last_active_tenant_id'
   ) THEN
-    ALTER TABLE app_users ADD COLUMN last_active_tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL;
+    ALTER TABLE app_users ADD COLUMN IF NOT EXISTS last_active_tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL;
     RAISE NOTICE '✅ Added last_active_tenant_id to app_users';
   ELSE
     RAISE NOTICE 'ℹ️  last_active_tenant_id already exists on app_users';
@@ -79,7 +83,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'app_users' AND column_name = 'last_tenant_switch_at'
   ) THEN
-    ALTER TABLE app_users ADD COLUMN last_tenant_switch_at TIMESTAMPTZ;
+    ALTER TABLE app_users ADD COLUMN IF NOT EXISTS last_tenant_switch_at TIMESTAMPTZ;
     RAISE NOTICE '✅ Added last_tenant_switch_at to app_users';
   ELSE
     RAISE NOTICE 'ℹ️  last_tenant_switch_at already exists on app_users';
@@ -93,7 +97,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'app_users' AND column_name = 'tenant_switch_count'
   ) THEN
-    ALTER TABLE app_users ADD COLUMN tenant_switch_count INTEGER DEFAULT 0;
+    ALTER TABLE app_users ADD COLUMN IF NOT EXISTS tenant_switch_count INTEGER DEFAULT 0;
     RAISE NOTICE '✅ Added tenant_switch_count to app_users';
   ELSE
     RAISE NOTICE 'ℹ️  tenant_switch_count already exists on app_users';
@@ -109,12 +113,14 @@ BEGIN
   ) THEN
     -- Check if locations table exists
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'locations') THEN
-      ALTER TABLE app_users ADD COLUMN active_location_id UUID;
+      ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active_location_id UUID;
       ALTER TABLE app_users 
+        DROP CONSTRAINT IF EXISTS fk_app_users_active_location;
+ALTER TABLE app_users 
         ADD CONSTRAINT fk_app_users_active_location 
         FOREIGN KEY (active_location_id) REFERENCES locations(id) ON DELETE SET NULL;
     ELSE
-      ALTER TABLE app_users ADD COLUMN active_location_id UUID;
+      ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active_location_id UUID;
     END IF;
     RAISE NOTICE '✅ Added active_location_id to app_users';
   ELSE
@@ -129,7 +135,7 @@ BEGIN
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'app_users' AND column_name = 'per_tenant_location_preferences'
   ) THEN
-    ALTER TABLE app_users ADD COLUMN per_tenant_location_preferences JSONB DEFAULT '{}';
+    ALTER TABLE app_users ADD COLUMN IF NOT EXISTS per_tenant_location_preferences JSONB DEFAULT '{}';
     RAISE NOTICE '✅ Added per_tenant_location_preferences to app_users';
   ELSE
     RAISE NOTICE 'ℹ️  per_tenant_location_preferences already exists on app_users';
@@ -168,7 +174,8 @@ END $$;
 -- 2. CREATE USER_CONTEXT_HISTORY TABLE
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS user_context_history (
+DROP TABLE IF EXISTS user_context_history CASCADE;
+CREATE TABLE user_context_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   from_tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
@@ -197,13 +204,13 @@ CREATE INDEX IF NOT EXISTS idx_user_context_history_session
 ALTER TABLE user_context_history ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies
-CREATE POLICY "Users can view their own context history"
-  ON user_context_history
+DROP POLICY IF EXISTS "Users can view their own context history" ON user_context_history;
+CREATE POLICY "Users can view their own context history" ON user_context_history
   FOR SELECT
   USING (user_id = auth.uid());
 
-CREATE POLICY "Service role can manage context history"
-  ON user_context_history
+DROP POLICY IF EXISTS "Service role can manage context history" ON user_context_history;
+CREATE POLICY "Service role can manage context history" ON user_context_history
   FOR ALL
   USING (auth.role() = 'service_role');
 
@@ -504,6 +511,7 @@ END $$;
 
 DO $$
 DECLARE
+  separator CONSTANT TEXT := repeat('=', 60);
   last_active_tenant_exists BOOLEAN;
   active_location_exists BOOLEAN;
   per_tenant_prefs_exists BOOLEAN;
@@ -564,6 +572,8 @@ COMMIT;
 -- =====================================================
 
 DO $$
+DECLARE
+  separator CONSTANT TEXT := repeat('=', 60);
 BEGIN
   RAISE NOTICE '';
   RAISE NOTICE '%', separator;

@@ -1,3 +1,5 @@
+SET search_path TO public, extensions;
+
 -- =====================================================
 -- SAFE AUTO-CREATE TENANT FOR NEW USERS
 -- =====================================================
@@ -14,7 +16,7 @@
 -- =====================================================
 
 -- =====================================================
--- CREATE TRIGGER FOR FUTURE SIGN-UPS ONLY
+-- CREATE OR REPLACE TRIGGER FOR FUTURE SIGN-UPS ONLY
 -- =====================================================
 
 -- Function to auto-create tenant for new users
@@ -111,9 +113,9 @@ $$;
 COMMENT ON FUNCTION public.auto_create_tenant_for_new_user() 
 IS 'Automatically creates tenant + location for solo user sign-ups. Does NOT affect invited users who already have active_tenant_id set.';
 
--- Create trigger on app_users INSERT
+-- CREATE OR REPLACE TRIGGER on app_users INSERT
 DROP TRIGGER IF EXISTS trigger_auto_create_tenant_for_new_user ON app_users;
-CREATE TRIGGER trigger_auto_create_tenant_for_new_user
+CREATE OR REPLACE TRIGGER trigger_auto_create_tenant_for_new_user
   BEFORE INSERT ON app_users
   FOR EACH ROW
   EXECUTE FUNCTION auto_create_tenant_for_new_user();
