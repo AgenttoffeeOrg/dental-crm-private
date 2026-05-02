@@ -22,23 +22,43 @@ export async function GET() {
       queryError: queryError?.message 
     })
     
-    // Test 3: Try to insert a test contact
-    const testData = {
-      tenant_id: user?.id || '00000000-0000-0000-0000-000000000000',
-      full_name: 'Test Contact ' + Date.now(),
-      primary_email: `test-${Date.now()}@example.com`,
-      created_at: new Date().toISOString(),
+    // Test 3: Try to insert a test contact. Requires an authenticated user
+    // (tenant_id derived from their app_users row). We do NOT fall back to
+    // the zero-UUID tenant for diagnostics because that historically polluted
+    // production with cross-tenant rows that nobody could find later.
+    let insertData: any = null
+    let insertError: { message?: string } | null = null
+    if (!user) {
+      insertError = { message: 'no authenticated user; insert test skipped' }
+    } else {
+      const { data: appUser } = await supabase
+        .from('app_users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single()
+      const tenantId = appUser?.tenant_id as string | undefined
+      if (!tenantId) {
+        insertError = { message: 'authenticated user has no tenant_id; insert test skipped' }
+      } else {
+        const testData = {
+          tenant_id: tenantId,
+          full_name: 'Test Contact ' + Date.now(),
+          primary_email: `test-${Date.now()}@example.com`,
+          created_at: new Date().toISOString(),
+        }
+        const result = await supabase
+          .from('contacts')
+          .insert(testData)
+          .select()
+          .single()
+        insertData = result.data
+        insertError = result.error
+      }
     }
-    
-    const { data: insertData, error: insertError } = await supabase
-      .from('contacts')
-      .insert(testData)
-      .select()
-      .single()
-    
-    console.log('Insert test:', { 
-      inserted: !!insertData, 
-      insertError: insertError?.message 
+
+    console.log('Insert test:', {
+      inserted: !!insertData,
+      insertError: insertError?.message,
     })
     
     // Clean up test contact

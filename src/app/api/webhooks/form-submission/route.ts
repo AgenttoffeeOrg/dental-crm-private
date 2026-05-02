@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { z } from 'zod'
+import { randomUUID } from 'node:crypto'
 import { extractTagsFromDealText } from '@/lib/treatment-routing/ai-extractor'
 import { quickRouteDeal } from '@/lib/treatment-routing'
-
-// TODO: This should come from auth/request context, not hardcoded
-const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || '00000000-0000-0000-0000-000000000000'
 
 // Define a schema for incoming form data
 const formSubmissionSchema = z.object({
@@ -17,14 +15,31 @@ const formSubmissionSchema = z.object({
 
 export async function POST(req: Request) {
   const supabase = createServiceClient()
+  const correlationId = req.headers.get('x-correlation-id') ?? randomUUID()
+  const requestId = req.headers.get('x-request-id') ?? randomUUID()
 
   try {
     const body = await req.json()
     const validatedData = formSubmissionSchema.parse(body)
     const { formId, formData, source, tenantId } = validatedData
-    
-    // Use provided tenant ID or fallback to default
-    const effectiveTenantId = tenantId || DEFAULT_TENANT_ID
+
+    // Tenant must be resolvable from the request payload. We do NOT fall back
+    // to a zero-UUID tenant: that historically routed every unresolvable
+    // submission into a single bucket that mixed data across customers.
+    if (!tenantId) {
+      console.error('[ingestion] tenant resolution failed', {
+        route: '/api/webhooks/form-submission',
+        correlation_id: correlationId,
+        request_id: requestId,
+        form_id: formId,
+        source: source ?? null,
+      })
+      return NextResponse.json(
+        { error: 'tenant resolution failed', correlation_id: correlationId },
+        { status: 400 }
+      )
+    }
+    const effectiveTenantId = tenantId
 
     // Extract basic contact information
     const contactName = formData.full_name || 'Unknown Lead'
