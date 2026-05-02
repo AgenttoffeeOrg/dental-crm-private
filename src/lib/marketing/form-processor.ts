@@ -141,8 +141,15 @@ export async function processFormSubmission(
           treatmentTags = extractionResult.extractedTags.map(t => t.tagName);
           console.log(`[Form Processor] AI extracted ${treatmentTags.length} tags:`, treatmentTags);
         } catch (error) {
-          console.error('[Form Processor] Tag extraction failed:', error);
-          // Continue without tags - will route to unsorted
+          // Best-effort: tag extraction failure means the deal routes to
+          // "unsorted" but the form submission is still captured.
+          console.warn('[form-processor] AI tag extraction failed (best-effort, will route unsorted)', {
+            route: 'lib/marketing/form-processor',
+            tenant_id: submission.tenantId,
+            form_id: submission.formId,
+            error_message: error instanceof Error ? error.message : String(error),
+            error_stack: error instanceof Error ? error.stack : undefined,
+          });
         }
       }
     }
@@ -187,8 +194,16 @@ export async function processFormSubmission(
           console.log(`[Form Processor] Routing logged: ${routingLogId}`);
         }
       } catch (error) {
-        console.error('[Form Processor] Routing failed, using fallback:', error);
-        // Fallback to manual pipeline or unsorted
+        // Routing failure is escalated to fail-loud unless a manual fallback
+        // pipeline is configured. Either way we log structured context.
+        console.error('[form-processor] auto-routing failed', {
+          route: 'lib/marketing/form-processor',
+          tenant_id: submission.tenantId,
+          form_id: submission.formId,
+          has_manual_fallback: Boolean(dealRules.targetPipelineId && dealRules.defaultStageId),
+          error_message: error instanceof Error ? error.message : String(error),
+          error_stack: error instanceof Error ? error.stack : undefined,
+        });
         if (dealRules.targetPipelineId && dealRules.defaultStageId) {
           finalPipelineId = dealRules.targetPipelineId;
           finalStageId = dealRules.defaultStageId;

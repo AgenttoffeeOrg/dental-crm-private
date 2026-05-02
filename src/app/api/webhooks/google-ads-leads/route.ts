@@ -75,7 +75,13 @@ export async function syncGoogleAdsLeads() {
       console.log('[Google Ads Sync] Processing advertiser:', integration.practice_id)
     }
   } catch (error) {
-    console.error('[Google Ads Sync] Error:', error)
+    // Best-effort background sync: failure means leads aren't pulled this
+    // cycle, but the integration is still configured and will retry.
+    console.error('[google-ads-sync] background sync failed', {
+      route: 'lib/google-ads-sync',
+      error_message: error instanceof Error ? error.message : String(error),
+      error_stack: error instanceof Error ? error.stack : undefined,
+    })
   }
 }
 

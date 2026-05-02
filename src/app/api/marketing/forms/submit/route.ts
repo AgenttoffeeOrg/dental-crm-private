@@ -176,8 +176,16 @@ export async function POST(req: NextRequest) {
         spamScore,
         assignedUserId,
       }).catch(error => {
-        console.error('[Form Submission] Error sending admin notifications:', error);
-        // Don't fail the request if notifications fail
+        // Best-effort: notification failure doesn't lose the submission
+        // (already persisted upstream); log structured context for observability.
+        console.warn('[forms/submit] admin notifications failed (best-effort)', {
+          route: '/api/marketing/forms/submit',
+          tenant_id: appUser.tenant_id,
+          form_id: formId,
+          submission_id: result.submissionId,
+          error_message: error instanceof Error ? error.message : String(error),
+          error_stack: error instanceof Error ? error.stack : undefined,
+        });
       });
 
       // Dispatch webhooks (non-blocking)
@@ -198,8 +206,16 @@ export async function POST(req: NextRequest) {
           referrer: referrerUrl || undefined,
         },
       }).catch(error => {
-        console.error('[Form Submission] Error dispatching webhooks:', error);
-        // Don't fail the request if webhooks fail
+        // Best-effort: outbound webhook failure doesn't lose the submission
+        // (already persisted upstream); log structured context for observability.
+        console.warn('[forms/submit] outbound webhook dispatch failed (best-effort)', {
+          route: '/api/marketing/forms/submit',
+          tenant_id: appUser.tenant_id,
+          form_id: formId,
+          submission_id: result.submissionId,
+          error_message: error instanceof Error ? error.message : String(error),
+          error_stack: error instanceof Error ? error.stack : undefined,
+        });
       });
     }
 

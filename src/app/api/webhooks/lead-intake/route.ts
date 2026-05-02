@@ -19,10 +19,10 @@ const leadWebhookSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
 })
 
-// Auto-categorization function
+// Auto-categorization function. Best-effort: failure does NOT block lead capture
+// — we just don't get a category back, the lead still lands in the DB.
 async function categorizeLead(message: string, tenantId: string, supabase: any) {
   try {
-    // Call the PostgreSQL function we created
     const { data, error } = await supabase
       .rpc('auto_categorize_lead', {
         p_message: message,
@@ -30,13 +30,23 @@ async function categorizeLead(message: string, tenantId: string, supabase: any) 
       })
 
     if (error) {
-      console.error('Categorization error:', error)
+      console.warn('[lead-intake] categorization RPC returned error (best-effort, lead capture unaffected)', {
+        route: '/api/webhooks/lead-intake',
+        tenant_id: tenantId,
+        error_message: error.message,
+        error_code: error.code,
+      })
       return null
     }
 
     return data?.[0] || null
   } catch (error) {
-    console.error('Error in categorization:', error)
+    console.warn('[lead-intake] categorization threw (best-effort, lead capture unaffected)', {
+      route: '/api/webhooks/lead-intake',
+      tenant_id: tenantId,
+      error_message: error instanceof Error ? error.message : String(error),
+      error_stack: error instanceof Error ? error.stack : undefined,
+    })
     return null
   }
 }
@@ -192,8 +202,15 @@ export async function POST(request: NextRequest) {
             treatmentTags = extractionResult.extractedTags.map(t => t.tagName);
             console.log(`[Lead Intake] AI extracted ${treatmentTags.length} tags:`, treatmentTags);
           } catch (error) {
-            console.error('[Lead Intake] Tag extraction failed:', error);
-            // Continue with empty tags - will route to unsorted
+            // Best-effort: tag extraction failure means the deal routes to
+            // "unsorted" but the lead is still captured. Do not escalate.
+            console.warn('[lead-intake] AI tag extraction failed (best-effort, will route unsorted)', {
+              route: '/api/webhooks/lead-intake',
+              tenant_id: tenantId,
+              lead_intake_id: leadIntake.id,
+              error_message: error instanceof Error ? error.message : String(error),
+              error_stack: error instanceof Error ? error.stack : undefined,
+            });
           }
         }
 
@@ -258,13 +275,32 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (dealError) {
-          console.error('Error creating deal:', dealError)
+          // Lead and contact already persisted upstream; deal creation is the
+          // downstream best-effort step. Log loudly with structured context so
+          // operations can replay if needed, but do not 500 the webhook (the
+          // lead itself is in the system and re-delivering would duplicate it).
+          console.error('[lead-intake] deal creation failed (lead already captured; deal recoverable)', {
+            route: '/api/webhooks/lead-intake',
+            tenant_id: tenantId,
+            lead_intake_id: leadIntake.id,
+            contact_id: contact.id,
+            pipeline_id: routingResult.pipelineId,
+            error_message: dealError.message,
+            error_code: dealError.code,
+          })
         } else {
           console.log(`[Lead Intake] Created deal ${newDeal?.id} with ${treatmentTags.length} tags`)
         }
       } catch (routingError) {
-        console.error('[Lead Intake] Deal routing failed:', routingError)
-        // Don't fail the entire webhook if deal creation fails
+        // Same rationale as above: lead/contact persisted; deal routing is best-effort.
+        console.error('[lead-intake] deal routing threw (lead already captured; deal recoverable)', {
+          route: '/api/webhooks/lead-intake',
+          tenant_id: tenantId,
+          lead_intake_id: leadIntake.id,
+          contact_id: contact.id,
+          error_message: routingError instanceof Error ? routingError.message : String(routingError),
+          error_stack: routingError instanceof Error ? routingError.stack : undefined,
+        })
       }
     }
 

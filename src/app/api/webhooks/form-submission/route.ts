@@ -121,8 +121,16 @@ export async function POST(req: Request) {
             totalLeadScore += Math.min(20, treatmentTags.length * 5);
           }
         } catch (error) {
-          console.error('[Form Webhook] Tag extraction failed:', error);
-          // Continue without tags - will route to unsorted
+          // Best-effort: tag extraction failure means the deal routes to
+          // "unsorted" but the form submission is still captured.
+          console.warn('[form-submission] AI tag extraction failed (best-effort, will route unsorted)', {
+            route: '/api/webhooks/form-submission',
+            tenant_id: effectiveTenantId,
+            form_id: formId,
+            correlation_id: correlationId,
+            error_message: error instanceof Error ? error.message : String(error),
+            error_stack: error instanceof Error ? error.stack : undefined,
+          });
         }
       }
     }
