@@ -489,7 +489,7 @@ export async function GET(request: NextRequest) {
 
     // Get recent bulk re-route operations from routing logs
     const { data: recentOperations } = await supabase
-      .from('treatment_tag_routing_logs')
+      .from('treatment_routing_logs')
       .select('*')
       .eq('tenant_id', appUser.tenant_id)
       .eq('source', 'bulk_reroute')
