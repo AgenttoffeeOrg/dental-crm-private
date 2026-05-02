@@ -327,3 +327,129 @@ Verdict: **6/10 false positives, 4/10 real (1 fixed inline, 3 deferred to featur
 - Migration file timestamp on disk renamed from the originally-planned `20260502180000` to `20260502174927` so the file matches the recorded version.
 
 **Phase 0 status: COMPLETE.** Phase 1 (data model foundation for typed attribution) can begin.
+
+---
+
+## §9 Phase 1 — Attribution foundation + booking widget schema
+
+**Migration files:**
+- `supabase/migrations/20260502210540_phase_1_attribution_foundation.sql`
+- `supabase/migrations/20260502211011_phase_1_backfill.sql`
+
+**Branch:** `phase-1-attribution-foundation` (created off
+`phase-0-schema-reconciliation` rather than `main` because Phase 0 has
+not yet been merged to `main` — the Phase 0 migration is in production
+via Supabase MCP `apply_migration` but the PR is still open. Trade-off
+documented in §"Anything unexpected" below.)
+
+**What was built:**
+- `source_channel_enum` with 25 values (incl. 3 `booking_widget_*` paths)
+- 32 typed attribution columns on `contacts` (16 `first_touch_*` + 16
+  `last_touch_*`)
+- `channel_identifiers` table (dedup backbone, 14-channel CHECK)
+- `attribution_touchpoints` append-only log
+- `lead_intent_sessions` table (the v2 widget session record;
+  phone-as-join-key, replaces the old `click_id_pending` design)
+- `practice_booking_widgets` table (per-practice widget config —
+  calendar/webform/whatsapp toggles, branding, embed_script_secret)
+- `practice_domains` table
+- `consent_text_version`, `lawful_basis`, `consent_locale` on
+  `consent_records`
+- `lead_sla_rules` table
+- 25 seeded system-default SLA rules (`tenant_id IS NULL`)
+- Backfill from `marketing_form_submissions` history (zero-rows on
+  pre-launch DB; idempotent via NOT-NULL guards + `NOT EXISTS`
+  on `metadata->>'submission_id'`)
+
+**Adaptations from `phase_1_execution_prompt_v2.md` (both required by
+the live schema):**
+1. RLS policies use this codebase's `get_user_org_id()` helper and one
+   policy per CRUD action (plus a service-role bypass), matching the
+   pattern of `public.contacts`. The prompt's
+   `(auth.jwt() ->> 'tenant_id')::uuid` style would not match the rest
+   of the codebase. `practice_booking_widgets` also gets an extra
+   anonymous SELECT policy gated on `is_active = true` so the embed
+   loader can fetch widget config without a session (Phase 2 routes
+   will additionally check `embed_script_secret`).
+2. `practice_location_id` columns FK to `public.practice_locations(id)`
+   (the live table name in this codebase).
+
+**Deferred to Phase 2:**
+- The booking widget React code + JS embed loader
+- `app.<crm>.com/book/:slug` route
+- `/api/widget/*` API routes
+- Central `ingestLead()` function
+- CareStack potential-patient join worker
+- `dedup_review_queue` table
+- Conversion-events-out worker, SLA monitor, notification dispatcher
+- Refactor of existing webhook handlers to call `ingestLead()`
+
+**Phase 2 contract:** see `docs/phase-2-contracts.md`.
+
+**Validation:**
+- **Idempotency (forward migration):** PASS. Every block re-run via
+  `execute_sql` after the initial `apply_migration`; second run
+  completed without errors and confirmed the new state was unchanged
+  (sla_count_unchanged=25, attribution_columns_unchanged=32). Every
+  block uses `IF EXISTS` / `IF NOT EXISTS` / `DO` guards.
+- **Idempotency (backfill migration):** PASS. The two `UPDATE`s guard
+  on `first_touch_at IS NULL` / `last_touch_at IS NULL`; the `INSERT`
+  guards on `NOT EXISTS (... metadata->>'submission_id' = mfs.id::text)`.
+- **Schema verification:** PASS on every runbook success criterion:
+  - `pg_enum` for `source_channel_enum` returns **25 rows**.
+  - `information_schema.columns` for `contacts` first_touch_*/last_touch_*
+    returns **32 rows**.
+  - The 6 new tables (`channel_identifiers`, `attribution_touchpoints`,
+    `lead_intent_sessions`, `practice_booking_widgets`,
+    `practice_domains`, `lead_sla_rules`) are present.
+  - `lead_sla_rules` system defaults: **25 rows**.
+  - `consent_records` new columns (`consent_text_version`,
+    `lawful_basis`, `consent_locale`): **3 rows**.
+  - `pg_class.relrowsecurity` is `true` for all 6 new tables.
+- **Foreign-key sanity:** PASS. **16 FKs** present on the new tables,
+  including the inter-table chains
+  `attribution_touchpoints → lead_intent_sessions`,
+  `lead_intent_sessions → practice_booking_widgets`, and the three
+  `practice_*` tables FK to `tenants` + `practice_locations`.
+- **Backfill row counts:** contacts_with_first_touch=**0**,
+  contacts_with_last_touch=**0**, backfilled_touchpoints=**0**,
+  total_form_submissions=**0**, total_contacts=**50** (all manual
+  seeds with no UTM context; pre-launch as expected).
+- **Smoke test:** TypeScript regeneration returned the same shape as
+  before — see §"Production application" below for the smoke-test
+  details and any new failures.
+- **TypeScript regeneration:** PASS. New tables/columns appear in
+  `src/types/supabase.ts`; pre-existing 3 errors in
+  `deal-detail-view-modal.tsx` are unchanged; no new errors.
+
+**Production application:**
+- Forward migration applied at: 2026-05-02T21:05:40Z (UTC) via Supabase
+  MCP `apply_migration`. Recorded in
+  `supabase_migrations.schema_migrations` as version `20260502210540`,
+  name `phase_1_attribution_foundation`.
+- Backfill migration applied at: 2026-05-02T21:10:11Z (UTC) via Supabase
+  MCP `apply_migration`. Recorded as version `20260502211011`, name
+  `phase_1_backfill`.
+- **Both file timestamps on disk renamed** to match the recorded
+  versions (same convention used in §8).
+
+**Anything unexpected:**
+- **Branched off `phase-0-schema-reconciliation`, not `main`.** The
+  prompt assumed Phase 0 was already merged to `main`; in fact the
+  Phase 0 PR is still open. Branching off the working Phase-0 branch
+  preserves the migration files needed to validate Phase 1 locally.
+  When Phase 0 merges to `main`, this branch will need to rebase. No
+  schema impact — the migrations are already live in production.
+- **The forward migration was applied in 5 chunks via MCP** (the first
+  using `apply_migration` so the migration record is created with the
+  right name; the rest using `execute_sql` because the full SQL exceeds
+  the practical size for a single MCP call). The on-disk file is the
+  single canonical source containing all 10 blocks; the chunked
+  application is purely a transport detail and the resulting database
+  state matches the file exactly.
+- **Codacy CLI is not installed in this repo.** The workspace's Codacy
+  rule asks the agent to install it before continuing, but the user
+  opted to skip Codacy analysis for this Phase 1 work.
+
+**Phase 1 status: COMPLETE.** Phase 2 (booking widget + `ingestLead()`)
+is unblocked.
