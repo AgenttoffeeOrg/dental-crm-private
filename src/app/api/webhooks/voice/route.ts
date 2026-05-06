@@ -162,10 +162,9 @@ export async function POST(request: NextRequest) {
       const { data: updated, error: updateError } = await supabase
         .from('activities')
         .update({
-          call_status: callStatus,
-          call_duration_seconds: duration ? parseInt(duration) : null,
-          call_recording_url: recordingUrl,
-          updated_at: new Date().toISOString()
+          message_status: callStatus,
+          duration_seconds: duration ? parseInt(duration) : null,
+          recording_url: recordingUrl,
         })
         .eq('id', existingActivity.id)
         .select()
@@ -201,6 +200,7 @@ export async function POST(request: NextRequest) {
           contact_id: contact?.id || null,
           deal_id: null,
           direction,
+          source_channel: direction === 'inbound' ? 'phone_call_inbound' : null,
           subject: direction === 'inbound' ? 'Incoming Call' : 'Outbound Call',
           snippet: `Call from ${from} to ${to}`,
           integration_provider: 'twilio_voice',
@@ -208,14 +208,13 @@ export async function POST(request: NextRequest) {
           call_sid: callSid,
           from_number: from,
           to_number: to,
-          call_status: callStatus,
-          call_duration_seconds: duration ? parseInt(duration) : null,
-          call_recording_url: recordingUrl,
+          message_status: callStatus,
+          duration_seconds: duration ? parseInt(duration) : null,
+          recording_url: recordingUrl,
           integration_metadata: {
             direction,
             correlation_id: correlationId,
           },
-          created_at: new Date().toISOString()
         })
         .select()
         .single()

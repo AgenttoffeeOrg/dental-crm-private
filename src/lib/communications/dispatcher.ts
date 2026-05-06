@@ -5,6 +5,7 @@ import { whatsappService } from '@/lib/whatsapp-service'
 import { voiceService } from '@/lib/voice-service'
 import { recordProviderFailure } from '@/lib/monitoring/metrics'
 import { loadTenantIntegrationSettings } from '@/lib/integrations/tenant-integration-config'
+import { detectAndFireFirstResponse } from '@/lib/conversions/first-response-detector'
 
 interface BaseContext {
   tenantId: string
@@ -240,6 +241,7 @@ export async function dispatchEmail(options: {
   const aiPurpose = inferEmailPurpose(options.subject, options.html)
   const aiOutcome = sendResult.status === 'failed' ? 'Failed to send' : 'Sent successfully'
   const aiSummary = `${aiPurpose} email to ${options.to.join(', ')}`
+  const emailOccurredAt = new Date().toISOString()
 
   const { data: activity, error: activityError } = await supabase
     .from('activities')
@@ -266,7 +268,10 @@ export async function dispatchEmail(options: {
         ai_summary: aiSummary,
         ai_sentiment: 'neutral',
       },
-      created_at: new Date().toISOString(),
+      // Phase 2b.1.b.1: explicit occurred_at so the FirstResponse detector can
+      // match it against deals.first_response_at (set by the AFTER INSERT trigger).
+      occurred_at: emailOccurredAt,
+      created_at: emailOccurredAt,
     })
     .select()
     .single()
@@ -293,6 +298,21 @@ export async function dispatchEmail(options: {
       status: sendResult.success ? 'success' : 'error',
       error_message: sendResult.success ? null : sendResult.error || null,
     })
+  }
+
+  // Phase 2b.1.b.1: fire FirstResponse Google Ads conversion event if this is
+  // the first outbound activity for the deal. Best-effort.
+  if (context.dealId) {
+    await detectAndFireFirstResponse(
+      {
+        tenant_id: context.tenantId,
+        contact_id: context.contactId ?? null,
+        deal_id: context.dealId,
+        direction: 'outbound',
+        occurred_at: emailOccurredAt,
+      },
+      supabase
+    )
   }
 
   return {
@@ -342,6 +362,7 @@ export async function dispatchSms(options: {
   const aiPurpose = inferSmsPurpose(options.message)
   const aiOutcome = sendResult.status === 'failed' ? 'Failed to send' : 'Sent successfully'
   const aiSummary = `${aiPurpose} SMS to ${options.to}`
+  const smsOccurredAt = new Date().toISOString()
 
   const { data: activity, error: activityError } = await supabase
     .from('activities')
@@ -365,7 +386,9 @@ export async function dispatchSms(options: {
         ai_summary: aiSummary,
         ai_sentiment: 'neutral',
       },
-      created_at: new Date().toISOString(),
+      // Phase 2b.1.b.1: explicit occurred_at so the FirstResponse detector can match.
+      occurred_at: smsOccurredAt,
+      created_at: smsOccurredAt,
     })
     .select()
     .single()
@@ -385,6 +408,20 @@ export async function dispatchSms(options: {
       status: sendResult.success ? 'success' : 'error',
       error_message: sendResult.success ? null : 'Twilio send failed',
     })
+  }
+
+  // Phase 2b.1.b.1: fire FirstResponse Google Ads conversion event if applicable.
+  if (context.dealId) {
+    await detectAndFireFirstResponse(
+      {
+        tenant_id: context.tenantId,
+        contact_id: context.contactId ?? null,
+        deal_id: context.dealId,
+        direction: 'outbound',
+        occurred_at: smsOccurredAt,
+      },
+      supabase
+    )
   }
 
   return {
@@ -433,6 +470,7 @@ export async function dispatchWhatsApp(options: {
   const aiPurpose = inferWhatsAppPurpose(options.message)
   const aiOutcome = sendResult.status === 'failed' ? 'Failed to send' : 'Sent successfully'
   const aiSummary = `${aiPurpose} WhatsApp to ${options.to}${options.mediaUrl ? ' (with attachment)' : ''}`
+  const whatsappOccurredAt = new Date().toISOString()
 
   const { data: activity, error: activityError } = await supabase
     .from('activities')
@@ -461,7 +499,9 @@ export async function dispatchWhatsApp(options: {
         has_media: Boolean(options.mediaUrl),
         media_url: options.mediaUrl || null,
       },
-      created_at: new Date().toISOString(),
+      // Phase 2b.1.b.1: explicit occurred_at so the FirstResponse detector can match.
+      occurred_at: whatsappOccurredAt,
+      created_at: whatsappOccurredAt,
     })
     .select()
     .single()
@@ -481,6 +521,20 @@ export async function dispatchWhatsApp(options: {
       status: sendResult.success ? 'success' : 'error',
       error_message: sendResult.success ? null : 'Twilio WhatsApp send failed',
     })
+  }
+
+  // Phase 2b.1.b.1: fire FirstResponse Google Ads conversion event if applicable.
+  if (context.dealId) {
+    await detectAndFireFirstResponse(
+      {
+        tenant_id: context.tenantId,
+        contact_id: context.contactId ?? null,
+        deal_id: context.dealId,
+        direction: 'outbound',
+        occurred_at: whatsappOccurredAt,
+      },
+      supabase
+    )
   }
 
   return {
@@ -543,6 +597,7 @@ export async function dispatchVoiceCall(options: {
   const insights = await extractCallInsights(context.dealId ?? undefined, context.contactId ?? undefined, context.tenantId, supabase)
 
   let activityId: string | null = null
+  const callOccurredAt = new Date().toISOString()
 
   try {
     const { data: activity, error: activityError } = await supabase
@@ -573,7 +628,9 @@ export async function dispatchVoiceCall(options: {
         integration_metadata: {
           recording_enabled: recordCall,
         },
-        created_at: new Date().toISOString(),
+        // Phase 2b.1.b.1: explicit occurred_at so the FirstResponse detector can match.
+        occurred_at: callOccurredAt,
+        created_at: callOccurredAt,
       })
       .select()
       .single()
@@ -605,6 +662,23 @@ export async function dispatchVoiceCall(options: {
       status: callSuccess ? 'success' : 'error',
       error_message: callSuccess ? null : callResult.error || 'Twilio Voice call failed',
     })
+  }
+
+  // Phase 2b.1.b.1: fire FirstResponse Google Ads conversion event if applicable.
+  // We fire even if the call failed-to-queue: a "failed call attempt" still
+  // counts as the practice's first outbound action toward the deal. The detector
+  // will skip if there's no deal or no fresh first_response_at stamp.
+  if (context.dealId) {
+    await detectAndFireFirstResponse(
+      {
+        tenant_id: context.tenantId,
+        contact_id: context.contactId ?? null,
+        deal_id: context.dealId,
+        direction: 'outbound',
+        occurred_at: callOccurredAt,
+      },
+      supabase
+    )
   }
 
   return {

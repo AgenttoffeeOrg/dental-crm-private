@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-client'
 import { categorizeDeal, autoTagDeal } from '@/lib/deal-categorization'
-import { quickRouteDeal, extractTreatmentTags } from '@/lib/treatment-routing'
+import { routeDealWithAdapter, extractTreatmentTags } from '@/lib/treatment-routing'
 import {
   Dialog,
   DialogContent,
@@ -307,7 +307,7 @@ export function SimpleDealDialog({
         .filter(tag => selectedTagIds.includes(tag.id))
         .map(tag => tag.name)
 
-      const routingResult = await quickRouteDeal({
+      const routingResult = await routeDealWithAdapter({
         tenantId: orgId,
         treatmentTags: selectedTagNames,
         dealTitle: form.watch('title'),
@@ -316,25 +316,25 @@ export function SimpleDealDialog({
         userId: form.watch('owner_user_id')
       })
 
-      if (routingResult.success && routingResult.pipeline_id) {
-        const pipeline = pipelines.find(p => p.id === routingResult.pipeline_id)
-        
+      if (routingResult.success && routingResult.pipelineId) {
+        const pipeline = pipelines.find(p => p.id === routingResult.pipelineId)
+
         if (pipeline) {
           setPipelineSuggestion({
-            pipeline_id: routingResult.pipeline_id,
+            pipeline_id: routingResult.pipelineId,
             pipeline_name: pipeline.name,
             confidence: routingResult.confidence,
-            reason: routingResult.explanation,
+            reason: routingResult.reason,
             matched_tags: selectedTagNames
           })
 
           if (!userOverridePipeline) {
-            form.setValue('pipeline_id', routingResult.pipeline_id)
-            if (routingResult.stage_id) {
-              form.setValue('stage_id', routingResult.stage_id)
+            form.setValue('pipeline_id', routingResult.pipelineId)
+            if (routingResult.stageId) {
+              form.setValue('stage_id', routingResult.stageId)
             }
-            if (routingResult.pipeline_id) {
-              loadStagesForPipeline(routingResult.pipeline_id)
+            if (routingResult.pipelineId) {
+              loadStagesForPipeline(routingResult.pipelineId)
             }
           }
         }

@@ -258,49 +258,12 @@ export async function resumePipelineIntake(
   }
 }
 
-/**
- * Notify pipeline owner/manager
- */
-export async function notifyPipelineOwner(
-  pipelineId: string,
-  tenantId: string,
-  message: string,
-  priority: 'normal' | 'high' | 'urgent' = 'normal'
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const supabase = createClient()
-
-    // Get pipeline owner/manager
-    const { data: pipeline } = await supabase
-      .from('pipelines')
-      .select('created_by_user_id')
-      .eq('id', pipelineId)
-      .single()
-
-    if (!pipeline?.created_by_user_id) {
-      return { success: false, error: 'Pipeline has no owner' }
-    }
-
-    // Create notification
-    await supabase.from('notifications').insert({
-      tenant_id: tenantId,
-      user_id: pipeline.created_by_user_id,
-      event_type: 'pipeline_alert',
-      event_data: {
-        pipelineId,
-        message,
-      },
-      priority,
-      channel: 'in_app',
-      read_at: null,
-    })
-
-    return { success: true }
-  } catch (error) {
-    console.error('[Pipeline Actions] Error notifying owner:', error)
-    return { success: false, error: String(error) }
-  }
-}
+// Phase 2a.5: removed notifyPipelineOwner() — automation was dead code.
+// notifications_audit.md §3 row 6 confirmed zero callers in the codebase.
+// The insert shape was also broken (event_type/event_data/channel columns
+// don't exist on the live notifications table). If a generic pipeline-alert
+// notifier is needed in the future, add a 'pipeline.alert' event_key to the
+// catalog and call emitNotification() directly.
 
 /**
  * Run comprehensive pipeline health check

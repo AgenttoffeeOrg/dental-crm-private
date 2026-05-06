@@ -127,6 +127,9 @@ export type Database = {
           recording_url: string | null
           rich_content: string | null
           snippet: string | null
+          source_channel:
+            | Database["public"]["Enums"]["source_channel_enum"]
+            | null
           subject: string | null
           tenant_id: string
           thread_id: string | null
@@ -174,6 +177,9 @@ export type Database = {
           recording_url?: string | null
           rich_content?: string | null
           snippet?: string | null
+          source_channel?:
+            | Database["public"]["Enums"]["source_channel_enum"]
+            | null
           subject?: string | null
           tenant_id: string
           thread_id?: string | null
@@ -221,6 +227,9 @@ export type Database = {
           recording_url?: string | null
           rich_content?: string | null
           snippet?: string | null
+          source_channel?:
+            | Database["public"]["Enums"]["source_channel_enum"]
+            | null
           subject?: string | null
           tenant_id?: string
           thread_id?: string | null
@@ -2387,6 +2396,7 @@ export type Database = {
         Row: {
           contact_id: string | null
           created_at: string
+          event_id: string | null
           fbclid: string | null
           gclid: string | null
           id: string
@@ -2400,6 +2410,7 @@ export type Database = {
           source_channel: Database["public"]["Enums"]["source_channel_enum"]
           source_sub_id: string | null
           tenant_id: string
+          treatment_offering_id: string | null
           ttclid: string | null
           user_agent: string | null
           utm_campaign: string | null
@@ -2411,6 +2422,7 @@ export type Database = {
         Insert: {
           contact_id?: string | null
           created_at?: string
+          event_id?: string | null
           fbclid?: string | null
           gclid?: string | null
           id?: string
@@ -2424,6 +2436,7 @@ export type Database = {
           source_channel: Database["public"]["Enums"]["source_channel_enum"]
           source_sub_id?: string | null
           tenant_id: string
+          treatment_offering_id?: string | null
           ttclid?: string | null
           user_agent?: string | null
           utm_campaign?: string | null
@@ -2435,6 +2448,7 @@ export type Database = {
         Update: {
           contact_id?: string | null
           created_at?: string
+          event_id?: string | null
           fbclid?: string | null
           gclid?: string | null
           id?: string
@@ -2448,6 +2462,7 @@ export type Database = {
           source_channel?: Database["public"]["Enums"]["source_channel_enum"]
           source_sub_id?: string | null
           tenant_id?: string
+          treatment_offering_id?: string | null
           ttclid?: string | null
           user_agent?: string | null
           utm_campaign?: string | null
@@ -2512,6 +2527,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_accessible_locations"
             referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "attribution_touchpoints_treatment_offering_id_fkey"
+            columns: ["treatment_offering_id"]
+            isOneToOne: false
+            referencedRelation: "practice_treatment_offerings"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -5836,6 +5858,8 @@ export type Database = {
           emergency_contact_phone: string | null
           emergency_contact_relationship: string | null
           employer: string | null
+          first_response_at: string | null
+          first_response_user_id: string | null
           first_touch_at: string | null
           first_touch_fbclid: string | null
           first_touch_gclid: string | null
@@ -5884,7 +5908,6 @@ export type Database = {
           last_touch_utm_term: string | null
           lead_score: number | null
           lead_source_campaign_id: string | null
-          lead_source_id: string | null
           lifetime_value_actual_cents: number | null
           location_id: string | null
           marital_status: string | null
@@ -5915,6 +5938,7 @@ export type Database = {
           tenant_id: string
           title: string | null
           total_treatments: number | null
+          treatment_offering_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -5937,6 +5961,8 @@ export type Database = {
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
           employer?: string | null
+          first_response_at?: string | null
+          first_response_user_id?: string | null
           first_touch_at?: string | null
           first_touch_fbclid?: string | null
           first_touch_gclid?: string | null
@@ -5985,7 +6011,6 @@ export type Database = {
           last_touch_utm_term?: string | null
           lead_score?: number | null
           lead_source_campaign_id?: string | null
-          lead_source_id?: string | null
           lifetime_value_actual_cents?: number | null
           location_id?: string | null
           marital_status?: string | null
@@ -6016,6 +6041,7 @@ export type Database = {
           tenant_id: string
           title?: string | null
           total_treatments?: number | null
+          treatment_offering_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -6038,6 +6064,8 @@ export type Database = {
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
           employer?: string | null
+          first_response_at?: string | null
+          first_response_user_id?: string | null
           first_touch_at?: string | null
           first_touch_fbclid?: string | null
           first_touch_gclid?: string | null
@@ -6086,7 +6114,6 @@ export type Database = {
           last_touch_utm_term?: string | null
           lead_score?: number | null
           lead_source_campaign_id?: string | null
-          lead_source_id?: string | null
           lifetime_value_actual_cents?: number | null
           location_id?: string | null
           marital_status?: string | null
@@ -6117,15 +6144,30 @@ export type Database = {
           tenant_id?: string
           title?: string | null
           total_treatments?: number | null
+          treatment_offering_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "contacts_lead_source_id_fkey"
-            columns: ["lead_source_id"]
+            foreignKeyName: "contacts_first_response_user_id_fkey"
+            columns: ["first_response_user_id"]
             isOneToOne: false
-            referencedRelation: "lead_sources"
+            referencedRelation: "app_users"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_first_response_user_id_fkey"
+            columns: ["first_response_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "contacts_first_response_user_id_fkey"
+            columns: ["first_response_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_engagement_summary"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "contacts_location_id_fkey"
@@ -6203,6 +6245,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_accessible_locations"
             referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "contacts_treatment_offering_id_fkey"
+            columns: ["treatment_offering_id"]
+            isOneToOne: false
+            referencedRelation: "practice_treatment_offerings"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -7430,7 +7479,6 @@ export type Database = {
           insurance_provider: string | null
           internal_notes: string | null
           last_activity_at: string | null
-          lead_intake_id: string | null
           lead_score: number | null
           location_id: string | null
           marketing_source_id: string | null
@@ -7488,7 +7536,6 @@ export type Database = {
           insurance_provider?: string | null
           internal_notes?: string | null
           last_activity_at?: string | null
-          lead_intake_id?: string | null
           lead_score?: number | null
           location_id?: string | null
           marketing_source_id?: string | null
@@ -7546,7 +7593,6 @@ export type Database = {
           insurance_provider?: string | null
           internal_notes?: string | null
           last_activity_at?: string | null
-          lead_intake_id?: string | null
           lead_score?: number | null
           location_id?: string | null
           marketing_source_id?: string | null
@@ -7601,13 +7647,6 @@ export type Database = {
             columns: ["dental_service_id"]
             isOneToOne: false
             referencedRelation: "dental_services"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "deals_lead_intake_id_fkey"
-            columns: ["lead_intake_id"]
-            isOneToOne: false
-            referencedRelation: "lead_intakes"
             referencedColumns: ["id"]
           },
           {
@@ -7710,6 +7749,143 @@ export type Database = {
           },
           {
             foreignKeyName: "deals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      dedup_review_queue: {
+        Row: {
+          candidate_email: string | null
+          candidate_name: string | null
+          candidate_payload: Json
+          candidate_phone: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          match_signals: Json
+          matched_contact_ids: string[]
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by_user_id: string | null
+          resolved_contact_id: string | null
+          source_channel:
+            | Database["public"]["Enums"]["source_channel_enum"]
+            | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_email?: string | null
+          candidate_name?: string | null
+          candidate_payload: Json
+          candidate_phone?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          match_signals?: Json
+          matched_contact_ids?: string[]
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by_user_id?: string | null
+          resolved_contact_id?: string | null
+          source_channel?:
+            | Database["public"]["Enums"]["source_channel_enum"]
+            | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_email?: string | null
+          candidate_name?: string | null
+          candidate_payload?: Json
+          candidate_phone?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          match_signals?: Json
+          matched_contact_ids?: string[]
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by_user_id?: string | null
+          resolved_contact_id?: string | null
+          source_channel?:
+            | Database["public"]["Enums"]["source_channel_enum"]
+            | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dedup_review_queue_resolved_by_user_id_fkey"
+            columns: ["resolved_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dedup_review_queue_resolved_by_user_id_fkey"
+            columns: ["resolved_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "dedup_review_queue_resolved_by_user_id_fkey"
+            columns: ["resolved_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_engagement_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "dedup_review_queue_resolved_contact_id_fkey"
+            columns: ["resolved_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact_engagement_scores"
+            referencedColumns: ["contact_id"]
+          },
+          {
+            foreignKeyName: "dedup_review_queue_resolved_contact_id_fkey"
+            columns: ["resolved_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dedup_review_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "backup_statistics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "dedup_review_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "executive_dashboard_kpis"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "dedup_review_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "rate_limit_usage"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "dedup_review_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dedup_review_queue_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "user_accessible_locations"
@@ -9069,27 +9245,6 @@ export type Database = {
           },
         ]
       }
-      form_submissions: {
-        Row: {
-          created_at: string | null
-          form_id: string | null
-          id: string
-          tenant_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          form_id?: string | null
-          id?: string
-          tenant_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          form_id?: string | null
-          id?: string
-          tenant_id?: string | null
-        }
-        Relationships: []
-      }
       form_versions: {
         Row: {
           change_summary: string | null
@@ -9168,30 +9323,6 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
-      }
-      forms: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          name: string | null
-          tenant_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string | null
-          tenant_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string | null
-          tenant_id?: string | null
-        }
-        Relationships: []
       }
       gdpr_deletion_requests: {
         Row: {
@@ -11013,141 +11144,6 @@ export type Database = {
           },
         ]
       }
-      lead_intakes: {
-        Row: {
-          auto_categorized: boolean | null
-          categorization_confidence: number | null
-          contact_id: string | null
-          created_at: string | null
-          deal_id: string | null
-          dental_service_id: string | null
-          external_id: string | null
-          id: string
-          lead_score: number | null
-          lead_source_id: string | null
-          original_message: string | null
-          processed_at: string | null
-          qualification_status: string | null
-          raw_data: Json | null
-          suggested_services: string[] | null
-          tenant_id: string
-        }
-        Insert: {
-          auto_categorized?: boolean | null
-          categorization_confidence?: number | null
-          contact_id?: string | null
-          created_at?: string | null
-          deal_id?: string | null
-          dental_service_id?: string | null
-          external_id?: string | null
-          id?: string
-          lead_score?: number | null
-          lead_source_id?: string | null
-          original_message?: string | null
-          processed_at?: string | null
-          qualification_status?: string | null
-          raw_data?: Json | null
-          suggested_services?: string[] | null
-          tenant_id: string
-        }
-        Update: {
-          auto_categorized?: boolean | null
-          categorization_confidence?: number | null
-          contact_id?: string | null
-          created_at?: string | null
-          deal_id?: string | null
-          dental_service_id?: string | null
-          external_id?: string | null
-          id?: string
-          lead_score?: number | null
-          lead_source_id?: string | null
-          original_message?: string | null
-          processed_at?: string | null
-          qualification_status?: string | null
-          raw_data?: Json | null
-          suggested_services?: string[] | null
-          tenant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_intakes_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contact_engagement_scores"
-            referencedColumns: ["contact_id"]
-          },
-          {
-            foreignKeyName: "lead_intakes_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_intakes_deal_id_fkey"
-            columns: ["deal_id"]
-            isOneToOne: false
-            referencedRelation: "deals"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_intakes_deal_id_fkey"
-            columns: ["deal_id"]
-            isOneToOne: false
-            referencedRelation: "deals_with_contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_intakes_dental_service_id_fkey"
-            columns: ["dental_service_id"]
-            isOneToOne: false
-            referencedRelation: "dental_services"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_intakes_lead_source_id_fkey"
-            columns: ["lead_source_id"]
-            isOneToOne: false
-            referencedRelation: "lead_sources"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_intakes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "backup_statistics"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "lead_intakes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "executive_dashboard_kpis"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "lead_intakes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "rate_limit_usage"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "lead_intakes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_intakes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "user_accessible_locations"
-            referencedColumns: ["tenant_id"]
-          },
-        ]
-      }
       lead_intent_sessions: {
         Row: {
           consent_captured_at: string | null
@@ -11183,6 +11179,7 @@ export type Database = {
             | null
           source_sub_id: string | null
           tenant_id: string
+          treatment_offering_id: string | null
           ttclid: string | null
           user_agent: string | null
           utm_campaign: string | null
@@ -11226,6 +11223,7 @@ export type Database = {
             | null
           source_sub_id?: string | null
           tenant_id: string
+          treatment_offering_id?: string | null
           ttclid?: string | null
           user_agent?: string | null
           utm_campaign?: string | null
@@ -11269,6 +11267,7 @@ export type Database = {
             | null
           source_sub_id?: string | null
           tenant_id?: string
+          treatment_offering_id?: string | null
           ttclid?: string | null
           user_agent?: string | null
           utm_campaign?: string | null
@@ -11334,6 +11333,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_accessible_locations"
             referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "lead_intent_sessions_treatment_offering_id_fkey"
+            columns: ["treatment_offering_id"]
+            isOneToOne: false
+            referencedRelation: "practice_treatment_offerings"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "lead_intent_sessions_widget_fkey"
@@ -11434,78 +11440,6 @@ export type Database = {
           },
           {
             foreignKeyName: "lead_sla_rules_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "user_accessible_locations"
-            referencedColumns: ["tenant_id"]
-          },
-        ]
-      }
-      lead_sources: {
-        Row: {
-          active: boolean | null
-          auto_categorization_rules: Json | null
-          created_at: string | null
-          deleted_at: string | null
-          id: string
-          integration_config: Json | null
-          name: string
-          source_type: string
-          tenant_id: string
-        }
-        Insert: {
-          active?: boolean | null
-          auto_categorization_rules?: Json | null
-          created_at?: string | null
-          deleted_at?: string | null
-          id?: string
-          integration_config?: Json | null
-          name: string
-          source_type: string
-          tenant_id: string
-        }
-        Update: {
-          active?: boolean | null
-          auto_categorization_rules?: Json | null
-          created_at?: string | null
-          deleted_at?: string | null
-          id?: string
-          integration_config?: Json | null
-          name?: string
-          source_type?: string
-          tenant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_sources_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "backup_statistics"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "lead_sources_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "executive_dashboard_kpis"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "lead_sources_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "rate_limit_usage"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "lead_sources_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_sources_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "user_accessible_locations"
@@ -17787,6 +17721,7 @@ export type Database = {
           calendar_pms_kind: string | null
           calendar_redirect_url: string | null
           created_at: string
+          deleted_at: string | null
           display_name: string
           display_subtitle: string | null
           embed_script_secret: string
@@ -17800,7 +17735,9 @@ export type Database = {
           metadata: Json
           practice_location_id: string | null
           slug: string
+          success_message: string | null
           tenant_id: string
+          treatment_options: Json
           updated_at: string
           webform_button_label: string
           webform_crm_form_id: string | null
@@ -17827,6 +17764,7 @@ export type Database = {
           calendar_pms_kind?: string | null
           calendar_redirect_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name: string
           display_subtitle?: string | null
           embed_script_secret?: string
@@ -17840,7 +17778,9 @@ export type Database = {
           metadata?: Json
           practice_location_id?: string | null
           slug: string
+          success_message?: string | null
           tenant_id: string
+          treatment_options?: Json
           updated_at?: string
           webform_button_label?: string
           webform_crm_form_id?: string | null
@@ -17867,6 +17807,7 @@ export type Database = {
           calendar_pms_kind?: string | null
           calendar_redirect_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string
           display_subtitle?: string | null
           embed_script_secret?: string
@@ -17880,7 +17821,9 @@ export type Database = {
           metadata?: Json
           practice_location_id?: string | null
           slug?: string
+          success_message?: string | null
           tenant_id?: string
+          treatment_options?: Json
           updated_at?: string
           webform_button_label?: string
           webform_crm_form_id?: string | null
@@ -18183,6 +18126,276 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_accessible_locations"
             referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      practice_notification_routing: {
+        Row: {
+          additional_user_ids: string[]
+          created_at: string
+          event_key: string
+          id: string
+          is_active: boolean
+          pipeline_id: string | null
+          primary_user_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          additional_user_ids?: string[]
+          created_at?: string
+          event_key: string
+          id?: string
+          is_active?: boolean
+          pipeline_id?: string | null
+          primary_user_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          additional_user_ids?: string[]
+          created_at?: string
+          event_key?: string
+          id?: string
+          is_active?: boolean
+          pipeline_id?: string | null
+          primary_user_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_notification_routing_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "conversion_funnel_metrics"
+            referencedColumns: ["pipeline_id"]
+          },
+          {
+            foreignKeyName: "practice_notification_routing_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_notification_routing_primary_user_id_fkey"
+            columns: ["primary_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_notification_routing_primary_user_id_fkey"
+            columns: ["primary_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "practice_notification_routing_primary_user_id_fkey"
+            columns: ["primary_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_engagement_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "practice_notification_routing_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "backup_statistics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "practice_notification_routing_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "executive_dashboard_kpis"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "practice_notification_routing_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "rate_limit_usage"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "practice_notification_routing_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_notification_routing_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      practice_treatment_offerings: {
+        Row: {
+          created_at: string
+          created_by_user_id: string | null
+          custom_label: string | null
+          custom_lead_value_cents_max: number | null
+          custom_lead_value_cents_min: number | null
+          custom_sla_minutes: number | null
+          deleted_at: string | null
+          id: string
+          is_active: boolean
+          location_id: string | null
+          pipeline_id: string
+          sort_order: number
+          stage_id: string | null
+          tenant_id: string
+          treatment_type_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id?: string | null
+          custom_label?: string | null
+          custom_lead_value_cents_max?: number | null
+          custom_lead_value_cents_min?: number | null
+          custom_sla_minutes?: number | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          location_id?: string | null
+          pipeline_id: string
+          sort_order?: number
+          stage_id?: string | null
+          tenant_id: string
+          treatment_type_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string | null
+          custom_label?: string | null
+          custom_lead_value_cents_max?: number | null
+          custom_lead_value_cents_min?: number | null
+          custom_sla_minutes?: number | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          location_id?: string | null
+          pipeline_id?: string
+          sort_order?: number
+          stage_id?: string | null
+          tenant_id?: string
+          treatment_type_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_treatment_offerings_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_engagement_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "conversion_funnel_metrics"
+            referencedColumns: ["pipeline_id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "conversion_funnel_metrics"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stage_analytics"
+            referencedColumns: ["stage_id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "backup_statistics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "executive_dashboard_kpis"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "rate_limit_usage"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "practice_treatment_offerings_treatment_type_id_fkey"
+            columns: ["treatment_type_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_types"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -20502,36 +20715,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      stages: {
-        Row: {
-          created_at: string | null
-          deleted_at: string | null
-          display_order: number | null
-          id: string
-          name: string | null
-          pipeline_id: string | null
-          tenant_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          deleted_at?: string | null
-          display_order?: number | null
-          id?: string
-          name?: string | null
-          pipeline_id?: string | null
-          tenant_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          deleted_at?: string | null
-          display_order?: number | null
-          id?: string
-          name?: string | null
-          pipeline_id?: string | null
-          tenant_id?: string | null
-        }
-        Relationships: []
       }
       subscriptions: {
         Row: {
@@ -23017,6 +23200,57 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      treatment_types: {
+        Row: {
+          category: string
+          created_at: string
+          default_lead_value_cents_max: number | null
+          default_lead_value_cents_min: number | null
+          default_sla_minutes: number
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          is_system: boolean
+          key: string
+          metadata: Json
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          default_lead_value_cents_max?: number | null
+          default_lead_value_cents_min?: number | null
+          default_sla_minutes?: number
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          key: string
+          metadata?: Json
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          default_lead_value_cents_max?: number | null
+          default_lead_value_cents_min?: number | null
+          default_sla_minutes?: number
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          key?: string
+          metadata?: Json
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       usage_events: {
         Row: {
@@ -25772,7 +26006,6 @@ export type Database = {
           insurance_provider: string | null
           internal_notes: string | null
           last_activity_at: string | null
-          lead_intake_id: string | null
           lead_score: number | null
           location_id: string | null
           location_name: string | null
@@ -25833,13 +26066,6 @@ export type Database = {
             columns: ["dental_service_id"]
             isOneToOne: false
             referencedRelation: "dental_services"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "deals_lead_intake_id_fkey"
-            columns: ["lead_intake_id"]
-            isOneToOne: false
-            referencedRelation: "lead_intakes"
             referencedColumns: ["id"]
           },
           {
@@ -26104,20 +26330,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      lead_pipeline_analytics: {
-        Row: {
-          avg_lead_score: number | null
-          converted_deals: number | null
-          qualified_leads: number | null
-          service_category: string | null
-          service_name: string | null
-          source_name: string | null
-          source_type: string | null
-          total_leads: number | null
-          total_pipeline_value: number | null
-        }
-        Relationships: []
       }
       marketing_cac_analysis: {
         Row: {
@@ -27166,14 +27378,6 @@ export type Database = {
         Args: { p_notification_id: string; p_user_id: string }
         Returns: boolean
       }
-      auto_categorize_lead: {
-        Args: { p_message: string; p_tenant_id: string }
-        Returns: {
-          confidence: number
-          service_id: string
-          service_name: string
-        }[]
-      }
       auto_delete_old_notifications: { Args: never; Returns: number }
       build_automation_idempotency_key: {
         Args: {
@@ -28090,6 +28294,14 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: string
+      }
+      seed_default_booking_widget: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
+      seed_default_treatment_offerings: {
+        Args: { p_tenant_id: string }
+        Returns: number
       }
       send_invite_expiry_reminders: { Args: never; Returns: number }
       send_org_validation_reminder: {

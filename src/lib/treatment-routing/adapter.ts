@@ -104,7 +104,15 @@ export interface AdapterResult {
   
   // Performance
   durationMs: number
-  
+
+  // Phase 2a.5: routingLogId surfaces the treatment_routing_logs row id back
+  // to webhook callers. 2b adapters (Meta Lead Ads, Google Lead Forms) need
+  // this to correlate a routing decision to the inbound webhook event for
+  // debugging. The log row is always written when routing runs; null only if
+  // routing was skipped (e.g. early validation failure, disabled routing, or
+  // the emergency-fallback path).
+  routingLogId: string | null
+
   // Success flag
   success: boolean
   error?: string
@@ -231,6 +239,7 @@ export async function routeDealWithAdapter(
       reason: result.reason,
       suggestedTags: result.matchedTagNames.length > 0 ? result.matchedTagNames : treatmentTags,
       durationMs: result.durationMs,
+      routingLogId: result.routingLogId,
       success: true
     }
 
@@ -274,6 +283,9 @@ export async function routeDealWithAdapter(
             reason: `Routing system error: ${error instanceof Error ? error.message : 'Unknown error'}`,
             suggestedTags: context.treatmentTags || [],
             durationMs: Date.now() - startTime,
+            // Emergency fallback inside the adapter: we bypassed the engine
+            // entirely, so no audit-log row exists for this decision.
+            routingLogId: null,
             success: true, // Still success (deal can be created)
             error: error instanceof Error ? error.message : 'Unknown error'
           }
@@ -295,6 +307,7 @@ export async function routeDealWithAdapter(
         reason: 'Critical error: Could not route deal',
         suggestedTags: [],
         durationMs: Date.now() - startTime,
+        routingLogId: null,
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       }
@@ -306,18 +319,12 @@ export async function routeDealWithAdapter(
 // CONVENIENCE FUNCTIONS
 // =====================================================
 
-/**
- * Quick routing for simple cases (just tenant + tags)
- */
-export async function quickRoute(
-  tenantId: string,
-  treatmentTags: string[]
-): Promise<AdapterResult> {
-  return routeDealWithAdapter({
-    tenantId,
-    treatmentTags
-  })
-}
+// Phase 2a.5: removed quickRoute() (and its quickRouteDeal alias in index.ts).
+// The positional (tenantId, treatmentTags) signature was a footgun — six call
+// sites across the codebase were passing an object literal as the first arg,
+// causing the engine to treat the whole object as tenantId and silently route
+// every deal to "Unsorted". See quick_route_deal_bug_confirmation.md. All
+// callers have been converted to routeDealWithAdapter({...}).
 
 /**
  * Route with AI extraction (no manual tags needed)

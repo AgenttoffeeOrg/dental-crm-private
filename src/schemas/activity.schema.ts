@@ -15,12 +15,6 @@ export const ActivityCreateSchema = z.object({
     .optional(),
   subject: z.string().max(255).optional(),
   snippet: z.string().max(2000).optional(),
-  script_version_id: z.string().uuid('Invalid script version id').nullable().optional(),
-  conversation_session_id: z
-    .string()
-    .uuid('Invalid conversation session id')
-    .nullable()
-    .optional(),
   outcome: z
     .enum(['connected', 'voicemail', 'no_answer', 'busy', 'wrong_number', 'completed', 'cancelled'])
     .nullable()
@@ -49,8 +43,6 @@ export const ActivityQuerySchema = z.object({
   contact_id: z.string().uuid().optional(),
   deal_id: z.string().uuid().optional(),
   location_id: z.string().uuid().optional(),
-  script_version_id: z.string().uuid().optional(),
-  conversation_session_id: z.string().uuid().optional(),
   occurred_before: z
     .string()
     .datetime({ offset: true })

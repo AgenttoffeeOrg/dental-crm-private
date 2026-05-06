@@ -13,8 +13,9 @@
  * This is the brain of the notifications system.
  */
 
-import { createClient } from '@/lib/supabase-client'
+import { createServiceClient as createClient } from '@/lib/supabase-server'
 import { getEventDefinition, type NotificationEventDefinition } from './event-catalog'
+import { deliverNotification } from './channel-adapters'
 
 export interface NotificationEventPayload {
   // Identity
@@ -131,11 +132,11 @@ export async function emitNotification(payload: NotificationEventPayload): Promi
     )
     
     // 7. Insert notifications to database
-    await bulkInsertNotifications(finalNotifications)
-    
-    // 8. Trigger multi-channel delivery (email, SMS if configured)
-    await triggerMultiChannelDelivery(finalNotifications)
-    
+    const insertedRows = await bulkInsertNotifications(finalNotifications)
+
+    // 8. Trigger multi-channel delivery (email, SMS if configured) — only for rows we have ids for
+    await triggerMultiChannelDelivery(finalNotifications, insertedRows)
+
     console.log(`[Notifications] Emitted ${finalNotifications.length} notifications for: ${payload.event_key}`)
   } catch (error) {
     console.error('[Notifications] Error emitting notification:', error)
@@ -177,7 +178,56 @@ async function resolveAudience(
   // Resolve based on event definition
   const defaultAudience = eventDef.default_audience
   
-  if (Array.isArray(defaultAudience)) {
+  if (defaultAudience === 'lead_routing') {
+    // Resolve recipients from practice_notification_routing.
+    // Fallback chain: pipeline-specific row → tenant-default row → empty audience.
+    const tenantId = payload.tenant_id
+    const pipelineId = (payload.metadata?.pipeline_id as string | undefined) ?? null
+
+    let routingRow: { primary_user_id: string | null; additional_user_ids: string[] | null } | null = null
+
+    if (pipelineId) {
+      const { data } = await supabase
+        .from('practice_notification_routing')
+        .select('primary_user_id, additional_user_ids')
+        .eq('tenant_id', tenantId)
+        .eq('event_key', payload.event_key)
+        .eq('pipeline_id', pipelineId)
+        .eq('is_active', true)
+        .maybeSingle()
+      routingRow = data ?? null
+    }
+
+    if (!routingRow) {
+      const { data } = await supabase
+        .from('practice_notification_routing')
+        .select('primary_user_id, additional_user_ids')
+        .eq('tenant_id', tenantId)
+        .eq('event_key', payload.event_key)
+        .is('pipeline_id', null)
+        .eq('is_active', true)
+        .maybeSingle()
+      routingRow = data ?? null
+    }
+
+    if (!routingRow) {
+      console.warn(
+        `[Notifications] No routing row found for event=${payload.event_key} tenant=${tenantId}. ` +
+          `Lead notification will not be delivered.`
+      )
+      return []
+    }
+
+    // Honour explicit assignment override: if the lead is already owned by a specific user,
+    // that user wins as primary. Additional watchers still get pinged either way.
+    const assignedUserId = payload.metadata?.assigned_user_id as string | undefined
+    if (assignedUserId) audience.push(assignedUserId)
+    else if (routingRow.primary_user_id) audience.push(routingRow.primary_user_id)
+
+    if (Array.isArray(routingRow.additional_user_ids)) {
+      audience.push(...routingRow.additional_user_ids)
+    }
+  } else if (Array.isArray(defaultAudience)) {
     // Role-based audience (e.g., ['admin', 'manager'])
     const { data: users } = await supabase
       .from('app_users')
@@ -384,47 +434,106 @@ function checkQuietHours(dnd: any): boolean {
 }
 
 /**
- * Bulk insert notifications to database
+ * Bulk insert notifications to database. Returns the inserted rows (id + user_id) so the
+ * downstream multi-channel delivery step can join back against `app_users` for email/phone.
  */
-async function bulkInsertNotifications(notifications: ResolvedNotification[]): Promise<void> {
-  if (notifications.length === 0) return
-  
+async function bulkInsertNotifications(
+  notifications: ResolvedNotification[]
+): Promise<Array<{ id: string; user_id: string }>> {
+  if (notifications.length === 0) return []
+
   const supabase = createClient()
-  
+
   const records = notifications.map(n => ({
     user_id: n.user_id,
     ...n.notification
   }))
-  
-  const { error } = await supabase
+
+  const { data, error } = await supabase
     .from('notifications')
     .insert(records)
-  
+    .select('id, user_id')
+
   if (error) {
     console.error('[Notifications] Error inserting:', error)
     throw error
   }
+
+  return (data ?? []) as Array<{ id: string; user_id: string }>
 }
 
 /**
- * Trigger multi-channel delivery (email, SMS)
+ * Trigger multi-channel delivery for non-in-app channels.
+ *
+ * In-app delivery is already handled by the bulk insert above (Realtime triggers the bell).
+ * For email/sms/whatsapp we call into the channel adapters, which write their own
+ * notification_delivery_log rows on attempt/success/failure — we deliberately do not log
+ * here to avoid duplicate rows.
  */
-async function triggerMultiChannelDelivery(notifications: ResolvedNotification[]): Promise<void> {
-  // TODO: Implement email/SMS delivery
-  // For now, only in-app is supported (inserted to DB above)
-  
-  const emailNotifications = notifications.filter(n => n.channels.includes('email'))
-  const smsNotifications = notifications.filter(n => n.channels.includes('sms'))
-  
-  if (emailNotifications.length > 0) {
-    console.log(`[Notifications] Would send ${emailNotifications.length} emails`)
-    // await sendEmailNotifications(emailNotifications)
+async function triggerMultiChannelDelivery(
+  notifications: ResolvedNotification[],
+  insertedRows: Array<{ id: string; user_id: string }>
+): Promise<void> {
+  // Pair each resolved notification with its inserted id (one row per user).
+  // If an id is missing (insert returned nothing), skip — we have nothing to log against.
+  const idByUser = new Map<string, string>()
+  for (const row of insertedRows) idByUser.set(row.user_id, row.id)
+
+  const dispatch = notifications
+    .map(n => ({ n, notificationId: idByUser.get(n.user_id) }))
+    .filter(({ n, notificationId }) => {
+      if (!notificationId) return false
+      const nonInApp = n.channels.filter(c => c !== 'in_app')
+      return nonInApp.length > 0
+    })
+
+  if (dispatch.length === 0) return
+
+  // Bulk-fetch user contact details once instead of N+1.
+  const userIds = Array.from(new Set(dispatch.map(d => d.n.user_id)))
+  const supabase = createClient()
+  const { data: users } = await supabase
+    .from('app_users')
+    .select('id, email, phone, phone_mobile')
+    .in('id', userIds)
+
+  const userById = new Map<string, { email?: string; phone?: string }>()
+  for (const u of users ?? []) {
+    userById.set(u.id, {
+      email: u.email ?? undefined,
+      phone: u.phone_mobile ?? u.phone ?? undefined,
+    })
   }
-  
-  if (smsNotifications.length > 0) {
-    console.log(`[Notifications] Would send ${smsNotifications.length} SMS`)
-    // await sendSMSNotifications(smsNotifications)
-  }
+
+  await Promise.allSettled(
+    dispatch.map(async ({ n, notificationId }) => {
+      const user = userById.get(n.user_id)
+      const nonInApp = n.channels.filter(c => c !== 'in_app')
+
+      try {
+        await deliverNotification(
+          {
+            notification_id: notificationId!,
+            user_id: n.user_id,
+            user_email: user?.email,
+            user_phone: user?.phone,
+            title: n.notification.title,
+            body: n.notification.body,
+            entity_url: n.notification.entity_url,
+            quick_actions: n.notification.quick_actions,
+            metadata: n.notification.metadata,
+            event_key: n.notification.event_key,
+          },
+          nonInApp
+        )
+      } catch (err) {
+        console.error(
+          `[Notifications] Channel delivery failed for notification ${notificationId} (user ${n.user_id}):`,
+          err
+        )
+      }
+    })
+  )
 }
 
 /**

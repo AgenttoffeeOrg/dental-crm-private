@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { PMSSyncEngine } from '@/lib/integrations/pms/sync-engine'
-import { quickRouteDeal } from '@/lib/treatment-routing'
+import { routeDealWithAdapter } from '@/lib/treatment-routing'
 import { extractTagsFromDealText } from '@/lib/treatment-routing/ai-extractor'
 
 export async function POST(request: NextRequest) {
@@ -169,20 +169,20 @@ export async function POST(request: NextRequest) {
     let routingMethod: string
     
     try {
-      const routingResult = await quickRouteDeal({
+      const routingResult = await routeDealWithAdapter({
         dealTitle: `${treatment_type} - Treatment Plan`,
         dealDescription: description || '',
         contactId: mapping.crm_contact_id,
-        orgId: tenant_id,
+        tenantId: tenant_id,
         treatmentTags,
-        userOverridePipeline: undefined, // No manual override for PMS
+        existingPipelineId: undefined,
         source: 'pms_webhook',
       })
-      
+
       pipelineId = routingResult.pipelineId
       stageId = routingResult.stageId
-      routingLogId = routingResult.routingLogId
-      routingMethod = routingResult.routingMethod
+      routingLogId = undefined
+      routingMethod = routingResult.method
       
       console.log(`[PMS ROUTING] ✅ Routed to pipeline ${pipelineId} via ${routingMethod}`)
     } catch (routingError) {

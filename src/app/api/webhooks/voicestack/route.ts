@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
             call_id,
             voicestack_data: body
           },
-          updated_at: new Date().toISOString()
         })
         .eq('id', existingActivity.id)
 

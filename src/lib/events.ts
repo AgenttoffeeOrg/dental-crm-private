@@ -17,7 +17,9 @@ interface EventMap {
     stageId: string
     treatmentTags: string[]
     routingMethod: 'user_override' | 'tag_mapping' | 'ai_keyword' | 'unsorted_fallback' | 'manual_override' | 'routing_disabled' | 'fallback_manual' | 'fallback_error'
-    routingLogId?: string
+    // Phase 2a.5: adapter now returns string | null (null when routing
+    // skipped the audit-log insert, e.g. emergency fallback).
+    routingLogId?: string | null
     source?: string // 'manual', 'form', 'pms_webhook', 'lead_intake', etc.
   }
   'TASK.CREATED': { taskId: string; title: string; assigneeUserId?: string; autoCreated: boolean }

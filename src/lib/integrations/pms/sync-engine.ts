@@ -7,7 +7,7 @@
 
 import { createClient } from '@/lib/supabase-client'
 import { PMSPatient, PMSTreatmentPlan, PMSPayment, SyncResult } from './types'
-import { quickRouteDeal } from '@/lib/treatment-routing'
+import { routeDealWithAdapter } from '@/lib/treatment-routing'
 import { extractTagsFromDealText } from '@/lib/treatment-routing/ai-extractor'
 
 export class PMSSyncEngine {
@@ -292,20 +292,20 @@ export class PMSSyncEngine {
     let routingLogId: string | undefined
     
     try {
-      const routingResult = await quickRouteDeal({
+      const routingResult = await routeDealWithAdapter({
         dealTitle: `${pmsTreatment.treatmentType} - Treatment`,
         dealDescription: pmsTreatment.description || '',
         contactId,
-        orgId: this.tenantId,
+        tenantId: this.tenantId,
         treatmentTags,
-        userOverridePipeline: undefined,
+        existingPipelineId: undefined,
         source: 'pms_sync',
       })
-      
+
       pipelineId = routingResult.pipelineId
       stageId = routingResult.stageId
-      routingMethod = routingResult.routingMethod
-      routingLogId = routingResult.routingLogId
+      routingMethod = routingResult.method
+      routingLogId = undefined
       
       console.log(`[PMS SYNC ENGINE] ✅ Routed to pipeline ${pipelineId} via ${routingMethod}`)
     } catch (routingError) {

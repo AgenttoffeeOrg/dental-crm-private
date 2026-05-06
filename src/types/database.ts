@@ -406,67 +406,13 @@ export const TREATMENT_TAGS = [
 
 export type TreatmentTag = typeof TREATMENT_TAGS[number];
 
-// Lead Management Interfaces
-export interface DentalService {
-  id: string;
-  tenant_id: string;
-  name: string;
-  category: 'treatment' | 'preventive' | 'cosmetic' | 'emergency';
-  description?: string;
-  average_value_cents?: number;
-  typical_duration_days?: number;
-  keywords: string[];
-  color?: string;
-  active: boolean;
-  created_at: string;
-}
-
-export interface LeadSource {
-  id: string;
-  tenant_id: string;
-  name: string;
-  source_type: 'facebook_ads' | 'instagram' | 'google_ads' | 'whatsapp' | 'website' | 'referral' | 'walk_in' | 'phone' | 'email' | 'other';
-  integration_config?: Record<string, unknown>;
-  auto_categorization_rules?: Record<string, unknown>;
-  active: boolean;
-  created_at: string;
-}
-
-export interface LeadIntake {
-  id: string;
-  tenant_id: string;
-  lead_source_id?: string;
-  contact_id?: string;
-  deal_id?: string;
-  dental_service_id?: string;
-  original_message?: string;
-  lead_score: number;
-  qualification_status: 'unqualified' | 'qualified' | 'disqualified';
-  auto_categorized: boolean;
-  categorization_confidence: number;
-  suggested_services?: string[];
-  external_id?: string;
-  raw_data?: Record<string, unknown>;
-  processed_at?: string;
-  created_at: string;
-}
-
-// Extended types for lead management
-export interface LeadIntakeWithRelations extends LeadIntake {
-  lead_source?: LeadSource;
-  dental_service?: DentalService;
-  contact?: Contact;
-  deal?: Deal;
-}
-
-export interface DealWithLeadInfo extends DealWithRelations {
-  dental_service?: DentalService;
-  lead_intake?: LeadIntake;
-}
-
-export interface ContactWithLeadInfo extends ContactWithRelations {
-  lead_source?: LeadSource;
-}
+// Phase 2a.5: removed DentalService, LeadSource, LeadIntake,
+// LeadIntakeWithRelations, DealWithLeadInfo, ContactWithLeadInfo interfaces.
+// The underlying tables (lead_intakes, lead_sources) and the
+// dental_services-based lead intake pipeline predated ingestLead() and were
+// never wired to it. The tables were dropped in migration
+// 20260504_phase_2a_5_drop_legacy_lead_intake.sql. Use the canonical
+// attribution_touchpoints / treatment_offerings / deals types instead.
 
 // Lead categorization result
 export interface LeadCategorizationResult {

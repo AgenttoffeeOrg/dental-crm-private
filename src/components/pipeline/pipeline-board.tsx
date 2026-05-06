@@ -682,36 +682,10 @@ export function PipelineBoard() {
   }
 
   const handleAutoCategorize = async () => {
-    try {
-      setLoading(true)
-      toast.info('🔄 Auto-categorizing deals...')
-
-      const response = await fetch('/api/categorize-deals', {
-        method: 'POST'
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        toast.success(`✅ Categorized ${result.results.moved} deals!`, {
-          description: `Moved to appropriate pipelines based on treatment type`
-        })
-        
-        // Reload data
-        if (selectedPipelineId === '_all_deals') {
-          fetchAllDeals()
-        } else {
-          fetchPipelineData()
-        }
-      } else {
-        toast.error('Failed to categorize deals')
-      }
-    } catch (error) {
-      console.error('Error auto-categorizing:', error)
-      toast.error('Failed to auto-categorize deals')
-    } finally {
-      setLoading(false)
-    }
+    // TODO(2a.2): The legacy /api/categorize-deals endpoint was removed in
+    // Phase 2a.1 (Audit 4). Replacement will be the new ingestLead-based
+    // re-routing flow shipped in 2a.2. For now, show an informative toast.
+    toast.info('Auto-categorize is being rebuilt and will return in Phase 2a.2.')
   }
 
   const getDealsForStage = (stageId: string) => {

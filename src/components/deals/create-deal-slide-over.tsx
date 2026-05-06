@@ -47,7 +47,7 @@ import { createClient } from '@/lib/supabase-client'
 import { handleDatabaseError, checkTableExists } from '@/lib/treatment-routing/migration-checker'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth'
-import { quickRouteDeal, extractTreatmentTags } from '@/lib/treatment-routing'
+import { routeDealWithAdapter, extractTreatmentTags } from '@/lib/treatment-routing'
 import type { Contact, Pipeline, PipelineStage, AppUser } from '@/types/database'
 
 interface CreateDealSlideOverProps {
@@ -299,7 +299,7 @@ export function CreateDealSlideOver({
         : 0
 
       // Use routing engine to get suggestion
-      const routingResult = await quickRouteDeal({
+      const routingResult = await routeDealWithAdapter({
         tenantId: appUser.tenant_id,
         treatmentTags: selectedTagNames,
         dealTitle: formData.title,
@@ -308,28 +308,27 @@ export function CreateDealSlideOver({
         userId: appUser.id
       })
 
-      if (routingResult.success && routingResult.pipeline_id) {
-        const pipeline = pipelines.find(p => p.id === routingResult.pipeline_id)
-        
+      if (routingResult.success && routingResult.pipelineId) {
+        const pipeline = pipelines.find(p => p.id === routingResult.pipelineId)
+
         if (pipeline) {
           setPipelineSuggestion({
-            pipeline_id: routingResult.pipeline_id,
+            pipeline_id: routingResult.pipelineId,
             pipeline_name: pipeline.name,
             confidence: routingResult.confidence,
-            reason: routingResult.explanation,
+            reason: routingResult.reason,
             matched_tags: selectedTagNames
           })
 
-          // Auto-select suggested pipeline if user hasn't manually overridden
           if (!userOverridePipeline) {
-            setFormData(prev => ({ 
-              ...prev, 
-              pipeline_id: routingResult.pipeline_id,
-              stage_id: routingResult.stage_id || ''
+            setFormData(prev => ({
+              ...prev,
+              pipeline_id: routingResult.pipelineId,
+              stage_id: routingResult.stageId || ''
             }))
-            
-            if (routingResult.pipeline_id) {
-              loadStages(routingResult.pipeline_id)
+
+            if (routingResult.pipelineId) {
+              loadStages(routingResult.pipelineId)
             }
           }
         }

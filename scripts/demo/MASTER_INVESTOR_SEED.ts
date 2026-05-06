@@ -130,10 +130,9 @@ async function masterSeed() {
             deal_id: deal?.id,
             agent_user_id: USER_ID,
             occurred_at: occurredDate.toISOString(),
-            activity_timestamp: occurredDate.toISOString(),
             subject: randomChoice(actType.subjects),
             snippet: `Activity with ${contact.full_name}`,
-            content: `Detailed discussion about ${deal?.title || 'dental treatment'}. Patient expressed interest and we discussed next steps.`,
+            description: `Detailed discussion about ${deal?.title || 'dental treatment'}. Patient expressed interest and we discussed next steps.`,
             duration_seconds: actType.type === 'call' || actType.type === 'meeting' ? randomInt(300, 3600) : null
           });
         

@@ -40,6 +40,8 @@ import {
   MessageCircle,
   PhoneCall,
   Headphones,
+  GitMerge,
+  MessageSquare,
 } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useAuth } from '@/lib/auth'
@@ -47,6 +49,7 @@ import { createClient } from '@/lib/supabase-client'
 import { authFetch } from '@/lib/auth-fetch'
 import { useFeatureFlags } from '@/lib/hooks/use-feature-flags'
 import { useKeyboardShortcuts } from '@/lib/hooks/use-keyboard-shortcuts'
+import { useDedupQueueAccess } from '@/lib/hooks/use-dedup-queue-access'
 import { LocationSwitcher } from '@/components/multi-location/location-switcher'
 import { OrgSwitcher } from './org-switcher'
 // import { VerificationBanners } from '@/components/verification/verification-banners' // Temporarily disabled - has missing dependencies
@@ -59,6 +62,8 @@ const getNavigation = (featureFlags: any) => [
   { name: 'Call Coaching', href: '/call-coaching', icon: PhoneCall, badge: 'Coach', badgeColor: 'bg-emerald-600 text-white' },
   { name: 'Reception', href: '/reception', icon: Headphones, badge: 'Desk', badgeColor: 'bg-sky-600 text-white' },
   { name: LABELS.CONTACT.plural, href: '/contacts', icon: Users },
+  { name: 'Dedup Queue', href: '/dedup-queue', icon: GitMerge, dynamicKey: 'dedup_queue' as const },
+  { name: 'Booking Widget', href: '/settings/booking-widget', icon: MessageSquare },
   { name: LABELS.TASK.plural, href: '/tasks', icon: CheckSquare },
   { name: 'Marketing', href: '/marketing', icon: Mail },
   { name: 'Autonomous Engagement', href: '/engagement', icon: MessageCircle, badge: 'AI', badgeColor: 'bg-purple-600 text-white' },
@@ -183,7 +188,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const [locationContext, setLocationContext] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
   const featureFlags = useFeatureFlags()
-  const navigation = getNavigation(featureFlags)
+  const dedupQueueAccess = useDedupQueueAccess()
+  const navigation = getNavigation(featureFlags).filter((item) => {
+    if ((item as { dynamicKey?: string }).dynamicKey === 'dedup_queue') {
+      return dedupQueueAccess.hasAccess !== false
+    }
+    return true
+  })
 
   // Prevent hydration mismatches by only rendering after mount
   useEffect(() => {
@@ -364,6 +375,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           {navigation.map((item) => {
             // Exact match for active state to avoid /marketing matching /marketing-audit
             const isActive = pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== '/')
+            const isDedupQueue = (item as { dynamicKey?: string }).dynamicKey === 'dedup_queue'
+            const dedupBadgeCount = isDedupQueue ? dedupQueueAccess.pendingCount : 0
+            const showDedupBadge = isDedupQueue && dedupBadgeCount > 0
             return (
               <Link
                 key={item.name}
@@ -381,11 +395,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'}`} />
                   {item.name}
                 </div>
-                {(item as any).badge && (
+                {showDedupBadge ? (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                    {dedupBadgeCount}
+                  </span>
+                ) : (item as any).badge ? (
                   <span className={`text-xs px-2 py-0.5 rounded-full ${(item as any).badgeColor || 'bg-blue-600 text-white'}`}>
                     {(item as any).badge}
                   </span>
-                )}
+                ) : null}
               </Link>
             )
           })}

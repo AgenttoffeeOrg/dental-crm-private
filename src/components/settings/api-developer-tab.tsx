@@ -45,7 +45,7 @@ export function APIDeveloperTab() {
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="p-3 bg-gray-50 rounded border font-mono text-xs">
-            {typeof window !== 'undefined' && window.location.origin}/api/webhooks/form-submission
+            {typeof window !== 'undefined' && window.location.origin}/api/marketing/forms/submit
           </div>
           <div className="p-3 bg-gray-50 rounded border font-mono text-xs">
             {typeof window !== 'undefined' && window.location.origin}/api/webhooks/email

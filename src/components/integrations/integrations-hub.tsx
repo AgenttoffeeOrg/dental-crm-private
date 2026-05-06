@@ -46,7 +46,8 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { LeadSource } from '@/types/database'
+// Phase 2a.5: removed unused `LeadSource` import. The underlying
+// lead_sources table was dropped as part of the legacy lead-intake cleanup.
 
 interface IntegrationConfig {
   id: string

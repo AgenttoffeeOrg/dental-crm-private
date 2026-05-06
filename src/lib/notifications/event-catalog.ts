@@ -45,9 +45,10 @@ export interface NotificationEventDefinition {
   priority: NotificationPriority
   default_channels: NotificationChannel[]
   quick_actions: QuickAction[]
-  // Audience can be: specific user_ids, roles, or 'creator' / 'assignee' / 'owner' / 'manager'
-  default_audience: string[] | 'creator' | 'assignee' | 'owner' | 'manager' | 'team'
-  group_by?: 'entity_type' | 'entity_id'  // For threading similar notifications
+  // Audience can be: specific user_ids, roles, or 'creator' / 'assignee' / 'owner' / 'manager' / 'team'
+  // 'lead_routing' resolves recipients via the practice_notification_routing table.
+  default_audience: string[] | 'creator' | 'assignee' | 'owner' | 'manager' | 'team' | 'lead_routing'
+  group_by?: 'entity_type' | 'entity_id' | 'event_key'  // For threading similar notifications
   throttle_minutes?: number  // Prevent duplicate notifications within timeframe
 }
 
@@ -216,6 +217,36 @@ export const CONTACT_EVENTS: NotificationEventDefinition[] = [
     ],
     default_audience: 'owner',
   },
+  {
+    event_key: 'lead.arrived',
+    module: 'contacts', // 'leads' is not in the NotificationModule enum; using 'contacts' per planner fallback
+    title_template: 'New lead: {{lead_name}}',
+    body_template:
+      '{{lead_name}} just enquired about {{treatment_label}} via {{source_label}}. ' +
+      'Respond within {{respond_within_minutes}} minutes to hit your SLA.',
+    severity: 'info',
+    priority: 'urgent',
+    default_channels: ['in_app', 'email'],
+    quick_actions: [
+      {
+        action_key: 'open_lead',
+        label: 'View Lead',
+        type: 'primary',
+        navigation_url: '/contacts/{{entity_id}}',
+      },
+      {
+        action_key: 'mark_contacted',
+        label: "I'll respond",
+        type: 'secondary',
+        // No endpoint — UI-only action that just navigates with intent.
+        // Phase 2c will turn this into a real "claim ownership" flow.
+        navigation_url: '/contacts/{{entity_id}}?action=respond',
+      },
+    ],
+    default_audience: 'lead_routing',
+    group_by: 'event_key', // thread multiple lead.arrived in the drawer; each lead's entity_id differs
+    throttle_minutes: 0, // never throttle individual lead notifications
+  },
 ]
 
 // =====================================================
@@ -266,6 +297,28 @@ export const TASK_EVENTS: NotificationEventDefinition[] = [
     ],
     default_audience: 'assignee',
     throttle_minutes: 1440,  // Once per day
+  },
+  // Phase 2a.5: added task.escalated (Outcome B) to replace the raw
+  // task_escalated insert that was failing against the live schema. See
+  // notifications_audit.md §3 row 3. Distinct from task.overdue: escalation
+  // targets a manager (via recipient_user_ids override), not the assignee,
+  // and always fires the moment the escalation rule trips.
+  {
+    event_key: 'task.escalated',
+    module: 'tasks',
+    title_template: '🚨 Task escalated to you',
+    body_template: '"{{task_title}}" has been escalated — assignee had it for {{hoursOverdue}}h without closing.',
+    severity: 'error',
+    priority: 'urgent',
+    default_channels: ['in_app', 'email'],
+    quick_actions: [
+      { action_key: 'open_task', label: 'Open Task', type: 'primary', navigation_url: '/tasks?task={{entity_id}}' },
+      { action_key: 'reassign', label: 'Reassign', type: 'secondary', navigation_url: '/tasks?task={{entity_id}}' },
+    ],
+    // Escalations are always routed to an explicit manager via
+    // recipient_user_ids on the emit call; the `assignee` default is a
+    // safety net if no override is supplied.
+    default_audience: 'assignee',
   },
   {
     event_key: 'task.completed',
@@ -395,6 +448,53 @@ export const SYSTEM_EVENTS: NotificationEventDefinition[] = [
       { action_key: 'view_schedule', label: 'View Schedule', type: 'secondary', navigation_url: '/system/status' },
     ],
     default_audience: 'team',
+  },
+  // Phase 2a.5: added automation.approval_requested + automation.approval_reviewed
+  // (Outcome B) to replace the raw notifications inserts in
+  // automation-governance.ts that were failing against the live schema. See
+  // notifications_audit.md §3 rows 7-8. Modelled under 'system' module since
+  // 'automation' is not in NotificationModule; recipient is always an
+  // explicit user list supplied at emit time.
+  {
+    event_key: 'automation.approval_requested',
+    module: 'system',
+    title_template: 'Automation approval needed',
+    body_template:
+      'An automation change is waiting for your review. Summary: {{changesSummary}}',
+    severity: 'warning',
+    priority: 'high',
+    default_channels: ['in_app', 'email'],
+    quick_actions: [
+      {
+        action_key: 'review_approval',
+        label: 'Review',
+        type: 'primary',
+        navigation_url: '/automations/approvals/{{entity_id}}',
+      },
+    ],
+    // Recipients are always set via recipient_user_ids (managers/owners/admins
+    // of the tenant). This default_audience is a no-op safety net.
+    default_audience: ['owner', 'admin', 'manager'],
+  },
+  {
+    event_key: 'automation.approval_reviewed',
+    module: 'system',
+    title_template: 'Your automation change was {{decision}}',
+    body_template:
+      'The automation change you submitted was {{decision}}. {{comments}}',
+    severity: 'info',
+    priority: 'high',
+    default_channels: ['in_app', 'email'],
+    quick_actions: [
+      {
+        action_key: 'view_approval',
+        label: 'View Details',
+        type: 'primary',
+        navigation_url: '/automations/approvals/{{entity_id}}',
+      },
+    ],
+    // Recipient is always the original requester, set via recipient_user_ids.
+    default_audience: 'creator',
   },
 ]
 

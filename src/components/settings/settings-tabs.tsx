@@ -49,6 +49,7 @@ import { EnhancedTreatmentTags } from '../treatment-routing/enhanced-treatment-t
 import { PipelineMappingSettings } from '../treatment-routing/pipeline-mapping-settings'
 import { CustomFieldsTab } from './custom-fields-tab'
 import { TagsAndSourcesTab } from './tags-and-sources-tab'
+import { TreatmentOfferingsTab } from './treatment-offerings-tab'
 
 // Communications Section Components
 import { EmailConfigTab } from './email-config-tab'
@@ -96,6 +97,7 @@ const SECTION_TABS = {
   workflow: [
     { id: 'pipelines', label: 'Pipelines' },
     { id: 'deals', label: 'Deals' },
+    { id: 'treatments', label: 'Treatments' },
     { id: 'treatment-tags', label: 'Treatment Tags' },
     { id: 'pipeline-mapping', label: 'Pipeline Mapping' },
     { id: 'custom-fields', label: 'Custom Fields' },
@@ -378,7 +380,11 @@ function renderWorkflowTabs(tab: string, tenantId: string | null) {
       <TabsContent value="deals" className="space-y-6">
         <ComprehensiveDealSettings tenantId={tenantId} />
       </TabsContent>
-      
+
+      <TabsContent value="treatments" className="space-y-6">
+        <TreatmentOfferingsTab embedded />
+      </TabsContent>
+
       <TabsContent value="treatment-tags" className="space-y-6">
         <EnhancedTreatmentTags tenantId={tenantId || ''} />
       </TabsContent>

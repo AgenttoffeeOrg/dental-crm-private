@@ -364,37 +364,10 @@ export async function createDealTask(
   }
 }
 
-/**
- * Send notification about a deal
- */
-export async function sendDealNotification(
-  dealId: string,
-  tenantId: string,
-  userId: string,
-  message: string,
-  priority: 'normal' | 'high' | 'urgent' = 'normal'
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const supabase = createClient()
-
-    // Create notification
-    await supabase.from('notifications').insert({
-      tenant_id: tenantId,
-      user_id: userId,
-      event_type: 'deal_alert',
-      event_data: {
-        dealId,
-        message,
-      },
-      priority,
-      channel: 'in_app',
-      read_at: null,
-    })
-
-    return { success: true }
-  } catch (error) {
-    console.error('[Deal Actions] Error sending notification:', error)
-    return { success: false, error: String(error) }
-  }
-}
+// Phase 2a.5: removed sendDealNotification() — automation was dead code.
+// notifications_audit.md §3 row 5 confirmed zero callers in the codebase.
+// The insert shape was also broken (event_type/event_data/channel columns
+// don't exist on the live notifications table). If a generic deal-alert
+// notifier is needed in the future, add a 'deal.alert' event_key to the
+// catalog and call emitNotification() directly.
 

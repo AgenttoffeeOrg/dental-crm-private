@@ -76,7 +76,10 @@ interface RerouteResult {
   previousStageId: string
   newStageId: string
   routingMethod: string
-  routingLogId?: string
+  // Phase 2a.5: adapter now returns string | null (null if routing skipped
+  // the audit log — e.g. emergency fallback). Kept optional-or-null so
+  // existing callers that omit the field still type-check.
+  routingLogId?: string | null
   treatmentTags: string[]
   changed: boolean
   reason?: string

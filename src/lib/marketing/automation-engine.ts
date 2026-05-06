@@ -315,11 +315,12 @@ export class AutomationEngine {
         tenant_id: state.marketing_journeys.tenant_id,
         contact_id: state.contact_id,
         type: 'email',
+        direction: 'outbound',
         subject: subject || 'Automated Email',
         description: htmlContent,
         marketing_campaign_id: state.journey_id,
         marketing_event_type: 'journey_email_sent',
-        activity_date: new Date().toISOString()
+        occurred_at: new Date().toISOString()
       })
 
     console.log(`[AUTOMATION] Email sent to ${contact.email}`)
@@ -350,10 +351,11 @@ export class AutomationEngine {
         tenant_id: state.marketing_journeys.tenant_id,
         contact_id: state.contact_id,
         type: 'sms',
+        direction: 'outbound',
         description: smsContent,
         marketing_campaign_id: state.journey_id,
         marketing_event_type: 'journey_sms_sent',
-        activity_date: new Date().toISOString()
+        occurred_at: new Date().toISOString()
       })
 
     console.log(`[AUTOMATION] SMS sent to ${contact.phone}`)

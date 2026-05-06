@@ -112,7 +112,14 @@ export interface RoutingResult {
   
   // Performance
   durationMs: number // How long routing took
-  
+
+  // Phase 2a.5: routingLogId surfaces the treatment_routing_logs row id back to
+  // webhook callers. 2b adapters (Meta Lead Ads, Google Lead Forms) need this
+  // to correlate a routing decision to the inbound webhook event for debugging.
+  // The log row is always written when routing runs; null only if routing was
+  // skipped (e.g. early validation failure or a logRoutingDecision DB failure).
+  routingLogId: string | null
+
   // Suggestions (for UI)
   alternativePipelines?: Array<{
     pipelineId: string
@@ -465,39 +472,56 @@ async function getPipelineDetails(pipelineId: string, stageId?: string): Promise
 }
 
 /**
- * Log routing decision to audit trail
+ * Log routing decision to audit trail.
+ *
+ * Phase 2a.5: now returns the inserted row id so callers can attach it to
+ * `RoutingResult.routingLogId`. Returns `null` on insert failure — logging
+ * errors still don't throw, but callers get a null id rather than a false
+ * "logged" signal.
  */
 async function logRoutingDecision(
   context: RoutingContext,
   result: RoutingResult,
   dealId?: string
-): Promise<void> {
+): Promise<string | null> {
   try {
     const supabase = createClient()
-    
-    await supabase.from('treatment_routing_logs').insert({
-      tenant_id: context.tenantId,
-      deal_id: dealId || null,
-      routed_to_pipeline_id: result.pipelineId,
-      routed_to_stage_id: result.stageId,
-      routing_method: result.routingMethod,
-      matched_tag_ids: result.matchedTagIds,
-      matched_keywords: result.matchedKeywords,
-      confidence_score: result.confidence,
-      routing_reason: result.reason,
-      deal_title: context.dealTitle,
-      deal_value_cents: context.dealValue,
-      deal_treatment_tags: context.treatmentTags,
-      deal_source: context.source,
-      routing_duration_ms: result.durationMs,
-      routed_by_user_id: context.userId,
-      was_manual_override: result.routingMethod === 'user_override',
-      metadata: context.metadata || {},
-      routed_at: new Date().toISOString()
-    })
+
+    const { data, error } = await supabase
+      .from('treatment_routing_logs')
+      .insert({
+        tenant_id: context.tenantId,
+        deal_id: dealId || null,
+        routed_to_pipeline_id: result.pipelineId,
+        routed_to_stage_id: result.stageId,
+        routing_method: result.routingMethod,
+        matched_tag_ids: result.matchedTagIds,
+        matched_keywords: result.matchedKeywords,
+        confidence_score: result.confidence,
+        routing_reason: result.reason,
+        deal_title: context.dealTitle,
+        deal_value_cents: context.dealValue,
+        deal_treatment_tags: context.treatmentTags,
+        deal_source: context.source,
+        routing_duration_ms: result.durationMs,
+        routed_by_user_id: context.userId,
+        was_manual_override: result.routingMethod === 'user_override',
+        metadata: context.metadata || {},
+        routed_at: new Date().toISOString()
+      })
+      .select('id')
+      .single()
+
+    if (error || !data) {
+      console.error('[Routing] Failed to log routing decision:', error)
+      return null
+    }
+
+    return data.id as string
   } catch (error) {
     console.error('[Routing] Failed to log routing decision:', error)
     // Don't throw - logging failure shouldn't break routing
+    return null
   }
 }
 
@@ -548,7 +572,7 @@ export async function routeDealToPipeline(
       console.log('[Routing] Routing disabled for tenant, using unsorted fallback')
       const { pipelineId, stageId } = await getOrCreateUnsortedPipeline(context.tenantId)
       const details = await getPipelineDetails(pipelineId, stageId)
-      
+
       return {
         pipelineId,
         pipelineName: details.pipelineName,
@@ -560,7 +584,10 @@ export async function routeDealToPipeline(
         matchedKeywords: [],
         confidence: 0,
         reason: 'Routing system disabled for this tenant',
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
+        // Routing disabled → we intentionally skip the audit-log insert, so
+        // there is no log row id to surface.
+        routingLogId: null
       }
     }
 
@@ -585,12 +612,16 @@ export async function routeDealToPipeline(
         matchedKeywords: [],
         confidence: 100,
         reason: 'User manually selected this pipeline',
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
+        routingLogId: null
       }
 
-      // Log decision (async, don't wait)
-      logRoutingDecision(context, result).catch(() => {})
-      
+      // Phase 2a.5: await the log call and attach the inserted row id so
+      // webhook callers can correlate a routing decision to the inbound
+      // event. Errors inside logRoutingDecision are swallowed there and
+      // surface as routingLogId: null; they never fail routing.
+      result.routingLogId = await logRoutingDecision(context, result)
+
       return result
     }
 
@@ -647,12 +678,12 @@ export async function routeDealToPipeline(
               matchedKeywords: matchingTag.keywords,
               confidence: 95,
               reason: `Matched treatment tag "${matchingTag.name}" → ${details.pipelineName}`,
-              durationMs: Date.now() - startTime
+              durationMs: Date.now() - startTime,
+              routingLogId: null
             }
 
-            // Log decision (async)
-            logRoutingDecision(context, result).catch(() => {})
-            
+            result.routingLogId = await logRoutingDecision(context, result)
+
             return result
           }
         }
@@ -712,12 +743,12 @@ export async function routeDealToPipeline(
             matchedKeywords: category.suggestedTags,
             confidence: Math.round(category.confidence * 100),
             reason: category.reason,
-            durationMs: Date.now() - startTime
+            durationMs: Date.now() - startTime,
+            routingLogId: null
           }
 
-          // Log decision (async)
-          logRoutingDecision(context, result).catch(() => {})
-          
+          result.routingLogId = await logRoutingDecision(context, result)
+
           return result
         }
       }
@@ -750,12 +781,12 @@ export async function routeDealToPipeline(
           matchedKeywords: [],
           confidence: 80,
           reason: `High deal value (£${((context.dealValue || 0) / 100).toLocaleString()}) → ${details.pipelineName}`,
-          durationMs: Date.now() - startTime
+          durationMs: Date.now() - startTime,
+          routingLogId: null
         }
 
-        // Log decision (async)
-        logRoutingDecision(context, result).catch(() => {})
-        
+        result.routingLogId = await logRoutingDecision(context, result)
+
         return result
       }
     }
@@ -778,12 +809,12 @@ export async function routeDealToPipeline(
       matchedKeywords: [],
       confidence: 0,
       reason: 'No matching tags or keywords found. Please review and assign to appropriate pipeline.',
-      durationMs: Date.now() - startTime
+      durationMs: Date.now() - startTime,
+      routingLogId: null
     }
 
-    // Log decision (async)
-    logRoutingDecision(context, result).catch(() => {})
-    
+    result.routingLogId = await logRoutingDecision(context, result)
+
     return result
 
   } catch (error) {
@@ -805,7 +836,10 @@ export async function routeDealToPipeline(
         matchedKeywords: [],
         confidence: 0,
         reason: `Routing error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
+        // Emergency fallback after a thrown error: we deliberately skip the
+        // audit-log insert here to avoid cascading a second failure.
+        routingLogId: null
       }
     } catch (fallbackError) {
       // Absolute worst case - throw error

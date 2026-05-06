@@ -73,6 +73,15 @@ interface DealDetailViewProps {
   onContactClick?: (contactId: string) => void
 }
 
+// File-local extension. The shared `Deal` interface in `@/types/database` is a
+// trimmed view; the live `deals` table has `treatment_type` and `description`
+// columns that this component reads via `select('*')`. Phase 2a.2 should
+// broaden the shared `Deal` type and remove this alias.
+type DealRow = Deal & {
+  treatment_type?: string
+  description?: string
+}
+
 const navigation = [
   { name: 'Pipeline', href: '/pipeline', icon: TrendingUp },
   { name: 'Contacts', href: '/contacts', icon: Users },
@@ -86,7 +95,7 @@ const navigation = [
 export function DealDetailView({ dealId, onClose, onContactClick }: DealDetailViewProps) {
   const pathname = usePathname()
   const { orgId, isLoading: tenantLoading } = useTenantContext()
-  const [deal, setDeal] = useState<Deal | null>(null)
+  const [deal, setDeal] = useState<DealRow | null>(null)
   const [contact, setContact] = useState<Contact | null>(null)
   const [stage, setStage] = useState<PipelineStage | null>(null)
   const [activities, setActivities] = useState<any[]>([])
@@ -199,7 +208,7 @@ const sanitizedContactPhone = useMemo(
           updateData.value_estimate_cents = Math.round(parseFloat(editValue) * 100)
           break
         case 'stage':
-          updateData.pipeline_stage_id = editValue
+          updateData.stage_id = editValue
           break
         case 'tags':
           updateData.treatment_tags = editValue.split(',').map((t: string) => t.trim()).filter(Boolean)
@@ -344,7 +353,7 @@ const sanitizedContactPhone = useMemo(
       {
         title: 'Stage',
         value: stageName,
-        helper: deal.deal_type ? getDealTypeLabel(deal.deal_type) : 'Deal workflow',
+        helper: deal.treatment_type ? getDealTypeLabel(deal.treatment_type) : 'Deal workflow',
         icon: Target,
         iconColor: 'text-blue-600',
         iconBg: 'bg-blue-50',
@@ -467,9 +476,9 @@ const sanitizedContactPhone = useMemo(
               {/* Deal Title & Badges */}
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-gray-900">{deal.title}</h1>
-                {deal.deal_type && (
-                  <Badge className={`text-xs font-semibold ${getDealTypeColor(deal.deal_type)}`}>
-                    {getDealTypeLabel(deal.deal_type)}
+                {deal.treatment_type && (
+                  <Badge className={`text-xs font-semibold ${getDealTypeColor(deal.treatment_type)}`}>
+                    {getDealTypeLabel(deal.treatment_type)}
                   </Badge>
                 )}
                 {stage && (
@@ -507,68 +516,6 @@ const sanitizedContactPhone = useMemo(
                 Deal Summary
               </p>
               <h1 className="text-2xl font-semibold text-gray-900">{deal.title}</h1>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (sanitizedContactPhone) {
-                    setCallDialerOpen(true)
-                  } else {
-                    toast.error('No phone number available for this contact.')
-                  }
-                }}
-                disabled={!sanitizedContactPhone}
-              >
-                <PhoneCall className="h-4 w-4 mr-2" />
-                Call
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  if (contact.primary_email) {
-                    setEmailComposerOpen(true)
-                  } else {
-                    toast.error('No email address available for this contact.')
-                  }
-                }}
-                disabled={!contact.primary_email}
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Email
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  if (sanitizedContactPhone) {
-                    setSmsComposerOpen(true)
-                  } else {
-                    toast.error('No phone number available for SMS.')
-                  }
-                }}
-                disabled={!sanitizedContactPhone}
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                SMS
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setAiAssistantOpen(true)}
-              >
-                <Bot className="h-4 w-4 mr-2" />
-                AI Assist
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setCreateActivityDialogOpen(true)}
-              >
-                <ActivityIcon className="h-4 w-4 mr-2" />
-                Log Activity
-              </Button>
             </div>
           </div>
 
@@ -676,7 +623,7 @@ const sanitizedContactPhone = useMemo(
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Pipeline Stage</h3>
                 <div 
                   className="p-4 bg-white rounded-lg border hover:border-blue-300 cursor-pointer group transition-colors"
-                  onClick={() => openEditDialog('stage', deal.pipeline_stage_id)}
+                  onClick={() => openEditDialog('stage', deal.stage_id)}
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -1091,6 +1038,7 @@ const sanitizedContactPhone = useMemo(
         dealId={dealId}
         tenantId={deal?.tenant_id}
       />
+    </div>
     </div>
   )
 }

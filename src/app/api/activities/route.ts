@@ -23,8 +23,6 @@ export async function GET(request: NextRequest) {
       contact_id,
       deal_id,
       location_id,
-      script_version_id,
-      conversation_session_id,
       occurred_before,
       occurred_after,
       limit,
@@ -81,8 +79,6 @@ export async function GET(request: NextRequest) {
     if (direction) query = query.eq('direction', direction)
     if (contact_id) query = query.eq('contact_id', contact_id)
     if (deal_id) query = query.eq('deal_id', deal_id)
-    if (script_version_id) query = query.eq('script_version_id', script_version_id)
-    if (conversation_session_id) query = query.eq('conversation_session_id', conversation_session_id)
     if (occurred_before) query = query.lte('occurred_at', occurred_before)
     if (occurred_after) query = query.gte('occurred_at', occurred_after)
 
@@ -178,8 +174,6 @@ export async function POST(request: NextRequest) {
       agent_user_id: user.id,
       subject: data.subject ?? null,
       snippet: data.snippet ?? null,
-      script_version_id: data.script_version_id ?? null,
-      conversation_session_id: data.conversation_session_id ?? null,
       outcome: data.outcome ?? null,
       duration_seconds: data.duration_seconds ?? null,
       attendees: data.attendees ?? null,

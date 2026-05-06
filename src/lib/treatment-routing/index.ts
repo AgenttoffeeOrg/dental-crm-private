@@ -1,3 +1,7 @@
+// Phase 2a.5: removed quickRouteDeal/quickRoute aliases. Use routeDealWithAdapter({...}) only.
+// History: positional-arg signature on the old aliases caused silent routing failure
+// for ~3 months across 7 call sites. See quick_route_deal_bug_confirmation.md.
+
 /**
  * =====================================================
  * TREATMENT TAG ROUTING SYSTEM - INDEX
@@ -6,15 +10,15 @@
  * Date: October 19, 2025
  * Phase: 3 - Core Routing Engine
  * =====================================================
- * 
+ *
  * MAIN EXPORTS:
  * Clean, organized exports for the entire routing system
- * 
+ *
  * USAGE:
  * ```typescript
  * // Simple usage - just import the adapter
  * import { routeDealWithAdapter } from '@/lib/treatment-routing'
- * 
+ *
  * const routing = await routeDealWithAdapter({
  *   tenantId: 'uuid',
  *   treatmentTags: ['dental_implant'],
@@ -22,7 +26,7 @@
  *   dealValue: 500000
  * })
  * ```
- * 
+ *
  * ADVANCED USAGE:
  * ```typescript
  * // Import specific functions for advanced use cases
@@ -33,7 +37,7 @@
  *   clearRoutingCache
  * } from '@/lib/treatment-routing'
  * ```
- * 
+ *
  * =====================================================
  */
 
@@ -44,21 +48,19 @@
 export {
   // Main function - use this for all deal creation
   routeDealWithAdapter,
-  
+
   // Convenience functions
-  quickRoute,
-  quickRoute as quickRouteDeal, // Alias for clarity
   routeWithAI,
   isRoutingEnabled,
   invalidateRoutingCache,
-  
+
   // Batch operations
   routeMultipleDeals,
   rerouteDeal,
-  
+
   // Testing
   testRouting,
-  
+
   // Types
   type AdapterContext,
   type AdapterResult

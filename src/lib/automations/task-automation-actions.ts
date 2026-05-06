@@ -100,34 +100,48 @@ export async function checkTaskEscalations(tenantId: string): Promise<{
 
       // Notify assignee
       if (rule.notify_assignee && task.assignee_user_id) {
-        await supabase.from('notifications').insert({
+        // Phase 2a.5: redirected through emitNotification() — was writing
+        // event_type/event_data/channel columns that don't exist on the live
+        // notifications table. See notifications_audit.md §3-4.
+        const { emitNotification } = await import('@/lib/notifications/notification-router')
+        await emitNotification({
+          event_key: 'task.overdue',
+          event_id: `task.overdue:${task.id}`,
           tenant_id: tenantId,
-          user_id: task.assignee_user_id,
-          event_type: 'task_overdue',
-          event_data: {
-            taskId: task.id,
-            title: task.title,
+          entity_type: 'task',
+          entity_id: task.id,
+          recipient_user_ids: [task.assignee_user_id],
+          metadata: {
+            task_title: task.title,
             hoursOverdue,
+            days: Math.max(1, Math.floor(hoursOverdue / 24)),
           },
-          priority: 'urgent',
-          channel: 'in_app',
         })
       }
 
       // Notify escalation target
       if (rule.notify_escalation_target) {
-        await supabase.from('notifications').insert({
+        // Phase 2a.5: redirected through emitNotification() — was writing
+        // event_type/event_data/channel columns that don't exist on the live
+        // notifications table. See notifications_audit.md §3-4.
+        //
+        // task.escalated is a new event_key added in 2a.5 (Outcome B): it is
+        // semantically distinct from task.overdue because the recipient is
+        // the manager, not the assignee, and it fires on the escalation rule
+        // trigger rather than on age.
+        const { emitNotification } = await import('@/lib/notifications/notification-router')
+        await emitNotification({
+          event_key: 'task.escalated',
+          event_id: `task.escalated:${task.id}:${manager.id}`,
           tenant_id: tenantId,
-          user_id: manager.id,
-          event_type: 'task_escalated',
-          event_data: {
-            taskId: task.id,
-            title: task.title,
+          entity_type: 'task',
+          entity_id: task.id,
+          recipient_user_ids: [manager.id],
+          metadata: {
+            task_title: task.title,
             hoursOverdue,
-            assignee: task.assignee_user_id,
+            assignee_user_id: task.assignee_user_id,
           },
-          priority: 'urgent',
-          channel: 'in_app',
         })
       }
 
@@ -354,18 +368,22 @@ export async function sendTaskReminders(tenantId: string): Promise<{
 
       // Send notification
       if (task.assignee_user_id) {
-        await supabase.from('notifications').insert({
+        // Phase 2a.5: redirected through emitNotification() — was writing
+        // event_type/event_data/channel columns that don't exist on the live
+        // notifications table. See notifications_audit.md §3-4.
+        const { emitNotification } = await import('@/lib/notifications/notification-router')
+        await emitNotification({
+          event_key: 'task.due_soon',
+          event_id: `task.due_soon:${task.id}`,
           tenant_id: tenantId,
-          user_id: task.assignee_user_id,
-          event_type: 'task_due_soon',
-          event_data: {
-            taskId: task.id,
-            title: task.title,
+          entity_type: 'task',
+          entity_id: task.id,
+          recipient_user_ids: [task.assignee_user_id],
+          metadata: {
+            task_title: task.title,
             dueAt: task.due_at,
-            hoursUntilDue,
+            hours: hoursUntilDue,
           },
-          priority: hoursUntilDue <= 1 ? 'urgent' : 'high',
-          channel: 'in_app',
         })
       }
 
@@ -444,19 +462,30 @@ export async function checkTaskReassignments(tenantId: string): Promise<{
         toUserId: newAssignee.id,
       })
 
-      // Notify new assignee
-      await supabase.from('notifications').insert({
-        tenant_id: tenantId,
-        user_id: newAssignee.id,
-        event_type: 'task_reassigned',
-        event_data: {
-          taskId: task.id,
-          title: task.title,
-          reason: 'Auto-reassigned (not started in 4h)',
-        },
-        priority: 'high',
-        channel: 'in_app',
-      })
+      // Phase 2a.5: redirected through emitNotification() — was writing
+      // event_type/event_data/channel columns that don't exist on the live
+      // notifications table. See notifications_audit.md §3-4.
+      //
+      // Reassignment is semantically "assignment to a new user", so we reuse
+      // the canonical task.assigned event rather than introducing a
+      // task.reassigned variant. metadata.reason disambiguates in the UI.
+      {
+        const { emitNotification } = await import('@/lib/notifications/notification-router')
+        await emitNotification({
+          event_key: 'task.assigned',
+          event_id: `task.assigned:${task.id}:${newAssignee.id}:auto_reassigned`,
+          tenant_id: tenantId,
+          entity_type: 'task',
+          entity_id: task.id,
+          recipient_user_ids: [newAssignee.id],
+          metadata: {
+            task_title: task.title,
+            triggered_by_name: 'System',
+            reason: 'auto_reassigned',
+            reason_detail: 'Auto-reassigned (not started in 4h)',
+          },
+        })
+      }
 
       reassigned++
     }

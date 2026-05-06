@@ -63,21 +63,24 @@ export async function requestAutomationApproval(
       .eq('tenant_id', tenantId)
       .in('role', ['owner', 'admin', 'manager'])
 
-    if (managers) {
-      const notifications = managers.map(m => ({
+    if (managers && managers.length > 0) {
+      // Phase 2a.5: redirected through emitNotification() — was writing
+      // event_type/event_data/channel columns that don't exist on the live
+      // notifications table. See notifications_audit.md §3-4.
+      const { emitNotification } = await import('@/lib/notifications/notification-router')
+      await emitNotification({
+        event_key: 'automation.approval_requested',
+        event_id: `automation.approval_requested:${data.id}`,
         tenant_id: tenantId,
-        user_id: m.id,
-        event_type: 'automation_approval_requested',
-        event_data: {
+        entity_type: 'automation_approval',
+        entity_id: data.id,
+        recipient_user_ids: managers.map(m => m.id),
+        metadata: {
           automationId,
           approvalId: data.id,
           changesSummary,
         },
-        priority: 'high',
-        channel: 'in_app',
-      }))
-
-      await supabase.from('notifications').insert(notifications)
+      })
     }
 
     return { success: true, approvalId: data.id }
@@ -128,19 +131,25 @@ export async function reviewAutomationApproval(
         .eq('id', approval.automation_id)
     }
 
-    // Notify requester
-    await supabase.from('notifications').insert({
-      tenant_id: approval.tenant_id,
-      user_id: approval.requested_by_user_id,
-      event_type: 'automation_approval_reviewed',
-      event_data: {
-        approvalId,
-        decision,
-        comments,
-      },
-      priority: 'high',
-      channel: 'in_app',
-    })
+    // Phase 2a.5: redirected through emitNotification() — was writing
+    // event_type/event_data/channel columns that don't exist on the live
+    // notifications table. See notifications_audit.md §3-4.
+    {
+      const { emitNotification } = await import('@/lib/notifications/notification-router')
+      await emitNotification({
+        event_key: 'automation.approval_reviewed',
+        event_id: `automation.approval_reviewed:${approvalId}`,
+        tenant_id: approval.tenant_id,
+        entity_type: 'automation_approval',
+        entity_id: approvalId,
+        recipient_user_ids: [approval.requested_by_user_id],
+        metadata: {
+          approvalId,
+          decision,
+          comments: comments ?? '',
+        },
+      })
+    }
 
     return { success: true }
   } catch (error) {
