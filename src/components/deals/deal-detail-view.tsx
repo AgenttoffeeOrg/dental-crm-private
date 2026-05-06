@@ -513,7 +513,7 @@ export function DealDetailView({ dealId }: DealDetailViewProps) {
                 AI Summary
               </h3>
               <p className="text-xs text-gray-700 leading-relaxed">
-                Strong potential with consistent engagement. Patient is in decision-making phase for {deal.treatment_tags.length > 0 ? deal.treatment_tags[0] : 'treatment'}.
+                Strong potential with consistent engagement. Patient is in decision-making phase for {deal.treatment_tags && deal.treatment_tags.length > 0 ? deal.treatment_tags[0] : 'treatment'}.
                 Recommended: Address cost concerns and schedule follow-up.
               </p>
               <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-600">
