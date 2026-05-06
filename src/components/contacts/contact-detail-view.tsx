@@ -1295,7 +1295,7 @@ export function ContactDetailView({
                               </div>
                             )}
                             
-                            {deal.treatment_tags.length > 0 && (
+                            {deal.treatment_tags && deal.treatment_tags.length > 0 && (
                               <div className="flex flex-wrap gap-1">
                                 {deal.treatment_tags.slice(0, 2).map(tag => (
                                   <Badge key={tag} variant="secondary" className="text-xs">
