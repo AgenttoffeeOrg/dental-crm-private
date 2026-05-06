@@ -194,10 +194,19 @@ export class GoogleAdsClient {
     if (input.order_id) conversion.orderId = input.order_id
     if (userIdentifiers.length > 0) conversion.userIdentifiers = userIdentifiers
 
+    // GOOGLE_ADS_VALIDATE_ONLY=true switches the request to Google's
+    // validateOnly mode (request is structurally validated but the conversion
+    // is NOT ingested). Used during 2b.1.b.1 Vercel validation — synthesising
+    // a real gclid for a test customer is not possible, so validateOnly is
+    // Google's documented test path. MUST default to false in production:
+    // the env var is read on every call so toggling it requires a redeploy
+    // (or env-var change + new function instance), not a runtime flip.
+    const validateOnly = process.env.GOOGLE_ADS_VALIDATE_ONLY === 'true'
+
     const body = {
       conversions: [conversion],
       partialFailure: true,
-      validateOnly: false,
+      validateOnly,
     }
 
     const headers: Record<string, string> = {
