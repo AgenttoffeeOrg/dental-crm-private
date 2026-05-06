@@ -28,7 +28,7 @@ const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
  * before each phase ships and bump as needed; surface the chosen version in
  * the phase changelog so we can audit which version each tenant first used.
  */
-export const ADS_API_VERSION = 'v17'
+export const ADS_API_VERSION = 'v24'
 
 const ADS_API_HOST = 'https://googleads.googleapis.com'
 
