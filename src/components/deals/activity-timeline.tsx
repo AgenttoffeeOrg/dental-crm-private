@@ -444,6 +444,7 @@ export function ActivityTimeline({
         contactId={contactId}
         onActivityCreated={handleActivityCreated}
         preselectedType={selectedActivityType}
+        tenantId={orgId ?? undefined}
       />
     </div>
   )

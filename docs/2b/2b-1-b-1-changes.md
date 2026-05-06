@@ -328,6 +328,80 @@ dental-crm/src/lib/lead-ingestion/ingest-lead.ts                   (Lead event f
 dental-crm/src/lib/communications/dispatcher.ts                    (FirstResponse fired after email/SMS/WhatsApp/call activity inserts; explicit occurred_at)
 dental-crm/src/app/api/communications/send-sms-v2/route.ts         (FirstResponse fired via maybeFireFirstResponse helper; catch tightened to unknown)
 dental-crm/src/app/api/communications/send-whatsapp-v2/route.ts    (FirstResponse fired via maybeFireFirstResponse helper; catch tightened to unknown)
+dental-crm/src/components/deals/activity-timeline.tsx              (forward orgId from useTenantContext as tenantId prop to <CreateActivityDialog>; see §13 — pre-existing defect surfaced during validation)
 ```
 
 **Removed:** none.
+
+---
+
+## 13. Defects discovered & fixed during validation (2026-05-06)
+
+While running the 2b.1.b.1 Vercel validation script, attempting "Create
+Email" (or Call / WhatsApp / Note) from a deal page surfaced a generic
+toast `Failed to create activity` with no Vercel function-log entry.
+
+**Root cause (not introduced by 2b.1.b.1):** the deal-page
+`<ActivityTimeline>` rendered `<CreateActivityDialog>` without
+forwarding `tenantId`. The dialog inserts directly into Supabase from
+the browser (anon-key client, **bypassing the `/api/activities` POST
+route entirely**), so the request never appears in Vercel function
+logs. With `tenantId` undefined, `supabase-js` strips the field from the
+PostgREST body, the row arrives with `tenant_id IS NULL`, and every
+permissive RLS WITH CHECK on `activities` requires a non-null
+tenant match. PostgreSQL surfaces the rejection as
+`42501 new row violates row-level security policy for table "activities"`
+*before* the schema's NOT NULL constraint gets a chance.
+
+`git blame` shows the buggy lines were authored on 2025-10-12
+(commit `df6fa64`), long before any phase-2 work; no 2b.1.b.1 file
+modified this code path. Reproduction:
+
+- Service-role insert with the dialog's exact payload → succeeds
+  (schema, BEFORE-INSERT FK trigger, and all three AFTER-INSERT
+  triggers including `update_contact_first_response` /
+  `trigger_update_deal_first_response` accept the row).
+- Same insert as the authenticated user with `tenant_id` omitted →
+  `42501` RLS rejection.
+
+The bug is type-agnostic — Call / Email / WhatsApp / Note all fail the
+same way from the deal page.
+
+**Fix shipped in this PR (deal-page caller only):**
+
+```diff
+   <CreateActivityDialog
+     open={createDialogOpen}
+     onOpenChange={setCreateDialogOpen}
+     dealId={dealId}
+     contactId={contactId}
+     onActivityCreated={handleActivityCreated}
+     preselectedType={selectedActivityType}
++    tenantId={orgId ?? undefined}
+   />
+```
+
+`orgId` is already destructured from `useTenantContext()` at the top of
+`ActivityTimeline`; this just threads it through. Unblocks Operator Gate
+3 (FirstResponse stamping needs the operator to actually create an
+outbound activity).
+
+**Deferred to a follow-up bug ticket — same defect, other callers:**
+
+- `dental-crm/src/components/contacts/contact-detail-view.tsx:1467-1472`
+  (also passes a non-existent `preselectedContactId` prop — doubly
+  broken).
+- `dental-crm/src/components/activities/activity-timeline-enterprise.tsx:374-382`
+  (different sibling dialog at `components/activities/create-activity-dialog.tsx`,
+  same missing-`tenantId` pattern).
+- `dental-crm/src/components/activities/activity-feed-simple.tsx:210-218`
+  (same).
+
+**Latent — not exercised today, do not touch in this PR:**
+
+- `update_contact_marketing_engagement()` trigger references a
+  non-existent `NEW.activity_timestamp` column (real column is
+  `occurred_at`). Only fires when an inserted activity carries
+  `marketing_campaign_id`, which the deal-page dialog never sets, so it
+  did not contribute to today's failure. File this as a separate
+  trigger-fix.
