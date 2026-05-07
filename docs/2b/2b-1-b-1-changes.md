@@ -262,8 +262,8 @@ Ran `npx jest src/lib/crypto src/lib/conversions` — 4 suites, 39 tests, 0 fail
 | Integration test gated correctly | ✅ | 1 skipped without `LEAD_INGESTION_INTEGRATION=1`. |
 | `INTEGRATION_CREDENTIAL_KEY` rotated to base64(32) | ✅ | `.env.local` updated; pgcrypto vault confirmed empty before rotation; AES-GCM helper round-trips. |
 | Test tenant `google_lead_form_configs` reactivated | ✅ | Re-ran `generate-google-webhook-key.ts <tenant_id>`; new `is_active=true` row exists. |
-| Manual validation Task 8 (operator-run) | ⏳ | **Pending operator action.** Requires an actual Google Ads developer token (basic-access dev token), real Google account consent, real customer/conversion-action IDs. Operator runs the full sequence (`connect-google-ads.ts` → browser consent → `set-google-ads-targets.ts` → fire a `Lead` via the 2b.1.a webhook → fire a `FirstResponse` via the v2 SMS route → SQL inspect `conversion_events_fired`). Concrete row evidence will be appended to this changelog (or attached as a §13) once the operator runs it. |
-| Re-fire idempotency check | ⏳ | Tied to Task 8: after the operator fires `Lead` once, re-fire the same payload and confirm no second `success` row appears for the same `(deal_id, event_type, platform)`. The DB partial unique would block at INSERT time even if the application-layer SELECT raced. |
+| Manual validation Task 8 (operator-run) | ✅ | Run on Vercel production (`https://dental-crm-nine.vercel.app`, deployment `dpl_CEgLFxCbZFcKGTrZm5zvaEkY9zDF`, commit `437da80`). Tenant `5aadca14-9786-4aef-bc53-e9287cdd0bbf`. Both `Lead` and `FirstResponse` events recorded in `conversion_events_fired` with `http_status=200`. See §13 for row-level evidence. Both events landed at `status='failure'` due to the synthetic test `gclid` being unparseable by Google (`The imported gclid could not be decoded`) — the documented expected outcome for synthetic test data; ingestion-side correctness (auth, API version, payload shape) is fully verified. |
+| Re-fire idempotency check | ✅ | Re-fired identical webhook payload; HTTP 200 returned. Row count for `(deal_id='967e6e44-…', event_type='Lead', platform='google_ads')` stayed at **1**, `fired_at` unchanged from the original fire. See §13. |
 | `grep -rn "TODO" src/lib/conversions/` | ✅ | 0 unresolved TODOs. |
 | `grep -rn "console.log.*refresh_token\|console.log.*client_secret\|console.log.*access_token" src/` | ✅ | 0 matches in any 2b.1.b.1 file. The OAuth callback only logs `tenant_id`, the operator user id (when present), and HTTP status codes. |
 
@@ -335,7 +335,134 @@ dental-crm/src/components/deals/activity-timeline.tsx              (forward orgI
 
 ---
 
-## 13. Defects discovered & fixed during validation (2026-05-06)
+## 13. Manual Validation Evidence (Vercel production, 2026-05-06 → 2026-05-07)
+
+Operator-run validation against the deployed Vercel app
+`https://dental-crm-nine.vercel.app`, deployment
+`dpl_CEgLFxCbZFcKGTrZm5zvaEkY9zDF`, commit `437da80` on branch
+`phase-1-attribution-foundation`. Test tenant
+`5aadca14-9786-4aef-bc53-e9287cdd0bbf`. Test contact / deal:
+`Sarah Test 2b1b1` — `contact_id=35e4bed5-4ddf-487e-8adb-dce25b711022`,
+`deal_id=967e6e44-0d2e-4b6f-afeb-53db1ca8b9a7`.
+
+### 13.1 OAuth bring-up (Operator Gate 1)
+
+`scripts/phase-2b/connect-google-ads.ts` produced a consent URL with a
+fresh `oauth_pending_state` row; operator completed the Google consent;
+the `/api/integrations/google-ads/oauth/callback` route exchanged the
+code, encrypted the refresh token with `INTEGRATION_CREDENTIAL_KEY`, and
+upserted the active config row.
+
+`scripts/phase-2b/set-google-ads-targets.ts` then persisted the customer
+and conversion-action IDs.
+
+Final state of `google_lead_form_configs` for the test tenant:
+
+| field | value |
+|---|---|
+| `oauth_refresh_token_encrypted IS NOT NULL` | `true` |
+| `customer_id` | `1675268286` |
+| `conversion_action_resource_name` | `customers/1675268286/conversionActions/7600535419` |
+| `login_customer_id` | `9374708799` (manager account) |
+| `oauth_connected_at` | `2026-05-06 17:21:20.776+00` |
+
+### 13.2 `Lead` event firing (Operator Gate 2)
+
+`POST https://dental-crm-nine.vercel.app/api/webhooks/google-lead-form`
+with the canonical Google Lead Form payload (synthetic `gcl_id =
+TeStEd0Ms_TASK8_GCLID_2b1b1_aaaaaaaa`) returned HTTP `200` and JSON
+`{"status":"ok","contact_id":"35e4bed5-…","deal_id":"967e6e44-…"}`.
+A row was written to `conversion_events_fired`:
+
+| field | value |
+|---|---|
+| `id` | `fb6b43f6-f9b9-4b18-b559-07823cb458ed` |
+| `event_type` | `Lead` |
+| `platform` | `google_ads` |
+| `http_status` | `200` |
+| `fired_at` | `2026-05-06 18:50:22.550828+00` |
+| `status` | `failure` |
+| `error_message` | `The imported gclid could not be decoded …, at conversions[0].gclid` |
+
+The `failure` status is the **expected** outcome for a synthetic test
+`gclid` — Google accepts the request (HTTP 200, valid OAuth, valid
+`customer_id`, valid `conversion_action`, correct payload shape against
+API `v24`'s `:uploadClickConversions` endpoint) but rejects the click ID
+because no real ad click ever produced it. This proves the entire
+ingestion-side wire-up: encrypted refresh-token decrypt, OAuth access-token
+exchange, fire-conversion-event detection of the `gclid`, partial-unique
+idempotency index acceptance, Google Ads API contract.
+
+### 13.3 `FirstResponse` event firing (Operator Gate 3)
+
+Operator opened the Sarah Test 2b1b1 contact page and used the in-CRM
+email composer (which routes through `/api/communications/send-email`
+→ `dispatcher.ts` → activity insert → `detectAndFireFirstResponse`).
+
+A new outbound activity was inserted, both `contacts.first_response_at`
+and `deals.first_response_at` were stamped by the AFTER-INSERT triggers,
+and `detectAndFireFirstResponse` then queued the conversion event.
+
+| field | value |
+|---|---|
+| activity `id` | `c84af9c9-bd9d-4195-82d7-1ea37973547e` |
+| activity `type` / `direction` | `email` / `outbound` |
+| `integration_provider` | `resend` |
+| `message_status` | `queued` (Resend message ID stored in `external_id`) |
+| activity `occurred_at` | `2026-05-07 19:16:07.741+00` |
+| `contacts.first_response_at` | `2026-05-07 19:16:07.741+00` (matches activity exactly) |
+| `deals.first_response_at` | `2026-05-07 19:16:07.741+00` (matches activity exactly) |
+| `conversion_events_fired.id` | `a32787a7-9ec8-4332-ba5e-f6f083d62c2e` |
+| `conversion_events_fired.event_type` | `FirstResponse` |
+| `conversion_events_fired.http_status` | `200` |
+| `conversion_events_fired.fired_at` | `2026-05-07 19:16:09.640156+00` (≈ 1.9 s after the activity) |
+| `conversion_events_fired.status` | `failure` (same synthetic-gclid root cause as 13.2) |
+
+### 13.4 Idempotency (Task 9)
+
+Re-fired the **identical** Google Lead Form payload from §13.2. Webhook
+returned HTTP `200` with the same `contact_id` / `deal_id`, but the
+`conversion_events_fired` row count for
+`(deal_id='967e6e44-…', event_type='Lead', platform='google_ads')`
+remained at **1**, with `fired_at` unchanged from the original 2026-05-06
+fire. The pre-fire SELECT in `fireGoogleConversionEvent` short-circuits
+on the existing row; the partial UNIQUE index on
+`conversion_events_fired (tenant_id, deal_id, event_type, platform) WHERE status='success'`
+provides a second line of defence.
+
+### 13.5 Defect uncovered & fixed mid-validation
+
+See §14 below.
+
+### 13.6 Out-of-scope environmental fix-ups (not part of 2b.1.b.1 wire-up)
+
+- Vercel env vars added/updated for Phase 2b validation:
+  `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`,
+  `GOOGLE_ADS_DEVELOPER_TOKEN`, `INTEGRATION_CREDENTIAL_KEY`,
+  `NEXT_PUBLIC_APP_URL` (set to the production Vercel URL),
+  `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME`. (No code changes.)
+- `src/lib/conversions/google-ads-client.ts` `ADS_API_VERSION`
+  bumped from `'v17'` (which Google sunset on 2025-08-20) to `'v24'`.
+- `src/lib/integrations/email-provider.ts` gained a `case 'resend'`
+  branch + a `sendViaResend` implementation, so the dispatcher path
+  could complete the `FirstResponse` activity with a configured email
+  integration. (Pre-existing gap — Resend was the project's email
+  provider for system mails but had never been wired into the
+  per-tenant integrations table.)
+- A test-tenant `integration_settings` row was inserted with
+  `email_provider='resend'`, `is_email_configured=true`, and the
+  encrypted Resend API key, so the dispatcher's
+  `loadTenantIntegrationSettings()` would return a configured provider.
+- `src/components/deals/deal-detail-view.tsx` and
+  `src/components/contacts/contact-detail-view.tsx` each got a single
+  null-guard on `deal.treatment_tags` — both pages crashed with
+  `TypeError: Cannot read properties of null (reading 'length')` on
+  any deal whose treatment-tags array was null. Pre-existing in both
+  files; surfaced as soon as our test deal was created (no tags).
+
+---
+
+## 14. Defects discovered & fixed during validation (2026-05-06)
 
 While running the 2b.1.b.1 Vercel validation script, attempting "Create
 Email" (or Call / WhatsApp / Note) from a deal page surfaced a generic
