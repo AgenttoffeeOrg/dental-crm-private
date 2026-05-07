@@ -402,8 +402,54 @@ export async function sendEmailWithIntegration(
     case 'ses':
     case 'amazon_ses':
       return sendViaSES(settings, normalizedPayload)
+    case 'resend':
+      return sendViaResend(settings, normalizedPayload)
     default:
       return { success: false, error: `Unsupported email provider: ${settings.email_provider}` }
+  }
+}
+
+// Resend HTTP API. The `resend` SDK is already a dependency (used by
+// src/lib/email-service.ts for transactional system emails); this adapter
+// makes the dispatcher's `email_provider='resend'` path work end-to-end.
+// API key is stored in `integration_settings.email_api_key` per tenant,
+// matching the SendGrid pattern.
+async function sendViaResend(settings: EmailIntegrationSettings, payload: EmailSendPayload): Promise<EmailSendResult> {
+  if (!settings.email_api_key) {
+    return { success: false, error: 'Resend API key not configured' }
+  }
+
+  const fromAddress = getFromAddress(settings, payload.fromEmail || '')
+  if (!fromAddress) {
+    return { success: false, error: 'From address not configured for Resend' }
+  }
+
+  try {
+    const { Resend } = await import('resend')
+    const client = new Resend(settings.email_api_key)
+
+    const { data, error } = await client.emails.send({
+      from: payload.fromName ? `${payload.fromName} <${fromAddress}>` : fromAddress,
+      to: payload.to,
+      cc: payload.cc && payload.cc.length > 0 ? payload.cc : undefined,
+      bcc: payload.bcc && payload.bcc.length > 0 ? payload.bcc : undefined,
+      subject: payload.subject,
+      html: payload.html,
+      reply_to: payload.replyTo,
+    })
+
+    if (error) {
+      return { success: false, error: error.message || 'Resend send failed' }
+    }
+
+    return {
+      success: true,
+      externalId: data?.id,
+      status: 'queued',
+      providerResponse: { id: data?.id },
+    }
+  } catch (error: any) {
+    return { success: false, error: error?.message || 'Resend send failed' }
   }
 }
 
