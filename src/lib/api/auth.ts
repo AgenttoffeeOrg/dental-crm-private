@@ -13,21 +13,28 @@ export async function getSupabaseAuthContext(request: NextRequest) {
     console.warn('[getSupabaseAuthContext] No bearer token on request', request.nextUrl?.pathname ?? '')
   }
 
+  // Cookie adapter MUST use the modern `getAll`/`setAll` shape — the legacy
+  // single-cookie `get(name)` API can't see `@supabase/ssr`'s chunked session
+  // tokens (`sb-<ref>-auth-token.0`, `…1`, ...) and returns null for fully
+  // authenticated users. This helper is the only auth path for browser
+  // `fetch()` calls into our API routes that do NOT set `Authorization:
+  // Bearer` (which is most of them, including the new Google Ads UI's
+  // disconnect / rotate / customer-list / targets calls). Bearer-token paths
+  // (curl with `-H 'Authorization: Bearer …'`, or any caller that explicitly
+  // sets the header) still work via the fallback below. See Phase 2b.1.b.2
+  // §3 row K.
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          const cookie = request.cookies.get(name)
-          return cookie ? { name: cookie.name, value: cookie.value } : undefined
+        getAll() {
+          return request.cookies.getAll().map(({ name, value }) => ({ name, value }))
         },
-        set() {
-          // Route handlers run on the server without direct cookie mutation.
-          // Supabase may attempt to refresh tokens; ignore in this context.
-        },
-        remove() {
-          // No-op for the same reason as above.
+        setAll() {
+          // Route handlers can mutate cookies, but Supabase token refresh
+          // here would race with middleware (which already does it). Treat
+          // this as no-op — middleware owns refresh.
         },
       },
       headers: {
