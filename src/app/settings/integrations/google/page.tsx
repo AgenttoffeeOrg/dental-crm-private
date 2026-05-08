@@ -13,7 +13,6 @@
  * tab shell.
  */
 
-import { redirect } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { GoogleAdsSettings } from '@/components/settings/integrations/google-ads-settings'
@@ -21,7 +20,6 @@ import { GoogleAdsSettings } from '@/components/settings/integrations/google-ads
 export const dynamic = 'force-dynamic'
 
 const ALLOWED_ROLES = new Set(['owner', 'super_admin', 'admin'])
-const SETTINGS_PATH = '/settings/integrations/google'
 
 interface ConfigSnapshot {
   id: string
@@ -83,8 +81,26 @@ export default async function GoogleAdsIntegrationSettingsPage({ searchParams }:
   const supabase = (await createServerSupabaseClient()) as any
   const { data: userData } = await supabase.auth.getUser()
   const user = userData?.user
+
+  // Defence in depth — middleware (`src/middleware.ts`) already redirects
+  // unauthenticated `/settings/*` requests to `/sign-in?redirectTo=...`, so
+  // we expect `user` to be non-null here. If it's null anyway (we observed
+  // a transient `@supabase/ssr` cookie-refresh race in production where the
+  // middleware refreshes the access token and sets new cookies on the
+  // *response* while the server-component still reads stale *request*
+  // cookies via `next/headers`), render a graceful shell rather than
+  // redirecting through `/login`. The previous redirect target had a query
+  // param name mismatch (`redirectTo` vs the login page's `redirect`) that
+  // sent the user to `/dashboard`, producing a confusing "logged out then
+  // back in" loop. See §3 row I in `2b-1-b-2-changes.md`.
   if (!user) {
-    redirect(`/login?redirectTo=${encodeURIComponent(SETTINGS_PATH)}`)
+    return (
+      <DashboardLayout>
+        <PermissionDeniedShell
+          message="Your session needs to refresh. Please reload this page; if it keeps happening, sign out and sign back in."
+        />
+      </DashboardLayout>
+    )
   }
 
   // Resolve the active tenant + the user's role on it. We re-derive both
