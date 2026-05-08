@@ -379,12 +379,15 @@ describe('GoogleAdsClient.listAccessibleCustomers', () => {
 describe('GoogleAdsClient.listConversionActions', () => {
   // Full GAQL is asserted character-for-character so a copy-paste edit can't
   // silently change the filter.
+  // GAQL enum literals are unquoted (see §3 row M in 2b-1-b-2-changes.md).
+  // Google rejects `category = 'LEAD'` with BAD_ENUM_CONSTANT; the canonical
+  // form is `category = LEAD`.
   const EXPECTED_QUERY =
     "SELECT conversion_action.id, conversion_action.resource_name, " +
     "conversion_action.name, conversion_action.category, " +
     "conversion_action.status FROM conversion_action WHERE " +
-    "conversion_action.status = 'ENABLED' AND " +
-    "conversion_action.category = 'LEAD'"
+    "conversion_action.status = ENABLED AND " +
+    "conversion_action.category = LEAD"
 
   function arrangeTokenAndSearch(body: { status: number; body: string }) {
     return jest

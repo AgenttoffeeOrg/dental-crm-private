@@ -401,12 +401,21 @@ export class GoogleAdsClient {
 
     // Full GAQL string is asserted character-for-character in the unit tests so
     // a future copy-paste edit doesn't silently change the filter.
+    //
+    // GAQL enum literal note (per §3 row M): enum-typed columns
+    // (conversion_action.status, conversion_action.category) MUST appear
+    // unquoted in WHERE clauses — quoting treats them as strings and Google
+    // returns `INVALID_ARGUMENT  queryError: BAD_ENUM_CONSTANT  "Invalid
+    // enum value cannot be included in WHERE clause: 'LEAD'."`. The previous
+    // implementation quoted both, which Google partially tolerated for
+    // `status` but rejected for `category`. We now use the canonical
+    // unquoted-enum form for both, regression-tested below.
     const query =
       "SELECT conversion_action.id, conversion_action.resource_name, " +
       "conversion_action.name, conversion_action.category, " +
       "conversion_action.status FROM conversion_action WHERE " +
-      "conversion_action.status = 'ENABLED' AND " +
-      "conversion_action.category = 'LEAD'"
+      "conversion_action.status = ENABLED AND " +
+      "conversion_action.category = LEAD"
 
     const res = await fetch(url, {
       method: 'POST',
