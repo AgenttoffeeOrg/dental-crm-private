@@ -21,9 +21,11 @@
  */
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 // Layout Components
@@ -455,6 +457,30 @@ function renderIntegrationsTabs(tab: string) {
   return (
     <>
       <TabsContent value="integrations" className="space-y-6">
+        {/* Phase 2b.1.b.2 — Self-serve Google Ads tile. Mirrors the tile in
+            src/app/settings/integrations/page.tsx so the sidebar's
+            "Settings → Integrations" entrypoint (which mounts SettingsTabs,
+            not the standalone /settings/integrations route) also surfaces
+            the new Google Ads management UI. */}
+        <section>
+          <Link
+            href="/settings/integrations/google"
+            className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-xl"
+            data-testid="google-ads-integration-tile"
+          >
+            <Card className="hover:border-blue-300 hover:shadow-md transition-all">
+              <CardHeader>
+                <CardTitle>Google Ads</CardTitle>
+                <CardDescription>
+                  Connect your Google Ads account to receive leads and send conversion data back.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <span className="text-sm text-blue-700 underline">Manage Google Ads →</span>
+              </CardContent>
+            </Card>
+          </Link>
+        </section>
         <IntegrationsHubV2 />
       </TabsContent>
       

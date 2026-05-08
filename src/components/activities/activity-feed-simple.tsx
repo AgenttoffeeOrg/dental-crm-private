@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Phone, Mail, MessageSquare, Calendar, FileText, Edit2, Check, X, Plus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { CreateActivityDialog } from '@/components/activities/create-activity-dialog'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase-client'
 
@@ -54,6 +55,10 @@ export function ActivityFeedSimple({
   dealId,
   onActivityCreated 
 }: ActivityFeedSimpleProps) {
+  // Phase 2b.1.b.2: Forward tenantId so the dialog's anon-key insert
+  // satisfies the activities RLS WITH CHECK. Sibling fix to the deal-page
+  // CreateActivityDialog wired up in 2b.1.b.1 (commit 248ca74).
+  const { orgId } = useTenantContext()
   const [createOpen, setCreateOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editSubject, setEditSubject] = useState('')
@@ -215,6 +220,7 @@ export function ActivityFeedSimple({
         onActivityCreated={() => {
           onActivityCreated?.()
         }}
+        tenantId={orgId ?? undefined}
       />
     </div>
   )

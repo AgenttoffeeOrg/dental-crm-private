@@ -1464,11 +1464,18 @@ export function ContactDetailView({
             preselectedContactId={contactId}
           />
 
+          {/* Phase 2b.1.b.2: Forward tenantId so the dialog's anon-key
+              insert satisfies the activities RLS WITH CHECK (omitted
+              tenant_id → null → 42501). The deal-page fix shipped in
+              2b.1.b.1 (commit 248ca74); this is the contact-page sibling.
+              `preselectedContactId` was a non-existent prop on this dialog
+              ("doubly broken") — dropped on the same change. */}
           <CreateActivityDialog
             open={createActivityDialogOpen}
             onOpenChange={setCreateActivityDialogOpen}
             onActivityCreated={fetchContactData}
-            preselectedContactId={contactId}
+            contactId={contactId}
+            tenantId={tenantId ?? undefined}
           />
         </>
       )}

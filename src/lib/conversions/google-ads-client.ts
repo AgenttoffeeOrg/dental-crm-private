@@ -33,9 +33,17 @@ export const ADS_API_VERSION = 'v24'
 const ADS_API_HOST = 'https://googleads.googleapis.com'
 
 export interface GoogleAdsConfig {
-  customer_id: string
-  login_customer_id: string | null
-  conversion_action_resource_name: string
+  /**
+   * Required for `uploadClickConversion` (path segment) and for the URL of
+   * `listConversionActions` (when the user picks one before saving). Optional
+   * because the bootstrap call `listAccessibleCustomers` doesn't need it —
+   * we construct a client with `customer_id: undefined` for the
+   * customer-picker UI in 2b.1.b.2.
+   */
+  customer_id?: string
+  login_customer_id?: string | null
+  /** Required for `uploadClickConversion`; not used by the list methods. */
+  conversion_action_resource_name?: string
   oauth_refresh_token_encrypted: string
 }
 
@@ -70,6 +78,36 @@ interface RefreshTokenResponse {
 interface UploadClickConversionsResponseShape {
   partialFailureError?: { message?: string; code?: number }
   results?: unknown[]
+}
+
+/**
+ * Phase 2b.1.b.2: thrown by `listAccessibleCustomers` / `listConversionActions`
+ * when Google returns a 401. Callers (the customer / conversion-action picker
+ * routes) catch this specifically to render a "reconnect" prompt and to
+ * pre-emptively null out the OAuth fields on the config row, rather than
+ * surfacing a generic error.
+ */
+export class GoogleOAuthRevokedError extends Error {
+  constructor(message = 'Google OAuth credentials were revoked or are invalid') {
+    super(message)
+    this.name = 'GoogleOAuthRevokedError'
+  }
+}
+
+/**
+ * Phase 2b.1.b.2: thrown for any non-2xx Google Ads response that ISN'T a 401.
+ * Carries the HTTP status and a 500-char excerpt so the caller can surface a
+ * useful detail to the user without leaking tokens.
+ */
+export class GoogleAdsApiError extends Error {
+  constructor(
+    public readonly httpStatus: number,
+    public readonly responseExcerpt: string,
+    message?: string
+  ) {
+    super(message ?? `Google Ads API error (HTTP ${httpStatus})`)
+    this.name = 'GoogleAdsApiError'
+  }
 }
 
 /**
@@ -163,6 +201,18 @@ export class GoogleAdsClient {
         http_status: 0,
         response_excerpt: '',
         error_message: 'GOOGLE_ADS_DEVELOPER_TOKEN not set',
+      }
+    }
+    if (!this.cfg.customer_id || !this.cfg.conversion_action_resource_name) {
+      // Defensive: a client constructed for `listAccessibleCustomers` lacks
+      // these fields. The conversion-firing path builds the client via
+      // `loadGoogleAdsConfig()` which only returns when both are present,
+      // so this branch should never trigger in production.
+      return {
+        ok: false,
+        http_status: 0,
+        response_excerpt: '',
+        error_message: 'GoogleAdsClient missing customer_id or conversion_action_resource_name',
       }
     }
 
@@ -261,6 +311,236 @@ export class GoogleAdsClient {
     }
 
     return { ok: true, http_status: res.status, response_excerpt: excerpt }
+  }
+
+  /**
+   * List Google Ads accounts the connected user has access to.
+   *
+   * Calls `customers:listAccessibleCustomers` — note this endpoint does NOT
+   * accept a login-customer-id header (per Google's docs the call is scoped
+   * to the OAuth user, not to a manager). Response shape:
+   *   { resourceNames: ["customers/<id>", ...] }
+   * We parse the trailing numeric id off each resource name.
+   *
+   * This is the bootstrap call for the Settings UI customer-picker — it lets
+   * us populate the dropdown WITHOUT requiring the user to type a customer
+   * ID first.
+   */
+  async listAccessibleCustomers(): Promise<
+    Array<{ customer_id: string; resource_name: string }>
+  > {
+    const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN
+    if (!developerToken) {
+      throw new Error('GOOGLE_ADS_DEVELOPER_TOKEN not set')
+    }
+    const accessToken = await this.getAccessToken()
+    const url = `${ADS_API_HOST}/${ADS_API_VERSION}/customers:listAccessibleCustomers`
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'developer-token': developerToken,
+      },
+    })
+
+    if (!res.ok) {
+      throwForStatus(res.status, await res.text())
+    }
+
+    const json = (await res.json()) as { resourceNames?: unknown }
+    const names = Array.isArray(json.resourceNames) ? (json.resourceNames as unknown[]) : []
+    return names
+      .filter((n): n is string => typeof n === 'string')
+      .map((resource_name) => {
+        // resource name is `customers/<id>`; the trailing segment is the id.
+        const customer_id = resource_name.split('/').pop() ?? ''
+        return { customer_id, resource_name }
+      })
+      .filter((row) => row.customer_id.length > 0)
+  }
+
+  /**
+   * List ENABLED, LEAD-category conversion actions in a given customer.
+   *
+   * Uses GoogleAds:search GAQL. If `loginCustomerId` is set we send it as
+   * the `login-customer-id` header (required when the customer is reached
+   * via a manager / MCC account).
+   *
+   * Phase 2b is Lead-only. Future phases may broaden this filter to PURCHASE
+   * etc.; if so, add a `category` parameter to this method rather than
+   * inlining new categories here.
+   */
+  async listConversionActions(
+    customerId: string,
+    loginCustomerId?: string
+  ): Promise<
+    Array<{
+      id: string
+      resource_name: string
+      name: string
+      category: string
+      status: string
+    }>
+  > {
+    const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN
+    if (!developerToken) {
+      throw new Error('GOOGLE_ADS_DEVELOPER_TOKEN not set')
+    }
+    const accessToken = await this.getAccessToken()
+    const url = `${ADS_API_HOST}/${ADS_API_VERSION}/customers/${customerId}/googleAds:search`
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${accessToken}`,
+      'developer-token': developerToken,
+      'Content-Type': 'application/json',
+    }
+    if (loginCustomerId) {
+      headers['login-customer-id'] = loginCustomerId
+    }
+
+    // Full GAQL string is asserted character-for-character in the unit tests so
+    // a future copy-paste edit doesn't silently change the filter.
+    const query =
+      "SELECT conversion_action.id, conversion_action.resource_name, " +
+      "conversion_action.name, conversion_action.category, " +
+      "conversion_action.status FROM conversion_action WHERE " +
+      "conversion_action.status = 'ENABLED' AND " +
+      "conversion_action.category = 'LEAD'"
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query }),
+    })
+
+    if (!res.ok) {
+      throwForStatus(res.status, await res.text())
+    }
+
+    const parsed = (await res.json()) as {
+      results?: Array<{
+        conversionAction?: {
+          id?: string | number
+          resourceName?: string
+          name?: string
+          category?: string
+          status?: string
+        }
+      }>
+    }
+
+    const results = Array.isArray(parsed.results) ? parsed.results : []
+    return parseConversionActions(results)
+  }
+}
+
+function isUsableConversionAction(c: {
+  id: string
+  resource_name: string
+}): boolean {
+  return c.id.length > 0 && c.resource_name.length > 0
+}
+
+function parseConversionActions(
+  results: Array<{ conversionAction?: RawConversionAction }>
+): Array<{
+  id: string
+  resource_name: string
+  name: string
+  category: string
+  status: string
+}> {
+  const rows: Array<{
+    id: string
+    resource_name: string
+    name: string
+    category: string
+    status: string
+  }> = []
+  for (const entry of results) {
+    const row = toConversionActionRow(entry.conversionAction ?? {})
+    if (isUsableConversionAction(row)) rows.push(row)
+  }
+  return rows
+}
+
+interface RawConversionAction {
+  id?: string | number
+  resourceName?: string
+  name?: string
+  category?: string
+  status?: string
+}
+
+function nullishToEmpty(v: string | undefined): string {
+  return typeof v === 'string' ? v : ''
+}
+
+function toConversionActionRow(c: RawConversionAction): {
+  id: string
+  resource_name: string
+  name: string
+  category: string
+  status: string
+} {
+  const rawId = c.id
+  const idStr = rawId === undefined || rawId === null ? '' : String(rawId)
+  return {
+    id: idStr,
+    resource_name: nullishToEmpty(c.resourceName),
+    name: nullishToEmpty(c.name),
+    category: nullishToEmpty(c.category),
+    status: nullishToEmpty(c.status),
+  }
+}
+
+/**
+ * Map a Google HTTP status into our two error classes. Extracted so both
+ * `listAccessibleCustomers` and `listConversionActions` stay under the
+ * Lizard cyclomatic-complexity limit.
+ */
+function throwForStatus(status: number, body: string): never {
+  const excerpt = body.slice(0, 500)
+  if (status === 401) {
+    throw new GoogleOAuthRevokedError(
+      `Google returned 401: ${excerpt.slice(0, 200)}`
+    )
+  }
+  throw new GoogleAdsApiError(status, excerpt)
+}
+
+/**
+ * Phase 2b.1.b.2 — load just the OAuth bits for the customer / conversion-action
+ * picker routes. The picker UI runs BEFORE `customer_id` /
+ * `conversion_action_resource_name` are set, so `loadGoogleAdsConfig()` would
+ * (correctly) return null. This loader returns whatever is stored — refresh
+ * token + (optionally) login_customer_id — and is null only when the tenant
+ * has no active row or hasn't connected OAuth yet.
+ */
+export async function loadGoogleAdsOAuthOnly(
+  supabase: SupabaseClient,
+  tenantId: string
+): Promise<GoogleAdsConfig | null> {
+  const { data, error } = await supabase
+    .from('google_lead_form_configs')
+    .select('oauth_refresh_token_encrypted, login_customer_id, customer_id, conversion_action_resource_name')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true)
+    .maybeSingle()
+  if (error || !data) return null
+  const row = data as {
+    oauth_refresh_token_encrypted: string | null
+    login_customer_id: string | null
+    customer_id: string | null
+    conversion_action_resource_name: string | null
+  }
+  if (!row.oauth_refresh_token_encrypted) return null
+  return {
+    oauth_refresh_token_encrypted: row.oauth_refresh_token_encrypted,
+    login_customer_id: row.login_customer_id,
+    customer_id: row.customer_id ?? undefined,
+    conversion_action_resource_name: row.conversion_action_resource_name ?? undefined,
   }
 }
 

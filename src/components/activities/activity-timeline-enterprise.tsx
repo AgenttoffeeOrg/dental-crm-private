@@ -21,6 +21,7 @@ import {
   Reply
 } from 'lucide-react'
 import { CreateActivityDialog } from '@/components/activities/create-activity-dialog'
+import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow, format, isToday, isYesterday, isThisWeek } from 'date-fns'
 
@@ -75,6 +76,10 @@ export function ActivityTimelineEnterprise({
   onReply,
   onActivityCreated 
 }: ActivityTimelineEnterpriseProps) {
+  // Phase 2b.1.b.2: Forward tenantId so the dialog's anon-key insert
+  // satisfies the activities RLS WITH CHECK. Sibling fix to the deal-page
+  // CreateActivityDialog wired up in 2b.1.b.1 (commit 248ca74).
+  const { orgId } = useTenantContext()
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [editingActivity, setEditingActivity] = useState<string | null>(null)
   const [editedSubject, setEditedSubject] = useState('')
@@ -379,6 +384,7 @@ export function ActivityTimelineEnterprise({
         onActivityCreated={() => {
           onActivityCreated?.()
         }}
+        tenantId={orgId ?? undefined}
       />
     </div>
   )

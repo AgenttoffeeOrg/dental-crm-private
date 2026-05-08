@@ -7,6 +7,8 @@
 import {
   GoogleAdsClient,
   ADS_API_VERSION,
+  GoogleAdsApiError,
+  GoogleOAuthRevokedError,
   hashEmail,
   hashPhone,
   formatGoogleAdsTimestamp,
@@ -270,5 +272,216 @@ describe('GoogleAdsClient.uploadClickConversion', () => {
       conversions: Array<{ userIdentifiers?: unknown }>
     }
     expect(parsedBody.conversions[0].userIdentifiers).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 2b.1.b.2 — list methods used by the Settings UI customer / conversion-action pickers.
+// ---------------------------------------------------------------------------
+
+describe('GoogleAdsClient.listAccessibleCustomers', () => {
+  function arrangeTokenAndList(body: { status: number; body: string }) {
+    return jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'ya29.x', expires_in: 3599, scope: 's', token_type: 'Bearer' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(body.body, {
+          status: body.status,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+  }
+
+  it('GETs customers:listAccessibleCustomers with the right URL + headers and parses the response', async () => {
+    const fetchSpy = arrangeTokenAndList({
+      status: 200,
+      body: JSON.stringify({
+        resourceNames: ['customers/1675268286', 'customers/1234567890'],
+      }),
+    })
+
+    const client = new GoogleAdsClient(freshConfig())
+    const result = await client.listAccessibleCustomers()
+
+    expect(result).toEqual([
+      { customer_id: '1675268286', resource_name: 'customers/1675268286' },
+      { customer_id: '1234567890', resource_name: 'customers/1234567890' },
+    ])
+
+    const [url, init] = fetchSpy.mock.calls[1]
+    expect(url).toBe(
+      `https://googleads.googleapis.com/${ADS_API_VERSION}/customers:listAccessibleCustomers`
+    )
+    expect((init as RequestInit).method).toBe('GET')
+    const hdrs = (init as RequestInit).headers as Record<string, string>
+    expect(hdrs.Authorization).toBe('Bearer ya29.x')
+    expect(hdrs['developer-token']).toBe('test_dev_token')
+    // listAccessibleCustomers does NOT take a login-customer-id header,
+    // even when one is configured. Verify we don't accidentally set one.
+    expect(hdrs['login-customer-id']).toBeUndefined()
+  })
+
+  it('throws GoogleOAuthRevokedError on 401', async () => {
+    arrangeTokenAndList({ status: 401, body: '{"error":"invalid_grant"}' })
+    const client = new GoogleAdsClient(freshConfig())
+    await expect(client.listAccessibleCustomers()).rejects.toBeInstanceOf(
+      GoogleOAuthRevokedError
+    )
+  })
+
+  it('throws GoogleAdsApiError on non-401 4xx (status + excerpt preserved)', async () => {
+    arrangeTokenAndList({ status: 403, body: 'PERMISSION_DENIED — long body that should be truncated to 500 chars max'.repeat(20) })
+    const client = new GoogleAdsClient(freshConfig())
+    try {
+      await client.listAccessibleCustomers()
+      fail('expected GoogleAdsApiError')
+    } catch (e) {
+      expect(e).toBeInstanceOf(GoogleAdsApiError)
+      const ge = e as GoogleAdsApiError
+      expect(ge.httpStatus).toBe(403)
+      expect(ge.responseExcerpt.length).toBeLessThanOrEqual(500)
+      expect(ge.responseExcerpt).toContain('PERMISSION_DENIED')
+    }
+  })
+})
+
+describe('GoogleAdsClient.listConversionActions', () => {
+  // Full GAQL is asserted character-for-character so a copy-paste edit can't
+  // silently change the filter.
+  const EXPECTED_QUERY =
+    "SELECT conversion_action.id, conversion_action.resource_name, " +
+    "conversion_action.name, conversion_action.category, " +
+    "conversion_action.status FROM conversion_action WHERE " +
+    "conversion_action.status = 'ENABLED' AND " +
+    "conversion_action.category = 'LEAD'"
+
+  function arrangeTokenAndSearch(body: { status: number; body: string }) {
+    return jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'ya29.x', expires_in: 3599, scope: 's', token_type: 'Bearer' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(body.body, {
+          status: body.status,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+  }
+
+  it('POSTs the right URL, headers, and GAQL body; parses results into typed shape', async () => {
+    const fetchSpy = arrangeTokenAndSearch({
+      status: 200,
+      body: JSON.stringify({
+        results: [
+          {
+            conversionAction: {
+              id: '7600535419',
+              resourceName: 'customers/1675268286/conversionActions/7600535419',
+              name: 'Lead (test)',
+              category: 'LEAD',
+              status: 'ENABLED',
+            },
+          },
+        ],
+      }),
+    })
+
+    const client = new GoogleAdsClient(freshConfig())
+    const result = await client.listConversionActions('1675268286', '9374708799')
+
+    expect(result).toEqual([
+      {
+        id: '7600535419',
+        resource_name: 'customers/1675268286/conversionActions/7600535419',
+        name: 'Lead (test)',
+        category: 'LEAD',
+        status: 'ENABLED',
+      },
+    ])
+
+    const [url, init] = fetchSpy.mock.calls[1]
+    expect(url).toBe(
+      `https://googleads.googleapis.com/${ADS_API_VERSION}/customers/1675268286/googleAds:search`
+    )
+    expect((init as RequestInit).method).toBe('POST')
+    const hdrs = (init as RequestInit).headers as Record<string, string>
+    expect(hdrs.Authorization).toBe('Bearer ya29.x')
+    expect(hdrs['developer-token']).toBe('test_dev_token')
+    expect(hdrs['login-customer-id']).toBe('9374708799')
+    expect(hdrs['Content-Type']).toBe('application/json')
+
+    const parsedBody = JSON.parse(String((init as RequestInit).body)) as { query: string }
+    expect(parsedBody.query).toBe(EXPECTED_QUERY)
+  })
+
+  it('omits the login-customer-id header when loginCustomerId not provided', async () => {
+    const fetchSpy = arrangeTokenAndSearch({
+      status: 200,
+      body: JSON.stringify({ results: [] }),
+    })
+    const client = new GoogleAdsClient(freshConfig())
+    await client.listConversionActions('1675268286')
+    const hdrs = (fetchSpy.mock.calls[1][1] as RequestInit).headers as Record<string, string>
+    expect(hdrs['login-customer-id']).toBeUndefined()
+  })
+
+  it('throws GoogleOAuthRevokedError on 401', async () => {
+    arrangeTokenAndSearch({ status: 401, body: '{"error":"invalid_grant"}' })
+    const client = new GoogleAdsClient(freshConfig())
+    await expect(client.listConversionActions('1675268286')).rejects.toBeInstanceOf(
+      GoogleOAuthRevokedError
+    )
+  })
+
+  it('throws GoogleAdsApiError on non-401 4xx', async () => {
+    arrangeTokenAndSearch({ status: 400, body: '{"error":{"code":400,"message":"Invalid GAQL"}}' })
+    const client = new GoogleAdsClient(freshConfig())
+    try {
+      await client.listConversionActions('1675268286')
+      fail('expected GoogleAdsApiError')
+    } catch (e) {
+      expect(e).toBeInstanceOf(GoogleAdsApiError)
+      expect((e as GoogleAdsApiError).httpStatus).toBe(400)
+    }
+  })
+
+  it('reuses getAccessToken — both list methods share the cache (one token fetch for both)', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'ya29.x', expires_in: 3599, scope: 's', token_type: 'Bearer' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ resourceNames: ['customers/1'] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ results: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+
+    const client = new GoogleAdsClient(freshConfig())
+    await client.listAccessibleCustomers()
+    await client.listConversionActions('1')
+
+    // 1 token + 2 list calls = 3 total. Token endpoint hit only once.
+    expect(fetchSpy).toHaveBeenCalledTimes(3)
+    expect(fetchSpy.mock.calls[0][0]).toBe('https://oauth2.googleapis.com/token')
   })
 })
