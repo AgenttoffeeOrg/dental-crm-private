@@ -402,20 +402,31 @@ export class GoogleAdsClient {
     // Full GAQL string is asserted character-for-character in the unit tests so
     // a future copy-paste edit doesn't silently change the filter.
     //
-    // GAQL enum literal note (per §3 row M): enum-typed columns
-    // (conversion_action.status, conversion_action.category) MUST appear
-    // unquoted in WHERE clauses — quoting treats them as strings and Google
-    // returns `INVALID_ARGUMENT  queryError: BAD_ENUM_CONSTANT  "Invalid
-    // enum value cannot be included in WHERE clause: 'LEAD'."`. The previous
-    // implementation quoted both, which Google partially tolerated for
-    // `status` but rejected for `category`. We now use the canonical
-    // unquoted-enum form for both, regression-tested below.
+    // GAQL enum literal note (§3 row M): enum-typed columns must be unquoted
+    // in WHERE clauses (`category = LEAD`, not `category = 'LEAD'`) — quoting
+    // produces `BAD_ENUM_CONSTANT`.
+    //
+    // Category set note (§3 row N): the legacy single `LEAD` value was
+    // removed from `ConversionActionCategory` (Google split it into
+    // SUBMIT_LEAD_FORM / IMPORTED_LEAD / PHONE_CALL_LEAD / etc. several API
+    // versions ago; v24 docs confirm — see
+    // developers.google.com/google-ads/api/reference/rpc/v24/ConversionActionCategoryEnum.ConversionActionCategory).
+    // Filtering by a non-existent enum value made every conversion-actions
+    // list call return 400 BAD_ENUM_CONSTANT. We now match the full set of
+    // lead-flavoured categories so any lead-style conversion action a
+    // practice has configured surfaces in the picker:
+    //   SUBMIT_LEAD_FORM, PHONE_CALL_LEAD, IMPORTED_LEAD, QUALIFIED_LEAD,
+    //   CONVERTED_LEAD, BOOK_APPOINTMENT, REQUEST_QUOTE, CONTACT
+    // Non-lead categories (PURCHASE, PAGE_VIEW, ADD_TO_CART, …) are excluded
+    // — those don't make sense for a CRM-driven lead conversion firing.
     const query =
       "SELECT conversion_action.id, conversion_action.resource_name, " +
       "conversion_action.name, conversion_action.category, " +
       "conversion_action.status FROM conversion_action WHERE " +
       "conversion_action.status = ENABLED AND " +
-      "conversion_action.category = LEAD"
+      "conversion_action.category IN (" +
+      "SUBMIT_LEAD_FORM, PHONE_CALL_LEAD, IMPORTED_LEAD, QUALIFIED_LEAD, " +
+      "CONVERTED_LEAD, BOOK_APPOINTMENT, REQUEST_QUOTE, CONTACT)"
 
     const res = await fetch(url, {
       method: 'POST',

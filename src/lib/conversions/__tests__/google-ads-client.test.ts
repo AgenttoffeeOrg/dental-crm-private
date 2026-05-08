@@ -379,15 +379,19 @@ describe('GoogleAdsClient.listAccessibleCustomers', () => {
 describe('GoogleAdsClient.listConversionActions', () => {
   // Full GAQL is asserted character-for-character so a copy-paste edit can't
   // silently change the filter.
-  // GAQL enum literals are unquoted (see §3 row M in 2b-1-b-2-changes.md).
-  // Google rejects `category = 'LEAD'` with BAD_ENUM_CONSTANT; the canonical
-  // form is `category = LEAD`.
+  // GAQL enum literals are unquoted (§3 row M in 2b-1-b-2-changes.md).
+  // The single `LEAD` enum value was removed from ConversionActionCategory
+  // in current Google Ads API versions (split into more specific
+  // lead-flavoured categories like SUBMIT_LEAD_FORM / IMPORTED_LEAD / etc.).
+  // We match the full lead-relevant set via IN (…) — see §3 row N.
   const EXPECTED_QUERY =
     "SELECT conversion_action.id, conversion_action.resource_name, " +
     "conversion_action.name, conversion_action.category, " +
     "conversion_action.status FROM conversion_action WHERE " +
     "conversion_action.status = ENABLED AND " +
-    "conversion_action.category = LEAD"
+    "conversion_action.category IN (" +
+    "SUBMIT_LEAD_FORM, PHONE_CALL_LEAD, IMPORTED_LEAD, QUALIFIED_LEAD, " +
+    "CONVERTED_LEAD, BOOK_APPOINTMENT, REQUEST_QUOTE, CONTACT)"
 
   function arrangeTokenAndSearch(body: { status: number; body: string }) {
     return jest
@@ -416,7 +420,9 @@ describe('GoogleAdsClient.listConversionActions', () => {
               id: '7600535419',
               resourceName: 'customers/1675268286/conversionActions/7600535419',
               name: 'Lead (test)',
-              category: 'LEAD',
+              // SUBMIT_LEAD_FORM is the modern equivalent of the old `LEAD`
+              // value (which was removed from the API enum). See §3 row N.
+              category: 'SUBMIT_LEAD_FORM',
               status: 'ENABLED',
             },
           },
@@ -432,7 +438,7 @@ describe('GoogleAdsClient.listConversionActions', () => {
         id: '7600535419',
         resource_name: 'customers/1675268286/conversionActions/7600535419',
         name: 'Lead (test)',
-        category: 'LEAD',
+        category: 'SUBMIT_LEAD_FORM',
         status: 'ENABLED',
       },
     ])
