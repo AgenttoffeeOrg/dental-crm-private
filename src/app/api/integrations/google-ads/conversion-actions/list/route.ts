@@ -54,16 +54,27 @@ function readParams(
 }
 
 /** Convert a thrown Google Ads API error into a 4xx/5xx response, or
- *  re-throw if it isn't one we recognise. */
+ *  re-throw if it isn't one we recognise. Logs the underlying Google response
+ *  excerpt server-side so Vercel logs show what actually happened — handy for
+ *  debugging "Couldn't load conversion actions" without DevTools. */
 async function handleApiError(
   err: unknown,
   ctx: Awaited<ReturnType<typeof getApiRequestContext>>
 ): Promise<NextResponse> {
   if (err instanceof GoogleOAuthRevokedError) {
+    console.error('[google-ads/conversion-actions/list] OAuth revoked', {
+      tenant_id: ctx.tenantId,
+      message: err.message,
+    })
     await nullOutRevokedOAuth(ctx.supabase, ctx.tenantId)
     return NextResponse.json({ error: 'oauth_revoked' }, { status: 400 })
   }
   if (err instanceof GoogleAdsApiError) {
+    console.error('[google-ads/conversion-actions/list] Google API error', {
+      tenant_id: ctx.tenantId,
+      http_status: err.httpStatus,
+      response_excerpt: err.responseExcerpt,
+    })
     return NextResponse.json(
       { error: 'google_api_error', detail: `HTTP ${err.httpStatus}` },
       { status: 500 }

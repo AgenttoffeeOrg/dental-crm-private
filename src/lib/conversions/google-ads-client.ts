@@ -499,15 +499,48 @@ function toConversionActionRow(c: RawConversionAction): {
  * Map a Google HTTP status into our two error classes. Extracted so both
  * `listAccessibleCustomers` and `listConversionActions` stay under the
  * Lizard cyclomatic-complexity limit.
+ *
+ * 401 classification (refined per Phase 2b.1.b.2 §3 row L): the original
+ * implementation treated EVERY 401 as `GoogleOAuthRevokedError`, which routes
+ * then handle by NULL-ing all OAuth fields on the active row. That is correct
+ * when the refresh token is genuinely revoked (`error.status ===
+ * 'UNAUTHENTICATED'`), but Google ALSO returns 401 for "developer token has
+ * no access to this customer," "customer not in this manager's hierarchy,"
+ * and similar non-OAuth permission failures (`error.status ===
+ * 'PERMISSION_DENIED'` etc.). Treating those as "revoke OAuth" was destructive:
+ * one wrong customer pick during the picker UI silently disconnected the
+ * tenant's OAuth and forced them to redo the consent dance. We now only
+ * surface `GoogleOAuthRevokedError` when the body explicitly says
+ * `UNAUTHENTICATED`; everything else falls through to `GoogleAdsApiError`,
+ * which the routes report as a recoverable error without touching the row.
  */
 function throwForStatus(status: number, body: string): never {
   const excerpt = body.slice(0, 500)
-  if (status === 401) {
-    throw new GoogleOAuthRevokedError(
-      `Google returned 401: ${excerpt.slice(0, 200)}`
-    )
+  if (status === 401 && looksLikeUnauthenticated(body)) {
+    throw new GoogleOAuthRevokedError(`Google returned 401: ${excerpt.slice(0, 200)}`)
   }
   throw new GoogleAdsApiError(status, excerpt)
+}
+
+function looksLikeUnauthenticated(body: string): boolean {
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: { status?: string; message?: string }
+    }
+    const status = parsed?.error?.status
+    if (status === 'UNAUTHENTICATED') return true
+    // Some Google Ads 401 responses don't include `status` at the top level;
+    // fall back to message-string heuristics. Be specific to avoid false
+    // positives for "PERMISSION_DENIED"-shaped 401s.
+    const msg = parsed?.error?.message?.toLowerCase() ?? ''
+    if (msg.includes('invalid authentication credentials')) return true
+    if (msg.includes('access token has expired')) return true
+    if (msg.includes('oauth 2 access error')) return true
+    return false
+  } catch {
+    // Body wasn't JSON; fall back to text matching.
+    return /invalid authentication credentials|access token has expired/i.test(body)
+  }
 }
 
 /**

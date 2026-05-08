@@ -326,12 +326,38 @@ describe('GoogleAdsClient.listAccessibleCustomers', () => {
     expect(hdrs['login-customer-id']).toBeUndefined()
   })
 
-  it('throws GoogleOAuthRevokedError on 401', async () => {
-    arrangeTokenAndList({ status: 401, body: '{"error":"invalid_grant"}' })
+  it('throws GoogleOAuthRevokedError on 401 with UNAUTHENTICATED status', async () => {
+    arrangeTokenAndList({
+      status: 401,
+      body: JSON.stringify({
+        error: { code: 401, message: 'Request had invalid authentication credentials.', status: 'UNAUTHENTICATED' },
+      }),
+    })
     const client = new GoogleAdsClient(freshConfig())
     await expect(client.listAccessibleCustomers()).rejects.toBeInstanceOf(
       GoogleOAuthRevokedError
     )
+  })
+
+  it('treats 401 with non-UNAUTHENTICATED status as recoverable GoogleAdsApiError (per §3 row L)', async () => {
+    // Google sometimes returns 401 for "developer token has no access to this
+    // customer" / "PERMISSION_DENIED"-shaped responses. We must NOT treat
+    // those as OAuth-revoked, otherwise picking the wrong customer once
+    // silently nukes the tenant's OAuth.
+    arrangeTokenAndList({
+      status: 401,
+      body: JSON.stringify({
+        error: { code: 401, message: 'The caller does not have permission', status: 'PERMISSION_DENIED' },
+      }),
+    })
+    const client = new GoogleAdsClient(freshConfig())
+    try {
+      await client.listAccessibleCustomers()
+      fail('expected GoogleAdsApiError')
+    } catch (e) {
+      expect(e).toBeInstanceOf(GoogleAdsApiError)
+      expect(e).not.toBeInstanceOf(GoogleOAuthRevokedError)
+    }
   })
 
   it('throws GoogleAdsApiError on non-401 4xx (status + excerpt preserved)', async () => {
@@ -434,12 +460,34 @@ describe('GoogleAdsClient.listConversionActions', () => {
     expect(hdrs['login-customer-id']).toBeUndefined()
   })
 
-  it('throws GoogleOAuthRevokedError on 401', async () => {
-    arrangeTokenAndSearch({ status: 401, body: '{"error":"invalid_grant"}' })
+  it('throws GoogleOAuthRevokedError on 401 with UNAUTHENTICATED status', async () => {
+    arrangeTokenAndSearch({
+      status: 401,
+      body: JSON.stringify({
+        error: { code: 401, message: 'Request had invalid authentication credentials.', status: 'UNAUTHENTICATED' },
+      }),
+    })
     const client = new GoogleAdsClient(freshConfig())
     await expect(client.listConversionActions('1675268286')).rejects.toBeInstanceOf(
       GoogleOAuthRevokedError
     )
+  })
+
+  it('treats 401 with non-UNAUTHENTICATED status as recoverable GoogleAdsApiError (per §3 row L)', async () => {
+    arrangeTokenAndSearch({
+      status: 401,
+      body: JSON.stringify({
+        error: { code: 401, message: 'The caller does not have permission', status: 'PERMISSION_DENIED' },
+      }),
+    })
+    const client = new GoogleAdsClient(freshConfig())
+    try {
+      await client.listConversionActions('1675268286')
+      fail('expected GoogleAdsApiError')
+    } catch (e) {
+      expect(e).toBeInstanceOf(GoogleAdsApiError)
+      expect(e).not.toBeInstanceOf(GoogleOAuthRevokedError)
+    }
   })
 
   it('throws GoogleAdsApiError on non-401 4xx', async () => {

@@ -42,11 +42,23 @@ export async function GET(req: NextRequest) {
       if (err instanceof GoogleOAuthRevokedError) {
         // We pre-emptively disconnect because the next call would have done
         // the same. UX: user sees "OAuth revoked, please reconnect" and the
-        // page state matches reality.
+        // page state matches reality. Refined per §3 row L: we now only enter
+        // this branch when Google's body indicates UNAUTHENTICATED, not on
+        // every 401 (which over-disconnected on developer-token / customer
+        // permission failures during the picker UI flow).
+        console.error('[google-ads/customers/list] OAuth revoked', {
+          tenant_id: ctx.tenantId,
+          message: err.message,
+        })
         await nullOutRevokedOAuth(ctx.supabase, ctx.tenantId)
         return NextResponse.json({ error: 'oauth_revoked' }, { status: 400 })
       }
       if (err instanceof GoogleAdsApiError) {
+        console.error('[google-ads/customers/list] Google API error', {
+          tenant_id: ctx.tenantId,
+          http_status: err.httpStatus,
+          response_excerpt: err.responseExcerpt,
+        })
         return NextResponse.json(
           { error: 'google_api_error', detail: `HTTP ${err.httpStatus}` },
           { status: 500 }
