@@ -3,6 +3,19 @@ import { cookies, headers } from 'next/headers'
 import type { Database } from '@/types/database'
 
 // Server client for server-side operations (Route Handlers, Server Components)
+//
+// Uses the modern `@supabase/ssr` `getAll`/`setAll` cookie API. The previous
+// implementation used the deprecated single-cookie `get(name)`/`set(name,...)`
+// adapter, which fails when `@supabase/ssr` chunks the session JWT across
+// multiple cookies (e.g. `sb-<ref>-auth-token.0`, `…1`) — the adapter looks up
+// the legacy unchunked name, gets nothing, and `auth.getUser()` returns null
+// even when the user is fully authenticated. API routes were masked from this
+// failure because `getSupabaseAuthContext` falls back to the `Authorization:
+// Bearer` header sent by the browser-side client, but Server Components have
+// no such header and broke catastrophically (see Phase 2b.1.b.2 §3 row J,
+// surfaced when the new `/settings/integrations/google` page consistently
+// rendered the "session needs to refresh" shell). `getAll`/`setAll` matches
+// what `createMiddlewareClient` in `./supabase.ts` already uses.
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies()
   let headerStore: Headers | null = null
@@ -18,24 +31,19 @@ export async function createServerSupabaseClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          const cookie = cookieStore.get(name)
-          return cookie ? { name: cookie.name, value: cookie.value } : undefined
+        getAll() {
+          return cookieStore.getAll().map(({ name, value }) => ({ name, value }))
         },
-        set(name: string, value: string, options?: Parameters<typeof cookieStore.set>[2]) {
+        setAll(cookiesToSet) {
+          // Server Components cannot mutate cookies — middleware refreshes
+          // sessions for us, so the try/catch here is defensive against the
+          // expected exception. Route handlers can mutate, and they will.
           try {
-            cookieStore.set(name, value, options)
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
           } catch {
-            // The `set` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing user sessions.
-          }
-        },
-        remove(name: string, options?: Parameters<typeof cookieStore.delete>[1]) {
-          try {
-            cookieStore.delete(name, options)
-          } catch {
-            // The `remove` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing user sessions.
+            // Intentional no-op. See doc comment above.
           }
         },
       },
