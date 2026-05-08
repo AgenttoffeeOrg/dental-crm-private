@@ -361,6 +361,96 @@ export class GoogleAdsClient {
   }
 
   /**
+   * List the customers that are descendants of `managerCustomerId` in the
+   * Google Ads MCC hierarchy. Used to expand the picker dropdown to include
+   * sub-accounts under a manager — `customers:listAccessibleCustomers` only
+   * returns *directly*-accessible customers (typically the OAuth user's
+   * manager(s)), not the advertisers underneath those managers, which is
+   * where conversion actions actually live.
+   *
+   * Implementation note (§3 row O): GAQL on the `customer_client` resource
+   * with `WHERE customer_client.level > 0` returns each descendant of the
+   * supplied login-customer-id at any level (1 = direct child, 2 =
+   * grandchild, …) but excludes the manager itself (level 0). The
+   * `login-customer-id` header MUST be set to `managerCustomerId` for the
+   * call to succeed.
+   *
+   * Returns plain advertiser-like rows. Fields:
+   *   - `customer_id`           — the descendant's id
+   *   - `resource_name`         — `customers/<id>`
+   *   - `descriptive_name`      — name as set in Google Ads (may be empty)
+   *   - `is_manager`            — true when the descendant is itself a
+   *                                manager account (those don't have
+   *                                conversion actions, but we still surface
+   *                                them so they're visible in the picker)
+   *   - `login_customer_id`     — `managerCustomerId` (the root of the
+   *                                hierarchy this row was discovered under;
+   *                                the picker uses this to pre-fill the
+   *                                login-customer-id header on subsequent
+   *                                conversion-actions calls)
+   *
+   * Failure modes mirror the other Google methods: `GoogleOAuthRevokedError`
+   * on UNAUTHENTICATED 401, `GoogleAdsApiError` on every other non-2xx.
+   */
+  async listCustomerClients(
+    managerCustomerId: string
+  ): Promise<
+    Array<{
+      customer_id: string
+      resource_name: string
+      descriptive_name: string
+      is_manager: boolean
+      login_customer_id: string
+    }>
+  > {
+    const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN
+    if (!developerToken) {
+      throw new Error('GOOGLE_ADS_DEVELOPER_TOKEN not set')
+    }
+    const accessToken = await this.getAccessToken()
+    const url = `${ADS_API_HOST}/${ADS_API_VERSION}/customers/${managerCustomerId}/googleAds:search`
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${accessToken}`,
+      'developer-token': developerToken,
+      'login-customer-id': managerCustomerId,
+      'Content-Type': 'application/json',
+    }
+    // GAQL enum literals are unquoted (§3 row M). `customer_client.level > 0`
+    // excludes the manager itself; descendants at every depth are returned.
+    const query =
+      "SELECT customer_client.client_customer, customer_client.id, " +
+      "customer_client.descriptive_name, customer_client.manager " +
+      "FROM customer_client " +
+      "WHERE customer_client.level > 0"
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query }),
+    })
+
+    if (!res.ok) {
+      throwForStatus(res.status, await res.text())
+    }
+
+    const parsed = (await res.json()) as {
+      results?: Array<{
+        customerClient?: {
+          clientCustomer?: string
+          id?: string | number
+          descriptiveName?: string
+          manager?: boolean
+        }
+      }>
+    }
+    const results = Array.isArray(parsed.results) ? parsed.results : []
+    return results
+      .map((r) => r?.customerClient ?? {})
+      .map((cc) => mapCustomerClient(cc, managerCustomerId))
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+  }
+
+  /**
    * List ENABLED, LEAD-category conversion actions in a given customer.
    *
    * Uses GoogleAds:search GAQL. If `loginCustomerId` is set we send it as
@@ -512,6 +602,47 @@ function toConversionActionRow(c: RawConversionAction): {
     name: nullishToEmpty(c.name),
     category: nullishToEmpty(c.category),
     status: nullishToEmpty(c.status),
+  }
+}
+
+interface RawCustomerClient {
+  clientCustomer?: string
+  id?: string | number
+  descriptiveName?: string
+  manager?: boolean
+}
+
+/**
+ * Map a `customer_client` GAQL result row into the picker-friendly shape used
+ * by `customers/list`. Returns null when the row is missing the id field —
+ * Google occasionally returns synthetic placeholder rows that we should skip.
+ * The row's `login_customer_id` is set to the manager whose hierarchy this
+ * descendant was discovered under, so the UI can pre-fill the
+ * login-customer-id header on follow-up calls.
+ */
+function mapCustomerClient(
+  cc: RawCustomerClient,
+  rootManagerId: string
+):
+  | {
+      customer_id: string
+      resource_name: string
+      descriptive_name: string
+      is_manager: boolean
+      login_customer_id: string
+    }
+  | null {
+  const rawId = cc.id
+  const idStr = rawId === undefined || rawId === null ? '' : String(rawId)
+  const fromResource = (cc.clientCustomer ?? '').split('/').pop() ?? ''
+  const customerId = idStr || fromResource
+  if (!customerId) return null
+  return {
+    customer_id: customerId,
+    resource_name: cc.clientCustomer ?? `customers/${customerId}`,
+    descriptive_name: nullishToEmpty(cc.descriptiveName),
+    is_manager: cc.manager === true,
+    login_customer_id: rootManagerId,
   }
 }
 

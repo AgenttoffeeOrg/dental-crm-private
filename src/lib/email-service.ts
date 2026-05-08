@@ -28,7 +28,12 @@ export interface EmailOptions {
 
 export class EmailService {
   private static instance: EmailService
-  private defaultFrom = process.env.EMAIL_FROM || 'noreply@dentalcrm.com'
+  private defaultFrom = (() => {
+    const email = process.env.RESEND_FROM_EMAIL
+    const name = process.env.RESEND_FROM_NAME
+    if (!email) return 'noreply@dentalcrm.com'
+    return name ? `${name} <${email}>` : email
+  })()
 
   static getInstance() {
     if (!EmailService.instance) {

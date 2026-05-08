@@ -20,6 +20,104 @@ import { nullOutRevokedOAuth } from '../../_lib/oauth-failure'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+interface CustomerEntry {
+  customer_id: string
+  resource_name: string
+  /** Set when this row was discovered as a sub-account of a manager — the UI
+   *  uses this as a hint to pre-fill the login-customer-id header on
+   *  conversion-actions calls. Null for top-level (directly accessible)
+   *  customers. See §3 row O. */
+  login_customer_id?: string | null
+  /** True when this row is itself a manager (MCC) account. Useful for the UI
+   *  to either filter / disable picking these (managers don't host
+   *  conversion actions) or label them visually. Defaults to false / unknown
+   *  for the top-level rows because `customers:listAccessibleCustomers` does
+   *  not return a manager flag — only the descendant query does. */
+  is_manager?: boolean
+  /** Optional human-readable name from Google Ads — only populated for rows
+   *  discovered via `customer_client` GAQL (the descendant call). */
+  descriptive_name?: string
+}
+
+/**
+ * Combine the OAuth user's directly-accessible customers (typically just the
+ * MCC manager(s) they're a member of) with the descendants enumerated under
+ * each via `customer_client` GAQL.
+ *
+ * Rationale (§3 row O): `customers:listAccessibleCustomers` is the only
+ * endpoint that works without a customer-id, but it ONLY returns customers
+ * the OAuth user has direct membership on. Practices whose Google Ads
+ * advertisers sit underneath an agency-owned manager wouldn't see those
+ * advertisers in the picker, despite having full API access via the manager.
+ * For each top-level customer we follow up with a descendants query; failures
+ * on the descendant call are non-fatal (the top-level entry is still kept).
+ */
+async function listAccessibleAndDescendants(
+  client: GoogleAdsClient
+): Promise<CustomerEntry[]> {
+  const top = await client.listAccessibleCustomers()
+  const byId = new Map<string, CustomerEntry>()
+  for (const t of top) {
+    byId.set(t.customer_id, {
+      customer_id: t.customer_id,
+      resource_name: t.resource_name,
+      login_customer_id: null,
+    })
+  }
+  for (const t of top) {
+    const subs = await safelyListDescendants(client, t.customer_id)
+    for (const s of subs) mergeDescendant(byId, s)
+  }
+  return Array.from(byId.values())
+}
+
+/** Wrap `listCustomerClients` so non-OAuth Google failures are non-fatal —
+ *  the top-level customer entry is still kept and returned. */
+async function safelyListDescendants(
+  client: GoogleAdsClient,
+  managerId: string
+): Promise<Awaited<ReturnType<GoogleAdsClient['listCustomerClients']>>> {
+  try {
+    return await client.listCustomerClients(managerId)
+  } catch (e) {
+    if (e instanceof GoogleOAuthRevokedError) throw e
+    if (e instanceof GoogleAdsApiError) {
+      console.warn('[google-ads/customers/list] descendants lookup failed', {
+        login_customer_id: managerId,
+        http_status: e.httpStatus,
+      })
+      return []
+    }
+    throw e
+  }
+}
+
+/** De-dupe: a descendant might already exist as a top-level entry (the OAuth
+ *  user can be a member of both the manager AND a sub-account). Prefer the
+ *  entry that has the manager hint, since that lets the UI pre-fill
+ *  login-customer-id without the user having to know it. */
+function mergeDescendant(
+  byId: Map<string, CustomerEntry>,
+  s: Awaited<ReturnType<GoogleAdsClient['listCustomerClients']>>[number]
+): void {
+  const existing = byId.get(s.customer_id)
+  if (existing) {
+    if (!existing.login_customer_id) {
+      existing.login_customer_id = s.login_customer_id
+      if (s.descriptive_name) existing.descriptive_name = s.descriptive_name
+      existing.is_manager = s.is_manager
+    }
+    return
+  }
+  byId.set(s.customer_id, {
+    customer_id: s.customer_id,
+    resource_name: s.resource_name,
+    login_customer_id: s.login_customer_id,
+    is_manager: s.is_manager,
+    descriptive_name: s.descriptive_name || undefined,
+  })
+}
+
 export async function GET(req: NextRequest) {
   try {
     const ctx = await getApiRequestContext(req)
@@ -36,7 +134,7 @@ export async function GET(req: NextRequest) {
 
     const client = new GoogleAdsClient(cfg)
     try {
-      const customers = await client.listAccessibleCustomers()
+      const customers = await listAccessibleAndDescendants(client)
       return NextResponse.json({ customers })
     } catch (err) {
       if (err instanceof GoogleOAuthRevokedError) {

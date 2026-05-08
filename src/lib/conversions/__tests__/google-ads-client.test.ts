@@ -511,6 +511,138 @@ describe('GoogleAdsClient.listConversionActions', () => {
     }
   })
 
+  // ---------------------------------------------------------------------------
+  // listCustomerClients — descendant enumeration under a manager (§3 row O)
+  // ---------------------------------------------------------------------------
+
+  it('listCustomerClients: POSTs the right URL/headers/GAQL and parses customer_client rows', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'ya29.x', expires_in: 3599, scope: 's', token_type: 'Bearer' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            results: [
+              {
+                customerClient: {
+                  clientCustomer: 'customers/1675268286',
+                  id: '1675268286',
+                  descriptiveName: 'Dental CRM Test',
+                  manager: false,
+                },
+              },
+              {
+                customerClient: {
+                  clientCustomer: 'customers/5270155829',
+                  id: '5270155829',
+                  descriptiveName: '',
+                  manager: false,
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      )
+
+    const client = new GoogleAdsClient(freshConfig())
+    const subs = await client.listCustomerClients('9374708799')
+
+    expect(subs).toEqual([
+      {
+        customer_id: '1675268286',
+        resource_name: 'customers/1675268286',
+        descriptive_name: 'Dental CRM Test',
+        is_manager: false,
+        login_customer_id: '9374708799',
+      },
+      {
+        customer_id: '5270155829',
+        resource_name: 'customers/5270155829',
+        descriptive_name: '',
+        is_manager: false,
+        login_customer_id: '9374708799',
+      },
+    ])
+
+    const [url, init] = fetchSpy.mock.calls[1]
+    expect(url).toBe(
+      `https://googleads.googleapis.com/${ADS_API_VERSION}/customers/9374708799/googleAds:search`
+    )
+    const hdrs = (init as RequestInit).headers as Record<string, string>
+    // login-customer-id MUST be set to the manager id (§3 row O).
+    expect(hdrs['login-customer-id']).toBe('9374708799')
+    expect(hdrs['developer-token']).toBe('test_dev_token')
+    const parsedBody = JSON.parse(String((init as RequestInit).body)) as { query: string }
+    // Enum literal `customer_client.level > 0` is unquoted (numeric here, so
+    // not technically an enum, but the same GAQL-quoting principle applies).
+    expect(parsedBody.query).toContain('FROM customer_client')
+    expect(parsedBody.query).toContain('customer_client.level > 0')
+  })
+
+  it('listCustomerClients: skips rows with no id (Google occasionally returns synthetic placeholders)', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'ya29.x', expires_in: 3599, scope: 's', token_type: 'Bearer' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            results: [
+              { customerClient: {} }, // no id, no clientCustomer
+              {
+                customerClient: {
+                  clientCustomer: 'customers/1675268286',
+                  id: '1675268286',
+                  manager: false,
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+
+    const client = new GoogleAdsClient(freshConfig())
+    const subs = await client.listCustomerClients('9374708799')
+    expect(subs).toHaveLength(1)
+    expect(subs[0].customer_id).toBe('1675268286')
+  })
+
+  it('listCustomerClients: throws GoogleAdsApiError on non-2xx (recoverable, non-fatal upstream)', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'ya29.x', expires_in: 3599, scope: 's', token_type: 'Bearer' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response('{"error":{"status":"INVALID_ARGUMENT","message":"x"}}', {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+
+    const client = new GoogleAdsClient(freshConfig())
+    await expect(client.listCustomerClients('1234567890')).rejects.toBeInstanceOf(
+      GoogleAdsApiError
+    )
+  })
+
   it('reuses getAccessToken — both list methods share the cache (one token fetch for both)', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch')

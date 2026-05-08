@@ -78,7 +78,9 @@ export function CustomerDropdown({
         <SelectContent>
           {state.items.map((c) => (
             <SelectItem key={c.customer_id} value={c.customer_id}>
-              Account {c.customer_id}
+              {c.descriptive_name
+                ? `${c.descriptive_name} (${c.customer_id})`
+                : `Account ${c.customer_id}`}
             </SelectItem>
           ))}
         </SelectContent>
