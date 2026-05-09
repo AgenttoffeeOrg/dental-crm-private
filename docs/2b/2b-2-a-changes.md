@@ -190,7 +190,7 @@ field for Messenger inbound.
 | Pre-existing tests still green | ✅ | `npx jest src/lib/lead-ingestion src/app/api/webhooks/google-lead-form` → 64 unit tests pass + 12 integration tests gated. |
 | Codacy CLI clean for new/modified files | ✅ | Trivy / ESLint / Lizard / Opengrep / PMD: 0 issues on every file in §4 + the 2b.2.a additions to `types.ts`, `source-labels.ts`, and `inbound.ts`. Pre-existing complexity warnings on `ingest-lead.ts` and `dedup-queue/[id]/resolve/route.ts` were verified pre-existing per the 2b.1.b.1 §9 precedent and not introduced by this phase. |
 | ingestLead behaviour verified for WhatsApp-shaped input | ✅ | See §10 below. |
-| Manual validation runbook (operator-run, against Vercel production) | ⏳ | Awaiting operator. Runbook at `docs/2b/phase-2b-2-a-prompt.md` "Manual validation runbook"; §11 will be filled with row-level evidence after the operator completes Phases 0–5. |
+| Manual validation runbook (operator-run, against Vercel production) | ✅ | Operator (Toffee) drove WhatsApp-from-real-phone steps (Phases 1–2); Cursor automated Phases 0, 3–5 and §11. Deployment `dpl_DAKbcaXa6pZ3JhC3oKvwmfVvELnu`, commit `e273391`. Row-level evidence in §11. Two findings (one doc-prose drift, one CI/CD drift) recorded; neither blocks 2b.2.a sign-off. |
 
 ---
 
@@ -245,30 +245,251 @@ existing callers that omit it see no behavioural change.
 
 ---
 
-## 11. Manual validation evidence (Vercel production)
+## 11. Manual validation evidence (Vercel production, 2026-05-09)
 
-⏳ **To be populated by the operator after running the runbook in
-`docs/2b/phase-2b-2-a-prompt.md` — Manual validation runbook.**
+Hybrid runbook (`docs/2b/phase-2b-2-a-validation-prompt.md`) executed
+against deployment `dpl_DAKbcaXa6pZ3JhC3oKvwmfVvELnu` of commit
+`e273391` ("phase 2b.2.a: WhatsApp inbound webhook rebuild") on branch
+`phase-1-attribution-foundation`, aliased to
+`https://dental-crm-nine.vercel.app`. Test tenant
+`5aadca14-9786-4aef-bc53-e9287cdd0bbf` ("Deepak's Dental Practice"),
+`tenants.whatsapp_phone_number = '+14155238886'` (Twilio shared
+sandbox). Operator (Toffee) sent WhatsApp messages from the joined
+phone `+919916558958`; Cursor handled deployment, baseline capture,
+DB queries, and the curl-based security tests.
 
-Sections matching the prompt's Phase 6 §13 spec:
+Health check confirms the live route is the new code:
+`GET /api/webhooks/whatsapp` →
+`{"status":"ready","endpoint":"whatsapp-webhook","version":"phase-2b.2.a"}`.
 
-- **11.1 — Lazy-create path (Phase 1).** Pending: contact + deal +
-  touchpoint + activity created with correct tenant_id, `external_message_id`
-  = the Twilio MessageSid.
-- **11.2 — Dedup path (Phase 2).** Pending: no duplicate contact / deal;
-  new touchpoint + activity for the second message.
-- **11.3 — Idempotency (Phase 3).** Pending: re-fired MessageSid → 200
-  with `{ idempotent: true }`; record counts unchanged.
-- **11.4 — Signature security (Phase 4).** Pending: missing-header → 401;
-  invalid signature → 401.
-- **11.5 — Tenant-resolution security (Phase 5).** Pending: unknown
-  To-number with valid signature → 401; no records created in any tenant.
+**Schema-vs-runbook drift (recorded once, applies to all sub-sections):**
 
-Once the operator completes the runbook and reports back, this section
-will be replaced with row-level evidence and §8 will flip its bottom
-row from ⏳ to ✅. The pre-2b.2.a leftover sandbox contact
-`8d65dde7-c009-4439-9188-dd2fa5f3f2ec` is the one the runbook deletes
-to exercise the lazy-create path (see prompt Phase 0 step 3).
+- The runbook's queries use `activities.channel` and `activities.body`,
+  inherited from the original prompt's pre-correction assumptions. Per
+  §3 row B above, the live `activities` schema uses `type` and
+  `description`. All Cursor queries below were translated accordingly;
+  the underlying invariants are unchanged.
+- The runbook expects `attribution_touchpoints.deal_id`; that column
+  doesn't exist. Deal linkage is via `deals.contact_id` to the
+  contact id on the touchpoint. Documented; queried via the contacts↔
+  deals join.
+- The runbook expects `metadata->>'message_sid'` and
+  `metadata->>'profile_name'` at the top of `attribution_touchpoints.metadata`.
+  The actual helper preserves Twilio's verbatim payload under
+  `metadata.raw_payload.*` (with normalized hoists at
+  `raw_payload._media_urls`, `raw_payload._profile_name`,
+  `raw_payload._wa_id`). The two-locations-for-MessageSid invariant
+  (column for dedup + metadata for audit) holds at
+  `metadata->'raw_payload'->>'MessageSid'`.
+
+### 11.1 — Lazy-create path (Phase 1) ✅
+
+Operator sent body `"Hello from new lead test"` from `+919916558958`
+to the sandbox at `+14155238886`. Twilio assigned MessageSid
+`SMe54eaab4f39986f887d98ace25733ad5`.
+
+| Artifact | ID | Verified fields |
+|---|---|---|
+| Contact (new) | `a0ac5939-35af-4789-af73-4f92e63e9764` | `full_name='Deepak Hegde'` (lifted from Twilio's `ProfileName`), `primary_phone='+919916558958'`, `primary_phone_e164='+919916558958'` (the `whatsapp:` prefix was correctly stripped by `parseTwilioInboundMessage`), `tenant_id` correct, `created_at='2026-05-09T13:14:37.076619+00:00'`. |
+| Touchpoint | `62e06d0b-1e54-43b1-9a3e-1e06e2385e60` | `source_channel='whatsapp_inbound'`, `external_message_id='SMe54eaab4f39986f887d98ace25733ad5'` (34-char SM-prefixed Twilio SID), `contact_id` linked, `tenant_id` correct, `metadata->'raw_payload'->>'MessageSid'` matches the column, `metadata->'raw_payload'->>'ProfileName'='Deepak Hegde'`, `metadata->'raw_payload'->>'_media_urls'=[]` (text-only — media handling is 2b.2.a.2). Twilio's verbatim `From`, `To`, `WaId`, `AccountSid`, `ChannelMetadata`, `ExternalUserId` all preserved under `raw_payload`. |
+| Activity | `8a61ce9c-affa-4543-8e69-e4bbe23e2464` | `type='whatsapp'`, `direction='inbound'`, `source_channel='whatsapp_inbound'`, `description='Hello from new lead test'` (verbatim body, threaded via `treatment_intent_text` per §3 row B), `contact_id` linked to the new contact, `deal_id` linked to the new deal, `tenant_id` correct. |
+| Deal | `4a310622-8c7f-4d84-bddc-b2ce546b9d89` | Created (the test tenant's offering has a default pipeline, so `createDealForLead`'s `dealOutcome.ok===true` path fired). Confirms ingestLead's deal-creation branch works correctly for the WhatsApp inbound shape. |
+
+Counts after Phase 1 in the test tenant: contacts-with-this-phone=1,
+`whatsapp_inbound` touchpoints=1, `whatsapp_inbound` activities=1 — no
+duplicates.
+
+### 11.2 — Dedup path (Phase 2) ✅ (1 finding F1)
+
+Operator sent body `"This is a second message"` from the same phone.
+Twilio assigned MessageSid `SM74a6a5b0cdcc2847c66a142e5a55d606`.
+
+| Check | Result | Detail |
+|---|---|---|
+| No duplicate contact | ✅ | `count(*)=1`; `min(created_at)=max(created_at)='2026-05-09T13:14:37.076619+00:00'` (the row from §11.1, unchanged). The dedup engine's Tier 2 phone match correctly reused contact `a0ac5939-…`. |
+| New touchpoint | ✅ | Touchpoint `baa62e0d-9dd7-41e1-a128-110303696ad6`, `external_message_id='SM74a6a5b0cdcc2847c66a142e5a55d606'`, `contact_id='a0ac5939-…'` (existing contact, not new), `created_at='2026-05-09T13:20:23.015432+00:00'`. |
+| New activity | ✅ | Activity `14b409a0-aad1-4743-bf1d-36dcc4af27b8`, `description='This is a second message'`, `type=whatsapp`, `direction=inbound`, `source_channel=whatsapp_inbound`. |
+| `whatsapp_inbound` touchpoint count after Phase 2 | ✅ | 1 → 2. |
+| `whatsapp_inbound` activity count after Phase 2 | ✅ | 1 → 2. |
+
+**Finding F1 — deal-per-message divergence from §10 prose (recorded; not
+a 2b.2.a regression).**
+A second deal `10f8460a-828f-4b74-a71e-bee947d516fc` was created for the
+same contact at `2026-05-09T13:20:23.622689+00:00` (and the new activity
+was linked to it, not to the §11.1 deal). Section §10 of this change
+log states:
+
+> "ingestLead does not actively reuse an existing open deal for the
+> same contact today — it conditionally creates one when configured,
+> and skips otherwise. **For the WhatsApp inbound flow this is the
+> desired behaviour: a returning patient who DMs us a second time gets
+> a new attribution touchpoint + a new activity, but no new deal**."
+
+Those two sentences are internally inconsistent: when a default pipeline
+IS configured for the offering (which it is for this tenant — Phase 1
+proved it), `createDealForLead` fires unconditionally and produces a new
+deal per message. The CODE is self-consistent across phases; the §10
+prose claim "no new deal for returning patients" is documentation drift
+or aspirational. No 2b.2.a hard-fail criterion is breached (the runbook
+checks for no duplicate *contact*, not no duplicate *deal*). Surface
+to the planner as a separate decision:
+**(A)** fix §10 prose to match observed behaviour, or **(B)** add an
+"open deal exists for contact + offering" reuse guard inside
+`createDealForLead`. Either way, scope is a follow-up sprint.
+
+### 11.3 — Idempotency, re-fired MessageSid (Phase 3) ✅
+
+Cursor re-fired Phase 2's MessageSid via
+`scripts/whatsapp-validation/phase3-idempotency.mjs` with a freshly
+computed valid Twilio HMAC-SHA1 signature.
+
+```
+URL:        https://dental-crm-nine.vercel.app/api/webhooks/whatsapp
+Method:     POST
+Headers:    X-Twilio-Signature: tqlYVo1N4rUBRZdf0bNBY/eUwfA=
+            Content-Type: application/x-www-form-urlencoded
+Form keys:  AccountSid, Body, From, MessageSid, NumMedia, ProfileName, To
+            (sorted ASCII for the HMAC base, per twilio-signature.ts)
+MessageSid: SM74a6a5b0cdcc2847c66a142e5a55d606  (= Phase 2's SID)
+
+Response:   HTTP 200 OK  (856ms)
+            {"status":"ok","idempotent":true}
+```
+
+Post-fire DB state:
+
+| Counter | Pre | Post | Delta |
+|---|---|---|---|
+| `whatsapp_inbound` touchpoints in test tenant | 2 | 2 | 0 ✅ |
+| `whatsapp_inbound` activities in test tenant | 2 | 2 | 0 ✅ |
+| Contacts for this phone in test tenant | 1 | 1 | 0 ✅ |
+| Deals for contact `a0ac5939-…` | 2 | 2 | 0 ✅ |
+
+Touchpoint `external_message_id` set is exactly `{
+SMe54eaab4f39986f887d98ace25733ad5,
+SM74a6a5b0cdcc2847c66a142e5a55d606 }` (the §11.1 + §11.2 originals,
+no third row). Confirms `isMessageAlreadyProcessed` short-circuited
+ahead of any contact / deal / activity work — the partial unique index
+race net was not even exercised, which is the intended hot path.
+
+### 11.4 — Signature security, both 401 cases (Phase 4) ✅
+
+Two unsigned/invalid-signature posts to the live endpoint:
+
+**Test 1 — missing `X-Twilio-Signature` header.**
+```
+POST https://dental-crm-nine.vercel.app/api/webhooks/whatsapp
+Content-Type: application/x-www-form-urlencoded
+(no X-Twilio-Signature header)
+body: AccountSid=ACfake&MessageSid=SMsigtest1&From=whatsapp:+12025551234&To=whatsapp:+14155238886&Body=unauthorized&NumMedia=0
+
+Response: HTTP 401, body bytes = 0
+```
+
+**Test 2 — bogus `X-Twilio-Signature` value.**
+```
+POST https://dental-crm-nine.vercel.app/api/webhooks/whatsapp
+X-Twilio-Signature: this-is-not-a-valid-signature
+Content-Type: application/x-www-form-urlencoded
+body: AccountSid=ACfake&MessageSid=SMsigtest2&From=whatsapp:+12025551234&To=whatsapp:+14155238886&Body=tampered&NumMedia=0
+
+Response: HTTP 401, body bytes = 0
+```
+
+Both return the same shape, which is intentional —
+`twilio-signature.ts` returns `'missing_header'` and
+`'invalid_signature'` and the route maps both to a bare 401, denying any
+side-channel that distinguishes them. DB confirmation:
+`SELECT count(*) FROM attribution_touchpoints WHERE external_message_id IN ('SMsigtest1', 'SMsigtest2')`
+→ **0**. The pre-2b.2.a "no header → silently treat as valid" hole
+(defect #3 in `2b-2-pre-plan-findings.md`) is conclusively closed.
+
+### 11.5 — Tenant-resolution security, valid sig + unknown To-number (Phase 5) ✅
+
+Cursor crafted a payload with a To-number that is registered to **no**
+tenant (`+18005550199` — pre-confirmed by
+`SELECT count(*) FROM tenants WHERE whatsapp_phone_number IN ('+18005550199', 'whatsapp:+18005550199')` → 0)
+and a **cryptographically valid** Twilio signature, posted via
+`scripts/whatsapp-validation/phase5-fake-tenant.mjs`.
+
+```
+URL:        https://dental-crm-nine.vercel.app/api/webhooks/whatsapp
+Method:     POST
+Headers:    X-Twilio-Signature: NS6nuEpdFXr75cvEj7oHDYlFdhE=  (genuine HMAC over the body)
+            Content-Type: application/x-www-form-urlencoded
+Form keys:  AccountSid, Body, From, MessageSid, NumMedia, To
+MessageSid: SMfaketenant
+To:         whatsapp:+18005550199   (unregistered)
+
+Response:   HTTP 401 Unauthorized  (680ms)
+            body bytes = 0
+```
+
+Critical: response is 401, **not 404** — the route deliberately conflates
+"bad signature" and "no tenant for To" so an attacker cannot probe which
+WhatsApp numbers are tenant-registered. DB confirmation across the
+ENTIRE table (not scoped to the test tenant — the most dangerous failure
+mode would be the touchpoint landing in tenant `5aadca14-…` because it's
+the only one with the sandbox number registered):
+`SELECT id, tenant_id FROM attribution_touchpoints WHERE external_message_id = 'SMfaketenant'` → **0 rows globally**. Counts in test tenant unchanged at touchpoints=2, activities=2.
+
+### 11.6 — Findings & recommendations (no 2b.2.a regressions)
+
+Two findings worth surfacing to the planner; neither blocks 2b.2.a
+sign-off, neither calls for code changes inside this phase.
+
+**F1 — §10 prose ↔ deal-creation behaviour mismatch (documentation
+drift OR product decision).** See §11.2 for evidence. Decide between
+(A) §10 prose fix or (B) deal-reuse guard in `createDealForLead`.
+
+**F2 — Vercel auto-deploy did not fire for our `git push` to
+`phase-1-attribution-foundation` (CI/CD drift).** When commit `e273391`
+landed at GitHub, the previous Vercel deploy on this branch was 14h
+old; no new build was queued in the project's deployment list. Cursor
+triggered the deploy manually with `vercel --prod --yes` (3-minute
+build, deployment `dpl_DAKbcaXa6pZ3JhC3oKvwmfVvELnu`). Earlier commits
+on this same branch (`944845c`, `19af10f`, etc., per the 2b.1.b.2
+evidence in §14 of `docs/2b/2b-1-b-2-changes.md`) did auto-deploy, so
+something has changed in the GitHub→Vercel hookup since then —
+candidates: integration token refresh, paused project, branch-tracking
+config. Out of scope for 2b.2.a; surface to the planner / DevOps owner.
+
+### 11.7 — Test data fingerprints (for any future cleanup)
+
+All rows below are real test data created by this validation, scoped
+to the test tenant `5aadca14-9786-4aef-bc53-e9287cdd0bbf`. They are
+filterable by `source_channel='whatsapp_inbound'` and can be ignored
+or purged from any future reporting.
+
+| Phase | Type | ID |
+|---|---|---|
+| §11.1 | Contact | `a0ac5939-35af-4789-af73-4f92e63e9764` |
+| §11.1 | Touchpoint | `62e06d0b-1e54-43b1-9a3e-1e06e2385e60` (`SMe54eaab4f39986f887d98ace25733ad5`) |
+| §11.1 | Activity | `8a61ce9c-affa-4543-8e69-e4bbe23e2464` |
+| §11.1 | Deal | `4a310622-8c7f-4d84-bddc-b2ce546b9d89` |
+| §11.2 | Touchpoint | `baa62e0d-9dd7-41e1-a128-110303696ad6` (`SM74a6a5b0cdcc2847c66a142e5a55d606`) |
+| §11.2 | Activity | `14b409a0-aad1-4743-bf1d-36dcc4af27b8` |
+| §11.2 | Deal (F1) | `10f8460a-828f-4b74-a71e-bee947d516fc` |
+
+The pre-2b.2.a leftover sandbox contact
+`8d65dde7-c009-4439-9188-dd2fa5f3f2ec` was deleted in Phase 0 to force
+the lazy-create path on Phase 1; it is not recreated and does not need
+to be.
+
+### 11.8 — Helper scripts retained
+
+For any future re-runs (e.g. after F2 is fixed and CI/CD lands a new
+deploy automatically):
+
+```
+dental-crm/scripts/whatsapp-validation/phase3-idempotency.mjs
+dental-crm/scripts/whatsapp-validation/phase5-fake-tenant.mjs
+```
+
+Both are ESM, require Node ≥18 (built-in `fetch`), zero npm
+dependencies, and read `TWILIO_AUTH_TOKEN` + `TWILIO_ACCOUNT_SID`
+from `.env.local`. The Phase 3 script accepts an alternate MessageSid
+as `argv[2]` for re-targeting any past inbound message.
 
 ---
 
@@ -307,6 +528,8 @@ dental-crm/src/lib/whatsapp/inbound.ts
 dental-crm/src/lib/whatsapp/__tests__/twilio-signature.test.ts
 dental-crm/src/lib/whatsapp/__tests__/inbound.test.ts
 dental-crm/src/app/api/webhooks/whatsapp/__tests__/route.test.ts
+dental-crm/scripts/whatsapp-validation/phase3-idempotency.mjs   (§11.3 helper)
+dental-crm/scripts/whatsapp-validation/phase5-fake-tenant.mjs   (§11.5 helper)
 dental-crm/docs/2b/2b-2-a-changes.md   (this file)
 ```
 
