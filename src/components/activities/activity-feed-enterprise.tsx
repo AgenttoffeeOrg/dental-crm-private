@@ -58,6 +58,8 @@ import { SMSComposerPanel } from '@/components/communications/sms-composer-panel
 import { WhatsAppComposerPanel } from '@/components/communications/whatsapp-composer-panel'
 import { ClickToCallDialer } from '@/components/communications/click-to-call-dialer'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
+import { ActivityMedia, type ActivityMediaItem } from './activity-media'
+import { signMessageMediaUrls } from '@/lib/inbound-media/signed-urls'
 
 interface Activity {
   id: string
@@ -86,6 +88,12 @@ interface Activity {
   agent_name?: string
   integration_provider?: string
   message_status?: string
+  /**
+   * Phase 2b.2.a.2 — inbound message media (photos / voice notes / videos
+   * / PDFs) attached client-side after the activities query. Empty / absent
+   * for activities with no related media.
+   */
+  media?: ActivityMediaItem[]
 }
 
 interface ActivityFeedEnterpriseProps {
@@ -98,6 +106,67 @@ interface ActivityFeedEnterpriseProps {
   contactEmail?: string
   contactPhone?: string
   contactName?: string
+}
+
+/**
+ * Phase 2b.2.a.2 — fetch inbound message_media rows for the loaded
+ * activities and attach them as `activity.media`. Generates short-lived
+ * signed URLs in batch so the rendered `<img>` / `<audio>` / download
+ * links work without extra client-side work.
+ *
+ * Failures here are non-fatal — we log and return the activities as-is
+ * so a transient storage problem can't blank out the timeline.
+ */
+async function attachMessageMedia(
+  supabase: ReturnType<typeof createClient>,
+  activities: Activity[]
+): Promise<Activity[]> {
+  if (!activities || activities.length === 0) return activities
+  const ids = activities.map((a) => a.id).filter((id): id is string => Boolean(id))
+  if (ids.length === 0) return activities
+
+  try {
+    const { data: rows, error } = await supabase
+      .from('message_media')
+      .select('id, activity_id, content_type, byte_size, storage_path')
+      .in('activity_id', ids)
+      .order('media_index', { ascending: true })
+
+    if (error || !rows || rows.length === 0) {
+      if (error) {
+        console.warn('[Activities] message_media fetch failed', { error_message: error.message })
+      }
+      return activities
+    }
+
+    const paths = rows.map((r) => r.storage_path as string).filter(Boolean)
+    const signedByPath = await signMessageMediaUrls(supabase, paths)
+
+    const mediaByActivityId = new Map<string, ActivityMediaItem[]>()
+    for (const row of rows) {
+      const activityId = row.activity_id as string
+      const storagePath = row.storage_path as string
+      const item: ActivityMediaItem = {
+        id: row.id as string,
+        contentType: (row.content_type as string) ?? 'application/octet-stream',
+        byteSize: Number(row.byte_size ?? 0),
+        signedUrl: signedByPath.get(storagePath) ?? null,
+        storagePath,
+      }
+      const list = mediaByActivityId.get(activityId)
+      if (list) list.push(item)
+      else mediaByActivityId.set(activityId, [item])
+    }
+
+    return activities.map((a) =>
+      mediaByActivityId.has(a.id) ? { ...a, media: mediaByActivityId.get(a.id) } : a
+    )
+  } catch (err) {
+    console.warn('[Activities] attachMessageMedia threw — rendering without media', {
+      error_message: err instanceof Error ? err.message : String(err),
+    })
+    return activities
+  }
 }
 
 const ACTIVITY_TYPES = {
@@ -175,6 +244,7 @@ const sanitizedContactPhone = useMemo(
       const { data, error } = await query
 
       // If view doesn't exist, fall back to regular activities table
+      let activitiesData: Activity[] | null = null
       if (error && (error.code === 'PGRST205' || error.code === '42P01')) {
         console.log('[Activities] View not found, using regular activities table')
         
@@ -193,12 +263,18 @@ const sanitizedContactPhone = useMemo(
         const { data: fallbackData, error: fallbackError } = await fallbackQuery
 
         if (fallbackError) throw fallbackError
-        setActivities(fallbackData || [])
+        activitiesData = (fallbackData || []) as Activity[]
       } else if (error) {
         throw error
       } else {
-        setActivities(data || [])
+        activitiesData = (data || []) as Activity[]
       }
+
+      // Phase 2b.2.a.2 — attach inbound message media to the loaded activities.
+      // Separate query (Option A) instead of a nested select on the activities
+      // view because the view is generated and harder to extend.
+      const withMedia = await attachMessageMedia(supabase, activitiesData)
+      setActivities(withMedia)
     } catch (error) {
       console.error('Error fetching activities:', JSON.stringify(error))
       toast.error('Failed to load activities', {
@@ -458,6 +534,13 @@ const sanitizedContactPhone = useMemo(
               <p className="text-xs text-gray-600 line-clamp-1 mb-2">
                 {activity.snippet}
               </p>
+            )}
+
+            {/* Phase 2b.2.a.2 — inbound message media (photos / voice notes
+                / videos / PDFs). Rendered inline so practices can see what
+                the patient sent without leaving the timeline. */}
+            {activity.media && activity.media.length > 0 && (
+              <ActivityMedia items={activity.media} />
             )}
 
             {/* Smart Metadata Row - One Line */}

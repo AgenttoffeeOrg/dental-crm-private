@@ -18,13 +18,20 @@
  *     contact paths — see Phase 2b.2.a §5 for verification of its dedup
  *     behaviour for phone-only WhatsApp inputs.
  *   - Media URLs are extracted into the structured `mediaUrls` array AND
- *     verbatim into `rawPayload` (which is persisted into
- *     `attribution_touchpoints.metadata.raw_payload`), but **not downloaded
- *     or stored** in this phase. Media handling is 2b.2.a.2.
+ *     verbatim into `rawPayload`. After the activity is created, Phase
+ *     2b.2.a.2 calls `processInboundMediaItems` to download each item from
+ *     Twilio (Basic-Auth + 10-second timeout), upload it to the
+ *     `message-media` Supabase Storage bucket, and persist a `message_media`
+ *     row linking it to the activity. Per-item failures are logged and
+ *     skipped — the activity still gets created without the failed media.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ingestLead } from '@/lib/lead-ingestion/ingest-lead'
+import {
+  processInboundMediaItems,
+  type MediaItemResult,
+} from '@/lib/inbound-media/media-store'
 
 // =============================================================================
 // Types
@@ -70,6 +77,16 @@ export interface ProcessInboundResult {
   activityId: string
   /** True when ingestLead created a new contact; false when an existing contact was reused. */
   wasNewContact: boolean
+  /**
+   * Per-item results from `processInboundMediaItems`. Empty array when the
+   * inbound message has no media. Per-item failures are logged and skipped
+   * inside the orchestrator — they don't propagate as exceptions, so this
+   * field is the only signal a caller has about partial media loss.
+   *
+   * Phase 2b.2.a.2 (additive — existing callers of
+   * `processWhatsappInboundMessage` can ignore this field).
+   */
+  mediaResults: MediaItemResult[]
 }
 
 // =============================================================================
@@ -309,6 +326,23 @@ export async function processWhatsappInboundMessage(
     )
   }
 
+  // Phase 2b.2.a.2 — synchronously download / upload / persist any inbound
+  // media after the activity is created. Per-item failures are absorbed by
+  // the orchestrator (logged + recorded as `failed` results); the activity
+  // remains valid even on partial media loss. Skipped entirely when the
+  // message has no media (~99% of inbound messages today).
+  const mediaResults =
+    message.mediaUrls.length > 0
+      ? await processInboundMediaItems(supabaseAdmin, {
+          tenantId,
+          activityId: result.activity_id,
+          contactId: result.contact_id,
+          attributionTouchpointId: result.attribution_touchpoint_id,
+          externalMessageId: message.messageSid,
+          mediaUrls: message.mediaUrls,
+        })
+      : []
+
   return {
     contactId: result.contact_id,
     dealId: result.deal_id,
@@ -318,5 +352,6 @@ export async function processWhatsappInboundMessage(
     // 'idempotent_replay' counts as not-new (we reused an existing record set).
     wasNewContact:
       result.dedup_decision === 'new' && result.idempotent_replay !== true,
+    mediaResults,
   }
 }

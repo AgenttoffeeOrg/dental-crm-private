@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Codacy CLI artifacts (Phase 2b.2.a.2)
+.codacy/

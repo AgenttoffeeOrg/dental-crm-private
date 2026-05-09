@@ -9,10 +9,16 @@
  */
 
 const mockIngestLead = jest.fn()
+const mockProcessInboundMediaItems = jest.fn()
 
 jest.mock('@/lib/lead-ingestion/ingest-lead', () => ({
   __esModule: true,
   ingestLead: (...args: unknown[]) => mockIngestLead(...args),
+}))
+
+jest.mock('@/lib/inbound-media/media-store', () => ({
+  __esModule: true,
+  processInboundMediaItems: (...args: unknown[]) => mockProcessInboundMediaItems(...args),
 }))
 
 import {
@@ -312,6 +318,7 @@ describe('processWhatsappInboundMessage', () => {
       attributionTouchpointId: 'tp-1',
       activityId: 'act-1',
       wasNewContact: true,
+      mediaResults: [],
     })
 
     expect(mockIngestLead).toHaveBeenCalledTimes(1)
@@ -425,5 +432,125 @@ describe('processWhatsappInboundMessage', () => {
     const [input] = mockIngestLead.mock.calls[0]
     expect(input.external_message_id).toBe('SMabc')
     expect(input.event_id).toBe('whatsapp_inbound:SMabc')
+  })
+
+  // ---------------------------------------------------------------------------
+  // Phase 2b.2.a.2 — media capture wiring
+  // ---------------------------------------------------------------------------
+
+  it('does NOT call processInboundMediaItems when mediaUrls is empty', async () => {
+    mockIngestLead.mockResolvedValueOnce({
+      contact_id: 'contact-1',
+      attribution_touchpoint_id: 'tp-1',
+      activity_id: 'act-1',
+      deal_id: 'deal-1',
+      dedup_decision: 'new',
+      dedup_signals: { email_match: false, phone_match: false, channel_identifier_match: false },
+      sla: null,
+      routing_log_id: null,
+    })
+
+    const result = await processWhatsappInboundMessage(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      {} as any,
+      TENANT_ID,
+      SAMPLE_MESSAGE
+    )
+
+    expect(mockProcessInboundMediaItems).not.toHaveBeenCalled()
+    expect(result.mediaResults).toEqual([])
+  })
+
+  it('forwards 2 media URLs to processInboundMediaItems and propagates the result', async () => {
+    mockIngestLead.mockResolvedValueOnce({
+      contact_id: 'contact-1',
+      attribution_touchpoint_id: 'tp-1',
+      activity_id: 'act-1',
+      deal_id: 'deal-1',
+      dedup_decision: 'new',
+      dedup_signals: { email_match: false, phone_match: false, channel_identifier_match: false },
+      sla: null,
+      routing_log_id: null,
+    })
+    mockProcessInboundMediaItems.mockResolvedValueOnce([
+      { status: 'persisted', mediaIndex: 0, messageMediaId: 'mm-0' },
+      { status: 'persisted', mediaIndex: 1, messageMediaId: 'mm-1' },
+    ])
+
+    const supabase = { sentinel: 'admin' }
+    const result = await processWhatsappInboundMessage(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      supabase as any,
+      TENANT_ID,
+      {
+        ...SAMPLE_MESSAGE,
+        numMedia: 2,
+        mediaUrls: [
+          { url: 'https://api.twilio.com/.../Media/MEa', contentType: 'image/jpeg' },
+          { url: 'https://api.twilio.com/.../Media/MEb', contentType: 'application/pdf' },
+        ],
+      }
+    )
+
+    expect(mockProcessInboundMediaItems).toHaveBeenCalledTimes(1)
+    const [client, args] = mockProcessInboundMediaItems.mock.calls[0]
+    expect(client).toBe(supabase)
+    expect(args).toEqual({
+      tenantId: TENANT_ID,
+      activityId: 'act-1',
+      contactId: 'contact-1',
+      attributionTouchpointId: 'tp-1',
+      externalMessageId: MESSAGE_SID,
+      mediaUrls: [
+        { url: 'https://api.twilio.com/.../Media/MEa', contentType: 'image/jpeg' },
+        { url: 'https://api.twilio.com/.../Media/MEb', contentType: 'application/pdf' },
+      ],
+    })
+    expect(result.mediaResults).toEqual([
+      { status: 'persisted', mediaIndex: 0, messageMediaId: 'mm-0' },
+      { status: 'persisted', mediaIndex: 1, messageMediaId: 'mm-1' },
+    ])
+  })
+
+  it('still returns success with mixed media results when some items fail', async () => {
+    mockIngestLead.mockResolvedValueOnce({
+      contact_id: 'contact-1',
+      attribution_touchpoint_id: 'tp-1',
+      activity_id: 'act-1',
+      deal_id: 'deal-1',
+      dedup_decision: 'new',
+      dedup_signals: { email_match: false, phone_match: false, channel_identifier_match: false },
+      sla: null,
+      routing_log_id: null,
+    })
+    mockProcessInboundMediaItems.mockResolvedValueOnce([
+      { status: 'persisted', mediaIndex: 0, messageMediaId: 'mm-0' },
+      { status: 'failed', mediaIndex: 1, reason: 'download:network' },
+      { status: 'already_persisted', mediaIndex: 2, messageMediaId: 'mm-2' },
+    ])
+
+    const result = await processWhatsappInboundMessage(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      {} as any,
+      TENANT_ID,
+      {
+        ...SAMPLE_MESSAGE,
+        numMedia: 3,
+        mediaUrls: [
+          { url: 'https://x/0', contentType: 'image/jpeg' },
+          { url: 'https://x/1', contentType: 'image/jpeg' },
+          { url: 'https://x/2', contentType: 'image/jpeg' },
+        ],
+      }
+    )
+
+    // Activity creation still succeeded — media outcome is reported, not thrown.
+    expect(result.activityId).toBe('act-1')
+    expect(result.mediaResults).toHaveLength(3)
+    expect(result.mediaResults[1]).toEqual({
+      status: 'failed',
+      mediaIndex: 1,
+      reason: 'download:network',
+    })
   })
 })
