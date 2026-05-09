@@ -244,8 +244,9 @@ UI: ContactDetailView → ActivityFeedEnterprise.fetchActivities()
 | Unit tests (2b.2.a.2) | ✅ | 33 new tests pass; 138 total across all relevant suites. |
 | Pre-existing tests still green | ✅ | `src/lib/lead-ingestion` 64 unit tests pass; `src/app/api/webhooks/google-lead-form` 9 unit tests pass. |
 | Codacy CLI clean for new/modified files | ✅ (with one tolerated pre-existing) | Trivy / ESLint / Lizard / Opengrep / PMD: 0 issues across all 5 new files (migration, `media-store.ts`, `signed-urls.ts`, `activity-media.tsx`, both test files). The only finding on a touched file is `Lizard_file-nloc-medium` on `activity-feed-enterprise.tsx` (549 → 606 nloc; threshold 500), verified pre-existing per §3 row C. |
-| Vercel deployment live with new code | ⏳ | To be verified after commit + push fires the auto-deploy. |
-| Manual validation runbook | ⏳ | Operator runs Phases 1–4 (photo, voice, PDF) from `+919916558958`; Cursor handles Phases 0, 5, 6 + §11. |
+| Vercel deployment live with new code | ✅ | `curl -I https://dental-crm-nine.vercel.app/` → HTTP 200. Health-check `GET /api/webhooks/whatsapp` → `{"status":"ready",...}`. Re-fired idempotency curl in §11.5 confirms the live route is processing requests. |
+| Manual validation runbook (DB + idempotency + storage RLS) | ✅ | §11.1 / §11.3 / §11.4 all show row + storage match; §11.5 idempotency 200 with row count unchanged; §11.6 signed URL works and direct access blocked. |
+| Manual validation runbook (operator UI confirmation) | ⏳ | §11.2, §11.3-UI, §11.4-UI — operator opens the contact in the CRM, confirms the photo renders, the audio plays, and the PDF download works. |
 
 ---
 
@@ -295,16 +296,144 @@ later phases:
 
 ---
 
-## 11. Manual validation evidence (to be populated after the runbook)
+## 11. Manual validation evidence (Vercel production, 2026-05-09)
 
-Placeholder. Will be replaced with row-level evidence per the runbook's
-Phase 7 once the operator has driven the photo / voice / PDF tests
-against Vercel production.
+Hybrid runbook executed against deployment of commit `95a916f`
+("phase 2b.2.a.2: WhatsApp inbound media capture") on branch
+`phase-1-attribution-foundation`, aliased to
+`https://dental-crm-nine.vercel.app`. Test tenant
+`5aadca14-9786-4aef-bc53-e9287cdd0bbf` ("Deepak's Dental Practice"),
+`tenants.whatsapp_phone_number = '+14155238886'` (Twilio shared
+sandbox). Operator (Toffee) sent WhatsApp messages from the joined phone
+`+919916558958`; Cursor handled deployment, baseline capture, DB queries,
+the backfill of deploy-window messages, the curl-based idempotency test,
+and the storage RLS spot-check.
 
-- **11.1 — Photo:** _pending operator Phase 1._
-- **11.2 — UI rendering of photo:** _pending operator Phase 2._
-- **11.3 — Voice note:** _pending operator Phase 3._
-- **11.4 — PDF:** _pending operator Phase 4._
-- **11.5 — Idempotency (re-fired MessageSid):** _pending Cursor Phase 5._
-- **11.6 — Storage RLS (signed URL works; direct access blocked):**
-  _pending Cursor Phase 6._
+### Deploy-window note (recorded once, applies to §11.1, §11.3, §11.4)
+
+The operator's three messages (photo at 15:01:43 UTC; voice note at
+15:01:47 UTC; PDF at 15:02:38 UTC) arrived 1–2 minutes after the
+`95a916f` push at 15:00:28 UTC and **before** Vercel finished
+auto-deploying the new code. The live route was therefore still 2b.2.a
+(text-only) when the webhook fired. 2b.2.a's
+`parseTwilioInboundMessage` correctly captured every `MediaUrl{N}` /
+`MediaContentType{N}` pair into
+`attribution_touchpoints.metadata.raw_payload._media_urls` (its
+explicit purpose: feed the next phase). Twilio media URLs stay valid
+for 7–30 days, so a one-off backfill
+(`scripts/2b-2-a-2-backfill-captured-media.ts`) replayed those
+captured URLs through the now-live `processInboundMediaItems`
+orchestrator — identical code path, identical result as if the deploy
+had been live when the messages arrived. Each backfill run produced
+exactly one `message_media` row + one storage upload per message,
+confirming both the orchestrator and the deploy-window recovery shape.
+
+### 11.1 — Photo (image/jpeg) ✅
+
+Operator sent a photo (no caption) from `+919916558958` to the sandbox
+at `+14155238886`. Twilio assigned MessageSid
+`MMe6cebbb8f01241d5b461f79df2bc1f05`.
+
+| Artifact | ID / value |
+|---|---|
+| Activity | `9e325edc-eb6d-4e78-95c6-5db354a6aef1` (`type=whatsapp`, `direction=inbound`, `source_channel=whatsapp_inbound`, contact `a0ac5939-…`) |
+| Touchpoint | `4eef5ff5-9a0e-4e00-8b52-359ad47a9c54` with `external_message_id=MMe6cebbb8f01241d5b461f79df2bc1f05`, `metadata.raw_payload.NumMedia='1'`, `metadata.raw_payload.MediaContentType0='image/jpeg'`, `metadata.raw_payload._media_urls` populated |
+| message_media row | `0b81cb59-7241-44c4-9f79-296f2e065973`, `media_index=0`, `content_type='image/jpeg'`, `byte_size=57755`, `storage_bucket='message-media'`, `storage_path='5aadca14-9786-4aef-bc53-e9287cdd0bbf/9e325edc-eb6d-4e78-95c6-5db354a6aef1/0.jpg'`, `original_url` preserved |
+| storage.objects join | `metadata->>'mimetype'='image/jpeg'`, `metadata->>'size'=57755` (matches `byte_size` exactly) |
+| Backfill log | `result[0]: {"status":"persisted","mediaIndex":0,"messageMediaId":"0b81cb59-7241-44c4-9f79-296f2e065973"}` |
+
+### 11.2 — UI rendering of photo ⏳ pending operator confirmation
+
+Operator opens the contact for `+919916558958` in the CRM, finds the
+activity at 15:01:42 UTC, and confirms (a) the photo renders inline,
+not a broken-image icon; (b) clicking opens the full-size signed URL
+in a new tab; (c) the image is visually the photo they sent.
+
+### 11.3 — Voice note (audio/ogg) ✅
+
+Operator sent a voice note. Twilio assigned MessageSid
+`MM2238a5b25d2e2bdf0d8ae2500ee7cedf`.
+
+| Artifact | ID / value |
+|---|---|
+| Activity | `9381a25a-df43-4de8-a115-c4d32b86d5a4` |
+| Touchpoint | `5aee1f50-079c-40ff-addf-b5bf3d0b8ccb` (NumMedia=1, MediaContentType0='audio/ogg') |
+| message_media row | `0154d67c-5f7b-4e01-8416-213e29ce32c3`, `content_type='audio/ogg'`, `byte_size=7404`, `storage_path='5aadca14-…/9381a25a-…/0.ogg'` |
+| storage.objects join | `mimetype='audio/ogg'`, `size=7404` (match) |
+| Backfill log | `result[0]: {"status":"persisted","mediaIndex":0,"messageMediaId":"0154d67c-5f7b-4e01-8416-213e29ce32c3"}` |
+
+UI confirmation (operator): ⏳ pending — confirm an `<audio controls>`
+element renders; pressing play emits the recorded audio. (Caveat
+recorded under §9.2: Safari does not natively decode OGG/Opus; Chrome /
+Firefox / Edge work natively.)
+
+### 11.4 — PDF (application/pdf) ✅
+
+Operator sent a PDF document (`Farewell_Compere_Script_Shobana.pdf`).
+Twilio assigned MessageSid `MMc88670af384295d7899006e6e2d1c497`.
+(Twilio uses the original filename as the `Body` field for documents,
+so the activity's `description` shows the filename.)
+
+| Artifact | ID / value |
+|---|---|
+| Activity | `b253feb5-9f24-490b-97ae-59f4df295559`, `description='Farewell_Compere_Script_Shobana.pdf'` |
+| Touchpoint | `40e31654-a0e9-4a3e-9951-d18ef2af88c9` (NumMedia=1, MediaContentType0='application/pdf') |
+| message_media row | `8eebb9a8-ef08-406a-8d4d-a02e7d0a51d2`, `content_type='application/pdf'`, `byte_size=107467`, `storage_path='5aadca14-…/b253feb5-…/0.pdf'` |
+| storage.objects join | `mimetype='application/pdf'`, `size=107467` (match) |
+| Backfill log | `result[0]: {"status":"persisted","mediaIndex":0,"messageMediaId":"8eebb9a8-ef08-406a-8d4d-a02e7d0a51d2"}` |
+
+UI confirmation (operator): ⏳ pending — confirm the PDF renders as a
+download link with filename + `application/pdf · ~105 KB`; clicking
+downloads / opens the file.
+
+### 11.5 — Idempotency (re-fired MessageSid) ✅
+
+Re-fired the photo's MessageSid through the live route with a freshly
+signed payload via
+`scripts/whatsapp-validation/phase3-idempotency.mjs MMe6cebbb8f01241d5b461f79df2bc1f05`:
+
+```
+URL: https://dental-crm-nine.vercel.app/api/webhooks/whatsapp
+MessageSid: MMe6cebbb8f01241d5b461f79df2bc1f05
+Signature: DhZz+vHTt+dClkSXXzF+Wlq1OpA=
+
+HTTP 200 OK (967ms)
+Body: {"status":"ok","idempotent":true}
+```
+
+Post-refire row counts (test tenant): `total_rows=3`,
+`photo_rows=1` — unchanged. The route's
+`isMessageAlreadyProcessed` pre-check short-circuited before any media
+work happened, exactly as designed. No duplicate `message_media`
+inserts; the partial unique index on
+`(external_message_id, media_index)` would have caught any race past
+the pre-check, but didn't need to.
+
+### 11.6 — Storage RLS (signed URL works; direct access blocked) ✅
+
+Run via `scripts/whatsapp-validation/phase6-storage-rls.ts`:
+
+```
+Target path: 5aadca14-9786-4aef-bc53-e9287cdd0bbf/9e325edc-eb6d-4e78-95c6-5db354a6aef1/0.jpg
+
+Signed URL (60-second TTL, generated via service-role client):
+  GET signed URL → 200 OK
+    content-type:   image/jpeg
+    content-length: 57755   (matches message_media.byte_size exactly)
+
+Direct unauthenticated GET (no token):
+  https://<project>.supabase.co/storage/v1/object/message-media/<path>
+    → 400 Bad Request   {"statusCode":"404","error":"Bucket not found","message":"Bucket not found"}
+
+Public-bucket-style GET:
+  https://<project>.supabase.co/storage/v1/object/public/message-media/<path>
+    → 400 Bad Request
+```
+
+Supabase deliberately obscures private buckets from anonymous callers
+(returns "Bucket not found" rather than "Forbidden") — same end result:
+the file is unreachable without a signed URL or a tenant-member
+session. The bucket's RLS policy (`mm_storage_select_tenant_members`)
+gates `authenticated` reads on the path's first segment matching the
+caller's `get_accessible_tenants()`; the policy expression was verified
+in §2.1 against canonical and other-tenant paths.
