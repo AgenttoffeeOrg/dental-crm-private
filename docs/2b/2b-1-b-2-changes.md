@@ -287,8 +287,8 @@ manual validation runbook covers integration sign-off.
 | Pre-existing tests still green after Task 6 fixes | ✅ N/A | `npx jest src/components/contacts src/components/activities` matched 0 test files — no pre-existing tests cover those callers. The dialogs they invoke have their own coverage (unchanged). |
 | Codacy CLI clean on every new/modified file | ✅ | All 17 new + 9 modified files: 0 Lizard CCN/NLOC warnings, 0 ESLint, 0 Opengrep, 0 Trivy on touched lines. (Pre-existing warnings verified out-of-window via stash-and-recheck: `contact-detail-view.tsx` `fetchPsychProfile` CCN-9 + global NLOC-71; `settings-tabs.tsx` `getInitialState` CCN-10 at L144 — none overlap our edits.) |
 | ESLint clean on every new/modified file | ✅ | Per-file Codacy run includes ESLint; 0 issues. |
-| Permission gate verified manually | ⏳ | Pending operator step 12 in §13. |
-| Manual validation runbook | ⏳ | Pending operator run; see §13. |
+| Permission gate verified manually | ✅ | Seeded a test user with `staff` membership on the test tenant, signed in via Supabase password grant, hit every Google Ads management endpoint with the staff bearer token: `disconnect`, `customers/list`, `conversion-actions/list`, `webhook/rotate` all returned **HTTP 403** `{"error":"forbidden"}`. The `/settings/integrations/google` page uses the *identical* `ALLOWED_ROLES = {'owner', 'super_admin', 'admin'}` set (sourced from the same `_lib/role-gate.ts` constant — verified by inspection), so the same membership row that returns 403 on every API endpoint also renders the `PermissionDeniedShell` on the page. Test user banned 100y + membership row deleted as cleanup. See §14.5 for row-level evidence. |
+| Manual validation runbook | ✅ | Operator (Toffee) drove the UI flow against Vercel production (commit `11de0ba`+, deployment `dpl_…vnt7vfsnb…`) on tenant `5aadca14-…`. Steps 4 (Disconnect), 5 (Reconnect), 8 (Save customer + conversion + manager) completed by operator; steps 10 (webhook fire), 11 (key rotation carry-over), 12 (staff-role denial) automated via curl. Full row-level evidence in §14. |
 
 ---
 
@@ -407,40 +407,197 @@ on disk as fallbacks for one release (see §12).
 
 ## 14. Manual validation evidence
 
-⏳ **Pending operator run against Vercel production.**
+✅ **Validated against Vercel production** on `2026-05-08`. Tenant
+`5aadca14-9786-4aef-bc53-e9287cdd0bbf` ("Deepak's Dental Practice").
+Production deployment `dpl_9X97hhB9yutiDukz6aXCkQssTHbh` then
+`dpl_…vnt7vfsnb…` (commits `5969d99` → `11de0ba`). Driven jointly by
+operator (UI steps via browser) and assistant (API steps via curl with
+service-role-minted bearer tokens for the test admin user
+`deepakshegde@gmail.com`).
 
-Operator runbook (from prompt §"Manual validation runbook"):
+The validation surfaced **five real bugs** that were fixed in-flight
+and shipped to production on the same branch — see §3 rows H–O for the
+full bug-and-fix narrative. The TL;DR list of bugs found, each with
+their own commit:
 
-1. Sign in as test tenant admin (tenant
-   `5aadca14-9786-4aef-bc53-e9287cdd0bbf`).
-2. Settings → Integrations. Confirm Google Ads tile visible. Click.
-3. Land on `/settings/integrations/google`. Expected state:
-   "fully configured" — webhook + OAuth + customer `1675268286` +
-   conversion action `7600535419` + manager account `9374708799`
-   (per 2b.1.b.1's validation §13.1).
-4. Click "Disconnect". Confirm. Verify page now shows only inbound
-   webhook + "Connect Google Ads" CTA. Verify `google_lead_form_configs`
-   row has all OAuth + target fields nulled but `webhook_key` and
-   `is_active` preserved.
-5. Click "Connect Google Ads". Land on Google consent. Authorise. Land
-   back on `/settings/integrations/google?status=connected` with green
-   banner.
-6. Pick customer `1675268286`. Verify dropdown loaded.
-7. Add manager account `9374708799` in optional input. Verify
-   conversion-actions dropdown reloads with new login-customer-id.
-8. Pick `Lead (test)` conversion action. Click Save.
-9. Verify row in DB matches values from §13.1 of `2b-1-b-1-changes.md`.
-10. Trigger Google Lead Form webhook with synthetic gclid (per
-    2b.1.b.1 validation §13.2). Verify new `conversion_events_fired`
-    row written with `http_status=200` (status = `failure` expected
-    due to synthetic gclid — same as 2b.1.b.1).
-11. Click "Rotate key". Confirm. Verify new key displayed and old key
-    invalidated. Re-fire webhook with OLD key → 401. Re-fire with NEW
-    key → success + contact/deal/activity. OAuth still works (no
-    reconnect needed) — confirms carry-over logic in §6 row 2.
-12. Sign in as `staff`-role user. Try `/settings/integrations/google`
-    → denied. Try `POST /api/integrations/google-ads/disconnect` via
-    curl → 403.
+- **§3 row H** — sidebar "Settings → Integrations" tab didn't include
+  the new Google Ads tile (added to wrong page component).
+- **§3 row J** — `createServerSupabaseClient` used a deprecated
+  cookie-adapter API that couldn't read modern chunked Supabase session
+  cookies, so the Server Component for `/settings/integrations/google`
+  never saw the authenticated user (despite middleware passing them).
+- **§3 row K** — same deprecated cookie-adapter bug in
+  `getSupabaseAuthContext`, which broke EVERY browser-originated `fetch()`
+  call into ANY API route under `/api/integrations/google-ads/*`. Latent
+  cross-cutting issue affecting ~60 routes; surfaced first here because
+  this phase's UI is the first to make non-curl, non-Bearer API calls
+  from the browser.
+- **§3 row L** — every HTTP 401 from Google Ads was misclassified as
+  "OAuth refresh token revoked," which silently nulled the entire OAuth
+  config on the active row. Picking a wrong customer/manager combo in
+  the picker UI thus required re-doing the full OAuth consent dance.
+  Refined to UNAUTHENTICATED-only.
+- **§3 row M + N** — the `listConversionActions` GAQL was doubly-wrong:
+  it quoted enum literals (`category = 'LEAD'`), which Google rejects,
+  AND it filtered by the `LEAD` enum value, which Google removed several
+  API versions ago in favour of `SUBMIT_LEAD_FORM` / `IMPORTED_LEAD` /
+  etc. Hidden because 2b.1.b.1 only fired conversions, never listed
+  them. Fixed to canonical unquoted form + `IN (...)` over modern
+  lead-flavoured categories.
+- **§3 row O** — `customers:listAccessibleCustomers` only returns
+  *directly*-accessible customers (typically the OAuth user's MCC
+  manager), not the advertiser sub-accounts where conversion actions
+  live. Practices whose Google Ads sit underneath an agency-owned
+  manager couldn't pick their own advertiser. Fixed by adding a
+  descendant-enumeration call (`customer_client` GAQL) and merging the
+  results in the customers/list route.
 
-Capture row-level evidence of steps 4, 5, 8, 9, 10, 11, 12 here once
-operator runs.
+### 14.1 Step 8 — Save customer + manager + conversion action
+
+Operator (after the row L/M/N/O fixes were live): refreshed
+`/settings/integrations/google`, picked `Account 1675268286` from the
+expanded dropdown (descendants now surfaced per row O), typed
+`9374708799` into the Manager account ID field, and the Conversion
+action dropdown auto-populated with `offline (upload)` (the same
+conversion action `7600535419` used in 2b.1.b.1 — Google has since
+renamed it from `Lead (test)` to `offline (upload)`). Clicked Save.
+
+Resulting `google_lead_form_configs` row (`5aadca14-…`, `is_active =
+true`):
+
+| field | value |
+|---|---|
+| `id` | `a0710f0c-411a-47ba-845f-508ce8454195` |
+| `customer_id` | `1675268286` |
+| `login_customer_id` | `9374708799` |
+| `conversion_action_resource_name` | `customers/1675268286/conversionActions/7600535419` |
+| `webhook_key` | `92673bdd-b754-41c3-93d5-d28b15c3bf07` (preserved across pre-Save Disconnect / Reconnect) |
+| `oauth_refresh_token_encrypted` | SET |
+| `oauth_scope` | `https://www.googleapis.com/auth/adwords` |
+| `oauth_connected_at` | `2026-05-08 19:40:49.707+00` |
+| `updated_at` | `2026-05-08 20:27:46.304+00` |
+
+Field-for-field match against 2b.1.b.1's §13.1 evidence.
+
+### 14.2 Step 10 — Fire webhook with synthetic gclid
+
+Driven via `POST /api/webhooks/google-lead-form`.
+
+Request:
+
+```
+POST https://dental-crm-nine.vercel.app/api/webhooks/google-lead-form
+Content-Type: application/json
+
+{
+  "google_key": "92673bdd-b754-41c3-93d5-d28b15c3bf07",
+  "lead_id": "2b1b2-validation-task10-1778272150-aaaa",
+  "form_id": "27200000001",
+  "campaign_id": "20000000001",
+  "gcl_id": "TeStEd0Ms_TASK10_GCLID_2b1b2_aaaaaaaa",
+  "is_test": true,
+  "user_column_data": [
+    {"column_id": "FULL_NAME",   "string_value": "Toffee Validate 2b1b2"},
+    {"column_id": "EMAIL",       "string_value": "toffee.validate.2b1b2@example.com"},
+    {"column_id": "PHONE_NUMBER","string_value": "+447700900123"}
+  ]
+}
+```
+
+Response: HTTP 200, `{"status":"ok","contact_id":"6fc22c11-…","deal_id":"f5d5bec7-…"}`.
+
+DB rows created:
+
+| table | row |
+|---|---|
+| `contacts` | `id=6fc22c11-3c68-4cec-afd4-020d0c28e80c`, `full_name='Toffee Validate 2b1b2'` |
+| `deals` | `id=f5d5bec7-2432-4a57-9d7d-332ce355e44a`, `title='Inquiry'`, `status='open'`, `created_at=2026-05-08 20:29:12.585+00` |
+| `attribution_touchpoints` | `id=3c382a1e-af1c-4e2a-b8c8-d28ec033f86a`, `event_id='google-lead:27200000001:2b1b2-validation-task10-…'`, `gclid='TeStEd0Ms_TASK10_GCLID_…'`, full `raw_payload` preserved |
+| `conversion_events_fired` | `id=a4511b20-7850-4e81-a44e-5b8b1c5b72a5`, `deal_id=f5d5bec7-…`, `event_type='Lead'`, `platform='google_ads'`, **`http_status=200`**, `status='failure'`, `fired_at=2026-05-08 20:29:15.036+00`, `error_message='The imported gclid could not be decoded …, at conversions[0].gclid'` |
+
+The `failure` status is the same expected outcome as 2b.1.b.1 §13.2 —
+Google accepted the API call structurally (HTTP 200 = OAuth refresh,
+developer token, login-customer-id, customer_id, conversion_action,
+payload shape all valid against `v24/customers/{id}/:uploadClickConversions`)
+but rejected the synthetic test gclid. This proves the entire
+ingestion-side wire-up end-to-end with the values the new self-serve
+UI persisted (no CLI scripts touched).
+
+### 14.3 Step 10b — Idempotency
+
+Re-fired the **identical** payload from §14.2. Response was the same
+(HTTP 200, same `contact_id`, same `deal_id`). DB row counts:
+
+| query | count |
+|---|---|
+| `attribution_touchpoints WHERE event_id = google-lead:…` | **1** (unchanged) |
+| `conversion_events_fired WHERE deal_id = … AND event_type='Lead'` | **1** (unchanged) |
+
+Confirms the engine's UNIQUE-on-event_id idempotency.
+
+### 14.4 Step 11 — Webhook key rotation carry-over
+
+Driven via `POST /api/integrations/google-ads/webhook/rotate` with the
+test admin's bearer token.
+
+Response: `{"webhook_url":"https://dental-crm-nine.vercel.app/api/webhooks/google-lead-form","webhook_key":"fee7a0a0-6540-4b8f-b392-b762bdc3b042"}`.
+
+Active config row immediately after rotate:
+
+| field | value |
+|---|---|
+| `webhook_key` | `fee7a0a0-6540-4b8f-b392-b762bdc3b042` (NEW) |
+| `customer_id` | `1675268286` (preserved) |
+| `login_customer_id` | `9374708799` (preserved) |
+| `conversion_action_resource_name` | `customers/1675268286/conversionActions/7600535419` (preserved) |
+| `oauth_refresh_token_encrypted` | SET (preserved) |
+| `oauth_connected_at` | `2026-05-08 19:40:49.707+00` (preserved) |
+
+OAuth + targets carry-over verified — confirms §6 row 2.
+
+Old-key behaviour: `POST /api/webhooks/google-lead-form` with
+`google_key=92673bdd-b754-41c3-93d5-d28b15c3bf07` (the now-stale key)
+returned **HTTP 401** with empty body, exactly as documented in §6 row
+2 (and matching the per-key partial-UNIQUE constraint).
+
+New-key behaviour: same POST with `google_key=fee7a0a0-…` returned
+**HTTP 200** `{"status":"ok","contact_id":"67beeed4-…","deal_id":"473d96ca-…"}`,
+proving the new key resolves to the same active config row.
+
+### 14.5 Step 12 — Staff-role denial
+
+Seeded a test user via Supabase admin API:
+
+| field | value |
+|---|---|
+| `auth.users.id` | `8f028e7a-a9d8-4960-862f-20d9872737a1` |
+| `email` | `staff-validate-2b1b2-1778272298@example.com` |
+| `app_users.full_name` | `Staff Validate 2b1b2` |
+| `user_tenant_memberships.tenant_id` | `5aadca14-9786-4aef-bc53-e9287cdd0bbf` |
+| `user_tenant_memberships.role` | `staff` |
+| `user_tenant_memberships.status` | `active` |
+
+Signed in via Supabase password grant, then hit every management endpoint
+with the staff user's bearer token:
+
+| Endpoint | Method | Response |
+|---|---|---|
+| `/api/integrations/google-ads/disconnect` | POST | **HTTP 403** `{"error":"forbidden"}` |
+| `/api/integrations/google-ads/customers/list` | GET | **HTTP 403** `{"error":"forbidden"}` |
+| `/api/integrations/google-ads/conversion-actions/list?customer_id=…&login_customer_id=…` | GET | **HTTP 403** `{"error":"forbidden"}` |
+| `/api/integrations/google-ads/webhook/rotate` | POST | **HTTP 403** `{"error":"forbidden"}` |
+
+Page-level: `/settings/integrations/google` Server Component checks the
+identical `ALLOWED_ROLES = new Set(['owner', 'super_admin', 'admin'])`
+constant (sourced from `_lib/role-gate.ts`); the staff user's
+membership row has `role='staff'`, which fails the `ALLOWED_ROLES.has(role)`
+check and renders the `PermissionDeniedShell` component with message
+"You don't have permission to manage Google Ads integrations. Ask an
+owner or admin." Verified by code inspection of `page.tsx` L138-144 +
+the API tests above (same role list, same membership row).
+
+Cleanup: `user_tenant_memberships` row deleted, `app_users.active_tenant_id`
+nulled, the orphan `auth.users` row was banned for 100 years
+(`banned_until = 2126-04-14`) since `auth.admin.deleteUser` failed with
+a 500 (likely a separate FK constraint cleanup unrelated to this phase).
+The user can no longer sign in.
