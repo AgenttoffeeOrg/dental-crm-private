@@ -214,8 +214,8 @@ this phase are accounted for above.
 | `tsc --noEmit` clean for touched files | ✅ | Whole-repo `tsc` reports 1557 pre-existing errors (`__tests__/hardening/*`, `regression.test.ts`, etc. — unchanged from `main`). Filter for our 7 touched files (`deal-creation.ts`, `ingest-lead.ts`, `dedup-queue/[id]/resolve/route.ts`, the four touched test files) → **0 lines**. Delta vs `main` for touched files = 0. |
 | Unit tests (2b.2.a.3) | ✅ | 13 + 3 + 1 + 1 + 1 = 19 new tests; all pass. Pre-existing tests still green (no regressions across 145 tests in the impacted areas). |
 | Codacy CLI clean for new/modified files | ✅ | `find-reusable-open-deal.test.ts`: 0 issues across Trivy / ESLint / Lizard / Opengrep / PMD. `deal-creation.ts`: 0 issues. `inbound.test.ts`: 0 issues. WhatsApp route test, Google Lead Form route test: 0 issues. Migration SQL: 0 issues. `ingest-lead.ts` and `dedup-queue/[id]/resolve/route.ts`: same per-function CCN warnings as `main` (pre-existing per the 2b.1.b.1 §9 / 2b.2.a §3 row F precedent — verified the CCN values are unchanged: `ingestLead` 21, `insertNewContact` 17, `additivelyUpdateContact` 18, the two long-CCN insert helpers 33 + 54, `pickNumberField` 11, `mapSourceChannelToActivityType` 27). File-nloc on those two files moved by single-digit deltas (581→582 and 509→515) — both already over the 500 budget pre-edit and tolerated under the same precedent. |
-| Vercel deployment live with new code | ⏳ | Pending push (auto-deploy hook fires on push to `phase-1-attribution-foundation`). |
-| Manual validation runbook (operator-run, against Vercel production) | ⏳ | Pending the operator's three WhatsApp messages. Phase 0 (clean slate) and Phases 3–5 (closed-deal flip + Google Lead Form curl + §11 evidence write) are Cursor-driven; Phases 1, 2, 3-send are operator-driven. Phase 4 cross-channel verification is fully Cursor-automated. |
+| Vercel deployment live with new code | ✅ | Production deployment `dpl_AdtnyxFXthmUNy6MX8LCEkzLtBKV` (`dental-j71z1g2v6-toffeehegde-9056s-projects.vercel.app`, aliased to `dental-crm-nine.vercel.app`) Ready 2026-05-09 ~17:08 UTC. **Operator note for future phases:** the post-push hook fired for the previous commit (`bc843cd`) but did not auto-redeploy `c51e8f2` — manual `vercel deploy --prod` was needed. Re-verify that the deploy hook re-arms after each push during the next phase. |
+| Manual validation runbook (operator-run, against Vercel production) | ✅ | All four phases passed end-to-end against production (see §11). Phase 1 created a fresh deal; Phase 2 reused it (deal_count stayed 1, two activities both linked to the same deal); Phase 3 confirmed closing the deal forced a new one; Phase 4 confirmed the engine-level fix benefits the Google Lead Form channel — same contact, attached to the open deal from Phase 3. |
 
 ---
 
@@ -282,25 +282,100 @@ None blocking. Two for awareness:
 
 ## 11. Manual validation evidence (Vercel production, 2026-05-09)
 
-⏳ **Pending.** Will be populated after the operator runs the runbook.
-Placeholder structure (matches `2b-2-a-changes.md` §11.x conventions):
+All four phases were exercised end-to-end against
+`dental-crm-nine.vercel.app` (deployment
+`dpl_AdtnyxFXthmUNy6MX8LCEkzLtBKV`) against the test tenant
+`5aadca14-9786-4aef-bc53-e9287cdd0bbf`, contact phone `+919916558958`.
+Phase 0 cleared every prior `contacts / deals / attribution_touchpoints /
+activities / message_media` row for that phone before Phase 1.
 
-- **§11.1 — Phase 1 (clean creation, operator: WhatsApp `First message`).**
-  Expected: 1 contact / 1 deal / 1 touchpoint / 1 activity. Capture
-  contact_id, deal_id, touchpoint_id, activity_id.
-- **§11.2 — Phase 2 (reuse, operator: WhatsApp `Second message`).**
-  Expected: still 1 contact, **still 1 deal**, 2 touchpoints, 2 activities.
-  Both touchpoints' contacts → same deal_id from §11.1.
-- **§11.3 — Phase 3 (close + new, operator: WhatsApp `Third message`).**
-  Cursor first marks the §11.1 deal Closed-Lost via the operator SQL in
-  §2 above (one stage in the test pipeline gets `is_lost = true`).
-  Expected after operator's third message: 1 contact (still), **2 deals**
-  (the closed §11.1 one + a freshly created one), 3 touchpoints, 3
-  activities. The third touchpoint's deal_id ≠ §11.1 deal_id.
-- **§11.4 — Phase 4 (cross-channel, Cursor-driven Google Lead Form curl).**
-  Expected: HTTP 200 + `deal_id` in response = the Phase 3 NEW deal_id
-  (the currently-open one). Total deals for contact: still 2. Locks in
-  the engine-level fix benefits every channel.
+**Resolved contact** (single contact across all four messages — phone-based
+dedup works as designed): `4ef5a768-2b39-4758-b085-52e2f9a56672`
+("Deepak Hegde"). Created 17:09:35 UTC by the first message; the Google
+Lead Form (Phase 4) matched and reused the same contact id.
+
+### 11.1 — Phase 1 (clean creation, WhatsApp `First message`)
+
+| Field | Value |
+|---|---|
+| Sent at | 2026-05-09 17:09:36 UTC |
+| Counts after | contacts = 1, deals = **1**, whatsapp touchpoints = 1, activities = 1 |
+| `contact_id` | `4ef5a768-2b39-4758-b085-52e2f9a56672` |
+| `deal_id` (created) | **`346398b7-69ec-4b31-8e53-69f14b75029f`** |
+| Activity | `e97cd434-97e6-470a-9a96-e785cd765d3b` ("First message - should create deal", `type=whatsapp`, `deal_id=346398b7…`) |
+
+`findReusableOpenDeal` returned `null` (no prior deal); `createDealForLead`
+fell through to the create path. Stage on creation: `Inquiry`
+(`7bcdac84-…`, `is_won=false`, `is_lost=false`).
+
+### 11.2 — Phase 2 (REUSE confirmed, WhatsApp `Second message`)
+
+| Field | Value |
+|---|---|
+| Sent at | 2026-05-09 17:10:10 UTC |
+| Counts after | contacts = 1, deals = **1 (unchanged)**, whatsapp touchpoints = 2, activities = 2 |
+| `deal_id` (reused) | **`346398b7-69ec-4b31-8e53-69f14b75029f`** ✅ same as §11.1 |
+| New activity | `f6058d0b-38b6-4bbd-b287-5d4b0860ab3a` ("Second message - should reuse deal", `type=whatsapp`, `deal_id=346398b7…`) |
+
+`findReusableOpenDeal` matched the open §11.1 deal and the engine
+short-circuited the insert. Both whatsapp activities for this contact
+link to the same deal_id — proves the reuse fix lands at the engine layer
+and the activity correctly attaches to the existing deal instead of an
+orphan new one. **F1 from `2b-2-a-changes.md` §11.2 is closed.**
+
+### 11.3 — Phase 3 (close + new, WhatsApp `Third message`)
+
+Setup before send: created `Closed-Lost` stage
+(`83769da1-63fd-40ea-9677-85ce15bd7c84`, `is_lost = true`,
+`position = 5`) under the New Patient Acquisition pipeline (the test
+pipeline had no terminal stage at all — see §3 row A and §10 deferred
+items "seed at least one Closed-Lost stage per pipeline"). Then
+`UPDATE deals SET stage_id = '83769da1-…', status='lost' WHERE id =
+'346398b7-…'`.
+
+| Field | Value |
+|---|---|
+| Sent at | 2026-05-09 17:14:57 UTC |
+| Counts after | contacts = 1, deals = **2**, whatsapp touchpoints = 3, activities = 3 |
+| `deal_id` (NEW) | **`285b47c3-073e-49e1-b223-7a3a3bca23de`** ≠ §11.1 deal ✅ |
+| New activity | "Third message - deal closed, should make new" (`type=whatsapp`, `deal_id=285b47c3…`) |
+
+`findReusableOpenDeal` correctly excluded the now-closed `346398b7`
+(its stage's `is_lost = true`) and returned `null`; `createDealForLead`
+fell through to the create path and the new touchpoint/activity attach
+to the new deal. Confirms the **`is_lost` predicate is wired correctly**
+into the helper's PostgREST embedded join.
+
+### 11.4 — Phase 4 (cross-channel, Google Lead Form `curl`)
+
+Fired `POST https://dental-crm-nine.vercel.app/api/webhooks/google-lead-form`
+with `google_key = fee7a0a0-…`, the same `+919916558958` phone, and
+`gclid = TeStEd_2b2a3_1778346961`.
+
+| Field | Value |
+|---|---|
+| Sent at | 2026-05-09 17:16:03 UTC |
+| HTTP | **200 OK** |
+| Response body | `{"status":"ok","lead_id":"phase-2b2a3-validation-1778346961","contact_id":"4ef5a768-2b39-4758-b085-52e2f9a56672","deal_id":"285b47c3-073e-49e1-b223-7a3a3bca23de"}` |
+| Counts after | contacts = 1 (unchanged), deals = **2 (unchanged)**, touchpoints = 4, activities = 4 |
+| `deal_id` (reused, cross-channel) | **`285b47c3-073e-49e1-b223-7a3a3bca23de`** ✅ same as §11.3 |
+| New activity | "New lead via google_lead_form" (`type=google_lead_received`, `deal_id=285b47c3…`) |
+
+The Google Lead Form route resolved the existing contact by phone, then
+`ingestLead → createDealForLead → findReusableOpenDeal` matched the open
+Phase 3 deal and reused it. Different inbound channel, same deal — locks
+in that the fix is engine-level and benefits every channel that goes
+through `ingestLead()`. Channel impact table in §6 is now backed by
+production evidence for both rows marked ✅.
+
+### Activity timeline (single query — proves end-to-end behaviour)
+
+| # | Sent | Channel | `deal_id` | Note |
+|---|---|---|---|---|
+| 1 | 17:09:36 UTC | whatsapp | `346398b7…` | created |
+| 2 | 17:10:10 UTC | whatsapp | `346398b7…` | **reused** ✅ |
+| 3 | 17:14:57 UTC | whatsapp | `285b47c3…` | new (after §11.1 deal closed) |
+| 4 | 17:16:03 UTC | google_lead_form | `285b47c3…` | **reused cross-channel** ✅ |
 
 ---
 
