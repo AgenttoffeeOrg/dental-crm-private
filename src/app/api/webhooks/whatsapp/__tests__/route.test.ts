@@ -165,6 +165,37 @@ describe('POST /api/webhooks/whatsapp', () => {
     })
   })
 
+  it('returns 200 with the reused deal_id when the contact already has an open deal (Phase 2b.2.a.3)', async () => {
+    // The route is glue — the engine-level reuse fix lives in
+    // `findReusableOpenDeal` / `createDealForLead` and the orchestration
+    // helper. From the route's POV, "reuse" looks identical to "create new"
+    // for a matched contact: a single dealId is returned. This test locks in
+    // the route's surfacing behaviour for the reuse path so a future refactor
+    // of the response envelope doesn't silently drop the deal_id.
+    const REUSED_DEAL_ID = 'deal-reused-123'
+    mockVerifyTwilioSignature.mockReturnValueOnce('valid')
+    mockResolveTenantByWhatsappNumber.mockResolvedValueOnce({ tenantId: TENANT_ID })
+    mockIsMessageAlreadyProcessed.mockResolvedValueOnce(false)
+    mockProcessWhatsappInboundMessage.mockResolvedValueOnce({
+      contactId: 'c-existing',
+      dealId: REUSED_DEAL_ID,
+      attributionTouchpointId: 'tp-reuse-1',
+      activityId: 'a-reuse-1',
+      wasNewContact: false,
+    })
+
+    const res = await POST(makeReq(VALID_FORM))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      status: 'ok',
+      contact_id: 'c-existing',
+      deal_id: REUSED_DEAL_ID,
+      attribution_touchpoint_id: 'tp-reuse-1',
+      activity_id: 'a-reuse-1',
+      was_new_contact: false,
+    })
+  })
+
   it('returns 200 on the happy path — existing contact (was_new_contact=false)', async () => {
     mockVerifyTwilioSignature.mockReturnValueOnce('valid')
     mockResolveTenantByWhatsappNumber.mockResolvedValueOnce({ tenantId: TENANT_ID })

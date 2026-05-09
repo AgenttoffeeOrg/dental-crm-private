@@ -259,9 +259,10 @@ export async function ingestLead(
     sourceChannel: input.source_channel,
   })
   const dealId = dealOutcome.ok ? dealOutcome.dealId : null
-  const dealTitle = dealOutcome.ok
-    ? dealOutcome.context.title
-    : dealOutcome.context?.title ?? null
+  // Phase 2b.2.a.3 — extracted into a helper so the reused/created/skipped
+  // discrimination doesn't add branches to ingestLead's already-large body
+  // (Lizard CCN budget — pre-existing warning per 2b.2.a §3 row F).
+  const dealTitle = resolveDealTitle(dealOutcome)
 
   // ---------------------------------------------------------------------------
   // 6. Activity (now references deal_id when available)
@@ -356,6 +357,23 @@ export async function ingestLead(
     // Phase 2a.5/2a.7: still null. See IngestLeadResult.routing_log_id JSDoc.
     routing_log_id: null,
   }
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+/**
+ * Phase 2b.2.a.3 — resolve the human-readable title for a deal outcome.
+ * Returns the freshly-created deal's title for create paths; null on reuse
+ * (we don't re-fetch the existing deal's title) and on graceful-skip when
+ * no context was resolved. Notification metadata downstream tolerates null.
+ */
+function resolveDealTitle(outcome: DealCreationOutcome): string | null {
+  if (outcome.ok) {
+    return outcome.reused ? null : outcome.context.title
+  }
+  return outcome.context?.title ?? null
 }
 
 // =============================================================================

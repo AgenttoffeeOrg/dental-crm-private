@@ -208,6 +208,41 @@ describe('POST /api/webhooks/google-lead-form', () => {
     expect(arg.attribution.gclid).toBe('gclid-x')
   })
 
+  it('200 + returns the reused deal_id when the contact already has an open deal (Phase 2b.2.a.3)', async () => {
+    // The route is glue over `ingestLead`. The engine-level reuse fix in
+    // `findReusableOpenDeal` / `createDealForLead` makes ingestLead return
+    // the existing open deal id rather than inserting a new one. From the
+    // route's POV the response shape is unchanged — `deal_id` carries the
+    // reused id. This test locks in that surfacing for the inbound
+    // Google Lead Form path so a future refactor doesn't drop the field.
+    const REUSED_DEAL_ID = 'deal-reused-via-google-form'
+    mockMaybeSingle.mockResolvedValueOnce(okConfig)
+    mockIngestLead.mockResolvedValueOnce({
+      contact_id: 'contact-returning',
+      attribution_touchpoint_id: 'tp-google-reuse',
+      activity_id: 'act-google-reuse',
+      deal_id: REUSED_DEAL_ID,
+      dedup_decision: 'matched',
+      dedup_signals: {
+        email_match: true,
+        phone_match: false,
+        channel_identifier_match: false,
+      },
+      sla: null,
+      routing_log_id: null,
+    })
+
+    const res = await POST(jsonReq(validPayload()))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toEqual({
+      status: 'ok',
+      lead_id: 'test-lead-001',
+      contact_id: 'contact-returning',
+      deal_id: REUSED_DEAL_ID,
+    })
+  })
+
   it('200 + tags is_test on raw_payload when payload.is_test is true', async () => {
     mockMaybeSingle.mockResolvedValueOnce(okConfig)
     mockIngestLead.mockResolvedValueOnce({

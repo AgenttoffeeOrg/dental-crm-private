@@ -500,6 +500,11 @@ describe('ingestLead — Phase 2a.7 re-engagement (matched contact)', () => {
     state.activities.insertReturns.push({ id: 'act-reeng' })
     state.deals.insertReturns.push({ id: 'deal-reeng' })
     stageOfferingHappyPath(state)
+    // Phase 2b.2.a.3: createDealForLead now calls findReusableOpenDeal first
+    // (one .maybeSingle() against `deals`). Push an explicit `null` so that
+    // lookup short-circuits with "no reusable deal" and the prior-deal-owner
+    // lookup that follows still sees the staged owner row.
+    state.deals.rows.push(null as unknown as { id: string })
     // Prior-deal owner lookup returns a non-null user → owner inherited; no
     // SLA-routed lookup needed.
     state.deals.rows.push({ owner_user_id: PRIOR_OWNER })
@@ -516,16 +521,19 @@ describe('ingestLead — Phase 2a.7 re-engagement (matched contact)', () => {
     expect(state.contacts.inserts).toHaveLength(0)
   })
 
-  it('produces a distinct deal on a second submission with the same email + treatment', async () => {
-    // Simulating a second call: same email-tier dedup hit + a prior deal
-    // already exists. We just assert that the deal-insert path runs and
-    // produces a new id; no de-duplication of deals.
+  it('produces a distinct deal on a second submission with the same email + treatment when no reusable open deal exists', async () => {
+    // Simulating a second call: same email-tier dedup hit + a prior CLOSED
+    // deal exists (so findReusableOpenDeal returns null). We just assert
+    // that the deal-insert path runs and produces a new id.
     const { client, state } = makeFake()
     state.contacts.rows.push({ id: 'existing-contact-2' })
     state.attribution_touchpoints.insertReturns.push({ id: 'tp-second' })
     state.activities.insertReturns.push({ id: 'act-second' })
     state.deals.insertReturns.push({ id: 'deal-second' })
     stageOfferingHappyPath(state)
+    // Phase 2b.2.a.3: explicit null for findReusableOpenDeal so we exercise
+    // the "no reusable deal → create" branch.
+    state.deals.rows.push(null as unknown as { id: string })
     state.deals.rows.push({ owner_user_id: 'user-existing' })
 
     const result = await ingestLead(
@@ -535,6 +543,89 @@ describe('ingestLead — Phase 2a.7 re-engagement (matched contact)', () => {
 
     expect(result.deal_id).toBe('deal-second')
     expect(state.deals.inserts).toHaveLength(1) // a fresh insert occurred
+  })
+})
+
+// =============================================================================
+// Phase 2b.2.a.3 — Engine-level deal reuse for inbound leads
+// =============================================================================
+//
+// `createDealForLead` now consults `findReusableOpenDeal` first. When the
+// contact already has any open deal (in any pipeline), the existing deal id
+// is returned and NO insert against `deals` is issued. The caller (ingestLead
+// → IngestLeadResult.deal_id) surfaces the reused id transparently — the
+// activity and touchpoint still get written and link to the existing deal.
+
+describe('ingestLead — Phase 2b.2.a.3 deal reuse for returning contacts', () => {
+  it('returns the existing open deal id and does NOT insert into `deals` when a reusable open deal exists', async () => {
+    const REUSED_DEAL_ID = 'deal-reused-existing-1'
+    const { client, state } = makeFake()
+    state.contacts.rows.push({ id: 'existing-contact-reuse-1' })
+    state.attribution_touchpoints.insertReturns.push({ id: 'tp-reuse-1' })
+    state.activities.insertReturns.push({ id: 'act-reuse-1' })
+
+    // findReusableOpenDeal pops one row from `deals.rows` — this row is the
+    // open deal we want it to find. Subsequent owner lookup must NOT run on
+    // the reuse path, so no further deals.rows are needed.
+    state.deals.rows.push({ id: REUSED_DEAL_ID })
+
+    const result = await ingestLead(
+      baseInput({ treatment_offering_id: OFFERING_ID }),
+      client
+    )
+
+    expect(result.dedup_decision).toBe('matched')
+    expect(result.deal_id).toBe(REUSED_DEAL_ID)
+    // No insert hit `deals` — the canonical product invariant for this phase.
+    expect(state.deals.inserts).toHaveLength(0)
+    // Activity still got written and linked to the reused deal.
+    expect(state.activities.inserts).toHaveLength(1)
+    expect(state.activities.inserts[0].deal_id).toBe(REUSED_DEAL_ID)
+    // Touchpoint still got written for the new inbound interaction.
+    expect(state.attribution_touchpoints.inserts).toHaveLength(1)
+  })
+
+  it('reuses the open deal even when a treatment_offering_id is supplied — no pipeline filter', async () => {
+    // The product rule is "any open deal qualifies". Even if the new lead
+    // names a different offering, the existing open deal wins (the practice
+    // can re-categorise via UI work that's deferred).
+    const REUSED_DEAL_ID = 'deal-reused-different-offering'
+    const { client, state } = makeFake()
+    state.contacts.rows.push({ id: 'existing-contact-reuse-2' })
+    state.attribution_touchpoints.insertReturns.push({ id: 'tp-reuse-2' })
+    state.activities.insertReturns.push({ id: 'act-reuse-2' })
+    state.deals.rows.push({ id: REUSED_DEAL_ID })
+
+    const result = await ingestLead(
+      baseInput({ treatment_offering_id: 'a-different-offering' }),
+      client
+    )
+
+    expect(result.deal_id).toBe(REUSED_DEAL_ID)
+    expect(state.deals.inserts).toHaveLength(0)
+  })
+
+  it('falls through to creation when findReusableOpenDeal returns null', async () => {
+    // Sanity: the original create-new path remains intact when no reusable
+    // open deal exists. This is the "first-ever message / all prior deals
+    // closed" path — same as it was pre-2b.2.a.3.
+    const { client, state } = makeFake()
+    state.contacts.insertReturns.push({ id: 'c-new-create' })
+    state.attribution_touchpoints.insertReturns.push({ id: 'tp-new-create' })
+    state.activities.insertReturns.push({ id: 'act-new-create' })
+    state.deals.insertReturns.push({ id: 'deal-fresh-create' })
+    stageOfferingHappyPath(state)
+    // Explicit null tells findReusableOpenDeal "no open deal" → fall through.
+    state.deals.rows.push(null as unknown as { id: string })
+    state.practice_notification_routing.rows.push({ primary_user_id: SLA_USER_ID })
+
+    const result = await ingestLead(
+      baseInput({ treatment_offering_id: OFFERING_ID }),
+      client
+    )
+
+    expect(result.deal_id).toBe('deal-fresh-create')
+    expect(state.deals.inserts).toHaveLength(1)
   })
 })
 

@@ -79,8 +79,17 @@ export interface DealContext {
     | 'fallback_no_offering_match'
 }
 
+/**
+ * Phase 2b.2.a.3 — added the `reused: true` success variant so
+ * `createDealForLead` can return an existing open deal id without inventing
+ * a synthetic `DealContext` (we don't re-resolve title / stage / owner on
+ * reuse — the existing deal already has them). Callers that only consumed
+ * `dealId` are unaffected; callers that read `context.title` (notification
+ * metadata) must guard the `reused` branch.
+ */
 export type DealCreationOutcome =
-  | { ok: true; dealId: string; context: DealContext }
+  | { ok: true; dealId: string; reused: false; context: DealContext }
+  | { ok: true; dealId: string; reused: true; context: null }
   | { ok: false; reason: DealSkipReason; context: DealContext | null }
 
 export type DealSkipReason =
@@ -136,6 +145,26 @@ export async function createDealForLead(
   supabase: SupabaseClient,
   input: CreateDealForLeadInput
 ): Promise<DealCreationOutcome> {
+  // Phase 2b.2.a.3 — reuse-before-create. If the contact already has any
+  // open deal in any pipeline (open = stage NOT marked is_won OR is_lost),
+  // return that deal's id instead of inserting a duplicate. Engine-level
+  // fix benefits every channel that calls ingestLead — Google Lead Form,
+  // WhatsApp inbound, future Messenger / Meta Lead Ads, booking widget,
+  // landing pages. See docs/2b/2b-2-a-3-changes.md §1 for product rules.
+  const reusableDealId = await findReusableOpenDeal(supabase, {
+    tenantId: input.tenantId,
+    contactId: input.contactId,
+  })
+  if (reusableDealId) {
+    console.log('[deal-creation] reused open deal', {
+      tenantId: input.tenantId,
+      contactId: input.contactId,
+      dealId: reusableDealId,
+      sourceChannel: input.sourceChannel,
+    })
+    return { ok: true, dealId: reusableDealId, reused: true, context: null }
+  }
+
   const ctxResult = await resolveDealContext(supabase, input)
   if (!ctxResult.ok) {
     return ctxResult
@@ -180,7 +209,88 @@ export async function createDealForLead(
     return { ok: false, reason: 'deal_insert_failed', context }
   }
 
-  return { ok: true, dealId: (data as { id: string }).id, context }
+  return {
+    ok: true,
+    dealId: (data as { id: string }).id,
+    reused: false,
+    context,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2b.2.a.3 — reusable-open-deal lookup
+// ---------------------------------------------------------------------------
+
+/**
+ * Look up the most-recently-touched OPEN deal for this contact in this tenant.
+ *
+ * "Open" predicate (resolved at the SQL layer): the deal's stage row in
+ * `pipeline_stages` has BOTH `is_won = false` AND `is_lost = false`.
+ * Stage flags were added in migration
+ * `20260509_phase_2b_2_a_3_pipeline_stages_won_lost_flags.sql` — both default
+ * to `false`, so every existing stage is treated as open until an operator
+ * marks it terminal.
+ *
+ * Returns the deal id, or `null` when:
+ *   - the contact has no deals at all,
+ *   - all deals are in terminal (is_won OR is_lost) stages,
+ *   - or the lookup itself errors (logged; non-fatal — the caller falls
+ *     through to the create path so a transient DB error doesn't block lead
+ *     capture).
+ *
+ * Engineering decisions embedded:
+ *   - **No pipeline filter.** Any open deal qualifies regardless of which
+ *     pipeline / treatment offering it belongs to. The practice can split
+ *     conversations later via UI work that's deferred (see §10 of the change
+ *     log). Mixing pipelines is the explicit product call.
+ *   - **No time-gap heuristic.** A 6-month-old open deal still reuses. If
+ *     the practice considers it stale they mark it Lost, and the next
+ *     inbound naturally creates a fresh deal.
+ *   - **Most recently touched** uses `deals.last_activity_at` (the live
+ *     "last activity on this deal" timestamp — `last_touch_at` does not
+ *     exist on `deals` per the live schema; per §3 of the change log we use
+ *     `last_activity_at` as the canonical column with `updated_at` as the
+ *     tiebreaker via a secondary ORDER BY).
+ *   - Returns at most ONE deal id. Multi-open-deal edge case is resolved
+ *     deterministically by the ORDER BY + LIMIT 1.
+ *
+ * Service-role expectation: this function is only called from inside the
+ * lead-ingestion engine, which already runs with elevated privilege; we
+ * don't add an extra RLS-bypass layer here.
+ */
+export async function findReusableOpenDeal(
+  supabase: SupabaseClient,
+  args: { tenantId: string; contactId: string }
+): Promise<string | null> {
+  // PostgREST embedded select with `!inner` makes the join required, so a
+  // deal with no matching pipeline_stages row (data integrity issue) is
+  // excluded rather than treated as open. The two `.eq()` filters apply at
+  // the joined-table level via dotted path.
+  const { data, error } = await supabase
+    .from('deals')
+    .select('id, last_activity_at, updated_at, pipeline_stages!inner(is_won, is_lost)')
+    .eq('tenant_id', args.tenantId)
+    .eq('contact_id', args.contactId)
+    .eq('pipeline_stages.is_won', false)
+    .eq('pipeline_stages.is_lost', false)
+    .is('deleted_at', null)
+    .order('last_activity_at', { ascending: false, nullsFirst: false })
+    .order('updated_at', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('[deal-creation] findReusableOpenDeal lookup failed (non-fatal)', {
+      tenantId: args.tenantId,
+      contactId: args.contactId,
+      error: error.message,
+    })
+    return null
+  }
+  if (!data) return null
+
+  const id = (data as { id?: string | null }).id
+  return id ?? null
 }
 
 // ---------------------------------------------------------------------------

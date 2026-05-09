@@ -301,9 +301,10 @@ export async function POST(
       sourceChannel: item.source_channel,
     })
     const dealId = dealOutcome.ok ? dealOutcome.dealId : null
-    const dealTitle = dealOutcome.ok
-      ? dealOutcome.context.title
-      : dealOutcome.context?.title ?? null
+    // Phase 2b.2.a.3 — extracted helper so the reused/created/skipped tri-state
+    // doesn't add branches to this already-large method (pre-existing Lizard
+    // CCN warning per 2b.2.a §3 row F).
+    const dealTitle = resolveDealTitleFromOutcome(dealOutcome)
 
     // ---- Activity (links to deal when one was created) ------------------
     await insertActivity(
@@ -409,6 +410,20 @@ export async function POST(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Phase 2b.2.a.3 — surface a deal title from a `DealCreationOutcome`.
+ * `reused: true` outcomes have `context: null` because we don't re-resolve
+ * the existing deal's title; downstream consumers (notification template,
+ * audit logging) tolerate null. Extracted to a helper so it doesn't add
+ * branches to the (already-large per pre-existing Lizard warnings) POST.
+ */
+function resolveDealTitleFromOutcome(outcome: DealCreationOutcome): string | null {
+  if (outcome.ok) {
+    return outcome.reused ? null : outcome.context.title
+  }
+  return outcome.context?.title ?? null
+}
 
 function pickStringField(obj: Record<string, unknown>, keys: string[]): string | null {
   for (const key of keys) {

@@ -339,6 +339,38 @@ describe('processWhatsappInboundMessage', () => {
     expect(input.raw_payload._wa_id).toBe('919916558958')
   })
 
+  it('propagates a reused deal_id from ingestLead transparently (Phase 2b.2.a.3 reuse path)', async () => {
+    // ingestLead's engine-level fix returns the existing open deal id when
+    // one exists. processWhatsappInboundMessage is a thin wrapper — its only
+    // contract is to surface ingestLead's `deal_id` unchanged. This test
+    // locks in that contract for the reuse case (matched contact +
+    // pre-existing open deal). The "was_new_contact" flag stays false
+    // because the contact itself was matched, not newly inserted.
+    const REUSED_DEAL_ID = 'deal-reused-engine-1'
+    mockIngestLead.mockResolvedValueOnce({
+      contact_id: 'contact-existing',
+      attribution_touchpoint_id: 'tp-reuse',
+      activity_id: 'act-reuse',
+      deal_id: REUSED_DEAL_ID,
+      dedup_decision: 'matched',
+      dedup_signals: { email_match: false, phone_match: true, channel_identifier_match: false },
+      sla: null,
+      routing_log_id: null,
+    })
+
+    const result = await processWhatsappInboundMessage(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      {} as any,
+      TENANT_ID,
+      SAMPLE_MESSAGE
+    )
+
+    expect(result.dealId).toBe(REUSED_DEAL_ID)
+    expect(result.wasNewContact).toBe(false)
+    expect(result.attributionTouchpointId).toBe('tp-reuse')
+    expect(result.activityId).toBe('act-reuse')
+  })
+
   it('returns wasNewContact=false on the existing-contact (matched) path', async () => {
     mockIngestLead.mockResolvedValueOnce({
       contact_id: 'contact-1',
