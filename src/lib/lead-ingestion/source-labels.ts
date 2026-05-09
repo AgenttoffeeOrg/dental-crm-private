@@ -22,6 +22,7 @@ const LABELS: Record<SourceChannelEnum, string> = {
   whatsapp_website_button: 'WhatsApp (website button)',
   whatsapp_meta_ad: 'WhatsApp (Meta ad click)',
   whatsapp_qr: 'WhatsApp (QR code)',
+  whatsapp_inbound: 'WhatsApp (inbound message)',
   instagram_dm: 'Instagram DM',
   fb_messenger: 'Facebook Messenger',
   sms_inbound: 'Inbound SMS',

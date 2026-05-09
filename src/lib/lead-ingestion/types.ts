@@ -7,7 +7,8 @@
  */
 
 // Mirrors the live `public.source_channel_enum` values. Keep in sync with the
-// DB enum (verified 2026-05-03 against project-0-auth-app-supabase).
+// DB enum (verified 2026-05-03 against project-0-auth-app-supabase; extended
+// 2026-05-09 by phase 2b.2.a to add `whatsapp_inbound`).
 export type SourceChannelEnum =
   | 'form_embedded'
   | 'form_hosted_landing'
@@ -22,6 +23,7 @@ export type SourceChannelEnum =
   | 'whatsapp_website_button'
   | 'whatsapp_meta_ad'
   | 'whatsapp_qr'
+  | 'whatsapp_inbound'
   | 'instagram_dm'
   | 'fb_messenger'
   | 'sms_inbound'
@@ -49,6 +51,7 @@ export const SOURCE_CHANNEL_VALUES: ReadonlyArray<SourceChannelEnum> = [
   'whatsapp_website_button',
   'whatsapp_meta_ad',
   'whatsapp_qr',
+  'whatsapp_inbound',
   'instagram_dm',
   'fb_messenger',
   'sms_inbound',

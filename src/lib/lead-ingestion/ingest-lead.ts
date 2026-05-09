@@ -73,6 +73,17 @@ export interface IngestLeadInput {
   form_id?: string | null
   /** Stable idempotency key — derived by the caller from the source webhook. */
   event_id?: string | null
+  /**
+   * Phase 2b.2.a: external provider message id (Twilio MessageSid, Meta `mid`,
+   * etc.). Persisted on the new `attribution_touchpoints.external_message_id`
+   * column and protected by a partial unique index on
+   * `(tenant_id, source_channel, external_message_id) WHERE external_message_id
+   * IS NOT NULL`. Independent of `event_id` — both can be set; in WhatsApp's
+   * case the route passes the same MessageSid for both so the engine's own
+   * idempotency short-circuit (`event_id`) and the DB-level safety net
+   * (partial unique index) both protect against retries.
+   */
+  external_message_id?: string | null
 }
 
 export interface IngestLeadResult {
@@ -597,6 +608,9 @@ async function insertTouchpoint(
       ip_address: attr.ip_address ?? null,
       user_agent: attr.user_agent ?? null,
       event_id: input.event_id ?? null,
+      // Phase 2b.2.a: provider-side message id (Twilio MessageSid, Meta `mid`).
+      // Generic across channels; null for channels that don't have one (forms).
+      external_message_id: input.external_message_id ?? null,
       metadata,
     })
     .select('id')
@@ -628,6 +642,7 @@ function mapSourceChannelToActivityType(channel: SourceChannelEnum): string {
     case 'whatsapp_website_button':
     case 'whatsapp_meta_ad':
     case 'whatsapp_qr':
+    case 'whatsapp_inbound':
       return 'whatsapp'
     case 'meta_lead_ad':
     case 'meta_messenger_ad':

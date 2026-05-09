@@ -626,6 +626,7 @@ function mapSourceChannelToActivityType(channel: SourceChannelEnum): string {
     case 'whatsapp_website_button':
     case 'whatsapp_meta_ad':
     case 'whatsapp_qr':
+    case 'whatsapp_inbound':
       return 'whatsapp_message'
     case 'meta_lead_ad':
     case 'meta_messenger_ad':
