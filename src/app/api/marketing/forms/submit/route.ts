@@ -28,13 +28,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
+import crypto from 'crypto'
 import { createServiceClient } from '@/lib/supabase-server'
-import { isMarketingEnabledServer } from '@/lib/marketing/feature-flags'
 import { checkRateLimit, getTimeUntilReset } from '@/lib/rate-limiter'
 import { verifyRecaptchaToken, evaluateRecaptchaScore } from '@/lib/forms/recaptcha'
 import { ingestLead, IngestLeadValidationError } from '@/lib/lead-ingestion/ingest-lead'
 import type { SourceChannelEnum } from '@/lib/lead-ingestion/types'
+
+// `@/lib/marketing/feature-flags` is `'use client'` (it co-locates a React
+// hook with `isMarketingEnabledServer`). Importing the "server" function
+// from that file works in dev but breaks in the production build — Next.js
+// turns the export into a client reference and calling it server-side
+// throws "(0 , l.Y4) is not a function". Inlining the single SELECT keeps
+// the route self-contained and avoids that footgun.
 
 // Generic 404 body — never tells the caller whether the form is unknown,
 // inactive, or unpublished. Same shape for all three cases so a probe can't
@@ -158,9 +164,15 @@ export async function POST(req: NextRequest) {
 
     // Marketing-flag gate — applied AFTER tenant resolution (the flag is
     // per-tenant; we'd need a tenant to check it). Same return shape as
-    // before so any existing client-side handling keeps working.
-    const marketingEnabled = await isMarketingEnabledServer(tenantId)
-    if (!marketingEnabled) {
+    // before so any existing client-side handling keeps working. Inlined
+    // (not imported from `@/lib/marketing/feature-flags`) — see comment
+    // at the top of the file.
+    const { data: tenantRow } = await supabase
+      .from('tenants')
+      .select('marketing_enabled')
+      .eq('id', tenantId)
+      .maybeSingle()
+    if (!tenantRow?.marketing_enabled) {
       return NextResponse.json(
         { error: 'Marketing module is not enabled for this practice', code: 'MARKETING_DISABLED' },
         { status: 403 }
@@ -293,7 +305,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ---- Canonical lead ingestion --------------------------------------
-    const eventId = `form_submit:${formId}:${idempotencyKey ?? randomUUID()}`
+    const eventId = `form_submit:${formId}:${idempotencyKey ?? crypto.randomUUID()}`
 
     let result
     try {
@@ -444,6 +456,8 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('[forms/submit] Unhandled error', {
       error_message: error instanceof Error ? error.message : String(error),
+      error_name: error instanceof Error ? error.name : undefined,
+      stack: error instanceof Error ? error.stack : undefined,
     })
     return NextResponse.json({ error: 'Failed to process form submission' }, { status: 500 })
   }

@@ -46,6 +46,15 @@ const mockFormLookupResult = jest.fn<
   []
 >()
 
+// Marketing-flag gate is now an inline `tenants.marketing_enabled` SELECT
+// inside the route (see route.ts top-of-file comment). The test exposes
+// it through the `tenants` table mock so we can flip it to false to
+// exercise the 403 path.
+const mockTenantLookupResult = jest.fn<
+  Promise<{ data: { marketing_enabled: boolean } | null; error: { message: string } | null }>,
+  []
+>()
+
 const mockSubmissionInsert = jest.fn<
   Promise<{ data: null; error: { message: string } | null }>,
   [Record<string, unknown>]
@@ -64,6 +73,16 @@ function buildFormQueryBuilder() {
   }
 }
 
+function buildTenantsQueryBuilder() {
+  return {
+    select: jest.fn(() => ({
+      eq: jest.fn(() => ({
+        maybeSingle: () => mockTenantLookupResult(),
+      })),
+    })),
+  }
+}
+
 function buildSubmissionsBuilder() {
   return {
     insert: (row: Record<string, unknown>) => mockSubmissionInsert(row),
@@ -72,21 +91,13 @@ function buildSubmissionsBuilder() {
 
 const mockFrom = jest.fn((table: string) => {
   if (table === 'marketing_forms') return buildFormQueryBuilder()
+  if (table === 'tenants') return buildTenantsQueryBuilder()
   if (table === 'marketing_form_submissions') return buildSubmissionsBuilder()
   throw new Error(`unexpected supabase table: ${table}`)
 })
 
 jest.mock('@/lib/supabase-server', () => ({
   createServiceClient: () => ({ from: mockFrom, rpc: mockRpc }),
-}))
-
-// ---------------------------------------------------------------------------
-// Marketing flag — always allow in tests by default.
-// ---------------------------------------------------------------------------
-
-const mockMarketingEnabled = jest.fn(async () => true)
-jest.mock('@/lib/marketing/feature-flags', () => ({
-  isMarketingEnabledServer: (...args: unknown[]) => mockMarketingEnabled(...(args as [string])),
 }))
 
 // ---------------------------------------------------------------------------
@@ -206,7 +217,10 @@ function happyIngestResult(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks()
-  mockMarketingEnabled.mockResolvedValue(true)
+  mockTenantLookupResult.mockResolvedValue({
+    data: { marketing_enabled: true },
+    error: null,
+  })
   mockCheckRateLimit.mockResolvedValue({
     allowed: true,
     limit: 10,
@@ -562,7 +576,10 @@ describe('POST /api/marketing/forms/submit — submissions row + response shape'
 
   it('keeps marketing-flag gate intact (returns 403 when disabled)', async () => {
     mockFormLookupResult.mockResolvedValueOnce({ data: activeFormRow(), error: null })
-    mockMarketingEnabled.mockResolvedValueOnce(false)
+    mockTenantLookupResult.mockResolvedValueOnce({
+      data: { marketing_enabled: false },
+      error: null,
+    })
 
     const res = await POST(jsonReq(happyPayload()))
 

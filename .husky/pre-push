@@ -1,0 +1,66 @@
+# Phase 2b.3 — Cursor-independent auto-deploy.
+#
+# Husky shim at `.husky/_/pre-push` sources this file. We schedule
+# `vercel deploy --prod` via `nohup … &` so the deploy survives even if
+# Cursor is reloaded between push and the in-progress deploy. The 12s
+# `sleep` lets the actual remote push complete first; if the push fails,
+# Vercel rebuilds the previous tip — harmless.
+#
+# Logs go to `dental-crm/.cursor/post-push-deploy.log`. The matching
+# Cursor `afterShellExecution` hook at
+# `~/auth-app/.cursor/hooks/post-push-deploy.sh` is preserved as
+# belt-and-suspenders for the case where Cursor is alive throughout.
+#
+# To bypass for a particular push (e.g. a no-op docs commit):
+#   git push --no-verify
+#
+# Manual fallback (always works):
+#   cd dental-crm && npm run deploy:prod
+
+# Husky 9 sources this with /bin/sh from inside the shim. Avoid bash-isms
+# like arrays so we don't trip POSIX shells, and don't `set -u` because
+# the surrounding husky.sh already has well-defined behaviour.
+
+export PATH="$HOME/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+
+repo_root=$(git rev-parse --show-toplevel)
+
+if [ ! -f "$repo_root/.vercel/project.json" ]; then
+  exit 0
+fi
+
+# Only trigger for genuine pushes, not --dry-run.
+case " $* " in
+  *" --dry-run "*) exit 0 ;;
+esac
+
+scope=""
+if command -v jq >/dev/null 2>&1; then
+  scope=$(jq -r '.orgId // empty' "$repo_root/.vercel/project.json" 2>/dev/null || true)
+fi
+
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
+sha=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+
+log_dir="$repo_root/.cursor"
+mkdir -p "$log_dir"
+log_file="$log_dir/post-push-deploy.log"
+
+{
+  printf '\n[%s] git pre-push hook triggered\n' "$(date -u +%FT%TZ)"
+  printf '  repo    : %s\n' "$repo_root"
+  printf '  branch  : %s\n' "$branch"
+  printf '  sha     : %s\n' "$sha"
+  printf '  scope   : %s\n' "${scope:-<none>}"
+  printf '  note    : sleeping 12s before deploy to let push complete\n'
+} >> "$log_file"
+
+scope_arg=""
+if [ -n "$scope" ]; then
+  scope_arg="--scope $scope"
+fi
+
+nohup sh -c "sleep 12 && cd '$repo_root' && vercel deploy --prod --yes $scope_arg >> '$log_file' 2>&1" \
+  </dev/null >>"$log_file" 2>&1 &
+
+exit 0
