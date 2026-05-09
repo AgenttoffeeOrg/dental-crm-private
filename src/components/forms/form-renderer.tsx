@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import type { MarketingForm, FormField } from '@/hooks/use-marketing-forms'
-import { buildInitialFormData, extractUtmParams } from '@/lib/forms/url-prefill'
+import { buildInitialFormData, extractUtmParams, extractClickIds } from '@/lib/forms/url-prefill'
 import { getContactByEmail, filterFieldsForProgressiveProfiling } from '@/lib/forms/progressive-profiling'
 import { useAuth } from '@/lib/auth'
 
@@ -44,6 +44,20 @@ export function FormRenderer({ form, onSubmit, standalone = false }: FormRendere
   
   // Track form load time (for spam detection)
   const [formLoadTime] = useState(Date.now().toString())
+
+  // Phase 2b.3 — capture the parent-page URL once at mount.
+  //   * iframe embed path: `document.referrer` is the practice's marketing
+  //     page (the parent that loaded the iframe). That's the URL paid-ads
+  //     attribution wants on `attribution_touchpoints.landing_page_url`.
+  //   * hosted page path (/f/[slug]): `document.referrer` is wherever the
+  //     visitor came from (their site, an ad, a search engine) — also the
+  //     "landing page from the visitor's perspective" we want.
+  // Direct visits (referrer empty) fall back to the current URL so we
+  // always have something on the touchpoint.
+  const [landingPageUrl] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return document.referrer || window.location.href
+  })
 
   useEffect(() => {
     // Initialize form data with URL prefilling and progressive profiling
@@ -171,6 +185,11 @@ export function FormRenderer({ form, onSubmit, standalone = false }: FormRendere
           honeypot, // Include honeypot value
           formLoadTime, // Include load time for spam detection
           utmParams: extractUtmParams(),
+          // Phase 2b.3 — paid-ads click IDs and parent-page URL captured at
+          // form-load time. The submit route forwards these into
+          // `IngestLeadInput.attribution.{gclid,fbclid,msclkid,ttclid,landing_page_url}`.
+          clickIds: extractClickIds(),
+          landingPageUrl,
         }),
       })
 

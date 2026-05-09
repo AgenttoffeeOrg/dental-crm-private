@@ -50,6 +50,40 @@ export function extractUtmParams(): Record<string, string> {
 }
 
 /**
+ * Phase 2b.3 — extract paid-channel click IDs from the URL.
+ *
+ * Returns only keys whose value is a non-empty string, so the resulting
+ * object is `JSON.stringify`-clean (no `gclid: ""` noise on the wire).
+ *
+ * gclid   — Google Ads click identifier
+ * fbclid  — Meta (Facebook / Instagram) click identifier
+ * msclkid — Microsoft / Bing Ads click identifier
+ * ttclid  — TikTok Ads click identifier
+ */
+export function extractClickIds(): {
+  gclid?: string
+  fbclid?: string
+  msclkid?: string
+  ttclid?: string
+} {
+  const params = parseUrlParams()
+  const clickIdKeys: Array<'gclid' | 'fbclid' | 'msclkid' | 'ttclid'> = [
+    'gclid',
+    'fbclid',
+    'msclkid',
+    'ttclid',
+  ]
+  const out: { gclid?: string; fbclid?: string; msclkid?: string; ttclid?: string } = {}
+  for (const key of clickIdKeys) {
+    const value = params[key]
+    if (typeof value === 'string' && value.length > 0) {
+      out[key] = value
+    }
+  }
+  return out
+}
+
+/**
  * Get prefilled value for a field from URL parameters
  */
 export function getPrefillValue(

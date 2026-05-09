@@ -7,6 +7,7 @@
     "build:widget": "vite build --config vite.widget.config.ts",
     "build": "npm run build:widget && NEXT_DISABLE_SWC_WASM=1 next build",
     "start": "next start -p ${PORT:-3000}",
+    "deploy:prod": "vercel deploy --prod --yes",
     "db:validate": "supabase db lint",
     "db:migrate": "supabase db push",
     "smoke": "bash scripts/smoke.sh",

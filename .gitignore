@@ -42,3 +42,8 @@ next-env.d.ts
 
 # Codacy CLI artifacts (Phase 2b.2.a.2)
 .codacy/
+
+# Cursor / Phase 2b.3 — auto-deploy hook log lives next to the project but
+# is never meaningful to commit (rolling per-machine record of `vercel
+# deploy --prod` output).
+.cursor/post-push-deploy.log
