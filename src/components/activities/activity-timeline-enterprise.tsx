@@ -31,6 +31,13 @@ interface Activity {
   direction?: 'inbound' | 'outbound'
   subject?: string
   snippet?: string
+  /**
+   * Long-form body. ingestLead-driven inbound rows (web form, Google lead
+   * form, SMS, WhatsApp) write the channel message text here, not into
+   * `snippet`. Surfaced as a fallback so operators can read the raw inbound
+   * content in the timeline.
+   */
+  description?: string
   occurred_at: string
   agent_name?: string
   outcome?: string
@@ -288,9 +295,9 @@ export function ActivityTimelineEnterprise({
                               rows={3}
                             />
                           ) : (
-                            activity.snippet && (
-                              <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                                {activity.snippet}
+                            (activity.snippet || activity.description) && (
+                              <p className="text-sm text-gray-600 whitespace-pre-wrap break-words">
+                                {activity.snippet || activity.description}
                               </p>
                             )
                           )}

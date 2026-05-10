@@ -67,6 +67,13 @@ interface Activity {
   direction?: 'inbound' | 'outbound'
   subject?: string
   snippet?: string
+  /**
+   * Long-form body. ingestLead-driven inbound rows (web form, Google lead
+   * form, SMS, WhatsApp) write the channel message text here, not into
+   * `snippet`. Surfaced as a fallback so operators can read the raw inbound
+   * content in the feed.
+   */
+  description?: string
   occurred_at: string
   agent_user_id?: string
   outcome?: 'connected' | 'voicemail' | 'no_answer' | 'busy' | 'wrong_number' | 'completed' | 'cancelled'
@@ -529,10 +536,14 @@ const sanitizedContactPhone = useMemo(
               )}
             </div>
 
-            {/* Snippet - One Line Only */}
-            {activity.snippet && (
+            {/* Snippet / body — One Line Only.
+             * Falls back to `description` for ingestLead-driven inbound rows
+             * (SMS, WhatsApp, web/Google lead forms) which only populate
+             * `description`. Without this fallback the inbound message body
+             * is invisible in the feed even though it's stored on the row. */}
+            {(activity.snippet || activity.description) && (
               <p className="text-xs text-gray-600 line-clamp-1 mb-2">
-                {activity.snippet}
+                {activity.snippet || activity.description}
               </p>
             )}
 

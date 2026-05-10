@@ -558,14 +558,23 @@ export function ActivityDetailSlideIn({
                     </div>
                   )}
 
-                  {/* SMS/WhatsApp Content */}
+                  {/* SMS/WhatsApp Content. Inbound rows from ingestLead store
+                   * the channel body in `description`; manual outbound rows
+                   * may use `snippet`. Fall back to description so inbound
+                   * messages aren't blank. */}
                   {(activity.type === 'sms' || activity.type === 'whatsapp') && (
                     <div>
                       <h3 className="text-sm font-semibold text-gray-900 mb-3">
                         {activity.type === 'whatsapp' ? 'WhatsApp' : 'SMS'} Message
                       </h3>
                       <div className="p-4 bg-gray-50 rounded-lg border">
-                        <p className="text-sm whitespace-pre-wrap">{activity.snippet}</p>
+                        <p className="text-sm whitespace-pre-wrap break-words">
+                          {activity.snippet || activity.description || (
+                            <span className="text-gray-400 italic">
+                              No message body recorded
+                            </span>
+                          )}
+                        </p>
                       </div>
 
                       {/* Quick Reply */}

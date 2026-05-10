@@ -365,7 +365,11 @@ export function ActivityTimeline({
 
               {/* Activity Content */}
               <div className="px-3 py-2 border-t border-gray-50">
-                {/* Activity Snippet - Editable */}
+                {/* Activity body — manual `snippet` (operator-edited) wins over
+                 * the engine-written `description`. ingestLead-driven inbound
+                 * activities (SMS, WhatsApp, web form, Google lead form) land
+                 * the channel body in `description`, so without this fallback
+                 * the operator sees a row with no readable text. */}
                 {isEditing ? (
                   <Textarea
                     value={editedSnippet}
@@ -373,8 +377,10 @@ export function ActivityTimeline({
                     className="text-sm min-h-[60px]"
                     placeholder="Notes..."
                   />
-                ) : activity.snippet ? (
-                  <p className="text-sm text-gray-700 leading-relaxed">{activity.snippet}</p>
+                ) : (activity.snippet || activity.description) ? (
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+                    {activity.snippet || activity.description}
+                  </p>
                 ) : null}
 
                 {/* Compact Audio Player for Call Activities */}
@@ -409,8 +415,17 @@ export function ActivityTimeline({
                   </div>
                 )}
 
-                {/* AI Artifacts Display */}
-                <AIArtifactsDisplay activityId={activity.id} />
+                {/* AI Artifacts Display — only for call activities, which are
+                 * the only type the AI artifacts pipeline produces transcripts/
+                 * summaries for. Rendering it unconditionally caused a red
+                 * "Failed to load AI insights" banner on SMS, WhatsApp, email,
+                 * and note rows because the inner query ran without tenantId. */}
+                {activity.type === 'call' && (
+                  <AIArtifactsDisplay
+                    activityId={activity.id}
+                    tenantId={orgId ?? undefined}
+                  />
+                )}
 
                 {/* Compact Upload for Call Activities without recordings */}
                 {!isEditing && activity.type === 'call' && (!activity.activity_files || activity.activity_files.filter(af => af.files.kind === 'audio').length === 0) && (

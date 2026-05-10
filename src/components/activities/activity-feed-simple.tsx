@@ -18,6 +18,13 @@ interface Activity {
   direction?: 'inbound' | 'outbound'
   subject?: string
   snippet?: string
+  /**
+   * Long-form body. ingestLead-driven inbound rows (web form, Google lead
+   * form, SMS, WhatsApp) write the channel message text here, not into
+   * `snippet`. Surfaced as a fallback so operators can read the inbound
+   * content in the simple feed.
+   */
+  description?: string
   occurred_at: string
   agent_name?: string
   outcome?: string
@@ -177,8 +184,8 @@ export function ActivityFeedSimple({
                             {activity.subject}
                           </p>
                         )}
-                        <p className="text-sm text-gray-600 line-clamp-2">
-                          {activity.snippet}
+                        <p className="text-sm text-gray-600 line-clamp-2 break-words">
+                          {activity.snippet || activity.description}
                         </p>
                       </div>
                       <Button

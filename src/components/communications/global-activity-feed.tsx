@@ -134,7 +134,9 @@ export function GlobalActivityFeed({ tenantId }: { tenantId?: string }) {
                     <div className="flex items-start justify-between mb-1">
                       <div className="flex-1">
                         <p className="font-medium text-sm text-gray-900">{activity.subject || activity.type}</p>
-                        <p className="text-xs text-gray-600 line-clamp-1">{activity.snippet}</p>
+                        <p className="text-xs text-gray-600 line-clamp-1">
+                          {activity.snippet || activity.description}
+                        </p>
                       </div>
                       <span className="text-xs text-gray-500 ml-2">
                         {formatDistanceToNow(new Date(activity.occurred_at), { addSuffix: true })}

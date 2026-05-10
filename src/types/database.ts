@@ -228,6 +228,13 @@ export interface Activity {
   agent_user_id?: string;
   subject?: string;
   snippet?: string;
+  /**
+   * Long-form body. Populated by ingestLead-driven inbound rows (web form,
+   * Google lead form, SMS, WhatsApp, etc.) with the channel message text.
+   * Activity feeds should fall back to this when `snippet` is empty so
+   * inbound message bodies are visible in the UI.
+   */
+  description?: string;
   raw?: Record<string, unknown>;
   created_at: string;
 }
