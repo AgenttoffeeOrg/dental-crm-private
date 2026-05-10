@@ -2,11 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOpenAIClient } from '@/lib/openai-client'
 import { createServiceClient } from '@/lib/supabase-server'
 import { buildDealContext } from '@/lib/ai-context-builder'
+import {
+  AuthApiError,
+  requireAuthenticatedTenantUser,
+  assertBodyTenantMatches,
+  authErrorResponse,
+} from '@/lib/auth/api-auth-helpers'
 
 export async function POST(request: NextRequest) {
   const openai = getOpenAIClient()
   try {
-    const { activityId, dealId, contactId, tenantId, incomingEmailContent } = await request.json()
+    // Phase 2b.5 — auth + tenant scoping. Closes the same body-trusted
+    // tenant_id hole as the send routes. No rate limit (drafting is not
+    // a send). Per D03 §2 this *should* eventually require an
+    // `ai_features` entitlement; the live `features` table does not yet
+    // model it (see 2b-5-changes.md §3), so we leave the gate
+    // unparameterised until that schema lands.
+    const auth = await requireAuthenticatedTenantUser(request)
+    const body = await request.json()
+    assertBodyTenantMatches(body?.tenantId, auth.tenantId)
+    const { activityId, dealId, contactId, incomingEmailContent } = body
+    const tenantId = auth.tenantId
 
     const supabase = createServiceClient()
 
@@ -119,6 +135,9 @@ Subject: [Suggested subject line]
     })
 
   } catch (error: any) {
+    if (error instanceof AuthApiError) {
+      return authErrorResponse(error)
+    }
     console.error('Draft email error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to generate draft' },

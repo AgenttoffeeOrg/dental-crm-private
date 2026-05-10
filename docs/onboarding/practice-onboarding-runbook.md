@@ -684,13 +684,43 @@ doesn't change this; it's just a reminder when onboarding a new practice.
 
 - MMS / inbound photo capture — captured in `raw_payload` for a future
   phase but not downloaded or surfaced.
-- Outbound SMS UI from the contact pane — there are routes
-  (`/api/communications/send-sms`, `send-sms-v2`) but they currently
-  have no auth gate and need a separate phase.
 - A two-way SMS conversation thread — not in this phase cluster.
 - Auto-replies / business-hours / opt-out flows — deferred to a later
   automations phase.
 - Per-tenant SMS settings UI — comes with the wizard.
+
+---
+
+## 9c. Outbound communications channels (Phase 2b.5)
+
+Outbound email / SMS / WhatsApp / voice from the CRM are gated behind
+the user's authenticated session as of Phase 2b.5. There is no
+per-channel knob you need to flip during onboarding — every active
+member of the tenant can use whatever channels the tenant has provider
+credentials configured for (`tenants.sms_*`, `tenants.whatsapp_*`,
+email-provider env vars). Practical implications:
+
+- **No `tenant_id` query parameter or body field will ever override the
+  authenticated tenant.** The auth helper writes the session's tenant
+  back into the request and ignores whatever the body claimed.
+- **Outbound rate limits per tenant per minute (effective Phase 2b.5):**
+  - Email: 60
+  - SMS: 30
+  - WhatsApp: 30
+  - Voice: 10
+
+  These are floor values to prevent runaway loops or accidental bursts
+  (e.g. a UI bug that re-fires a send on every render). They can be
+  raised per-tenant in a future phase if a customer hits them
+  legitimately. Hitting the limit returns `429 rate_limit_exceeded` —
+  the composer panels surface this as a toast.
+- **WhatsApp outbound from the Twilio sandbox** still only works to
+  numbers that have explicitly joined the sandbox (`join my-too`). For
+  production WhatsApp outbound, register a WhatsApp Business sender
+  with Twilio. This is operational work, not code.
+- **Voice (`/api/communications/initiate-call`)** is gated identically
+  but voice itself is fully deferred per product roadmap. Don't tell
+  customers to use it yet.
 
 ---
 

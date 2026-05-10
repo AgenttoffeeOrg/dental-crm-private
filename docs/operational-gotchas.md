@@ -51,3 +51,15 @@ Things that have bitten us in production. Read before debugging anything weird.
 **Fix:** In production, every practice gets its own Twilio number. Until that's automated by the wizard, set numbers via SQL (see `docs/onboarding/practice-onboarding-runbook.md` §SMS / §WhatsApp). The inbound helpers emit a `console.warn('[…-inbound] multi-tenant collision …')` log line when they detect the situation, so it's at least visible in Vercel function logs.
 
 **First seen:** Phase 2b.4 (SMS), inherited pattern from 2b.2.a (WhatsApp).
+
+## Outbound send routes are tenant-scoped to the authenticated user
+
+**Rule:** all `/api/communications/send-*` routes (`send-email`, `send-sms`, `send-sms-v2`, `send-whatsapp`, `send-whatsapp-v2`) and `/api/communications/initiate-call` require a logged-in CRM session. They ignore any `tenant_id` in the request body — the tenant is always derived from the authenticated user's `app_users.active_tenant_id` + `user_tenant_memberships`. Each route also enforces a per-tenant per-minute rate limit (`email`: 60, `sms`: 30, `whatsapp`: 30, `voice`: 10) via `lib/rate-limiter.ts`.
+
+**Symptom if you forget:** server-internal callers using HTTP `fetch()` to these routes will get `401 unauthenticated`. Browser-side code (UI composers, bulk-send panel) is fine because it inherits the session cookie automatically.
+
+**Fix:** call `dispatchEmail` / `dispatchSms` / `dispatchWhatsApp` / `dispatchVoiceCall` directly from `lib/communications/dispatcher.ts` for any server-internal automation, scheduled job, queue worker, or bot. They bypass HTTP entirely and are unaffected by the auth gate.
+
+**Don't:** re-add `tenant_id` reading from the request body. The whole point is that nobody outside an authenticated session can pick the tenant. Mismatch on body `tenant_id` → 403 `tenant_mismatch`. Body `tenant_id` is silently overridden by the authenticated value if absent.
+
+**First seen:** Phase 2b.5 (outbound communications auth fix). Closes the D03 §1 unauthenticated-send P0.

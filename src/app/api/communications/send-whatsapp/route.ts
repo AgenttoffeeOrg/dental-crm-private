@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { queueManager } from '@/lib/queues/queue-manager'
 import { enqueueCommunication, registerCommunicationQueue } from '@/lib/queues/communication-queue'
 import { dispatchWhatsApp } from '@/lib/communications/dispatcher'
+import {
+  AuthApiError,
+  requireAuthenticatedTenantUser,
+  assertBodyTenantMatches,
+  enforceOutboundRateLimit,
+  authErrorResponse,
+} from '@/lib/auth/api-auth-helpers'
 
 // AI Helper: Extract WhatsApp message purpose
 function extractWhatsAppPurpose(message: string): string {
@@ -37,7 +44,14 @@ if (queueManager.isEnabled() && QUEUE_ENABLED) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Phase 2b.5 — auth + tenant scoping + rate limit. Closes D03 §1.
+    const auth = await requireAuthenticatedTenantUser(request)
     const body = await request.json()
+    assertBodyTenantMatches(body?.tenant_id, auth.tenantId)
+    body.tenant_id = auth.tenantId
+    body.user_id = body.user_id ?? auth.userId
+    await enforceOutboundRateLimit(auth.tenantId, 'whatsapp')
+
     const {
       to,
       message,
@@ -48,10 +62,9 @@ export async function POST(request: NextRequest) {
       media_url,
     } = body
 
-    // Validate required fields
-    if (!to || !message || !tenant_id) {
+    if (!to || !message) {
       return NextResponse.json(
-        { error: 'Missing required fields: to, message, tenant_id' },
+        { error: 'Missing required fields: to, message' },
         { status: 400 }
       )
     }
@@ -108,6 +121,9 @@ export async function POST(request: NextRequest) {
       has_media: Boolean(media_url),
     })
   } catch (error: unknown) {
+    if (error instanceof AuthApiError) {
+      return authErrorResponse(error)
+    }
     console.error('[WHATSAPP] Error sending message:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },

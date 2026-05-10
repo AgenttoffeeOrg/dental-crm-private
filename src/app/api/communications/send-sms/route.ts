@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { queueManager } from '@/lib/queues/queue-manager'
 import { enqueueCommunication, registerCommunicationQueue } from '@/lib/queues/communication-queue'
 import { dispatchSms } from '@/lib/communications/dispatcher'
+import {
+  AuthApiError,
+  requireAuthenticatedTenantUser,
+  assertBodyTenantMatches,
+  enforceOutboundRateLimit,
+  authErrorResponse,
+} from '@/lib/auth/api-auth-helpers'
 
 // AI Helper: Extract SMS purpose from message content
 function extractSMSPurpose(message: string): string {
@@ -34,7 +41,14 @@ if (queueManager.isEnabled() && QUEUE_ENABLED) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Phase 2b.5 — auth + tenant scoping + rate limit. Closes D03 §1.
+    const auth = await requireAuthenticatedTenantUser(request)
     const body = await request.json()
+    assertBodyTenantMatches(body?.tenant_id, auth.tenantId)
+    body.tenant_id = auth.tenantId
+    body.user_id = body.user_id ?? auth.userId
+    await enforceOutboundRateLimit(auth.tenantId, 'sms')
+
     const {
       to,
       message,
@@ -44,10 +58,9 @@ export async function POST(request: NextRequest) {
       user_id,
     } = body
 
-    // Validate required fields
-    if (!to || !message || !tenant_id) {
+    if (!to || !message) {
       return NextResponse.json(
-        { error: 'Missing required fields: to, message, tenant_id' },
+        { error: 'Missing required fields: to, message' },
         { status: 400 }
       )
     }
@@ -102,6 +115,9 @@ export async function POST(request: NextRequest) {
       estimated_cost: Math.ceil(message.length / 160) * 0.0075,
     })
   } catch (error: unknown) {
+    if (error instanceof AuthApiError) {
+      return authErrorResponse(error)
+    }
     console.error('[SMS] Error sending SMS:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
