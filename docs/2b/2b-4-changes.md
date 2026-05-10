@@ -438,3 +438,102 @@ operator follow-up, decline politely and capture in §11 below.
   one number per practice means buying ~£1/practice/month and routing
   the billing through. This is a commercial / billing decision, not an
   engineering one.
+
+---
+
+## 12. Post-validation follow-up — activity body visible in CRM (commit `653ce5f`)
+
+After §8 operator validation confirmed that inbound SMS and WhatsApp
+correctly created contacts / deals / activities / touchpoints, the
+operator pointed out that the resulting rows on
+`/deals/<deal_id>` rendered with **no message body and a red "Failed
+to load AI insights" banner** — making the ingested data unreadable
+in the UI even though the data was in the DB. This is in scope for
+2b.4 (the phase only delivers operator value when the body is
+visible), so a follow-up was shipped on the same branch.
+
+### 12.1 Root cause — two independent UI bugs
+
+1. **Activity feeds rendered `activity.snippet` only.** `ingestLead()`
+   writes the channel message body to `activity.description` and
+   leaves `snippet` null (see `src/lib/lead-ingestion/ingest-lead.ts`'s
+   `insertActivity`). Every feed/timeline component was reading
+   `snippet` only, so SMS / WhatsApp / web form / Google lead form
+   inbound rows displayed an empty body. The `description` column was
+   also missing from the canonical `Activity` interface in
+   `src/types/database.ts`, hiding the field from TypeScript.
+
+2. **`AIArtifactsDisplay` mounted on every activity row in the
+   deal-page timeline** without `tenantId`. The internal
+   `.eq('tenant_id', undefined)` query errored, surfacing as a red
+   "Failed to load AI insights" card on SMS / WhatsApp / email /
+   note rows. That component is purpose-built for **call** activities
+   only (transcript / sentiment / conversion probability / immediate
+   actions); it has no data shape for plain inbound text messages.
+
+### 12.2 Fix shape
+
+| # | File | Change |
+|---|---|---|
+| 1 | `src/types/database.ts` | Added `description?: string` to the canonical `Activity` interface (with comment explaining ingestLead writes here). Single source-of-truth fix; everything else is just consuming it. |
+| 2 | `src/components/deals/activity-timeline.tsx` | (a) Body display: `activity.snippet \|\| activity.description` with `whitespace-pre-wrap break-words`. (b) Gated `<AIArtifactsDisplay>` on `activity.type === 'call'` and forwarded `tenantId={orgId ?? undefined}`. |
+| 3 | `src/components/activities/activity-feed-enterprise.tsx` | Added `description?: string` to local `Activity` interface; snippet display falls back to description (used by contact detail and deal modal). |
+| 4 | `src/components/activities/activity-timeline-enterprise.tsx` | Same shape as #3. |
+| 5 | `src/components/activities/activity-feed-simple.tsx` | Same shape as #3. |
+| 6 | `src/components/communications/activity-detail-slide-in.tsx` | Right-side detail panel: SMS/WhatsApp body now reads `snippet \|\| description` with a `"No message body recorded"` placeholder; styling promoted to `whitespace-pre-wrap break-words`. |
+| 7 | `src/components/communications/global-activity-feed.tsx` | Communications-tab feed: snippet line falls back to description. |
+
+### 12.3 Why `AIArtifactsDisplay` needed gating, not a fallback
+
+A defensive change inside `AIArtifactsDisplay` (e.g. swallowing the
+error and returning `null`) would have hidden the bug but also masked
+real problems for genuine call rows. The component has no rendering
+path for SMS/WhatsApp data — there's no "summary", "transcript",
+"treatments_discussed", or "conversion_probability" for a plain
+inbound text message — so the right place to gate is at the call
+site, by `activity.type`. Future channels that get AI artifacts
+(e.g. email summaries) would extend the gate explicitly.
+
+### 12.4 Validation
+
+- **All 123 unit tests pass** (`npx jest`). No new tests added — the
+  fix is in pure rendering/type code with no orchestration logic.
+- **TypeScript:** `npx tsc --noEmit` confirms no new errors in any
+  edited file. Pre-existing TS errors elsewhere in the repo are
+  unchanged.
+- **Codacy** (`codacy_cli_analyze` per file): ESLint, Opengrep, Trivy
+  all clean; the only flags are pre-existing Lizard complexity /
+  file-nloc warnings on functions and files I did not modify
+  (per the workspace rule, complexity metrics are ignored).
+- **Operator visual confirmation** post-deploy: the same deal
+  page (`/deals/878bdd75-ece5-4967-9326-cdb36acc4dc0`) now renders
+  the WhatsApp inbound body and both SMS inbound bodies; the red
+  "Failed to load AI insights" banner is gone for non-call rows.
+
+### 12.5 Ripple effects (intentional)
+
+- **Web form and Google lead form inbound also benefit.** Both flow
+  through `ingestLead()` and write the inquiry text to
+  `activity.description`. They had the same blank-body bug before
+  this fix; they're now readable in every feed without any
+  channel-specific change.
+- **Call rows are unaffected.** They keep rendering the full
+  `AIArtifactsDisplay` card whenever the AI artifacts pipeline has
+  populated data (gated on `activity.type === 'call'`).
+- **Outbound activities** (manual `snippet`-edited rows from the
+  operator) are unaffected — the fallback is `snippet || description`,
+  so an operator-authored snippet still wins.
+
+### 12.6 What is _still_ deferred (unchanged from §10)
+
+This fix only makes the **single inbound activity body readable**. It
+does NOT add:
+
+- Two-way SMS / WhatsApp conversation threading (multiple inbound
+  + outbound messages grouped into a thread view).
+- Outbound reply composition wired to a sender pipeline.
+- Inline media rendering for MMS (the `_media_urls` are captured in
+  `attribution_touchpoints.metadata->'raw_payload'` but not
+  downloaded, per the original 2b.4 text-only scope).
+
+These remain in §10 as deferred and are unaffected by §12.
