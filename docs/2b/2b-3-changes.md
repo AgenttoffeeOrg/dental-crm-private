@@ -204,6 +204,15 @@ dental-crm/src/components/forms/embed-code-modal.tsx
 dental-crm/package.json
     + new `deploy:prod` script (vercel deploy --prod --yes) — manual
       fallback for the deploy hook.
+
+dental-crm/next.config.js
+    + Global `'/:path*'` security-header rule changed to a negative-
+      lookahead source `'/((?!forms/embed/|f/).*)'` so the iframable
+      public form routes don't inherit `X-Frame-Options: SAMEORIGIN`.
+    + Two explicit rules for `/forms/embed/:id` and `/f/:slug` re-add
+      the safe hardening headers and add `Content-Security-Policy:
+      frame-ancestors *` so the form can be iframed from any third-
+      party origin (per §5.5a).
 ```
 
 ### Removed
@@ -363,23 +372,89 @@ dedup-reuse pattern from 2b.2.a.3 holds: same email → same contact, same
 open deal, new attribution + new activity each submission. Path-based
 `source_channel` detection routes correctly into both enum values.
 
-### 5.4 — Operator validation (§6.2, manual)
+### 5.4 — Operator validation (§6.2, manual) — setup
 
 The four manual smoke checks (iframe attribution, hosted-URL attribution,
 dedup, admin notification) need a live browser session against
-`dental-test-practice-2026.netlify.app` and the deployed CRM. Automated
-§5.3 already proves the four primitives (contact creation, deal opening,
-attribution capture, dedup reuse) end-to-end against the same alias the
-operator will hit. The notification path runs through `ingestLead`'s
-`lead.arrived` emitter, which Phase 2b.2.a.3 §11.4 already verified for
-WhatsApp + cross-channel — the form path uses the same emitter.
+`dental-test-practice-2026.netlify.app` and the deployed CRM. Toffee
+flagged that the test site previously only had the booking widget — no
+marketing-form iframe — so the iframe scenario couldn't be exercised.
+This commit adds the iframe to the test site, plus the CSP fix above, and
+re-deploys both surfaces.
+
+**Test-site changes** (folder at `~/auth-app/test-practice-site/`, deployed
+via `netlify deploy --prod`; **not** part of the dental-crm git repo):
+
+- `index.html`: new "Quick enquiry — get a callback" section with an
+  iframe pointing at `https://dental-crm-nine.vercel.app/forms/embed/f2c62de3-562a-41bf-ae61-3f50f9f0efcb`.
+- `contact.html`: same iframe, placed under the existing inline booking
+  widget. Both surfaces tested.
+- Inline `<script>` on both pages: a tiny ~25-line shim that copies UTMs
+  + paid-channel click IDs (gclid/fbclid/msclkid/ttclid) from the parent
+  page's `window.location.search` into the iframe's `src` BEFORE the
+  iframe loads. Without this, the iframe URL captures only the
+  attribution that's hardcoded in the iframe `src`, not the parent
+  page's URL — i.e. the headline §6.2 scenario "Toffee navigates to
+  `?utm_source=opTest&gclid=opGclidTest123` and the form captures it"
+  would silently lose attribution. This is the inline minimum-viable
+  forwarder; the §8 question 1 SDK supersedes it in Phase 2b.4.
+
+**Operator-validation form** (`marketing_forms` row on tenant
+`5aadca14-9786-4aef-bc53-e9287cdd0bbf`):
+
+| field | value |
+|---|---|
+| `id` | `f2c62de3-562a-41bf-ae61-3f50f9f0efcb` |
+| `name` | `Bright Smile — book a consultation` |
+| `public_url_slug` | `bright-smile-consultation` |
+| fields | full_name (req), email (req), phone, message (textarea), marketing_consent (checkbox) |
+| status / is_published | `active` / `true` |
+
+So the operator hosted-URL test target is
+`https://dental-crm-nine.vercel.app/f/bright-smile-consultation` and the
+iframe target is
+`https://dental-crm-nine.vercel.app/forms/embed/f2c62de3-562a-41bf-ae61-3f50f9f0efcb`.
 
 **OPERATOR ACTION REQUIRED** (carried over from prompt §6.2): Toffee
 runs the four iframe / hosted-URL / dedup / notification browser checks
-when convenient and reports the four ✅. No code changes are pending on
-those checks; they are confirmation that the headline scenario (iframe
-on practice site → contact in CRM → deal open → notification) holds in
-a real browser. If any anomaly turns up, capture in the next phase.
+when convenient and reports the four ✅. Automated §5.3 already proved
+the four primitives (contact creation, deal opening, attribution capture,
+dedup reuse) end-to-end against the same alias the operator will hit, so
+this is confirmation, not a discovery exercise. If any anomaly turns up,
+capture in the next phase.
+
+### 5.5a — Iframe embedding fix (caught during §6.2 setup)
+
+Setting up the operator-validation iframe on the test practice site
+(`dental-test-practice-2026.netlify.app`) surfaced a second prod-only
+problem: the global `next.config.js` `headers()` rule was sending
+`X-Frame-Options: SAMEORIGIN` on **every** route, including the
+public form-embed route at `/forms/embed/[id]` and the hosted form
+at `/f/[slug]`. Browsers refuse to render an iframe whose response
+carries `X-Frame-Options: SAMEORIGIN` when the parent page is on a
+different origin — so the whole "iframe-on-practice-site" headline
+scenario this phase is supposed to enable was actually blocked at the
+HTTP layer. Symptom: `curl -sI` returned `200` (so the smoke check
+in §5.3 passed), but the real browser silently refused to paint the
+iframe.
+
+**Fix (commit on top of 2b.3):** the global `'/:path*'` source rule in
+`next.config.js` is now a negative-lookahead path
+`/((?!forms/embed/|f/).*)` that **excludes** the iframable routes. Two
+new explicit rules then re-add the safe hardening headers
+(`X-DNS-Prefetch-Control`, `X-Content-Type-Options`, `Referrer-Policy`)
+plus an explicit `Content-Security-Policy: frame-ancestors *` for those
+two routes. `X-Frame-Options` is intentionally not emitted at all on
+those routes — modern browsers prefer the CSP `frame-ancestors` directive
+when both are present, but the absence of XFO removes any ambiguity for
+older browsers too.
+
+This is the minimum-viable iframe-on-third-party-site enabling change.
+Locking the allowed origins to a per-tenant allow-list is a nice-to-have
+the planner can pick up in 2b.4 alongside the parent → iframe URL-param
+SDK; the security exposure of `frame-ancestors *` for a public lead-capture
+form is the same as letting the form sit on a hosted landing page (any
+practice can already paste the hosted URL anywhere).
 
 ### 5.5 — Production bugs caught and fixed during §5.3
 

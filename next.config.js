@@ -34,9 +34,13 @@ const nextConfig = {
   // Headers for security and caching
   async headers() {
     const headers = [
-      // Security headers for all routes
+      // Security headers for all routes EXCEPT the public form-embed and
+      // hosted-landing routes — those need to render inside iframes on
+      // arbitrary third-party sites (the practice's own marketing pages).
+      // The negative lookahead excludes `/forms/embed/...` and `/f/...`;
+      // those get their own header rule below with `frame-ancestors *`.
       {
-        source: '/:path*',
+        source: '/((?!forms/embed/|f/).*)',
         headers: [
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
@@ -78,6 +82,32 @@ const nextConfig = {
               ? 'no-cache, no-store, must-revalidate' 
               : 'private, max-age=0, must-revalidate'
           },
+        ],
+      },
+      // Phase 2b.3: marketing-form embed + hosted-landing routes must be
+      // iframable from third-party origins (the whole point of the iframe
+      // embed snippet is that practices paste it into their own websites).
+      // The global rule above excludes them via negative lookahead; here
+      // we set the standard hardening headers that don't conflict with
+      // cross-origin iframing, plus an explicit `frame-ancestors *` CSP.
+      // We do NOT set X-Frame-Options for these routes — the global rule's
+      // SAMEORIGIN is excluded so no XFO is sent at all.
+      {
+        source: '/forms/embed/:id',
+        headers: [
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Content-Security-Policy', value: 'frame-ancestors *' },
+        ],
+      },
+      {
+        source: '/f/:slug',
+        headers: [
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Content-Security-Policy', value: 'frame-ancestors *' },
         ],
       },
     ];
