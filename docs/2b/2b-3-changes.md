@@ -557,7 +557,70 @@ channel now goes through `ingestLead()`:
 - `marketing_forms` and `marketing_form_submissions` columns match
   `form_builder_audit.md` §1.1.
 
-No new DDL was needed.
+### 7.1 Hotfix during operator validation — anon RLS on `marketing_forms`
+
+During §6.2 Toffee saw the iframe on `dental-test-practice-2026.netlify.app`
+render the words **"Form not found"** while the hosted `/f/{slug}` URL
+worked when opened in the same browser tab. Root cause:
+
+- `/forms/embed/[id]/page.tsx` and `/f/[slug]/page.tsx` are client
+  components that fetch `marketing_forms` with the **anon** Supabase
+  client.
+- Every existing RLS policy on `marketing_forms` gates SELECT on
+  `app_users.tenant_id = auth.uid()` or `auth.role() = 'service_role'`.
+- The hosted URL appeared to work only because Toffee was logged into the
+  CRM in the same browser, so the Supabase auth cookie carried a JWT and
+  RLS evaluated against his user — not a true public-visitor scenario.
+- The iframe is loaded from a third-party origin
+  (`dental-test-practice-2026.netlify.app`); CRM cookies are not sent, the
+  anon client has no JWT, RLS denies the row, `single()` errors with
+  "no rows", and the page falls through to its `Form not found` branch.
+
+This was a real public-surface bug, not just a cosmetic one — every
+unauthenticated visitor on every embedded form would have hit it.
+
+Fix shipped as migration
+`20260510_phase_2b_3_marketing_forms_anon_public_read.sql`:
+
+```sql
+GRANT SELECT ON public.marketing_forms TO anon;
+
+CREATE POLICY "Anon can read live published forms"
+  ON public.marketing_forms
+  FOR SELECT
+  TO anon
+  USING (
+    status = 'active'
+    AND is_published = true
+    AND deleted_at IS NULL
+  );
+```
+
+The grant lets anon touch the table; the policy decides which rows it
+can see. Drafts, archived, and soft-deleted forms remain invisible to
+anon. The two RPCs the public pages call (`increment_form_views`,
+`increment_form_submissions`) are already `SECURITY DEFINER` with
+`EXECUTE` to anon — verified before applying the migration.
+
+Verified after apply:
+
+```sql
+SET LOCAL ROLE anon;
+
+-- live form: visible
+SELECT id, status, is_published FROM marketing_forms
+ WHERE id = 'f2c62de3-562a-41bf-ae61-3f50f9f0efcb';
+-- → 1 row (active, published)
+
+-- everything else: invisible
+SELECT id FROM marketing_forms
+ WHERE status <> 'active' OR is_published = false OR deleted_at IS NOT NULL;
+-- → 0 rows
+```
+
+No app redeploy required — the change is purely a DB-side policy update,
+and the page is client-rendered so a browser refresh picks up the fix
+immediately.
 
 ---
 
