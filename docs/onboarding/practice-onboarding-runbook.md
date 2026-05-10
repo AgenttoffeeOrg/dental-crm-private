@@ -605,6 +605,95 @@ miss.
 
 ---
 
+## 9b. Inbound SMS provisioning (Phase 2b.4)
+
+> **Status:** SQL-only until the practice-onboarding wizard ships. Each new
+> practice that wants inbound SMS needs a dedicated Twilio number, the
+> webhook configured in the Twilio Console, and the number written into
+> `tenants.sms_phone_number`. The whole loop is ~10 minutes.
+
+### 9b.1 Buy / assign a Twilio SMS number
+
+Production model: every practice gets its own SMS number so we can resolve
+tenant by `To`.
+
+1. Twilio Console → **Phone Numbers → Manage → Buy a number**.
+2. Pick the country (UK for now). Filter by **SMS** capability.
+3. Buy the number. Cost is in the per-number-per-month range; bake into
+   the practice's plan or bill-through arrangement.
+4. Capture the E.164 form (e.g. `+447782218044`).
+
+For the test / friends-and-family practice, every tenant currently shares
+`+447782218044` — only the oldest tenant by `created_at` will actually
+receive messages (see `docs/operational-gotchas.md`). Keep this in mind
+during dev-loop testing; it's not a production pattern.
+
+### 9b.2 Configure the inbound webhook in the Twilio Console
+
+For the number you just bought (or the shared test number):
+
+1. Twilio Console → **Phone Numbers → Manage → Active numbers** → click
+   the number.
+2. Scroll to **Messaging Configuration**.
+3. Under **A message comes in**, set:
+   - Type: **Webhook**
+   - URL: `https://<your-crm-host>/api/webhooks/sms`
+   - HTTP method: **POST**
+4. Leave "Primary handler fails" alone.
+5. **Save**.
+
+Don't fire a test SMS yet — the route resolves tenants by `To` against
+`tenants.sms_phone_number`, which the next step sets.
+
+### 9b.3 Set `tenants.sms_phone_number`
+
+```sql
+UPDATE public.tenants
+   SET sms_phone_number = '+44…'
+ WHERE id = '<tenant-id>'
+   AND (sms_phone_number IS NULL OR sms_phone_number != '+44…');
+```
+
+Idempotent; safe to re-run.
+
+### 9b.4 Smoke test
+
+From any phone, text a short message to the configured number. Within
+~10 seconds the practice should see:
+
+- A new contact (or an updated existing one if the phone matched).
+- A deal opened (or reused if one was already open — cross-channel reuse
+  from Phase 2b.2.a.3 means a prior WhatsApp inbound from the same phone
+  will share the deal).
+- An activity row of `type='sms'`, `direction='inbound'`, with the
+  message text in `description`.
+- A `lead.arrived` notification email.
+
+If the activity row doesn't appear within 30 seconds, check Vercel
+function logs for `[sms-inbound]` lines — every request emits a
+`correlation_id` UUID so you can trace a single inbound through.
+
+### 9b.5 Reminder: `pipeline_stages.is_won/is_lost` SQL
+
+Until the wizard ships, conversion-rate dashboards depend on at least one
+`is_won = true` and one `is_lost = true` stage on each pipeline. See
+`docs/2b/2b-2-a-3-changes.md` §11.3 for the exact SQL pattern. Phase 2b.4
+doesn't change this; it's just a reminder when onboarding a new practice.
+
+### 9b.6 What's deferred (do NOT promise yet)
+
+- MMS / inbound photo capture — captured in `raw_payload` for a future
+  phase but not downloaded or surfaced.
+- Outbound SMS UI from the contact pane — there are routes
+  (`/api/communications/send-sms`, `send-sms-v2`) but they currently
+  have no auth gate and need a separate phase.
+- A two-way SMS conversation thread — not in this phase cluster.
+- Auto-replies / business-hours / opt-out flows — deferred to a later
+  automations phase.
+- Per-tenant SMS settings UI — comes with the wizard.
+
+---
+
 ## 10. Things to watch for in week 1
 
 After go-live, follow up at 24 hours, 72 hours and 1 week. Each check-in is
