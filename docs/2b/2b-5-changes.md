@@ -378,21 +378,39 @@ All green.
   both untouched in this phase per the explicit "Don't refactor"
   scope rule, both predate 2b.5.
 
-### 9.2 Post-deploy curl checks (run after push)
-
-To be filled in after deploy succeeds. Expected:
+### 9.2 Post-deploy curl checks (run against `dental-crm-nine.vercel.app`)
 
 ```
-/api/communications/send-email     -> 401
-/api/communications/send-sms       -> 401
-/api/communications/send-sms-v2    -> 401
-/api/communications/send-whatsapp  -> 401
-/api/communications/send-whatsapp-v2 -> 401
-/api/communications/initiate-call  -> 401
-/api/emails/test                   -> 404
-/api/webhooks/sms (GET)            -> 200  (regression)
-/api/webhooks/sms (POST, no sig)   -> 401  (regression — 2b.4 behaviour)
+/api/communications/send-email     -> 401  ✅
+/api/communications/send-sms       -> 401  ✅
+/api/communications/send-sms-v2    -> 401  ✅
+/api/communications/send-whatsapp  -> 401  ✅
+/api/communications/send-whatsapp-v2 -> 401  ✅
+/api/communications/initiate-call  -> 401  ✅
+/api/emails/test                   -> 404  ✅ (deleted)
+/api/webhooks/sms (GET)            -> 200  ✅ (regression)
+/api/webhooks/sms (POST, no sig)   -> 401  ✅ (regression — 2b.4 behaviour)
 ```
+
+Sample 401 body shape (verifying the contract):
+
+```json
+{"error":"unauthenticated","message":"Login required"}
+```
+
+All curl checks green.
+
+#### 9.2.a SWC build fix-up
+
+Initial deploy (commit `ad432f3`) failed because the new
+`const requestBody = await request.json()` in
+`src/app/api/ai-assistant/draft-email/route.ts` was originally written
+as `const body = ...`, which clashed with a later
+`const body = aiDraft.replace(...)` in the same function. ts-jest's
+TypeScript shadowed the binding silently; SWC's strict block scoping
+in production rejected it ("`body` redefined here"). Fix-up commit
+`607e390` renamed the helper-prelude local to `requestBody` —
+3-line change, no behavioural impact.
 
 ### 9.3 Operator gate
 
