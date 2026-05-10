@@ -19,9 +19,9 @@ export async function POST(request: NextRequest) {
     // model it (see 2b-5-changes.md §3), so we leave the gate
     // unparameterised until that schema lands.
     const auth = await requireAuthenticatedTenantUser(request)
-    const body = await request.json()
-    assertBodyTenantMatches(body?.tenantId, auth.tenantId)
-    const { activityId, dealId, contactId, incomingEmailContent } = body
+    const requestBody = await request.json()
+    assertBodyTenantMatches(requestBody?.tenantId, auth.tenantId)
+    const { activityId, dealId, contactId, incomingEmailContent } = requestBody
     const tenantId = auth.tenantId
 
     const supabase = createServiceClient()
