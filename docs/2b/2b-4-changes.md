@@ -196,42 +196,121 @@ skips, 0 failures** — confirming the migration / type changes / new
 
 ### 8.2 Curl tests against deployed Vercel build (post-push)
 
+Push commit `fa9827f`; deploy `dpl_CDQ37Xrnb36joTfLTNro9wK73TcZ` →
+`dental-48txbhkyk-toffeehegde-9056s-projects.vercel.app` aliased to
+`dental-crm-nine.vercel.app`.
+
 ```
 GET  /api/webhooks/sms                                   → 200 { "status": "ready", "endpoint": "sms-webhook", "version": "phase-2b.4" }
 POST /api/webhooks/sms (no X-Twilio-Signature)           → 401 (empty body)
 POST /api/webhooks/sms (X-Twilio-Signature: junk)        → 401 (empty body)
 ```
 
-_(Filled in by Cursor after deploy; see commit footer for SHA.)_
+All three pass — the new route is live, the GET health check responds
+with the phase-2b.4 version marker (proving the new code shipped, not
+the cached pre-2b.4 GET handler), and signature gating returns 401 for
+both missing-header and invalid-signature requests.
 
-### 8.3 Operator validation gate
+### 8.3 Operator validation gate — **PASSED (2026-05-10)**
 
-> **Pending until operator confirms — captured below once received.**
+#### Twilio Console webhook repoint (Step 0.2)
 
-The operator was asked to:
+The operator initially saw Twilio's default canned reply ("Thanks for the
+message. Configure your numbers' SMS URL to change this message") on the
+first SMS attempt — Twilio's "no webhook configured" fallback. Confirmed
+via Console screenshots that the per-number "Handling for incoming
+messages → Webhook URL" was still pointed at
+`https://demo.twilio.com/welcome/sms/reply` (Twilio's default demo URL).
 
-1. Send an SMS to `+447782218044`: "Hi, interested in Invisalign for my
-   teen — what does the process look like?"
-2. Send a second SMS from the same phone: "Actually, also curious about
-   teeth whitening pricing — and what hours are you open?"
-3. Send a WhatsApp message from the same phone to the WhatsApp sandbox:
-   "One more question — do you do payment plans?"
-4. Confirm in the CRM:
-   - One contact with the operator's phone.
-   - One open deal on that contact (reused, not duplicated).
-   - Three activity rows on the deal: two SMS inbound, one WhatsApp
-     inbound.
-   - Lead-arrived notification fired on the first SMS.
+Operator changed it to
+`https://dental-crm-nine.vercel.app/api/webhooks/sms` with HTTP method
+POST. The number IS associated with a Messaging Service ("Notify -
+Dental CRM") which Twilio warns may override per-number config; in
+practice the per-number webhook took precedence and no Messaging
+Service edit was needed (verified by `MessagingServiceSid=MGb62e0…` on
+the inbound payload + the route still receiving POSTs after the
+per-number change).
 
-Operator-supplied IDs:
+#### Smoke-test 1 — new contact path (operator phone A: `+447424805475`)
 
-- Contact UUID: _(pending)_
-- Deal UUID: _(pending)_
-- Activity UUIDs: _(pending)_
-- Notification delivery rows: _(pending)_
+Sent at **16:13 BST** (15:13 UTC). Landed end-to-end inside 4 seconds:
 
-Update this section once the operator replies with the four ✅s and the
-UUIDs.
+| What | UUID | Detail |
+|---|---|---|
+| Touchpoint | `cfd72867-4978-48bf-959f-ac4613397762` | source_channel=`sms_inbound`, external_message_id=`SM958d9d00bd4c01b253847b756fb12b07`, occurred 15:13:24Z |
+| Contact | `eff2b8c1-9b25-47e5-bc33-0cd6e64d5848` | primary_phone_e164=`+447424805475`, source=`sms_inbound`, full_name=null (later set by operator), status=`lead` |
+| Deal | `357ccbb7-cb9f-4e44-9fc6-2866695a57cc` | title="Inquiry", status=`open`, source=`sms_inbound`, pipeline=`47be4b64-…`, currency=GBP, created 15:13:26Z |
+| Activity | `0d208c1e-6f92-43d4-b830-5ccf8977ef3e` | type=`sms`, direction=`inbound`, deal_id=`357ccbb7-…`, description="Hi, interested in Invisalign for my teen, what does the process look like?" |
+| Notification | `cf2c4683-5d28-431f-9237-92749d16a0a6` | event_key=`lead.arrived`, channel=`email`, provider=`resend`, status=`sent` at 15:13:28Z (4s after touchpoint) |
+
+Raw Twilio payload preserved on the touchpoint with all expected fields
+including `MessagingServiceSid=MGb62e0ac8fb4da71bb50337f42100ca56` and
+the `_media_urls=[]` / `_num_media=0` markers from
+`processSmsInboundMessage`. ✅
+
+#### Smoke-tests 2 + 3 — dedup + deal-reuse + cross-channel (operator phone B: `+447404683609`)
+
+The operator switched to a different phone for tests 2 and 3 — sent
+two SMSs and one WhatsApp from `+447404683609`. The first SMS created a
+new contact (no prior touchpoint for this phone); the second SMS and
+the WhatsApp both landed on that contact via dedup + deal-reuse.
+
+| What | UUID | Detail |
+|---|---|---|
+| Contact (NEW from this phone) | `5c19db1f-38b0-4445-9661-58d6795060b2` | primary_phone_e164=`+447404683609`, full_name="shamanth", source=`sms_inbound`, created 15:22:06Z. **Single row** — both later SMS and the WhatsApp landed here, not in a duplicate. |
+| Deal (reused for SMS #2 + WhatsApp) | `878bdd75-ece5-4967-9326-cdb36acc4dc0` | title="Inquiry", status=`open`, source=`sms_inbound` (originating channel), pipeline=`47be4b64-…`. **Single row** — the deal opened on the first SMS was reused for both subsequent inbounds via cross-channel deal reuse from 2b.2.a.3. |
+| SMS touchpoint #1 (15:22:06Z) | `cabe546f-5c9d-4f8c-b81c-332042cb3b65` | external_message_id=`SM7aa0db2cd6a724679abb6be9f63f2a47` |
+| SMS touchpoint #2 (15:23:48Z) | `a9661871-d264-4839-9c04-fcff1dbd4779` | external_message_id=`SM0193be4488130a9cbe9e08853600ec8f`, on the same contact — proves **dedup** ✅ |
+| WhatsApp touchpoint (15:26:30Z) | `893425d2-d414-4abb-bc72-3d84097d2064` | source_channel=`whatsapp_inbound`, external_message_id=`SMeb6312402bc73161ed174f10c6a1ce90`, on the same contact — proves **cross-channel** ✅ |
+| SMS activity #1 | `d97af34f-1ce9-49a5-961f-ad17c9c497fe` | deal_id=`878bdd75-…`, type=`sms`, direction=`inbound` |
+| SMS activity #2 | `ceb9bef6-0110-41ca-883f-8b56dbeaf8a8` | deal_id=`878bdd75-…` — same deal, second activity, proves **deal-reuse** ✅ |
+| WhatsApp activity | `f0158bc5-1b6f-45cc-9765-eed000b780ff` | deal_id=`878bdd75-…`, type=`whatsapp`, direction=`inbound`, source_channel=`whatsapp_inbound` — three activities now hang off the same deal across two channels |
+
+Final state of deal `878bdd75-…`: 3 activities (SMS, SMS, WhatsApp),
+3 attribution_touchpoints (2 sms_inbound + 1 whatsapp_inbound), 1
+contact, status `open`. Operator confirmed the same in the CRM UI.
+
+#### Four ✅s
+
+1. **new-contact path** — ✅ contact + deal + activity + touchpoint +
+   notification all created on the first SMS for both test phones.
+2. **dedup** — ✅ second SMS from `+447404683609` matched the existing
+   contact via Tier 2 phone match; no duplicate contact row created.
+3. **deal-reuse** — ✅ second SMS attached to the same open deal;
+   `findReusableOpenDeal` (Phase 2b.2.a.3) selected the existing
+   `878bdd75-…` instead of opening a second.
+4. **cross-channel** — ✅ WhatsApp from `+447404683609` matched the same
+   contact (phone match across the `whatsapp:` prefix-strip) and
+   appended to the same deal. Three activities now span two channels
+   on one deal.
+
+#### Notable observations (ops follow-up — not blocking)
+
+- **Twilio MessageSid prefix collision across channels.** WhatsApp's
+  `external_message_id` was `SMeb6312402bc73161ed174f10c6a1ce90` —
+  same `SM…` prefix Twilio uses for SMS. The partial unique index on
+  `(tenant_id, source_channel, external_message_id)` correctly kept
+  the keyspaces independent. Validates the operational-gotchas entry.
+- **Per-number webhook overrode the Messaging Service.** Twilio's
+  warning ("may override") was conservative here — the per-number
+  config took precedence. If a future practice has a different
+  Messaging Service setup, the inbound flow may instead need to be
+  configured at the service level. Capture this in the
+  per-practice provisioning runbook section if it ever bites.
+- **First test phone (`+447424805475`)'s contact was named "Unknown
+  Lead"** until the operator manually added a name in the CRM. SMS
+  carries no display-name field; the natural CRM workflow is to fill
+  the name on first contact attempt. Same as WhatsApp on the rare
+  payloads where `ProfileName` is empty. No change needed.
+- **No `consent_records` row was created** for either contact. The
+  WhatsApp inbound rebuild (2b.2.a) followed the same pattern: the
+  ingestLead call shape used by Twilio inbound paths doesn't pass an
+  explicit `consent` block, so no `consent_records` row is written.
+  This was flagged in §3 row C as an adaptation. If we want
+  per-message implied-consent capture, the engine needs to grow a
+  channel-default consent path (or each Twilio-inbound orchestrator
+  needs to write the row directly). Not a 2b.4 regression — same shape
+  as 2b.2.a — but worth making explicit in §11 below.
 
 ---
 
@@ -264,11 +343,17 @@ deferred items so onboarding operators don't over-promise.
 
 ### 9.3 Twilio Console webhook repoint (operator action — Step 0.2)
 
-The operator (Toffee) was asked at the start of the phase to repoint the
-real Twilio number's "A message comes in" webhook from the default
-`https://demo.twilio.com/welcome/sms/reply` to
-`https://dental-crm-nine.vercel.app/api/webhooks/sms`. _(Confirmation
-captured here once the operator replies.)_
+Confirmed 2026-05-10. The operator changed the per-number "Handling for
+incoming messages → Webhook URL" on `+447782218044` from the Twilio
+default (`https://demo.twilio.com/welcome/sms/reply`) to
+`https://dental-crm-nine.vercel.app/api/webhooks/sms` (HTTP method POST).
+The number is also associated with a Messaging Service ("Notify -
+Dental CRM") which Twilio warns may override per-number config; in
+practice the per-number webhook took precedence and post-change inbound
+SMSs were correctly routed to our handler (verified by the
+`MessagingServiceSid=MGb62e0…` field present on inbound payloads + the
+SMS / activity / touchpoint / notification rows landing in the DB
+after the change). See §8.3 for the full smoke-test trace.
 
 ### 9.4 Vercel env var sanity
 
@@ -312,6 +397,20 @@ operator follow-up, decline politely and capture in §11 below.
 
 ## 11. Open questions for next phase
 
+- **No `consent_records` row written for Twilio-inbound channels.**
+  Surfaced during operator validation (§8.3): both the SMS-only contact
+  (`eff2b8c1-…`) and the cross-channel contact (`5c19db1f-…`) have zero
+  rows in `consent_records`. Same shape as WhatsApp inbound. Patient-
+  initiated inbound is implied transactional consent under
+  `legitimate_interests` lawful basis, but right now nothing persists
+  that. Two paths to fix: (a) extend `ingestLead` so each
+  `source_channel` has a default consent shape applied when no
+  explicit `consent` block is passed; (b) have each Twilio-inbound
+  orchestrator (`processSmsInboundMessage`,
+  `processWhatsappInboundMessage`) write the consent row directly
+  after `ingestLead` returns. Path (a) is cleaner — captures the
+  implied-consent semantic once for every channel — but is a wider
+  change. Decide before any GDPR-audit phase ships.
 - **Multi-tenant collision on shared test number.** During friends-and-
   family testing, more than one practice is likely to point at
   `+447782218044`. The helper picks the oldest tenant by `created_at`
