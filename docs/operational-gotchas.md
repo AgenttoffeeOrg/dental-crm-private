@@ -63,3 +63,19 @@ Things that have bitten us in production. Read before debugging anything weird.
 **Don't:** re-add `tenant_id` reading from the request body. The whole point is that nobody outside an authenticated session can pick the tenant. Mismatch on body `tenant_id` → 403 `tenant_mismatch`. Body `tenant_id` is silently overridden by the authenticated value if absent.
 
 **First seen:** Phase 2b.5 (outbound communications auth fix). Closes the D03 §1 unauthenticated-send P0.
+
+## Outbound credential split-brain: legacy settings tabs ≠ dispatcher
+
+**Symptom:** practice owner fills in "SMS Configuration" / "WhatsApp Configuration" / "Email Configuration" tabs in Settings, saves, then tries to send a message — dispatcher throws `"SMS integration not configured. Please configure in Settings → Integrations."`.
+
+**Cause:** the legacy single-channel settings tabs (`<EmailConfigTab>`, `<SMSConfigTab>`, `<WhatsAppConfigTab>`) write to plain-text columns on the `tenants` table (`tenants.smtp_host`, `tenants.sms_api_key`, `tenants.sms_api_secret`, `tenants.sms_from_number`, `tenants.whatsapp_api_key`, etc.). The dispatcher (`lib/communications/dispatcher.ts`) reads its credentials via `loadTenantIntegrationSettings` (`lib/integrations/tenant-integration-config.ts`), which resolves from `integration_secret_vault` → `integration_channel_settings` → `integration_settings` → env. **The dispatcher does not read the legacy `tenants.sms_*` / `tenants.whatsapp_*` / `tenants.smtp_*` columns at all.** So the legacy tabs save successfully and configure nothing.
+
+The newer combined `<CommunicationsIntegrationsTab>` writes to `integration_settings`, which the dispatcher *does* read. That tab works.
+
+**Additional trap on the API side:** `PATCH /api/settings/email`, `PATCH /api/settings/sms`, `PATCH /api/settings/whatsapp` (the routes the legacy tabs POST to) accept `tenant_id` from the request body, use the service-role Supabase client, and have **no authentication**. Anyone with the URL can rotate any tenant's outbound credentials. Tracked as a P0 in `docs/audits/outbound_audit.md` §11.
+
+**Fix:** until the legacy tabs are deleted or rewired (planned phase 2b.7 / 2b.8 per the outbound audit), tell practice owners to use only the **Communications Integrations** tab. Internally, never read or write `tenants.sms_*` / `tenants.whatsapp_*` / `tenants.smtp_*` columns from new code — go through `loadTenantIntegrationSettings` for reads and `integration_settings` for writes.
+
+**Bonus trap:** the v2 SMS / v2 WhatsApp routes (`/api/communications/send-sms-v2`, `/send-whatsapp-v2`) *do* read those legacy plain-text columns (and write thinner activity rows that lack `agent_user_id` / `metadata.ai_*` / `snippet`). They are dormant — no UI calls them — but if anyone wires them up, they will silently bypass the canonical credential resolver. Plan: delete in 2b.7. Until then, don't use v2.
+
+**First seen:** Phase 2b.6 (outbound communications audit). See `docs/audits/outbound_audit.md` §7 and §11 issue #4.
