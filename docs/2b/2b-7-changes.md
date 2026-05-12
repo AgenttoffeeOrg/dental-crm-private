@@ -158,6 +158,35 @@ is a pre-existing project annoyance — not introduced in 2b.7. Codacy
 CLI's ESLint also runs cleanly via the MCP server. The lint score for
 modified files is captured in §10 below.
 
+### 3.7 Audit P0 #3 was a file-level finding, not a call-graph finding — `<BulkSendPanel>` is orphaned
+
+A post-build grep across the repo for `BulkSendPanel` and
+`bulk-send-panel` confirms that **no source file in `src/` imports
+the component.** The only occurrences are the component file itself
+(`src/components/communications/bulk-send-panel.tsx`) and two doc
+files (`docs/audits/outbound_audit.md`,
+`docs/2b/2b-7-changes.md`). No page in `src/app/` renders it; no
+parent component composes it.
+
+The 2b.6 audit's P0 #3 finding (and audit §1.1) was based on
+**file-level static analysis**: the file uses `<Avatar>` and
+`<AvatarFallback>` without importing them, so React *would* throw at
+render time. That much is true. What the audit did not check was
+**call-graph reachability** — whether anything actually mounts the
+component. Nothing does.
+
+The 2b.7 fix (adding the shadcn `avatar` import) is structurally
+correct and defensive: if the component is ever wired up in a future
+phase, it will compile and render. But the **real-world impact of the
+fix is nil today** — there is no user-reachable code path that mounts
+`<BulkSendPanel>`, so there was no production-visible crash to fix.
+
+This shifts the operator-gate item §11.4 (originally "navigate to the
+bulk-send panel and confirm render") to **N/A — see §11**. And it
+adds a new open question for 2b.8 — see §13: delete the component as
+a continuation of the 2b.7 dead-code purge, or commit to wiring it
+into the Contacts page as a real bulk-message feature.
+
 ---
 
 ## 4. New TypeScript modules
@@ -427,12 +456,13 @@ These five browser-based checks are not optional. Each must come back
    toast green.
 3. **Settings → WhatsApp Configuration tab**: same shape. Loads,
    saves, toast green.
-4. **Open the page that hosts `<BulkSendPanel>`**: the panel is
-   surfaced from the contacts list — select multiple contacts and
-   trigger the bulk-send action (Email or SMS button on the
-   multi-select toolbar). Confirm the panel renders without a React
-   error overlay and shows the contact-selection UI with each
-   contact's avatar circle. **Do not actually click Send.**
+4. **N/A — `<BulkSendPanel>` is an orphaned component (no page in
+   `src/app/` imports it).** The Avatar imports fix is structurally
+   correct and defensive but cannot be visually verified because
+   nothing mounts the component. Verified by grep: only the component
+   file itself and two doc files reference `BulkSendPanel`. See §3.7
+   for the call-graph reasoning and §13 for the 2b.8 follow-up
+   question.
 5. **Log out, then attempt `PATCH /api/settings/email`** from the
    browser DevTools console with `fetch` and no cookie. Confirm 401.
    (Belt-and-braces alongside the curl in §9.2.)
@@ -480,3 +510,10 @@ scope (deferred)". Summary:
    SES still coexist (2b.5 §3.4 captured this). 2b.7 didn't touch it;
    2b.8 should at minimum decide which is the canonical sender and
    document the others as fallbacks-only.
+4. **`<BulkSendPanel>` is orphaned dead code.** Confirmed by grep
+   during 2b.7 post-deploy — no source file in `src/` imports the
+   component; the audit's P0 #3 was a file-level finding that didn't
+   account for call-graph reachability (see §3.7). In 2b.8, decide
+   whether to (a) delete it as a continuation of the 2b.7 dead-code
+   purge, or (b) commit to wiring it into the Contacts page as a
+   real bulk-message feature for launch. Recommendation pending.
