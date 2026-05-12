@@ -22,7 +22,7 @@ skipped)`).
 ("Deepak's Dental Practice"); operator user
 `deepakshegde@gmail.com` (`role=owner`, `status=active`).
 **Production deploy target:** https://dental-crm-nine.vercel.app
-(deploy ID captured in §9).
+(`dpl_E527iwXBAxfayTddMpc8UkirKbhA`, READY).
 
 ---
 
@@ -418,14 +418,33 @@ of scope for 2b.8.
 
 ## 9. What you have to do operationally
 
-### 9.1 Commit + push + deploy
+### 9.1 Husky hook fired cleanly
 
-Captured at §9 below after deploy fires. See §10 for the actual deploy
-ID.
+```
+[2026-05-12T20:45:05Z] git pre-push hook triggered
+  repo    : /Users/deepak/auth-app/dental-crm
+  branch  : phase-1-attribution-foundation
+  sha     : 5fd12df
+  scope   : team_5U85NyAOQrHvS30Kp4hFyp6y
+  note    : sleeping 12s before deploy to let push complete
+```
 
-### 9.2 Curl smoke against production
+Deploy ID: `dpl_E527iwXBAxfayTddMpc8UkirKbhA`. State: `READY`. Aliased
+to `https://dental-crm-nine.vercel.app`. No manual `npm run deploy:prod`
+fallback needed.
 
-Captured at §10 below.
+### 9.2 Post-deploy curl smoke — all four passed
+
+| Endpoint | Method | Status | Expectation |
+|---|---|---|---|
+| `/api/settings/email` | PATCH (anon, body `{"tenant_id":"x"}`) | **404** | 404 or 405 (route deleted) |
+| `/api/settings/sms` | PATCH (anon, body `{"tenant_id":"x"}`) | **404** | 404 or 405 (route deleted) |
+| `/api/settings/whatsapp` | PATCH (anon, body `{"tenant_id":"x"}`) | **404** | 404 or 405 (route deleted) |
+| `/settings` | GET (anon) | **200** | 200 (page renders / serves login redirect) |
+
+All four match expectations. None of the three deleted routes returned
+401, which would have meant the route was still live — that would have
+been a deployment bug. Clean cutover.
 
 ### 9.3 Read-only DB checks (already done pre-deploy)
 
@@ -452,14 +471,14 @@ authored but not applied.
 
 ## 11. Deploy ID
 
-To be filled in after `git push` fires the husky hook. See §9 / §10
-update commit.
+`dpl_E527iwXBAxfayTddMpc8UkirKbhA` — see §9.1.
 
 ---
 
 ## 12. Curl smoke results
 
-To be filled in after deploy is READY.
+See §9.2. Summary: three deleted settings PATCH routes return 404,
+`/settings` page returns 200. All four match expectations.
 
 ---
 
@@ -560,32 +579,36 @@ Authored at phase start (prompt §13). Updated below with anything
 
 ## 16. Definition of done
 
-- ☐ §1 pre-flight grep results recorded — see §3 above.
-- ☐ §2.1 column classification recorded with the final drop set
+- ✅ §1 pre-flight grep results recorded — see §3 above.
+- ✅ §2.1 column classification recorded with the final drop set
    explicitly listed (14 DROP_SAFE, 5 PRESERVE) — see §3.4.
-- ☐ Migration `.sql` + rollback `.sql` + README authored under
+- ✅ Migration `.sql` + rollback `.sql` + README authored under
    `docs/2b/migrations-pending/`. Not applied. Verified by
    `ls supabase/migrations/ | grep 2b_8` returning zero matches.
-- ☐ The three legacy tab component files deleted.
-- ☐ The three settings API route files + their colocated tests
+- ✅ The three legacy tab component files deleted.
+- ✅ The three settings API route files + their colocated tests
    deleted. Empty parent directories removed.
-- ☐ `<BulkSendPanel>` file deleted.
-- ☐ Nav entries removed from every mount point identified in §1.2
+- ✅ `<BulkSendPanel>` file deleted.
+- ✅ Nav entries removed from every mount point identified in §1.2
    (both `settings-tabs.tsx` and `settings-tabs-v2.tsx`).
-- ☐ Post-deletion grep returns zero non-comment references to any of
+- ✅ Post-deletion grep returns zero non-comment references to any of
    the deleted symbols anywhere in `src/`.
-- ☐ Jest passes: 80 tests in the modified scope. (Prompt expected 67;
+- ✅ Jest passes: 80 tests in the modified scope. (Prompt expected 67;
    actual exceeds — see §3.5.)
-- ☐ TypeScript clean on touched files (no new TS errors introduced).
-- ☐ ESLint clean on touched files (no new ESLint findings introduced).
-- ☐ `npm run build` clean.
-- ☐ Codacy CLI clean on touched files (no new findings; pre-existing
+- ✅ TypeScript clean on touched files (no new TS errors introduced).
+- ✅ ESLint clean on touched files (no new ESLint findings introduced).
+- ✅ `npm run build` clean.
+- ✅ Codacy CLI clean on touched files (no new findings; pre-existing
    `getInitialState` CCN warning preserved).
-- ☐ Husky pre-push hook auto-deployed to Vercel; deployment is READY.
-- ☐ §9.2 curl smoke: three settings routes return 404 (or 405).
-- ☐ `2b-8-changes.md` written and complete.
-- ☐ `operational-gotchas.md` appended with the 2b.8 entry.
-- ☐ §10 operator gate: all five items ✅ (run by Toffee).
+- ✅ Husky pre-push hook auto-deployed to Vercel; deployment is READY
+   (`dpl_E527iwXBAxfayTddMpc8UkirKbhA`).
+- ✅ §9.2 curl smoke: three settings routes return 404; `/settings`
+   page returns 200.
+- ✅ `2b-8-changes.md` written and complete.
+- ✅ `operational-gotchas.md` appended with two 2b.8 entries
+   (migrations-pending directory + inbound routing identifiers).
+- ☐ §10 operator gate: all five items ✅ (run by Toffee). Currently
+   all five PENDING — see §13 above.
 
-When every checkbox is ✅, phase 2b.8 is done. Hand back to planner for
-2b.9 scoping.
+All Cursor-runnable items ✅. Phase 2b.8 hands off to Toffee for the
+five operator-gate items; once those land ✅, the phase is closed.
