@@ -117,3 +117,72 @@ routes have no caller at all and can themselves be deleted.
 
 **First seen:** Phase 2b.7 (settings auth + dead-code purge). See
 `docs/2b/2b-7-changes.md` and audit P0 #1–#3, P1 #9, P2 #24/#25.
+
+## `docs/2b/migrations-pending/` is a deliberately-quarantined apply path (2b.8)
+
+**Symptom:** somebody finds a `.sql` file under
+`dental-crm/docs/2b/migrations-pending/` and assumes the standard
+migration apply path will pick it up. It will not.
+
+**Cause:** Phase 2b.8 authored a single squashed migration that drops
+14 legacy outbound credential columns on `tenants` and the orphaned
+`email_logs` table (whose only writer was deleted in 2b.7). Per the
+locked decision in the 2b.8 prompt §0.4, the migration ships **with**
+the UI deletion but **not** as an apply — they are independently
+reviewable and rollback-able. The file lives outside
+`dental-crm/supabase/migrations/` precisely so `supabase db push` and
+the MCP `apply_migration` tool cannot pick it up by accident before
+the planner-approved follow-up phase moves it across with a fresh
+timestamp.
+
+**Fix:** any SQL file under `dental-crm/docs/2b/migrations-pending/`
+is in the "authored but not applied" state. To apply: read the file's
+header (apply steps documented), move into
+`dental-crm/supabase/migrations/` with a fresh `YYYYMMDDHHMMSS`
+prefix, apply via the project's standard path, regenerate TypeScript
+types (`supabase MCP generate_typescript_types`), run the post-apply
+check, document in the phase's changelog.
+
+**Bonus rule:** the rollback companion file
+(`*_rollback.sql`) is **not** itself a migration. Move both files
+together when applying; run the forward one only.
+
+**First seen:** Phase 2b.8 (settings UI rationalisation). See
+`docs/2b/2b-8-changes.md` §2 and the `migrations-pending/README.md`.
+
+## `tenants.sms_phone_number` and `tenants.whatsapp_phone_number` are inbound routing identifiers, not outbound credentials (2b.8)
+
+**Symptom:** a future "let's just drop all the legacy `tenants.sms_*`
+/ `tenants.whatsapp_*` columns" cleanup migration accidentally drops
+the `_phone_number` columns, and inbound SMS / WhatsApp webhooks stop
+resolving a tenant.
+
+**Cause:** the dispatcher reads outbound credentials from
+`integration_settings` (via `loadTenantIntegrationSettings`), so most
+of the `tenants.sms_*` / `tenants.whatsapp_*` plain-text columns are
+genuinely dead outbound surfaces. **But two of them**
+— `sms_phone_number` and `whatsapp_phone_number` — are used by the
+inbound Twilio webhook handlers (`src/lib/sms/inbound.ts:165` and
+`src/lib/whatsapp/inbound.ts:186`) to resolve the receiving number's
+tenant. Drop them and inbound delivery silently breaks (no tenant
+match → message dropped).
+
+**Fix:** any future schema cleanup migration that touches
+`tenants.sms_*` / `tenants.whatsapp_*` columns must explicitly
+preserve `sms_phone_number` and `whatsapp_phone_number` (and confirm
+no inbound resolver path was migrated to a different identifier in
+the meantime). The 2b.8 scheduled migration
+(`docs/2b/migrations-pending/20260512_phase_2b_8_drop_legacy_outbound_columns.sql`)
+omits both from its `DROP COLUMN` list with explicit `-- PRESERVED:`
+annotations and a post-apply check that asserts both columns still
+exist.
+
+**Related preserve list:** `tenants.email`, `tenants.email_main`, and
+`tenants.email_support` were also preserved by the same migration —
+they are tenant contact addresses used by the org profile editor, the
+onboarding contact step, and the marketing merge-tag resolver
+(`{{practice.email}}`), not outbound SMTP credentials. Don't drop
+them without grepping for surviving callers first.
+
+**First seen:** Phase 2b.8 (settings UI rationalisation, schema
+migration authoring). See `docs/2b/2b-8-changes.md` §3.4.

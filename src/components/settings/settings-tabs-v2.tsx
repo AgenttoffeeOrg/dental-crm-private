@@ -50,9 +50,10 @@ import { CustomFieldsTab } from './custom-fields-tab'
 import { TagsAndSourcesTab } from './tags-and-sources-tab'
 
 // Communications Section Components
-import { EmailConfigTab } from './email-config-tab'
-import { SMSConfigTab } from './sms-config-tab'
-import { WhatsAppConfigTab } from './whatsapp-config-tab'
+// Phase 2b.8: the legacy <EmailConfigTab>, <SMSConfigTab>, and
+// <WhatsAppConfigTab> were deleted. The canonical
+// <CommunicationsIntegrationsTab> is mounted under the Integrations
+// section's "Connected Apps" sub-tab below.
 import { UnifiedNotificationsTab } from './unified-notifications-tab'
 import { CalendarIntegrationTab } from './calendar-integration-tab'
 
@@ -96,9 +97,6 @@ const SECTION_TABS = {
     { id: 'tags-sources', label: 'Tags & Sources' },
   ],
   communications: [
-    { id: 'email', label: 'Email' },
-    { id: 'sms', label: 'SMS' },
-    { id: 'whatsapp', label: 'WhatsApp' },
     { id: 'notifications', label: 'Notifications' },
     { id: 'calendar', label: 'Calendar' },
   ],
@@ -144,7 +142,7 @@ export function SettingsTabs() {
     account: getInitialState().section === 'account' ? getInitialState().tab : 'profile',
     team: 'members',
     workflow: 'pipelines',
-    communications: 'email',
+    communications: 'notifications',
     ai: 'ai-assistant',
     integrations: 'connected-apps',
     system: 'security-privacy',
@@ -358,22 +356,10 @@ function renderWorkflowTabs(tab: string, tenantId: string | null) {
 function renderCommunicationsTabs(tab: string) {
   return (
     <>
-      <TabsContent value="email" className="space-y-6">
-        <EmailConfigTab />
-      </TabsContent>
-      
-      <TabsContent value="sms" className="space-y-6">
-        <SMSConfigTab />
-      </TabsContent>
-      
-      <TabsContent value="whatsapp" className="space-y-6">
-        <WhatsAppConfigTab />
-      </TabsContent>
-      
       <TabsContent value="notifications" className="space-y-6">
         <UnifiedNotificationsTab />
       </TabsContent>
-      
+
       <TabsContent value="calendar" className="space-y-6">
         <CalendarIntegrationTab />
       </TabsContent>
