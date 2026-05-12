@@ -79,3 +79,41 @@ The newer combined `<CommunicationsIntegrationsTab>` writes to `integration_sett
 **Bonus trap:** the v2 SMS / v2 WhatsApp routes (`/api/communications/send-sms-v2`, `/send-whatsapp-v2`) *do* read those legacy plain-text columns (and write thinner activity rows that lack `agent_user_id` / `metadata.ai_*` / `snippet`). They are dormant — no UI calls them — but if anyone wires them up, they will silently bypass the canonical credential resolver. Plan: delete in 2b.7. Until then, don't use v2.
 
 **First seen:** Phase 2b.6 (outbound communications audit). See `docs/audits/outbound_audit.md` §7 and §11 issue #4.
+## Settings PATCH routes are now auth-gated (2b.7)
+
+**Symptom:** any future server-internal HTTP caller of
+`/api/settings/email`, `/api/settings/sms`, or `/api/settings/whatsapp`
+will see a 401 `unauthenticated` unless it presents a valid CRM
+session cookie. As of 2b.7 there is no such internal caller; the only
+callers are the legacy single-channel settings tab UIs, which inherit
+the user's session cookie.
+
+**Cause:** Phase 2b.7 wrapped each route through the 2b.5 auth helper.
+The WHERE filter on the `tenants.update(...)` is pinned to
+`auth.tenantId` resolved via `requireAuthenticatedTenantUser`; body
+`tenant_id` is checked for mismatch (403 `tenant_mismatch` on
+disagreement) and otherwise ignored.
+
+**Implication for any future server-to-server caller:** present a
+session cookie via shared auth context, or add a service-token path —
+do not re-introduce body `tenant_id` reading. Phase 2b.8 is expected
+to delete the legacy tab UIs entirely, at which point these PATCH
+routes have no caller at all and can themselves be deleted.
+
+**Related deletions in 2b.7 (callers will now see 404):**
+
+- `POST /api/emails/welcome` — was unauthenticated; deleted. Public
+  spam vector. If any historical caller exists (no evidence of one in
+  source, env vars, or `vercel.json`), it will now 404.
+- `POST /api/communications/send-sms-v2` — deleted. Zero source
+  callers at the audit.
+- `POST /api/communications/send-whatsapp-v2` — deleted. Zero source
+  callers at the audit.
+
+**Library cleanup in 2b.7:** `src/lib/email-queue.ts` and
+`src/lib/marketing/sms-provider.ts` were deleted (zero callers). The
+`email_logs` Postgres table that `email-queue.ts` wrote to is
+**preserved** for now; drop is scheduled for 2b.8's migration sweep.
+
+**First seen:** Phase 2b.7 (settings auth + dead-code purge). See
+`docs/2b/2b-7-changes.md` and audit P0 #1–#3, P1 #9, P2 #24/#25.
