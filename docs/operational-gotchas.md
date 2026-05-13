@@ -186,3 +186,27 @@ them without grepping for surviving callers first.
 
 **First seen:** Phase 2b.8 (settings UI rationalisation, schema
 migration authoring). See `docs/2b/2b-8-changes.md` §3.4.
+
+## `<CommunicationsIntegrationsTab>` was a stub until 2b.8.2 (save/load lied)
+
+**Symptom:** from its introduction through end of Phase 2b.8,
+`<CommunicationsIntegrationsTab>` advertised as the canonical outbound
+credentials UI, yet **Save** only showed a misleading toast:
+“Database migration required to save settings” — **nothing was
+persisted**. **Load** returned immediately without calling the backend.
+
+**Cause:** handlers were placeholders (see `2b-8-cit-save-investigation.md`).
+The outbound audit did not trace CIT Save → network → DB (`outbound_audit`
+§1.2/§1.3 explicitly skipped this surface).
+
+**Fix (2b.8.2):** `GET` + `PATCH /api/settings/communications/integrations`
+plus `authFetch` wiring in `communications-integrations-tab.tsx`. See
+`docs/2b/2b-8-2-changes.md`.
+
+**Lesson for planners:** whenever a phase promotes a UI as **canonical**
+or “the working alternative,” add a **pre-flight that traces one Save
+through DevTools Network to a persisted row**. Inspecting React state alone
+misses stubbed persistence.
+
+**First seen:** documented at Phase 2b.8.2 (CIT save/load implementation).
+

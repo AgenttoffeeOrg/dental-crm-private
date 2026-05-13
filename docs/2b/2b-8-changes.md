@@ -612,3 +612,16 @@ Authored at phase start (prompt §13). Updated below with anything
 
 All Cursor-runnable items ✅. Phase 2b.8 hands off to Toffee for the
 five operator-gate items; once those land ✅, the phase is closed.
+
+---
+
+## 17. Closing note — 2b.8 operator gate unblocked by 2b.8.2
+
+**2b.8 operator gate item 2 was blocked by a CIT stub** (see
+`2b-8-cit-save-investigation.md` and `2b-8-2-changes.md`). **2b.8.2**
+implemented CIT save/load and replaces operator gate items **2** and **3**
+with a real credential round-trip. With 2b.8.2 merged and ✅ after Toffee’s
+SMS / reload / outbound verification, **all five 2b.8 operator gate
+items resolve** and 2b.8 may be treated as effectively closed beside any
+explicit column-drop migration apply phase tracked separately.
+

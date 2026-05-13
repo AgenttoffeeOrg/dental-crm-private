@@ -18,43 +18,121 @@ import {
   EyeOff,
   ExternalLink
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
+import { authFetch } from '@/lib/auth-fetch'
+
+type IntegrationChannelTab = 'email' | 'sms' | 'whatsapp' | 'voice'
 
 interface IntegrationSettings {
   id?: string
   tenant_id: string
-  
+
   // Email
   email_provider: string
   email_api_key: string
   email_from_address: string
   email_from_name: string
   is_email_configured: boolean
-  
+
   // SMS (Twilio)
   sms_account_sid: string
   sms_auth_token: string
   sms_from_number: string
   is_sms_configured: boolean
-  
+
   // WhatsApp (Twilio)
   whatsapp_account_sid: string
   whatsapp_auth_token: string
   whatsapp_from_number: string
   is_whatsapp_configured: boolean
-  
+
   // Voice (Twilio)
   voice_account_sid: string
   voice_auth_token: string
   voice_from_number: string
   is_voice_configured: boolean
-  
+
   // Webhooks
   email_webhook_url?: string
   sms_webhook_url?: string
   whatsapp_webhook_url?: string
   voice_webhook_url?: string
+}
+
+function channelLabel(channel: IntegrationChannelTab): string {
+  switch (channel) {
+    case 'email':
+      return 'Email'
+    case 'sms':
+      return 'SMS'
+    case 'whatsapp':
+      return 'WhatsApp'
+    case 'voice':
+      return 'Voice'
+    default:
+      return channel
+  }
+}
+
+function mapRowToState(row: Record<string, unknown>): Partial<IntegrationSettings> {
+  const s = (v: unknown): string =>
+    v === null || v === undefined ? '' : typeof v === 'string' ? v : String(v)
+
+  const emailProv = row.email_provider
+  return {
+    tenant_id: s(row.tenant_id),
+    email_provider:
+      typeof emailProv === 'string' && emailProv.trim() !== '' ? emailProv : 'sendgrid',
+    email_api_key: s(row.email_api_key),
+    email_from_address: s(row.email_from_address),
+    email_from_name: s(row.email_from_name),
+    is_email_configured: Boolean(row.is_email_configured),
+    sms_account_sid: s(row.sms_account_sid),
+    sms_auth_token: s(row.sms_auth_token),
+    sms_from_number: s(row.sms_from_number),
+    is_sms_configured: Boolean(row.is_sms_configured),
+    whatsapp_account_sid: s(row.whatsapp_account_sid),
+    whatsapp_auth_token: s(row.whatsapp_auth_token),
+    whatsapp_from_number: s(row.whatsapp_from_number),
+    is_whatsapp_configured: Boolean(row.is_whatsapp_configured),
+    voice_account_sid: s(row.voice_account_sid),
+    voice_auth_token: s(row.voice_auth_token),
+    voice_from_number: s(row.voice_from_number),
+    is_voice_configured: Boolean(row.is_voice_configured),
+  }
+}
+
+function extractChannelPayload(
+  channel: IntegrationChannelTab,
+  settings: IntegrationSettings
+): Record<string, string> {
+  switch (channel) {
+    case 'email':
+      return {
+        email_provider: settings.email_provider,
+        email_api_key: settings.email_api_key,
+        email_from_address: settings.email_from_address,
+        email_from_name: settings.email_from_name,
+      }
+    case 'sms':
+      return {
+        sms_account_sid: settings.sms_account_sid,
+        sms_auth_token: settings.sms_auth_token,
+        sms_from_number: settings.sms_from_number,
+      }
+    case 'whatsapp':
+      return {
+        whatsapp_account_sid: settings.whatsapp_account_sid,
+        whatsapp_auth_token: settings.whatsapp_auth_token,
+        whatsapp_from_number: settings.whatsapp_from_number,
+      }
+    case 'voice':
+      return {
+        voice_account_sid: settings.voice_account_sid,
+        voice_auth_token: settings.voice_auth_token,
+        voice_from_number: settings.voice_from_number,
+      }
+  }
 }
 
 export function CommunicationsIntegrationsTab() {
@@ -92,97 +170,66 @@ export function CommunicationsIntegrationsTab() {
 
   const loadSettings = async () => {
     setLoading(true)
-    const supabase = createClient()
-    
-    // Note: This component needs tenant context when integration_settings table exists
-    // For now, skip loading and use defaults
-    setLoading(false)
-    return
-    
-    /* Uncomment when integration_settings table is created:
-    const { data, error } = await supabase
-      .from('integration_settings')
-      .select('*')
-      .eq('tenant_id', orgId)
-      .single()
-    
-    // Handle errors gracefully
-    if (error) {
-      // PGRST116 = No rows found (expected for first time)
-      // PGRST205 = Table not in schema cache (migration not run yet)
-      // 42P01 = Table doesn't exist (PostgreSQL error)
-      if (error.code === 'PGRST116' || error.code === 'PGRST205' || error.code === '42P01') {
-        console.log('[Integrations] Initializing settings (table not migrated yet)')
-        toast.info('Integration settings ready to configure', {
-          description: 'Run the database migration to enable saving settings'
-        })
-      } else {
-        console.error('Error loading integration settings:', JSON.stringify(error))
-        toast.error('Failed to load settings', {
-          description: 'Unexpected error - check console for details'
-        })
-      }
-    }
-    
-    // Initialize settings (either from DB or empty)
-    if (data) {
-      setSettings(data)
-    } else {
-      setSettings({
-        tenant_id: tenantId,
-        email_provider: 'sendgrid',
-        email_api_key: '',
-        email_from_address: '',
-        email_from_name: '',
-        is_email_configured: false,
-        sms_account_sid: '',
-        sms_auth_token: '',
-        sms_from_number: '',
-        is_sms_configured: false,
-        whatsapp_account_sid: '',
-        whatsapp_auth_token: '',
-        whatsapp_from_number: '',
-        is_whatsapp_configured: false,
-        voice_account_sid: '',
-        voice_auth_token: '',
-        voice_from_number: '',
-        is_voice_configured: false
+    try {
+      const res = await authFetch('/api/settings/communications/integrations', {
+        method: 'GET',
       })
+      if (!res.ok) {
+        toast.error('Failed to load integration settings', {
+          description: `Server responded ${res.status}`,
+        })
+        setLoading(false)
+        return
+      }
+      const json = (await res.json()) as {
+        ok?: boolean
+        row?: Record<string, unknown>
+      }
+      if (json?.ok && json?.row && typeof json.row === 'object') {
+        setSettings((prev) => ({
+          ...prev,
+          ...mapRowToState(json.row as Record<string, unknown>),
+        }))
+      }
+    } catch (err) {
+      console.error('[CIT loadSettings] failed', err)
+      toast.error('Failed to load integration settings')
     }
-    
     setLoading(false)
-    */
   }
 
-  const saveSettings = async () => {
+  const saveSettings = async (channel: IntegrationChannelTab) => {
     setLoading(true)
-    
-    // TODO: Implement when integration_settings table is created
-    toast.info('Save integration settings', {
-      description: 'Database migration required to save settings'
-    })
-    
-    setLoading(false)
-    
-    /* Uncomment when integration_settings table is created:
-    const supabase = createClient()
-    
-    const { error } = await supabase
-      .from('integration_settings')
-      .upsert({
-        ...settings,
-        tenant_id: orgId,
-        updated_at: new Date().toISOString()
+    try {
+      const payload = extractChannelPayload(channel, settings)
+      const res = await authFetch('/api/settings/communications/integrations', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, payload }),
       })
-    
-    if (error) {
-      console.error('Error saving settings:', error)
-      toast.error('Failed to save settings')
-    } else {
-      toast.success('Integration settings saved!')
-      loadSettings()
+      const json = (await res.json()) as { ok?: boolean; error?: string; row?: Record<string, unknown> }
+      if (!res.ok) {
+        toast.error('Failed to save integration settings', {
+          description:
+            json?.error === 'invalid_payload'
+              ? 'Some required fields are missing or invalid.'
+              : `Server responded ${res.status}`,
+        })
+        setLoading(false)
+        return
+      }
+      toast.success(`${channelLabel(channel)} settings saved`)
+      if (json?.row && typeof json.row === 'object') {
+        setSettings((prev) => ({
+          ...prev,
+          ...mapRowToState(json.row as Record<string, unknown>),
+        }))
+      }
+    } catch (err) {
+      console.error('[CIT saveSettings] failed', err)
+      toast.error('Failed to save integration settings')
     }
-    */
+    setLoading(false)
   }
 
   const testIntegration = async (type: 'email' | 'sms' | 'whatsapp' | 'voice') => {
@@ -226,10 +273,10 @@ export function CommunicationsIntegrationsTab() {
             <h3 className="font-semibold text-blue-900 mb-1">Using New Unified Integration System</h3>
             <p className="text-sm text-blue-700 mb-2">
               This page is for API key-based integrations (Twilio, SendGrid). For OAuth integrations (Google, Facebook, Microsoft), 
-              use the <strong>"Integrations"</strong> tab above.
+              use the <strong>&quot;Integrations&quot;</strong> tab above.
             </p>
             <p className="text-xs text-blue-600">
-              💡 The new unified system allows one-click connection per provider. Switch to the "Integrations" tab to get started!
+              💡 The new unified system allows one-click connection per provider. Switch to the &quot;Integrations&quot; tab to get started!
             </p>
           </div>
         </div>
@@ -358,12 +405,12 @@ export function CommunicationsIntegrationsTab() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Configure this URL in your email provider's webhook settings
+                  Configure this URL in your email provider&apos;s webhook settings
                 </p>
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={saveSettings} disabled={loading}>
+                <Button onClick={() => saveSettings('email')} disabled={loading}>
                   Save Email Settings
                 </Button>
                 <Button
@@ -472,7 +519,7 @@ export function CommunicationsIntegrationsTab() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={saveSettings} disabled={loading}>
+                <Button onClick={() => saveSettings('sms')} disabled={loading}>
                   Save SMS Settings
                 </Button>
                 <Button
@@ -585,7 +632,7 @@ export function CommunicationsIntegrationsTab() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={saveSettings} disabled={loading}>
+                <Button onClick={() => saveSettings('whatsapp')} disabled={loading}>
                   Save WhatsApp Settings
                 </Button>
                 <Button
@@ -694,7 +741,7 @@ export function CommunicationsIntegrationsTab() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={saveSettings} disabled={loading}>
+                <Button onClick={() => saveSettings('voice')} disabled={loading}>
                   Save Voice Settings
                 </Button>
                 <Button
