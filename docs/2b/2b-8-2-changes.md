@@ -50,9 +50,18 @@ Prompt schema text originally implied every required column must be a **non-empt
 - **Test Connection:** still `testIntegration` stub (setTimeout + toast) — does **not** call `saveSettings`; post-launch per prompt §0.2.
 - **Tenant hooks:** none; session + `authFetch` carry auth; server resolves `tenant_id`.
 
-### 3.6 Production curl smoke (§6.2) — pre-deploy
+### 3.6 Production curl smoke (§6.2)
 
-Run **after** this commit deploys. **Before deploy:** `GET` / `PATCH` returned **404** (route not yet on production). **Expected after deploy:** **401** unauthenticated on both.
+**Expected after this route is deployed to the environment behind
+`dental-crm-nine.vercel.app`:** unauthenticated `GET` and `PATCH` return
+**401**.
+
+**Observed immediately after pushing `729f0eb` to
+`phase-1-attribution-foundation`:** both methods still returned **404**
+— the production hostname likely tracks **`main`** (or another ref), not
+this feature branch. Re-run curl from a **preview deployment** for this
+branch or after merge to the production branch. Record the final HTTP
+codes in §9.2 once verified.
 
 ---
 
@@ -100,9 +109,18 @@ Run **after** this commit deploys. **Before deploy:** `GET` / `PATCH` returned *
 
 ## 9. Deploy ID + curl smoke
 
-**Deploy ID:** *Pending husky/Vercel push from this repo.*  
+**Commit:** `729f0eb` on `phase-1-attribution-foundation` — pushed to GitHub.
 
-Re-run §3.6 curl after deploy — expect **401** for unauthenticated GET and PATCH.
+**Deploy ID:** *Recorded from Vercel after the deployment for this revision is READY (preview vs production depends on team wiring).*  
+
+**§6.2 curl (production hostname):**
+
+| Method | Target | Observed |
+|--------|--------|----------|
+| GET | `https://dental-crm-nine.vercel.app/api/settings/communications/integrations` | 404 *(likely wrong ref — prod may not mirror this branch yet)* |
+| PATCH (empty `{}` SMS payload pattern) | same | 404 |
+
+Re-run once the revision is live — expect **401** unauthenticated.
 
 ---
 
