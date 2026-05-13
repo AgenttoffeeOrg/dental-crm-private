@@ -52,16 +52,13 @@ Prompt schema text originally implied every required column must be a **non-empt
 
 ### 3.6 Production curl smoke (§6.2)
 
-**Expected after this route is deployed to the environment behind
-`dental-crm-nine.vercel.app`:** unauthenticated `GET` and `PATCH` return
-**401**.
+**Expected** on `https://dental-crm-nine.vercel.app`: unauthenticated
+`GET` / `PATCH` on `/api/settings/communications/integrations` → **401**;
+`GET /settings` → **200**.
 
-**Observed immediately after pushing `729f0eb` to
-`phase-1-attribution-foundation`:** both methods still returned **404**
-— the production hostname likely tracks **`main`** (or another ref), not
-this feature branch. Re-run curl from a **preview deployment** for this
-branch or after merge to the production branch. Record the final HTTP
-codes in §9.2 once verified.
+**Observed (verified):** matches §9 — production received the route after
+Husky-scheduled `vercel deploy --prod`; earlier **404** on that hostname
+was branch / propagation lag only.
 
 ---
 
@@ -109,18 +106,24 @@ codes in §9.2 once verified.
 
 ## 9. Deploy ID + curl smoke
 
-**Commit:** `729f0eb` on `phase-1-attribution-foundation` — pushed to GitHub.
+**Production hostname:** https://dental-crm-nine.vercel.app  
 
-**Deploy ID:** *Recorded from Vercel after the deployment for this revision is READY (preview vs production depends on team wiring).*  
+**Vercel deployment IDs** (from `dental-crm/.cursor/post-push-deploy.log`; both **READY**, production target, aliased to the hostname above):
 
-**§6.2 curl (production hostname):**
+| Order | ID | Notes |
+|-------|-----|--------|
+| Latest | `dpl_C59GjdbVRP3dAQ2zbHHKkUNuggUr` | READY; production alias applied |
+| Prior | `dpl_8dK6HgxTwsEAVmBLeQQsEk8sQDRm` | READY |
 
-| Method | Target | Observed |
-|--------|--------|----------|
-| GET | `https://dental-crm-nine.vercel.app/api/settings/communications/integrations` | 404 *(likely wrong ref — prod may not mirror this branch yet)* |
-| PATCH (empty `{}` SMS payload pattern) | same | 404 |
+**§6.2 curl smoke** (unauthenticated; same checks as phase prompt):
 
-Re-run once the revision is live — expect **401** unauthenticated.
+| Request | Result |
+|---------|--------|
+| `GET /api/settings/communications/integrations` | **401** |
+| `PATCH /api/settings/communications/integrations` (body `{"channel":"sms","payload":{}}`) | **401** |
+| `GET /settings` | **200** |
+
+**Branch / implementation:** `phase-1-attribution-foundation` — feature landed in commits including `729f0eb` / `674068c` (see git history for the full set).
 
 ---
 
@@ -170,7 +173,8 @@ See prompt §10 (stub-risk sweep; `2b-8-changes.md` backlog).
 | CIT stubs removed | ✅ |
 | Channel-aware saves | ✅ |
 | Jest / ESLint / build in scope | ✅ |
-| Prod curl 401 §6.2 | ☐ After deploy |
+| Husky / Vercel production deploy READY (`dpl_C59GjdbVRP3dAQ2zbHHKkUNuggUr` latest; `dpl_8dK6HgxTwsEAVmBLeQQsEk8sQDRm` prior) | ✅ |
+| Prod curl §6.2 (401 / 401 / 200) | ✅ |
 | Docs + operational-gotchas + 2b-8 append | ✅ |
 | Operator gate §7 | ☐ PENDING (Toffe) |
 
