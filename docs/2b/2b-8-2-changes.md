@@ -179,3 +179,47 @@ See prompt §10 (stub-risk sweep; `2b-8-changes.md` backlog).
 | Operator gate §7 | ☐ PENDING (Toffe) |
 
 When deploy + operator gate ✅, phase 2b.8.2 is fully closed end-to-end.
+
+---
+
+## 15. Post-deploy fix — CIT loading flag was UX-blocking saves
+
+**Symptom (reported by operator after first live save attempt):** filling
+out SMS Account SID / Auth Token / From Number and clicking **Save SMS
+Settings** showed *“Loading integration settings…”* and the form
+disappeared, looking permanently stuck.
+
+**Cause:** `<CommunicationsIntegrationsTab>` used a single `loading`
+boolean for **both** the initial GET and every PATCH. The render guard
+`if (loading) return <Loading...>` unmounted the entire form for the
+duration of each save. The label *“Loading integration settings…”* was
+the only visible state, so even a fast save looked like a hang; if the
+PATCH happened to be slow, the screen really did look frozen.
+
+**Fix:**
+
+- Split into `initialLoading` (gates the full-screen loader, fires only
+  for the mount GET) and `savingChannel` (`'email' | 'sms' | 'whatsapp'
+  | 'voice' | null`).
+- Form **stays mounted** during save. Only the matching Save button
+  becomes disabled and shows *“Saving…”*; other channels' Save buttons
+  also disable while one save is in flight (avoids overlapping PATCHes).
+- Added `fetchWithTimeout()` wrapping `authFetch` with a **15s
+  AbortController timeout** so a stuck server call can never wedge the
+  UI; timeouts surface a dedicated *“… timed out — please retry”* toast.
+- `await res.json()` on the save path is now guarded with `.catch(() =>
+  ({}))` so a non-JSON error body can't blow up the success handler.
+- `finally` blocks guarantee `initialLoading` / `savingChannel` are
+  always reset.
+
+**Files touched (same path as §5):**
+`src/components/settings/communications-integrations-tab.tsx`.
+
+**Validation:** `npx jest` (route tests) 10/10 green (route unchanged);
+ESLint clean on the file; `npm run build` clean. Codacy: only Lizard
+LOC/CCN metric warnings (carry-over for this file, no functional
+findings).
+
+**Deploy:** committed on `phase-1-attribution-foundation`, pushed —
+Husky pre-push hook re-triggers `vercel deploy --prod`. Re-run the
+§7 SMS round trip after the new deployment goes READY.

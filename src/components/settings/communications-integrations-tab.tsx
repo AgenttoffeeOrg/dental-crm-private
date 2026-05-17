@@ -135,8 +135,29 @@ function extractChannelPayload(
   }
 }
 
+// Hard cap so a stuck server call can never wedge the form indefinitely.
+const REQUEST_TIMEOUT_MS = 15_000
+
+async function fetchWithTimeout(
+  input: Parameters<typeof authFetch>[0],
+  init: RequestInit & { timeoutMs?: number } = {}
+): Promise<Response> {
+  const { timeoutMs = REQUEST_TIMEOUT_MS, signal: _ignoredCallerSignal, ...rest } = init
+  void _ignoredCallerSignal // explicitly drop a caller-supplied signal; we own the abort lifecycle here
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await authFetch(input, { ...rest, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export function CommunicationsIntegrationsTab() {
-  const [loading, setLoading] = useState(false)
+  // `initialLoading` = the very first GET on mount; only it should hide the form.
+  // `savingChannel` = which Save button (if any) is currently in-flight.
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [savingChannel, setSavingChannel] = useState<IntegrationChannelTab | null>(null)
   const [settings, setSettings] = useState<IntegrationSettings>({
     tenant_id: '',
     email_provider: 'sendgrid',
@@ -169,16 +190,15 @@ export function CommunicationsIntegrationsTab() {
   }, [])
 
   const loadSettings = async () => {
-    setLoading(true)
+    setInitialLoading(true)
     try {
-      const res = await authFetch('/api/settings/communications/integrations', {
+      const res = await fetchWithTimeout('/api/settings/communications/integrations', {
         method: 'GET',
       })
       if (!res.ok) {
         toast.error('Failed to load integration settings', {
           description: `Server responded ${res.status}`,
         })
-        setLoading(false)
         return
       }
       const json = (await res.json()) as {
@@ -193,21 +213,31 @@ export function CommunicationsIntegrationsTab() {
       }
     } catch (err) {
       console.error('[CIT loadSettings] failed', err)
-      toast.error('Failed to load integration settings')
+      const aborted = err instanceof Error && err.name === 'AbortError'
+      toast.error(
+        aborted
+          ? 'Loading integration settings timed out — please retry'
+          : 'Failed to load integration settings'
+      )
+    } finally {
+      setInitialLoading(false)
     }
-    setLoading(false)
   }
 
   const saveSettings = async (channel: IntegrationChannelTab) => {
-    setLoading(true)
+    setSavingChannel(channel)
     try {
       const payload = extractChannelPayload(channel, settings)
-      const res = await authFetch('/api/settings/communications/integrations', {
+      const res = await fetchWithTimeout('/api/settings/communications/integrations', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channel, payload }),
       })
-      const json = (await res.json()) as { ok?: boolean; error?: string; row?: Record<string, unknown> }
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+        row?: Record<string, unknown>
+      }
       if (!res.ok) {
         toast.error('Failed to save integration settings', {
           description:
@@ -215,7 +245,6 @@ export function CommunicationsIntegrationsTab() {
               ? 'Some required fields are missing or invalid.'
               : `Server responded ${res.status}`,
         })
-        setLoading(false)
         return
       }
       toast.success(`${channelLabel(channel)} settings saved`)
@@ -227,9 +256,15 @@ export function CommunicationsIntegrationsTab() {
       }
     } catch (err) {
       console.error('[CIT saveSettings] failed', err)
-      toast.error('Failed to save integration settings')
+      const aborted = err instanceof Error && err.name === 'AbortError'
+      toast.error(
+        aborted
+          ? 'Saving integration settings timed out — please retry'
+          : 'Failed to save integration settings'
+      )
+    } finally {
+      setSavingChannel(null)
     }
-    setLoading(false)
   }
 
   const testIntegration = async (type: 'email' | 'sms' | 'whatsapp' | 'voice') => {
@@ -247,7 +282,7 @@ export function CommunicationsIntegrationsTab() {
     toast.success('Webhook URL copied!')
   }
 
-  if (loading) {
+  if (initialLoading) {
     return <div className="p-8 text-center text-muted-foreground">Loading integration settings...</div>
   }
 
@@ -410,8 +445,8 @@ export function CommunicationsIntegrationsTab() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={() => saveSettings('email')} disabled={loading}>
-                  Save Email Settings
+                <Button onClick={() => saveSettings('email')} disabled={savingChannel !== null}>
+                  {savingChannel === 'email' ? 'Saving…' : 'Save Email Settings'}
                 </Button>
                 <Button
                   variant="outline"
@@ -519,8 +554,8 @@ export function CommunicationsIntegrationsTab() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={() => saveSettings('sms')} disabled={loading}>
-                  Save SMS Settings
+                <Button onClick={() => saveSettings('sms')} disabled={savingChannel !== null}>
+                  {savingChannel === 'sms' ? 'Saving…' : 'Save SMS Settings'}
                 </Button>
                 <Button
                   variant="outline"
@@ -632,8 +667,8 @@ export function CommunicationsIntegrationsTab() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={() => saveSettings('whatsapp')} disabled={loading}>
-                  Save WhatsApp Settings
+                <Button onClick={() => saveSettings('whatsapp')} disabled={savingChannel !== null}>
+                  {savingChannel === 'whatsapp' ? 'Saving…' : 'Save WhatsApp Settings'}
                 </Button>
                 <Button
                   variant="outline"
@@ -741,8 +776,8 @@ export function CommunicationsIntegrationsTab() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={() => saveSettings('voice')} disabled={loading}>
-                  Save Voice Settings
+                <Button onClick={() => saveSettings('voice')} disabled={savingChannel !== null}>
+                  {savingChannel === 'voice' ? 'Saving…' : 'Save Voice Settings'}
                 </Button>
                 <Button
                   variant="outline"
