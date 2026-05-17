@@ -210,3 +210,71 @@ misses stubbed persistence.
 
 **First seen:** documented at Phase 2b.8.2 (CIT save/load implementation).
 
+## `authFetch` can hang silently when supabase `getSession()` deadlocks on its NavigatorLock (2b.8.2)
+
+**Symptom:** a UI button (Save, Send, Connect, anything driven by
+`authFetch`) flips into its "…ing" state and stays there forever. No
+network request appears in DevTools — not even an aborted or pending
+one. No console error from the calling component, even when the caller
+wraps the request in an `AbortController` timeout.
+
+**Debugging hint:** **if a button hangs in the UI with no network
+request, suspect the auth header path before suspecting the route.**
+Confirm with DevTools → Network: filter to the expected method/URL —
+if no entry appears at all (not even pending), the request never left
+the browser, so the server route is innocent. Then look at the auth
+console for an `[AUTH] onAuthStateChange SIGNED_IN` event firing near
+the moment of the click — that's the smoking gun for this exact bug.
+
+**Cause:** `authFetch` (`src/lib/auth-fetch.ts`) awaits
+`supabaseBrowser.auth.getSession()` to read a bearer token **before**
+issuing the real `fetch()`. `@supabase/ssr`'s browser client takes an
+internal NavigatorLock during token-refresh windows; if a click races
+the refresh, `getSession()` never resolves on the affected code path.
+The real `fetch()` is never reached, so the caller's
+`AbortController.signal` is wired to nothing — aborting is a no-op, the
+catch never runs, and every `authFetch`-based UI silently wedges. This
+is shared infrastructure: CIT was the most visible victim, but
+treatment offerings, dedup queue, org switcher, location switcher, etc.
+all share the same code path.
+
+**Canonical mitigation:** `getAuthHeaders()` in `src/lib/auth-fetch.ts`
+races `getSession()` against a **2.5 s timeout**
+(`GET_SESSION_TIMEOUT_MS`). On timeout it logs
+`[authFetch] supabase.auth.getSession() exceeded 2500ms; falling back
+to cookie auth` and returns no `Authorization` header. The request
+still authenticates because `authFetch` sends `credentials: 'include'`
+and every API route under `src/app/api/` is cookie-friendly — they all
+auth via `requireAuthenticatedTenantUser`, `getApiRequestContext`,
+`getSupabaseAuthContext`, or `createServerSupabaseClient`, each of which
+builds a `@supabase/ssr` server client with the modern `cookies.getAll`
+adapter (see `src/lib/api/auth.ts`, `src/lib/api/context.ts`,
+`src/lib/auth/api-auth-helpers.ts`, `src/lib/supabase-server.ts`).
+
+**Implication for future routes:** if anyone adds a new API route that
+auths **only** via the `Authorization: Bearer` header (no cookie path),
+post-timeout calls into that route will 401 instead of hanging. That's
+degraded but **visible** — far better than the silent hang — so it's
+not a regression, but worth knowing if a UI suddenly starts 401-ing
+during refresh windows. Stick to the four canonical helpers above and
+you'll be fine. As of 2b.8.2, every authFetch-callable route in the
+tree was spot-checked and is cookie-friendly.
+
+**Don't:**
+
+- Raise the `GET_SESSION_TIMEOUT_MS` cap (e.g. to 30 s) "to be safe."
+  The hang is unbounded — `getSession()` does not self-resolve. A
+  longer cap just means a longer silent wedge.
+- Remove `credentials: 'include'` from `authFetch`. Without cookies the
+  timeout path becomes a 401 instead of a successful fallback.
+- Add a new client-side fetch wrapper that re-introduces the
+  pre-`fetch()` `await` on the supabase client. Either use `authFetch`
+  (which is now bounded) or call `fetch(url, { credentials: 'include',
+  … })` directly.
+
+**First seen:** Phase 2b.8.2 (CIT save investigation, post-deploy
+fix #2). Reproduced live in the browser with operator credentials:
+`PATCH /api/settings/communications/integrations` never left the
+browser; `[AUTH] onAuthStateChange SIGNED_IN` had fired at exactly the
+click timestamp. See `docs/2b/2b-8-2-changes.md` §16.
+
