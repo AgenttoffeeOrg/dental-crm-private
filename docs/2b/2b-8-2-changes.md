@@ -223,3 +223,76 @@ findings).
 **Deploy:** committed on `phase-1-attribution-foundation`, pushed —
 Husky pre-push hook re-triggers `vercel deploy --prod`. Re-run the
 §7 SMS round trip after the new deployment goes READY.
+
+---
+
+## 16. Post-deploy fix #2 — `authFetch` deadlock blocked the PATCH from ever leaving the browser
+
+**Symptom (reproduced live with operator credentials, browser MCP):**
+1. Page load → GET `/api/settings/communications/integrations` → 200 OK,
+   form prefills correctly (Email already shows *Ready*).
+2. SMS tab → fill SID / Auth Token → click **Save SMS Settings** → button
+   flips to *“Saving…”*.
+3. **No PATCH appears in the network log at all.** Waited 40+ seconds;
+   never any request, never any console error from the CIT, the 15s
+   `fetchWithTimeout` `AbortController` never triggered the catch.
+   Console showed `[AUTH] onAuthStateChange SIGNED_IN hasSession? true`
+   firing *at the same moment* as the click.
+
+**Root cause:** `authFetch` (`src/lib/auth-fetch.ts`) awaits
+`supabaseBrowser.auth.getSession()` **before** it constructs the actual
+`fetch()`. `@supabase/ssr`'s browser client takes an internal
+NavigatorLock during token-refresh windows; if a click races a refresh /
+state-change, `getSession()` waits on a lock that nothing releases on
+the deadlocked path. Because the real `fetch()` is never reached, the
+caller's `AbortController.signal` is attached to nothing — aborting the
+controller does nothing useful, the await never resolves, the catch
+block never fires, and the UI sits on *Saving…* forever.
+
+This bypasses the §15 UX fix: the form correctly stays mounted, but the
+PATCH genuinely never leaves the browser. Same failure mode applies to
+every `authFetch` consumer (treatment offerings, dedup queue, etc.) on
+unlucky timing.
+
+**Fix:** bound `getSession()` with a `Promise.race` timeout (2.5s) and
+fall through to **cookie-only** auth when it times out. Every API route
+in this repo accepts auth from cookies (the page-load GET on this same
+route proves it), and `authFetch` already sends `credentials: 'include'`,
+so the request still authenticates correctly — we just stop blocking on
+a header that isn't strictly required.
+
+```16:43:dental-crm/src/lib/auth-fetch.ts
+const GET_SESSION_TIMEOUT_MS = 2500
+
+const TIMED_OUT = Symbol('getSession timed out')
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const result = await Promise.race([
+      supabaseBrowser.auth.getSession().then((r) => r.data.session ?? null),
+      new Promise<typeof TIMED_OUT>((resolve) =>
+        setTimeout(() => resolve(TIMED_OUT), GET_SESSION_TIMEOUT_MS),
+      ),
+    ])
+
+    if (result === TIMED_OUT) {
+      console.warn(
+        `[authFetch] supabase.auth.getSession() exceeded ${GET_SESSION_TIMEOUT_MS}ms; falling back to cookie auth`,
+      )
+      return {}
+    }
+```
+
+**Files touched:** `src/lib/auth-fetch.ts` (only).
+
+**Validation:** `npx eslint src/lib/auth-fetch.ts` clean,
+`npx tsc --noEmit` clean for touched files. Codacy Lizard reports no
+threshold breaches; Trivy clean; the Codacy CLI's bundled ESLint
+configuration cannot parse TS type annotations (pre-existing,
+unrelated). Behavior on happy path is unchanged (the existing
+`getSession()` call wins the race ~always); only the deadlock path is
+new.
+
+**Deploy:** committed on `phase-1-attribution-foundation`, pushed via
+Husky pre-push (`vercel deploy --prod`). Re-run the §7 SMS round trip
+once the new deployment goes READY.
