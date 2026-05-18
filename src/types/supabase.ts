@@ -2397,6 +2397,7 @@ export type Database = {
           contact_id: string | null
           created_at: string
           event_id: string | null
+          external_message_id: string | null
           fbclid: string | null
           gclid: string | null
           id: string
@@ -2423,6 +2424,7 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           event_id?: string | null
+          external_message_id?: string | null
           fbclid?: string | null
           gclid?: string | null
           id?: string
@@ -2449,6 +2451,7 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           event_id?: string | null
+          external_message_id?: string | null
           fbclid?: string | null
           gclid?: string | null
           id?: string
@@ -6282,6 +6285,124 @@ export type Database = {
         }
         Relationships: []
       }
+      conversion_events_fired: {
+        Row: {
+          contact_id: string
+          conversion_action_resource_name: string | null
+          deal_id: string
+          error_message: string | null
+          event_type: string
+          fired_at: string
+          gclid: string | null
+          http_status: number | null
+          id: string
+          occurred_at: string
+          platform: string
+          response_excerpt: string | null
+          retry_count: number
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          contact_id: string
+          conversion_action_resource_name?: string | null
+          deal_id: string
+          error_message?: string | null
+          event_type: string
+          fired_at?: string
+          gclid?: string | null
+          http_status?: number | null
+          id?: string
+          occurred_at: string
+          platform: string
+          response_excerpt?: string | null
+          retry_count?: number
+          status: string
+          tenant_id: string
+        }
+        Update: {
+          contact_id?: string
+          conversion_action_resource_name?: string | null
+          deal_id?: string
+          error_message?: string | null
+          event_type?: string
+          fired_at?: string
+          gclid?: string | null
+          http_status?: number | null
+          id?: string
+          occurred_at?: string
+          platform?: string
+          response_excerpt?: string | null
+          retry_count?: number
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversion_events_fired_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact_engagement_scores"
+            referencedColumns: ["contact_id"]
+          },
+          {
+            foreignKeyName: "conversion_events_fired_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversion_events_fired_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversion_events_fired_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals_with_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversion_events_fired_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "backup_statistics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "conversion_events_fired_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "executive_dashboard_kpis"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "conversion_events_fired_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "rate_limit_usage"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "conversion_events_fired_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversion_events_fired_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       custom_analytics_reports: {
         Row: {
           chart_type: string | null
@@ -7471,6 +7592,7 @@ export type Database = {
           description: string | null
           estimated_duration_weeks: number | null
           expected_close_date: string | null
+          first_response_at: string | null
           follow_up_required: boolean | null
           id: string
           insurance_authorization_number: string | null
@@ -7528,6 +7650,7 @@ export type Database = {
           description?: string | null
           estimated_duration_weeks?: number | null
           expected_close_date?: string | null
+          first_response_at?: string | null
           follow_up_required?: boolean | null
           id?: string
           insurance_authorization_number?: string | null
@@ -7585,6 +7708,7 @@ export type Database = {
           description?: string | null
           estimated_duration_weeks?: number | null
           expected_close_date?: string | null
+          first_response_at?: string | null
           follow_up_required?: boolean | null
           id?: string
           insurance_authorization_number?: string | null
@@ -8021,117 +8145,6 @@ export type Database = {
           },
           {
             foreignKeyName: "dental_services_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "user_accessible_locations"
-            referencedColumns: ["tenant_id"]
-          },
-        ]
-      }
-      email_logs: {
-        Row: {
-          clicked_at: string | null
-          created_at: string | null
-          email_type: string
-          error_code: string | null
-          error_message: string | null
-          failed_at: string | null
-          from_email: string
-          id: string
-          max_retries: number | null
-          metadata: Json | null
-          opened_at: string | null
-          provider: string | null
-          provider_message_id: string | null
-          queued_at: string | null
-          retry_count: number | null
-          sent_at: string | null
-          status: string
-          subject: string
-          tenant_id: string | null
-          to_email: string
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          clicked_at?: string | null
-          created_at?: string | null
-          email_type: string
-          error_code?: string | null
-          error_message?: string | null
-          failed_at?: string | null
-          from_email: string
-          id?: string
-          max_retries?: number | null
-          metadata?: Json | null
-          opened_at?: string | null
-          provider?: string | null
-          provider_message_id?: string | null
-          queued_at?: string | null
-          retry_count?: number | null
-          sent_at?: string | null
-          status?: string
-          subject: string
-          tenant_id?: string | null
-          to_email: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          clicked_at?: string | null
-          created_at?: string | null
-          email_type?: string
-          error_code?: string | null
-          error_message?: string | null
-          failed_at?: string | null
-          from_email?: string
-          id?: string
-          max_retries?: number | null
-          metadata?: Json | null
-          opened_at?: string | null
-          provider?: string | null
-          provider_message_id?: string | null
-          queued_at?: string | null
-          retry_count?: number | null
-          sent_at?: string | null
-          status?: string
-          subject?: string
-          tenant_id?: string | null
-          to_email?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "email_logs_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "backup_statistics"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "email_logs_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "executive_dashboard_kpis"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "email_logs_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "rate_limit_usage"
-            referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "email_logs_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_logs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "user_accessible_locations"
@@ -9491,6 +9504,141 @@ export type Database = {
           },
           {
             foreignKeyName: "gdpr_export_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      google_lead_form_configs: {
+        Row: {
+          conversion_action_resource_name: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          id: string
+          is_active: boolean
+          login_customer_id: string | null
+          oauth_connected_at: string | null
+          oauth_connected_by_user_id: string | null
+          oauth_pending_state: string | null
+          oauth_pending_state_expires_at: string | null
+          oauth_refresh_token_encrypted: string | null
+          oauth_scope: string | null
+          tenant_id: string
+          updated_at: string
+          webhook_key: string
+        }
+        Insert: {
+          conversion_action_resource_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          id?: string
+          is_active?: boolean
+          login_customer_id?: string | null
+          oauth_connected_at?: string | null
+          oauth_connected_by_user_id?: string | null
+          oauth_pending_state?: string | null
+          oauth_pending_state_expires_at?: string | null
+          oauth_refresh_token_encrypted?: string | null
+          oauth_scope?: string | null
+          tenant_id: string
+          updated_at?: string
+          webhook_key?: string
+        }
+        Update: {
+          conversion_action_resource_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          id?: string
+          is_active?: boolean
+          login_customer_id?: string | null
+          oauth_connected_at?: string | null
+          oauth_connected_by_user_id?: string | null
+          oauth_pending_state?: string | null
+          oauth_pending_state_expires_at?: string | null
+          oauth_refresh_token_encrypted?: string | null
+          oauth_scope?: string | null
+          tenant_id?: string
+          updated_at?: string
+          webhook_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_lead_form_configs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_lead_form_configs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "google_lead_form_configs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_engagement_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "google_lead_form_configs_oauth_connected_by_user_id_fkey"
+            columns: ["oauth_connected_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_lead_form_configs_oauth_connected_by_user_id_fkey"
+            columns: ["oauth_connected_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "google_lead_form_configs_oauth_connected_by_user_id_fkey"
+            columns: ["oauth_connected_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_engagement_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "google_lead_form_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "backup_statistics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "google_lead_form_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "executive_dashboard_kpis"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "google_lead_form_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "rate_limit_usage"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "google_lead_form_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_lead_form_configs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "user_accessible_locations"
@@ -15414,6 +15562,135 @@ export type Database = {
           },
         ]
       }
+      message_media: {
+        Row: {
+          activity_id: string
+          attribution_touchpoint_id: string
+          byte_size: number
+          contact_id: string
+          content_type: string
+          created_at: string
+          expires_at: string | null
+          external_message_id: string
+          id: string
+          media_index: number
+          original_url: string | null
+          storage_bucket: string
+          storage_path: string
+          tenant_id: string
+        }
+        Insert: {
+          activity_id: string
+          attribution_touchpoint_id: string
+          byte_size: number
+          contact_id: string
+          content_type: string
+          created_at?: string
+          expires_at?: string | null
+          external_message_id: string
+          id?: string
+          media_index: number
+          original_url?: string | null
+          storage_bucket?: string
+          storage_path: string
+          tenant_id: string
+        }
+        Update: {
+          activity_id?: string
+          attribution_touchpoint_id?: string
+          byte_size?: number
+          contact_id?: string
+          content_type?: string
+          created_at?: string
+          expires_at?: string | null
+          external_message_id?: string
+          id?: string
+          media_index?: number
+          original_url?: string | null
+          storage_bucket?: string
+          storage_path?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_media_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_media_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities_with_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_media_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities_with_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_media_attribution_touchpoint_id_fkey"
+            columns: ["attribution_touchpoint_id"]
+            isOneToOne: false
+            referencedRelation: "attribution_touchpoints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_media_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contact_engagement_scores"
+            referencedColumns: ["contact_id"]
+          },
+          {
+            foreignKeyName: "message_media_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_media_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "backup_statistics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "message_media_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "executive_dashboard_kpis"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "message_media_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "rate_limit_usage"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "message_media_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_media_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           created_at: string | null
@@ -17010,6 +17287,8 @@ export type Database = {
           created_at: string | null
           deleted_at: string | null
           id: string
+          is_lost: boolean
+          is_won: boolean
           name: string
           pipeline_id: string
           position: number
@@ -17020,6 +17299,8 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           id?: string
+          is_lost?: boolean
+          is_won?: boolean
           name: string
           pipeline_id: string
           position: number
@@ -17030,6 +17311,8 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           id?: string
+          is_lost?: boolean
+          is_won?: boolean
           name?: string
           pipeline_id?: string
           position?: number
@@ -18252,7 +18535,7 @@ export type Database = {
           sort_order: number
           stage_id: string | null
           tenant_id: string
-          treatment_type_id: string
+          treatment_type_id: string | null
           updated_at: string
         }
         Insert: {
@@ -18270,7 +18553,7 @@ export type Database = {
           sort_order?: number
           stage_id?: string | null
           tenant_id: string
-          treatment_type_id: string
+          treatment_type_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -18288,7 +18571,7 @@ export type Database = {
           sort_order?: number
           stage_id?: string | null
           tenant_id?: string
-          treatment_type_id?: string
+          treatment_type_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -22132,9 +22415,6 @@ export type Database = {
           custom_domain: string | null
           data_retention_days: number | null
           date_format: string | null
-          default_email_from_address: string | null
-          default_email_from_name: string | null
-          default_email_reply_to: string | null
           deleted_at: string | null
           dental_group_id: string | null
           email: string | null
@@ -22189,15 +22469,7 @@ export type Database = {
           settings: Json | null
           slack_webhook_url: string | null
           slug: string | null
-          sms_api_key: string | null
-          sms_api_secret: string | null
-          sms_from_number: string | null
-          sms_provider: string | null
-          smtp_encryption: string | null
-          smtp_host: string | null
-          smtp_password: string | null
-          smtp_port: number | null
-          smtp_username: string | null
+          sms_phone_number: string | null
           state: string | null
           stripe_customer_id: string | null
           subdomain: string | null
@@ -22222,8 +22494,6 @@ export type Database = {
           website_host: string | null
           website_url: string | null
           week_start: string | null
-          whatsapp_api_key: string | null
-          whatsapp_api_secret: string | null
           whatsapp_phone_number: string | null
           zip: string | null
         }
@@ -22250,9 +22520,6 @@ export type Database = {
           custom_domain?: string | null
           data_retention_days?: number | null
           date_format?: string | null
-          default_email_from_address?: string | null
-          default_email_from_name?: string | null
-          default_email_reply_to?: string | null
           deleted_at?: string | null
           dental_group_id?: string | null
           email?: string | null
@@ -22307,15 +22574,7 @@ export type Database = {
           settings?: Json | null
           slack_webhook_url?: string | null
           slug?: string | null
-          sms_api_key?: string | null
-          sms_api_secret?: string | null
-          sms_from_number?: string | null
-          sms_provider?: string | null
-          smtp_encryption?: string | null
-          smtp_host?: string | null
-          smtp_password?: string | null
-          smtp_port?: number | null
-          smtp_username?: string | null
+          sms_phone_number?: string | null
           state?: string | null
           stripe_customer_id?: string | null
           subdomain?: string | null
@@ -22340,8 +22599,6 @@ export type Database = {
           website_host?: string | null
           website_url?: string | null
           week_start?: string | null
-          whatsapp_api_key?: string | null
-          whatsapp_api_secret?: string | null
           whatsapp_phone_number?: string | null
           zip?: string | null
         }
@@ -22368,9 +22625,6 @@ export type Database = {
           custom_domain?: string | null
           data_retention_days?: number | null
           date_format?: string | null
-          default_email_from_address?: string | null
-          default_email_from_name?: string | null
-          default_email_reply_to?: string | null
           deleted_at?: string | null
           dental_group_id?: string | null
           email?: string | null
@@ -22425,15 +22679,7 @@ export type Database = {
           settings?: Json | null
           slack_webhook_url?: string | null
           slug?: string | null
-          sms_api_key?: string | null
-          sms_api_secret?: string | null
-          sms_from_number?: string | null
-          sms_provider?: string | null
-          smtp_encryption?: string | null
-          smtp_host?: string | null
-          smtp_password?: string | null
-          smtp_port?: number | null
-          smtp_username?: string | null
+          sms_phone_number?: string | null
           state?: string | null
           stripe_customer_id?: string | null
           subdomain?: string | null
@@ -22458,8 +22704,6 @@ export type Database = {
           website_host?: string | null
           website_url?: string | null
           week_start?: string | null
-          whatsapp_api_key?: string | null
-          whatsapp_api_secret?: string | null
           whatsapp_phone_number?: string | null
           zip?: string | null
         }
@@ -27327,6 +27571,11 @@ export type Database = {
       }
     }
     Functions: {
+      _map_utm_role_to_org_role: { Args: { p_role: string }; Returns: string }
+      _map_utm_status_to_org_status: {
+        Args: { p_status: string }
+        Returns: string
+      }
       acquire_automation_lease: {
         Args: {
           p_lease_duration_seconds?: number
@@ -28505,6 +28754,7 @@ export type Database = {
         | "api_partner"
         | "referral"
         | "other"
+        | "whatsapp_inbound"
       validation_status_type:
         | "UNVALIDATED"
         | "VALIDATED"
@@ -28677,6 +28927,7 @@ export const Constants = {
         "api_partner",
         "referral",
         "other",
+        "whatsapp_inbound",
       ],
       validation_status_type: [
         "UNVALIDATED",
