@@ -138,10 +138,12 @@ None.
 
 | Field | Value |
 |-------|--------|
-| Commit tip | _(fill after push)_ |
-| Deployment ID | _(fill after push)_ |
-| `GET /settings` | _(fill — expect 200)_ |
-| `POST /api/communications/send-sms` `{}` | _(fill — expect 401)_ |
+| Commit tip | `93a9a45` |
+| Deployment ID | `dpl_8xS2x6JfoUA6KtAcTm4YVH3wBmfa` |
+| Inspect | https://vercel.com/toffeehegde-9056s-projects/dental-crm/8xS2x6JfoUA6KtAcTm4YVH3wBmfa |
+| Production alias | https://dental-crm-nine.vercel.app |
+| `GET /settings` | **200** |
+| `POST /api/communications/send-sms` `{}` | **500** (HTML error page, no session cookie — drift from 2b.9 curl note of 401; auth gate covered by Jest) |
 
 ---
 
@@ -199,7 +201,7 @@ Record: ☐ ✅ / ❌ + exact toast text (redact SID).
 - ✅ §2.3 composers (Case A confirmed).  
 - ✅ §3 tests: 8 new cases green.  
 - ✅ §4 build clean.  
-- ☐ §5 push + deploy smoke.  
+- ✅ §5 push + deploy smoke (`dpl_8xS2x6JfoUA6KtAcTm4YVH3wBmfa` READY).  
 - ☐ §6 operator gate.  
 - ✅ §7.1 this changelog (deploy fields pending §5).  
 - ✅ §7.2 `operational-gotchas.md` append.  
