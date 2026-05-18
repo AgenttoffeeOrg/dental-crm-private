@@ -153,10 +153,13 @@ Phase 2b.9 makes the outbound activity surface honest. Every send attempt now wr
 
 | Field | Value |
 |-------|--------|
-| Deploy | _(fill after push — husky `vercel deploy --prod`)_ |
-| `GET /settings` | _(fill — expect 200)_ |
-| `GET /templates` | _(fill — likely 404; no route in repo)_ |
-| `POST /api/communications/send-sms` `{}` | _(fill — expect 401)_ |
+| Commit tip | `cc2b02b` (4 commits: `9d8caa0` … `cc2b02b`) |
+| Deployment ID | `dpl_9rE6gzuRaXLVi8y3zCDTWAmss5mW` |
+| Inspect | https://vercel.com/toffeehegde-9056s-projects/dental-crm/9rE6gzuRaXLVi8y3zCDTWAmss5mW |
+| Production alias | https://dental-crm-nine.vercel.app |
+| `GET /settings` | **200** |
+| `GET /templates` | **404** (no `/templates` route in repo — expected) |
+| `POST /api/communications/send-sms` `{}` | **401** |
 
 ---
 
@@ -264,8 +267,8 @@ Record: ☐ ✅ / ❌
 - ✅ §2.6 route `extract*` removed; dispatcher `infer*` exported.  
 - ✅ §3 tests: 11/11 green.  
 - ✅ §4 validation: tsc/jest/build per §8.  
-- ☐ §5 push + deploy smoke (pending this commit push).  
+- ✅ §5 push + deploy smoke (`dpl_9rE6gzuRaXLVi8y3zCDTWAmss5mW` READY).  
 - ☐ §6 operator gate (pending human).  
 - ✅ §7.1 this changelog.  
-- ☐ §7.2 `operational-gotchas.md` (pending append).  
-- ☐ §7.3 `2b-8-1-changes.md` close note (pending append).
+- ✅ §7.2 `operational-gotchas.md` appended.  
+- ✅ §7.3 `2b-8-1-changes.md` close note appended.
