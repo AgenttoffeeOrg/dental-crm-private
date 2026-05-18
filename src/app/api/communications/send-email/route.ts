@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { queueManager } from '@/lib/queues/queue-manager'
 import { enqueueCommunication, registerCommunicationQueue } from '@/lib/queues/communication-queue'
 import { dispatchEmail, inferEmailPurpose } from '@/lib/communications/dispatcher'
+import { getFriendlyErrorMessage } from '@/lib/communications/error-helpers'
 import {
   AuthApiError,
   requireAuthenticatedTenantUser,
@@ -111,8 +112,9 @@ export async function POST(request: NextRequest) {
       return authErrorResponse(error)
     }
     console.error('[EMAIL] Error sending email:', error)
+    const friendly = getFriendlyErrorMessage(error)
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
+      { error: friendly ?? 'Internal server error' },
       { status: 500 }
     )
   }

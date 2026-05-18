@@ -445,7 +445,7 @@ export async function dispatchEmail(options: {
     const friendly = friendlyEmailError(providerErr)
     await markActivityFailed(supabase, activity.id, friendly, providerErr)
     recordProviderFailure(settings.email_provider || 'email', 'send_email', providerErr)
-    throw providerErr
+    throw new Error(friendly)
   }
 }
 
@@ -574,7 +574,7 @@ export async function dispatchSms(options: {
     const friendly = friendlySmsError(providerErr)
     await markActivityFailed(supabase, activity.id, friendly, providerErr)
     recordProviderFailure('twilio_sms', 'send_sms', providerErr)
-    throw providerErr
+    throw new Error(friendly)
   }
 }
 
@@ -717,7 +717,7 @@ export async function dispatchWhatsApp(options: {
     const friendly = friendlyWhatsAppError(providerErr)
     await markActivityFailed(supabase, activity.id, friendly, providerErr)
     recordProviderFailure('twilio_whatsapp', 'send_whatsapp', providerErr)
-    throw providerErr
+    throw new Error(friendly)
   }
 }
 

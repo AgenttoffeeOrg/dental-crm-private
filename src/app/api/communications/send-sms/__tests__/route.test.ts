@@ -39,6 +39,7 @@ jest.mock('@/lib/auth/api-auth-helpers', () => {
 const mockDispatchSms = jest.fn()
 jest.mock('@/lib/communications/dispatcher', () => ({
   dispatchSms: (...args: unknown[]) => mockDispatchSms(...args),
+  inferSmsPurpose: () => 'Quick Message',
 }))
 
 jest.mock('@/lib/queues/queue-manager', () => ({
@@ -133,5 +134,27 @@ describe('POST /api/communications/send-sms — auth gate', () => {
     const res = await POST(makeReq(validBody))
     expect(res.status).toBe(200)
     expect(mockDispatchSms.mock.calls[0][0].context.tenantId).toBe(TENANT)
+  })
+})
+
+describe('POST /api/communications/send-sms — friendly error body', () => {
+  it('returns friendly error in body when dispatcher throws a friendly Error', async () => {
+    mockDispatchSms.mockRejectedValueOnce(
+      new Error('Send failed — invalid SMS credentials')
+    )
+    const res = await POST(makeReq({ ...validBody, tenant_id: TENANT }))
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toBe('Send failed — invalid SMS credentials')
+    expect(body.details).toBeUndefined()
+  })
+
+  it('returns generic error when dispatcher throws an unsafe message', async () => {
+    mockDispatchSms.mockRejectedValueOnce(new Error('database connection failed'))
+    const res = await POST(makeReq({ ...validBody, tenant_id: TENANT }))
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toBe('Internal server error')
+    expect(body.details).toBeUndefined()
   })
 })

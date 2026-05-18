@@ -345,3 +345,18 @@ when composers integrate with `activity_templates`.
 is `<ActivityDetailSlideIn>`. Any code authored against the modal is
 reading a pre-2b.9 repo.
 
+---
+
+## Phase 2b.9.1 — Failed-send toasts match the slide-in badge
+
+**Failed-send toasts now match the slide-in badge.** The dispatcher
+rethrows `new Error(friendlyLabel)` instead of the raw provider error.
+Send routes propagate the message to the response body only when it
+matches a known-safe prefix (`Send failed —`, `Email provider not
+configured`, `SMS provider not configured`, `WhatsApp provider not
+configured`); otherwise return generic `'Internal server error'` and
+server-log the raw error via `console.error`. Composers' `toast.error`
+reads from the response body. If a new friendly label is introduced in
+the dispatcher, add its prefix to `FRIENDLY_ERROR_PREFIXES` in
+`error-helpers.ts` or it will be hidden behind the generic fallback.
+

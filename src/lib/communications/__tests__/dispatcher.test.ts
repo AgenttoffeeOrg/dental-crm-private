@@ -141,7 +141,7 @@ describe('dispatchEmail failed-send', () => {
         subject: 'Hi',
         html: '<p>body</p>',
       })
-    ).rejects.toThrow()
+    ).rejects.toThrow('Send failed — invalid email API key')
 
     expect(mockUpdate).toHaveBeenCalled()
     const updateChain = mockUpdate.mock.results[0].value
@@ -183,7 +183,7 @@ describe('dispatchSms failed-send', () => {
 
     await expect(
       dispatchSms({ context: baseContext, to: '+15559876543', message: 'test' })
-    ).rejects.toThrow()
+    ).rejects.toThrow('Send failed — invalid SMS credentials')
 
     expect(mockUpdate).toHaveBeenCalled()
   })
@@ -214,7 +214,7 @@ describe('dispatchWhatsApp failed-send', () => {
 
     await expect(
       dispatchWhatsApp({ context: baseContext, to: '+15559876543', message: 'test' })
-    ).rejects.toThrow()
+    ).rejects.toThrow('Send failed — WhatsApp number not approved for this sender')
 
     expect(mockUpdate).toHaveBeenCalled()
   })
