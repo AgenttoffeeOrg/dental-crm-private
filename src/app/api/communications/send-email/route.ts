@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { queueManager } from '@/lib/queues/queue-manager'
 import { enqueueCommunication, registerCommunicationQueue } from '@/lib/queues/communication-queue'
-import { dispatchEmail } from '@/lib/communications/dispatcher'
+import { dispatchEmail, inferEmailPurpose } from '@/lib/communications/dispatcher'
 import {
   AuthApiError,
   requireAuthenticatedTenantUser,
@@ -9,49 +9,6 @@ import {
   enforceOutboundRateLimit,
   authErrorResponse,
 } from '@/lib/auth/api-auth-helpers'
-
-// AI Helper: Extract email purpose from subject/body
-function extractEmailPurpose(subject: string, body: string): string {
-  const combined = `${subject} ${body}`.toLowerCase()
-
-  // Keywords for common purposes
-  if (combined.includes('quote') || combined.includes('pricing') || combined.includes('cost') || combined.includes('price')) {
-    return 'Quote Request'
-  }
-  if (combined.includes('appointment') || combined.includes('schedule') || combined.includes('book') || combined.includes('reschedule')) {
-    return 'Appointment Scheduling'
-  }
-  if (combined.includes('follow up') || combined.includes('follow-up') || combined.includes('checking in')) {
-    return 'Follow-up'
-  }
-  if (combined.includes('question') || combined.includes('inquiry') || combined.includes('asking') || combined.includes('wondering')) {
-    return 'Question/Inquiry'
-  }
-  if (combined.includes('thank you') || combined.includes('thanks') || combined.includes('grateful')) {
-    return 'Thank You'
-  }
-  if (combined.includes('confirm') || combined.includes('confirmation')) {
-    return 'Confirmation'
-  }
-  if (combined.includes('consultation') || combined.includes('consult')) {
-    return 'Consultation Request'
-  }
-  if (combined.includes('information') || combined.includes('details') || combined.includes('more about')) {
-    return 'Information Request'
-  }
-  if (combined.includes('treatment') || combined.includes('procedure')) {
-    return 'Treatment Discussion'
-  }
-  if (combined.includes('payment') || combined.includes('invoice') || combined.includes('bill')) {
-    return 'Payment/Billing'
-  }
-  if (combined.includes('reminder')) {
-    return 'Reminder'
-  }
-
-  // Default
-  return 'General Communication'
-}
 
 const QUEUE_ENABLED = process.env.QUEUE_COMMUNICATIONS === 'true'
 
@@ -92,7 +49,7 @@ export async function POST(request: NextRequest) {
     const toList = Array.isArray(to) ? to : [to]
     const ccList = Array.isArray(cc) ? cc : cc ? [cc] : []
     const bccList = Array.isArray(bcc) ? bcc : bcc ? [bcc] : []
-    const aiPurpose = extractEmailPurpose(subject, emailBody)
+    const aiPurpose = inferEmailPurpose(subject, emailBody)
 
     if (queueManager.isEnabled() && QUEUE_ENABLED) {
       await enqueueCommunication({

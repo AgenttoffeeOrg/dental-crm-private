@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { queueManager } from '@/lib/queues/queue-manager'
 import { enqueueCommunication, registerCommunicationQueue } from '@/lib/queues/communication-queue'
-import { dispatchSms } from '@/lib/communications/dispatcher'
+import { dispatchSms, inferSmsPurpose } from '@/lib/communications/dispatcher'
 import {
   AuthApiError,
   requireAuthenticatedTenantUser,
@@ -9,29 +9,6 @@ import {
   enforceOutboundRateLimit,
   authErrorResponse,
 } from '@/lib/auth/api-auth-helpers'
-
-// AI Helper: Extract SMS purpose from message content
-function extractSMSPurpose(message: string): string {
-  const lower = message.toLowerCase()
-
-  if (lower.includes('appointment') || lower.includes('schedule') || lower.includes('reminder')) {
-    return 'Appointment Reminder'
-  }
-  if (lower.includes('confirm') || lower.includes('confirmation')) {
-    return 'Confirmation'
-  }
-  if (lower.includes('follow up') || lower.includes('follow-up') || lower.includes('checking')) {
-    return 'Follow-up'
-  }
-  if (lower.includes('thank')) {
-    return 'Thank You'
-  }
-  if (lower.includes('question') || lower.includes('?')) {
-    return 'Question'
-  }
-
-  return 'Quick Message'
-}
 
 const QUEUE_ENABLED = process.env.QUEUE_COMMUNICATIONS === 'true'
 
@@ -65,7 +42,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const aiPurpose = extractSMSPurpose(message)
+    const aiPurpose = inferSmsPurpose(message)
 
     if (queueManager.isEnabled() && QUEUE_ENABLED) {
       await enqueueCommunication({

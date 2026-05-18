@@ -174,3 +174,10 @@ Schema-only change; Husky pre-push runs `vercel deploy --prod` (no-op functional
 - ✅ `2b-8-1-changes.md` written.
 
 Phase 2b.8.1 is **done**. Hand back to planner for **2b.9**.
+
+---
+
+**2b.9 followed 2b.8.1.** Per `2b-9-changes.md`, the regenerated
+`src/types/supabase.ts` post-2b.8.1 column drop landed as commit 1 of
+2b.9's push. Activity correctness + AI honesty work landed in the same
+push. No further migrations required.

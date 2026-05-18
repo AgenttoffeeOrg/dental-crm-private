@@ -300,3 +300,48 @@ fix #2). Reproduced live in the browser with operator credentials:
 browser; `[AUTH] onAuthStateChange SIGNED_IN` had fired at exactly the
 click timestamp. See `docs/2b/2b-8-2-changes.md` §16.
 
+---
+
+## Phase 2b.9 — Failed outbound sends visible in activity feed
+
+**Failed outbound sends are now visible in the activity feed.** Before
+2b.9, the dispatcher threw on provider failure before writing any
+activity, so failed sends produced zero audit trail. Post-2b.9, every
+send attempt writes a `pending` activity row up front and updates it to
+`sent` or `failed`. A `failed` row's friendly label lives at
+`integration_metadata.error.message`; the raw provider response lives at
+`integration_metadata.error.raw`. The dispatcher still throws after
+writing the failed row, so the route still returns 500 to the UI.
+
+---
+
+## Phase 2b.9 — Outbound email HTML sanitised in dispatcher
+
+**Outbound email HTML is now DOMPurify-sanitised in the dispatcher.** A
+user pasting `<script>` tags into a composer body will have them stripped
+before the email is sent AND before the body is stored in
+`activities.rich_content`. The slide-in's `dangerouslySetInnerHTML`
+render of `rich_content` is now safe by construction. Sanitisation runs
+at the dispatcher, not the composer. **Build note:** `isomorphic-dompurify`
+pulls jsdom; Next.js needs an empty `browser/default-stylesheet.css` at
+the repo root (see `2b-9-changes.md` §3.7).
+
+---
+
+## Phase 2b.9 — Templates manager not in sidebar
+
+**The Templates manager has been removed from the sidebar nav** (it was
+already absent on `phase-1-attribution-foundation` at 2b.9 execution).
+There is no `/templates` page route in this branch — only
+`/marketing/templates` and `/forms/templates`. The `<TemplatesManager>`
+component still exists for a future wired phase. Re-add a sidebar link
+when composers integrate with `activity_templates`.
+
+---
+
+## Phase 2b.9 — ActivityDetailModal removed
+
+**`<ActivityDetailModal>` is gone.** The single activity-detail surface
+is `<ActivityDetailSlideIn>`. Any code authored against the modal is
+reading a pre-2b.9 repo.
+

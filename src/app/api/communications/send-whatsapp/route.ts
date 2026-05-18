@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { queueManager } from '@/lib/queues/queue-manager'
 import { enqueueCommunication, registerCommunicationQueue } from '@/lib/queues/communication-queue'
-import { dispatchWhatsApp } from '@/lib/communications/dispatcher'
+import { dispatchWhatsApp, inferWhatsAppPurpose } from '@/lib/communications/dispatcher'
 import {
   AuthApiError,
   requireAuthenticatedTenantUser,
@@ -9,32 +9,6 @@ import {
   enforceOutboundRateLimit,
   authErrorResponse,
 } from '@/lib/auth/api-auth-helpers'
-
-// AI Helper: Extract WhatsApp message purpose
-function extractWhatsAppPurpose(message: string): string {
-  const lower = message.toLowerCase()
-
-  if (lower.includes('appointment') || lower.includes('schedule') || lower.includes('book')) {
-    return 'Appointment Scheduling'
-  }
-  if (lower.includes('confirm') || lower.includes('confirmation')) {
-    return 'Confirmation'
-  }
-  if (lower.includes('follow up') || lower.includes('follow-up')) {
-    return 'Follow-up'
-  }
-  if (lower.includes('question') || lower.includes('?') || lower.includes('inquiry')) {
-    return 'Question'
-  }
-  if (lower.includes('thank')) {
-    return 'Thank You'
-  }
-  if (lower.includes('information') || lower.includes('details')) {
-    return 'Information Sharing'
-  }
-
-  return 'General Message'
-}
 
 const QUEUE_ENABLED = process.env.QUEUE_COMMUNICATIONS === 'true'
 
@@ -69,7 +43,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const aiPurpose = extractWhatsAppPurpose(message)
+    const aiPurpose = inferWhatsAppPurpose(message)
 
     if (queueManager.isEnabled() && QUEUE_ENABLED) {
       await enqueueCommunication({
