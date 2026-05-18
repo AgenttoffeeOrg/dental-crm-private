@@ -1,9 +1,16 @@
 -- =====================================================================
--- SCHEDULED MIGRATION — DO NOT APPLY UNTIL 2b.8.1 (or later) APPROVAL
+-- Phase 2b.8.1 — drop legacy plain-text outbound credential columns
 -- =====================================================================
--- Phase 2b.8 ships the UI deletion; this migration ships the schema
--- cleanup as a separate follow-up so the two are independently
--- reviewable and rollback-able.
+-- Authored by 2b.8, parked in docs/2b/migrations-pending/, applied by
+-- 2b.8.1 after 2b.8.2 confirmed the CIT now writes to
+-- integration_settings exclusively and the dispatcher reads from it
+-- (verified end-to-end via live SMS send on 2026-05-13).
+--
+-- Drops 14 columns on public.tenants and the public.email_logs table.
+-- Preserved: sms_phone_number, whatsapp_phone_number (inbound webhook
+-- routing), and email/email_main/email_support (tenant contact info,
+-- surviving callers found by 2b.8 pre-flight §2.1).
+-- =====================================================================
 --
 -- Drops the legacy plain-text outbound credential columns on `tenants`
 -- that no surviving code reads or writes after 2b.8. Also drops the

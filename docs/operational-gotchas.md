@@ -187,6 +187,28 @@ them without grepping for surviving callers first.
 **First seen:** Phase 2b.8 (settings UI rationalisation, schema
 migration authoring). See `docs/2b/2b-8-changes.md` §3.4.
 
+## The `tenants` table no longer carries legacy plain-text outbound credential columns (2b.8.1)
+
+**Symptom:** code or SQL still references `tenants.smtp_host`,
+`tenants.sms_api_key`, `tenants.whatsapp_api_key`, or the other 14
+columns dropped in 2b.8.1 — queries fail at runtime or greps look
+"dead" while `src/types/supabase.ts` still lists them.
+
+**Cause:** Phase 2b.8.1 applied
+`20260518194500_phase_2b_8_1_drop_legacy_outbound_columns.sql` to
+production. Outbound credentials live on `public.integration_settings`
+only (CIT: `PATCH /api/settings/communications/integrations`, loader:
+`loadTenantIntegrationSettings`).
+
+**Fix:** read/write credentials via `integration_settings` (or the CIT
+API). Do not expect the dropped `tenants.*` columns to exist. Regenerate
+types when touching schema consumers. **`sms_phone_number` and
+`whatsapp_phone_number` on `tenants` are preserved** — inbound webhook
+routing identifiers, not outbound credentials. Same for `email`,
+`email_main`, `email_support` (tenant contact / merge tags).
+
+**First seen:** Phase 2b.8.1. See `docs/2b/2b-8-1-changes.md`.
+
 ## `<CommunicationsIntegrationsTab>` was a stub until 2b.8.2 (save/load lied)
 
 **Symptom:** from its introduction through end of Phase 2b.8,

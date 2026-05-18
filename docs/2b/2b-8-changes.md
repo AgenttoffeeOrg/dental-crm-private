@@ -625,3 +625,9 @@ SMS / reload / outbound verification, **all five 2b.8 operator gate
 items resolve** and 2b.8 may be treated as effectively closed beside any
 explicit column-drop migration apply phase tracked separately.
 
+**2b.8 scheduled migration applied 2b.8.1.** Per
+`2b-8-1-changes.md`, the 14-column drop and the `email_logs` table
+drop are now live in production. `docs/2b/migrations-pending/` is
+now empty of pending migrations (README remains for future
+scheduled-migration workflow).
+

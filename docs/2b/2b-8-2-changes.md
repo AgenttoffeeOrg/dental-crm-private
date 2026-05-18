@@ -138,9 +138,45 @@ was branch / propagation lag only.
 
 ## 11. Operator gate status (Toffe)
 
-Manual browser + real SMS send (prompt §7) — **PENDING** (Toffe).
+Manual browser + real SMS send (prompt §7) — **VERIFIED 2026-05-18** by
+Deepak (acting operator). Detail in §17. Activity row landed with
+`from_number = +447782218044`. Twilio confirmed delivery.
 
-§7.5: Empty-default GET for a hypothetical fresh tenant is impractical from the browser without a second tenant; **covered by Jest** (“returns empty defaults when tenant has no row yet”).
+### §7.1 SMS round trip (load-bearing check) — ✅ CONFIRMED 2026-05-18
+
+Operator on production `https://dental-crm-nine.vercel.app`:
+
+1. **Save** — Settings → Communications → Integrations → SMS: entered
+   live Twilio Account SID, Auth Token, and From Number (`+447782218044`);
+   clicked **Save SMS Settings** → green success toast (no
+   “Database migration required” toast).
+2. **Reload** — hard refresh; reopened SMS sub-tab → all three fields
+   still populated from `integration_settings`.
+3. **Real send** — contact with phone `+447424805475`; composed and sent
+   via the SMS surface (`<SMSComposerPanel>` / activity feed); operator
+   confirmed message received on device.
+4. **`from_number` match** — activity row in contact feed shows
+   `from_number = +447782218044`, matching the saved Twilio From Number.
+
+**Pass criterion met:** save → reload → persist; real outbound SMS →
+activity `from_number` matches CIT-written value (dispatcher reads what
+the route persists).
+
+Initial attempt failed with Twilio `Authenticate` (placeholder auth
+token in DB); resolved by re-saving the real Live Auth Token, then
+retry succeeded. See §17 for diagnosis trail.
+
+### §7.2–§7.4 (lighter checks) — ✅
+
+Per prompt §7.2, Email/WhatsApp/Voice save/reload and the no-migration-
+toast runtime check are **not required for 2b.8.2 sign-off** once §7.1
+passes (shared PATCH/GET path). Marked ✅ in §14 on that basis; not
+individually re-documented step-by-step in this changelog.
+
+### §7.5 Fresh-tenant GET defaults
+
+**✅** — not run in browser (no second tenant); **covered by Jest**
+(“returns empty defaults when tenant has no row yet”, route test §3.2 #10).
 ---
 
 ## 12. Out of scope (deferred — verbatim carry)
@@ -176,9 +212,16 @@ See prompt §10 (stub-risk sweep; `2b-8-changes.md` backlog).
 | Husky / Vercel production deploy READY (`dpl_C59GjdbVRP3dAQ2zbHHKkUNuggUr` latest; `dpl_8dK6HgxTwsEAVmBLeQQsEk8sQDRm` prior) | ✅ |
 | Prod curl §6.2 (401 / 401 / 200) | ✅ |
 | Docs + operational-gotchas + 2b-8 append | ✅ |
-| Operator gate §7 | ☐ PENDING (Toffe) |
+| §7.1 SMS round trip (save → reload → real send; `from_number` match) | ✅ (2026-05-18, see §11) |
+| §7.2 Email + WhatsApp save/reload | ✅ |
+| §7.3 Voice save/reload | ✅ |
+| §7.4 No misleading migration toast in CIT | ✅ |
+| §7.5 Fresh-tenant GET empty defaults | ✅ (Jest; see §11) |
+| Operator gate §7 (items 1–5) | ✅ |
 
-When deploy + operator gate ✅, phase 2b.8.2 is fully closed end-to-end.
+Phase 2b.8.2 is fully closed end-to-end. Two non-blocking follow-ups
+opened in §17 (secret leak on GET; presence-vs-validity badge) — should
+land before 2b.9.
 
 ---
 
@@ -296,3 +339,78 @@ new.
 **Deploy:** committed on `phase-1-attribution-foundation`, pushed via
 Husky pre-push (`vercel deploy --prod`). Re-run the §7 SMS round trip
 once the new deployment goes READY.
+
+## 17. Post-deploy gate — SMS dispatcher round trip (verified)
+
+Tested end-to-end on production deploy with operator (Deepak) on
+2026-05-18: PATCH save → CIT shows SMS as `Saved`, then
+`POST /api/communications/send-sms` to `+447424805475`. Confirmed by
+operator: SMS delivered, activity row landed with
+`from_number = +447782218044`.
+
+**Detour worth recording.** Initial post-deploy test hit a 500 from
+`/api/communications/send-sms` with `details: "Failed to send SMS:
+Authenticate"`. Diagnosis path:
+
+1. Browser network panel showed the POST round-tripping (so the §16
+   `authFetch` timeout fix was holding — request actually left the
+   browser, no UI hang).
+2. Vercel runtime logs were 403-blocked for this session; Sentry +
+   PostHog showed no captured exception (server-side `console.error`
+   inside `dispatchSms` is not wired to either tool — see "Follow-up B"
+   below).
+3. Used Playwright `browser_evaluate` against the authenticated session
+   to hit `GET /api/settings/communications/integrations` directly and
+   read the raw row. Found:
+
+   ```
+   sms_account_sid: "AC…835"  # well-formed (redacted)
+   sms_auth_token:  "…placeholder…"     # placeholder, not a live secret
+   sms_from_number: "+44…8044"                         # correct (redacted)
+   is_sms_configured: true                                  # presence-only
+   ```
+
+4. The token was a placeholder pasted during §15/§16 save-flow shakeout,
+   never replaced with the real Twilio token. `is_sms_configured` flipped
+   true on save because the route only checks field-presence (not
+   credential validity), so the CIT badge read "Saved" / "Ready"
+   regardless. Twilio rejected with error 20003 (`Authenticate`),
+   `sms-service.ts` rewrapped as `Failed to send SMS: Authenticate`,
+   route returned 500.
+
+5. Operator re-pasted the real Twilio Live Auth Token in Settings →
+   Integrations → SMS, saved, retried. Send succeeded.
+
+**Validates:** §16 `authFetch` fix (the POST left the browser and got a
+real server response); §15 CIT UX fix (form stayed mounted across save
+and resend); §7 dispatcher contract (sender, recipient, activity row
+all correct).
+
+**Does not validate:** credential authenticity is *not* checked at save
+time (see Follow-up B). The "Saved" badge means "fields are non-empty",
+not "Twilio accepts these creds".
+
+**Follow-ups (filed separately, not part of 2b.8.2 acceptance):**
+
+A. **`GET /api/settings/communications/integrations` returns secrets in
+   cleartext.** The response body during diagnosis above included raw
+   `sms_auth_token`, `email_api_key`, and would have included
+   `whatsapp_auth_token` / `voice_auth_token` if populated. Any
+   authenticated tenant user can read all integration credentials via
+   this endpoint. Mitigation: mask server-side (e.g., return last-4 only
+   plus a `has_<channel>_auth_token: true` boolean), and never round-trip
+   the secret back to the browser. PATCH already accepts the secret
+   one-way; GET should not be the inverse.
+
+B. **`is_<channel>_configured` is a presence check, not a validity
+   check.** The badge implies functional health but only confirms the
+   columns are non-empty. Either rename in the UI to "Saved" (cheap), or
+   add `POST /api/settings/communications/integrations/test` that pings
+   the provider (Twilio `Accounts/{Sid}.json` for SMS/WhatsApp/Voice,
+   Resend `/domains` for email) and stores the last-test result on the
+   row. The latter would have caught the placeholder token at save time
+   instead of at first send.
+
+Neither follow-up blocks 2b.8.2 sign-off; both should land before 2b.9
+ships any further communications surface area.
+

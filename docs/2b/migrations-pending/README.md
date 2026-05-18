@@ -20,14 +20,8 @@ by accident.
 
 ## Currently pending
 
-- `20260512_phase_2b_8_drop_legacy_outbound_columns.sql`
-  Drops 14 legacy plain-text outbound credential columns on `tenants`
-  and the orphaned `email_logs` table. Authored by 2b.8. Awaiting
-  apply approval. Preserves 5 columns explicitly (`sms_phone_number`,
-  `whatsapp_phone_number`, `email`, `email_main`, `email_support`) —
-  see the migration file header for the per-column rationale.
-- `20260512_phase_2b_8_drop_legacy_outbound_columns_rollback.sql`
-  Rollback companion. Restores the dropped columns with original types,
-  nullability, and defaults, plus the `email_logs` table verbatim from
-  `supabase/migrations/20251014_email_logs.sql`. Data is **not**
-  restored.
+_None._ The 2b.8 column-drop migration was applied in phase 2b.8.1
+(see `docs/2b/2b-8-1-changes.md`). Forward file:
+`supabase/migrations/20260518194500_phase_2b_8_1_drop_legacy_outbound_columns.sql`;
+rollback companion:
+`supabase/migrations/ROLLBACK_20260518194500_phase_2b_8_1_drop_legacy_outbound_columns.sql`.
