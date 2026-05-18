@@ -1,3 +1,4 @@
+import DOMPurify from 'isomorphic-dompurify'
 import { createServiceClient } from '@/lib/supabase-server'
 import { sendEmailWithIntegration } from '@/lib/integrations/email-provider'
 import { smsService } from '@/lib/sms-service'
@@ -6,6 +7,101 @@ import { voiceService } from '@/lib/voice-service'
 import { recordProviderFailure } from '@/lib/monitoring/metrics'
 import { loadTenantIntegrationSettings } from '@/lib/integrations/tenant-integration-config'
 import { detectAndFireFirstResponse } from '@/lib/conversions/first-response-detector'
+
+export function sanitiseOutboundHtml(html: string | undefined): string {
+  if (!html) return ''
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+  })
+}
+
+async function markActivityFailed(
+  supabase: ReturnType<typeof createServiceClient>,
+  activityId: string,
+  friendlyLabel: string,
+  providerErr: unknown
+) {
+  const rawErr =
+    providerErr instanceof Error
+      ? { name: providerErr.name, message: providerErr.message, stack: providerErr.stack }
+      : providerErr
+  try {
+    await supabase
+      .from('activities')
+      .update({
+        message_status: 'failed',
+        integration_metadata: {
+          error: { message: friendlyLabel, raw: rawErr },
+        },
+      })
+      .eq('id', activityId)
+  } catch (updateErr) {
+    console.error('[markActivityFailed] update failed', updateErr)
+  }
+}
+
+function getTwilioErrorCode(err: unknown): number | undefined {
+  if (err && typeof err === 'object' && 'code' in err) {
+    const code = (err as { code: unknown }).code
+    if (typeof code === 'number') return code
+    if (typeof code === 'string') {
+      const parsed = parseInt(code, 10)
+      if (!Number.isNaN(parsed)) return parsed
+    }
+  }
+  const message = err instanceof Error ? err.message : String(err)
+  const match = message.match(/(?:error code|code)[:\s]+(\d{5})/i) ?? message.match(/\b(2\d{4}|63\d{3})\b/)
+  return match ? parseInt(match[1], 10) : undefined
+}
+
+function getHttpStatus(err: unknown): number | undefined {
+  if (err && typeof err === 'object' && 'status' in err) {
+    const status = (err as { status: unknown }).status
+    if (typeof status === 'number') return status
+  }
+  const message = err instanceof Error ? err.message : String(err)
+  const match = message.match(/\b([45]\d{2})\b/)
+  return match ? parseInt(match[1], 10) : undefined
+}
+
+function friendlyEmailError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err)
+  const lower = message.toLowerCase()
+  const status = getHttpStatus(err)
+
+  if (status === 401 || status === 403 || lower.includes('unauthorized') || lower.includes('forbidden') || lower.includes('api key')) {
+    return 'Send failed — invalid email API key'
+  }
+  if (status === 422 || lower.includes('invalid recipient')) {
+    return 'Send failed — invalid recipient address'
+  }
+  if ((status !== undefined && status >= 500) || lower.includes('temporarily unavailable')) {
+    return 'Send failed — email provider temporarily unavailable'
+  }
+  return 'Send failed — email provider error'
+}
+
+function friendlySmsError(err: unknown): string {
+  const code = getTwilioErrorCode(err)
+  if (code === 20003) return 'Send failed — invalid SMS credentials'
+  if (code === 21211 || code === 21614) return 'Send failed — invalid recipient number'
+  const status = getHttpStatus(err)
+  if (status !== undefined && status >= 400 && status < 500) {
+    return 'Send failed — SMS provider rejected the message'
+  }
+  return 'Send failed — SMS provider error'
+}
+
+function friendlyWhatsAppError(err: unknown): string {
+  const code = getTwilioErrorCode(err)
+  if (code === 63003) return 'Send failed — WhatsApp number not approved for this sender'
+  if (code === 63007) return 'Send failed — outside 24h customer-initiated window'
+  const status = getHttpStatus(err)
+  if (status !== undefined && status >= 400 && status < 500) {
+    return 'Send failed — WhatsApp provider rejected the message'
+  }
+  return 'Send failed — WhatsApp provider error'
+}
 
 interface BaseContext {
   tenantId: string
@@ -96,7 +192,7 @@ function stripHtml(input: string): string {
   return input.replace(/<[^>]+>/g, ' ')
 }
 
-function inferEmailPurpose(subject: string, html: string): string {
+export function inferEmailPurpose(subject: string, html: string): string {
   const combined = `${subject} ${stripHtml(html)}`.toLowerCase()
 
   if (combined.includes('quote') || combined.includes('pricing') || combined.includes('cost') || combined.includes('price')) {
@@ -136,7 +232,7 @@ function inferEmailPurpose(subject: string, html: string): string {
   return 'General Communication'
 }
 
-function inferSmsPurpose(message: string): string {
+export function inferSmsPurpose(message: string): string {
   const lower = message.toLowerCase()
 
   if (lower.includes('appointment') || lower.includes('schedule') || lower.includes('reminder')) {
@@ -158,7 +254,7 @@ function inferSmsPurpose(message: string): string {
   return 'Quick Message'
 }
 
-function inferWhatsAppPurpose(message: string): string {
+export function inferWhatsAppPurpose(message: string): string {
   const lower = message.toLowerCase()
 
   if (lower.includes('appointment') || lower.includes('schedule') || lower.includes('book')) {
@@ -193,13 +289,52 @@ export async function dispatchEmail(options: {
 }) {
   const supabase = createServiceClient()
   const { context } = options
+  const emailOccurredAt = new Date().toISOString()
+  const notConfiguredMsg =
+    'Email provider not configured. Please configure in Settings → Integrations.'
 
   const settings = await loadTenantIntegrationSettings(context.tenantId, { supabase })
 
-  if (!settings || !settings.is_email_configured) {
-    recordProviderFailure('email', 'send', 'Email integration not configured')
-    throw new Error('Email integration not configured. Please configure in Settings → Integrations.')
+  const { data: activity, error: insertErr } = await supabase
+    .from('activities')
+    .insert({
+      tenant_id: context.tenantId,
+      type: 'email',
+      contact_id: context.contactId ?? null,
+      deal_id: context.dealId ?? null,
+      agent_user_id: context.userId,
+      direction: 'outbound',
+      subject: options.subject,
+      snippet: (options.html ?? '').slice(0, 200),
+      rich_content: null,
+      integration_provider: settings?.email_provider ?? null,
+      email_to: options.to,
+      email_cc: options.cc || [],
+      email_bcc: options.bcc || [],
+      email_from: settings?.email_from_address ?? null,
+      message_status: 'pending',
+      metadata: {
+        ai_purpose: inferEmailPurpose(options.subject, options.html),
+        ai_sentiment: 'neutral',
+      },
+      occurred_at: emailOccurredAt,
+      created_at: emailOccurredAt,
+    })
+    .select('id')
+    .single()
+
+  if (insertErr || !activity) {
+    console.error('[dispatchEmail] activity insert failed', insertErr)
+    throw new Error('Failed to record outbound email attempt')
   }
+
+  if (!settings || !settings.is_email_configured) {
+    await markActivityFailed(supabase, activity.id, notConfiguredMsg, null)
+    recordProviderFailure(settings?.email_provider ?? 'email', 'send_email', 'not_configured')
+    throw new Error(notConfiguredMsg)
+  }
+
+  const sanitisedHtml = sanitiseOutboundHtml(options.html)
 
   const emailSettings = {
     email_provider: settings.email_provider,
@@ -211,74 +346,60 @@ export async function dispatchEmail(options: {
     email_oauth_expires_at: undefined,
   }
 
-  const sendResult = await sendEmailWithIntegration(emailSettings, {
-    to: options.to,
-    cc: options.cc,
-    bcc: options.bcc,
-    subject: options.subject,
-    html: options.html,
-    fromEmail: settings.email_from_address || undefined,
-    fromName: settings.email_from_name || undefined,
-    replyTo: settings.email_reply_to_address || undefined,
-  })
-
-  if (!sendResult.success) {
-    recordProviderFailure(settings.email_provider || 'email', 'send', sendResult.error || 'Unknown error')
-    throw new Error(sendResult.error || 'Email send failed')
-  }
-
-  if (sendResult.updatedToken && settings._debug?.channelSource === 'legacy') {
-    await supabase
-      .from('integration_settings')
-      .update({
-        email_oauth_token: sendResult.updatedToken.accessToken,
-        email_oauth_expires_at: sendResult.updatedToken.expiresAt || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('tenant_id', context.tenantId)
-  }
-
-  const aiPurpose = inferEmailPurpose(options.subject, options.html)
-  const aiOutcome = sendResult.status === 'failed' ? 'Failed to send' : 'Sent successfully'
-  const aiSummary = `${aiPurpose} email to ${options.to.join(', ')}`
-  const emailOccurredAt = new Date().toISOString()
-
-  const { data: activity, error: activityError } = await supabase
-    .from('activities')
-    .insert({
-      tenant_id: context.tenantId,
-      type: 'email',
-      contact_id: context.contactId ?? null,
-      deal_id: context.dealId ?? null,
-      agent_user_id: context.userId,
-      direction: 'outbound',
+  try {
+    const sendResult = await sendEmailWithIntegration(emailSettings, {
+      to: options.to,
+      cc: options.cc,
+      bcc: options.bcc,
       subject: options.subject,
-      snippet: options.html.substring(0, 200),
-      rich_content: options.html,
-      integration_provider: settings.email_provider,
-      external_id: sendResult.externalId || null,
-      email_to: options.to,
-      email_cc: options.cc || [],
-      email_bcc: options.bcc || [],
-      email_from: settings.email_from_address,
-      message_status: sendResult.status || 'sent',
-      metadata: {
-        ai_purpose: aiPurpose,
-        ai_outcome: aiOutcome,
-        ai_summary: aiSummary,
-        ai_sentiment: 'neutral',
-      },
-      // Phase 2b.1.b.1: explicit occurred_at so the FirstResponse detector can
-      // match it against deals.first_response_at (set by the AFTER INSERT trigger).
-      occurred_at: emailOccurredAt,
-      created_at: emailOccurredAt,
+      html: sanitisedHtml,
+      fromEmail: settings.email_from_address || undefined,
+      fromName: settings.email_from_name || undefined,
+      replyTo: settings.email_reply_to_address || undefined,
     })
-    .select()
-    .single()
 
-  if (activityError) {
-    console.error('[EMAIL] Activity log insert failed:', activityError)
-  } else if (activity) {
+    if (!sendResult.success) {
+      throw Object.assign(new Error(sendResult.error || 'Email send failed'), {
+        providerResponse: sendResult,
+      })
+    }
+
+    if (sendResult.updatedToken && settings._debug?.channelSource === 'legacy') {
+      await supabase
+        .from('integration_settings')
+        .update({
+          email_oauth_token: sendResult.updatedToken.accessToken,
+          email_oauth_expires_at: sendResult.updatedToken.expiresAt || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('tenant_id', context.tenantId)
+    }
+
+    const aiPurpose = inferEmailPurpose(options.subject, sanitisedHtml)
+    const aiOutcome = 'Sent successfully'
+    const aiSummary = `${aiPurpose} email to ${options.to.join(', ')}`
+
+    const { error: updateErr } = await supabase
+      .from('activities')
+      .update({
+        rich_content: sanitisedHtml,
+        snippet: sanitisedHtml.slice(0, 200),
+        external_id: sendResult.externalId ?? null,
+        message_status: sendResult.status || 'sent',
+        integration_metadata: { response: sendResult.providerResponse ?? null },
+        metadata: {
+          ai_purpose: aiPurpose,
+          ai_outcome: aiOutcome,
+          ai_summary: aiSummary,
+          ai_sentiment: 'neutral',
+        },
+      })
+      .eq('id', activity.id)
+
+    if (updateErr) {
+      console.error('[dispatchEmail] activity update failed', updateErr)
+    }
+
     await supabase.from('integration_logs').insert({
       tenant_id: context.tenantId,
       integration_type: 'email',
@@ -291,37 +412,40 @@ export async function dispatchEmail(options: {
         hasCc: Boolean(options.cc?.length),
         hasBcc: Boolean(options.bcc?.length),
         subject: options.subject,
-        body_length: options.html.length,
+        body_length: sanitisedHtml.length,
         ai_purpose: aiPurpose,
       },
       response_data: sendResult.providerResponse || null,
-      status: sendResult.success ? 'success' : 'error',
-      error_message: sendResult.success ? null : sendResult.error || null,
+      status: 'success',
+      error_message: null,
     })
-  }
 
-  // Phase 2b.1.b.1: fire FirstResponse Google Ads conversion event if this is
-  // the first outbound activity for the deal. Best-effort.
-  if (context.dealId) {
-    await detectAndFireFirstResponse(
-      {
-        tenant_id: context.tenantId,
-        contact_id: context.contactId ?? null,
-        deal_id: context.dealId,
-        direction: 'outbound',
-        occurred_at: emailOccurredAt,
-      },
-      supabase
-    )
-  }
+    if (context.dealId) {
+      await detectAndFireFirstResponse(
+        {
+          tenant_id: context.tenantId,
+          contact_id: context.contactId ?? null,
+          deal_id: context.dealId,
+          direction: 'outbound',
+          occurred_at: emailOccurredAt,
+        },
+        supabase
+      )
+    }
 
-  return {
-    activityId: activity?.id ?? null,
-    externalId: sendResult.externalId || null,
-    status: sendResult.status || 'sent',
-    aiPurpose,
-    aiOutcome,
-    aiSummary,
+    return {
+      activityId: activity.id,
+      externalId: sendResult.externalId || null,
+      status: sendResult.status || 'sent',
+      aiPurpose,
+      aiOutcome,
+      aiSummary,
+    }
+  } catch (providerErr) {
+    const friendly = friendlyEmailError(providerErr)
+    await markActivityFailed(supabase, activity.id, friendly, providerErr)
+    recordProviderFailure(settings.email_provider || 'email', 'send_email', providerErr)
+    throw providerErr
   }
 }
 
@@ -332,39 +456,13 @@ export async function dispatchSms(options: {
 }) {
   const supabase = createServiceClient()
   const { context } = options
+  const smsOccurredAt = new Date().toISOString()
+  const notConfiguredMsg =
+    'SMS provider not configured. Please configure in Settings → Integrations.'
 
   const settings = await loadTenantIntegrationSettings(context.tenantId, { supabase })
 
-  if (!settings || !settings.is_sms_configured) {
-    recordProviderFailure('twilio_sms', 'send', 'SMS integration not configured')
-    throw new Error('SMS integration not configured. Please configure in Settings → Integrations.')
-  }
-
-  await smsService.initialize({
-    accountSid: settings.sms_account_sid!,
-    authToken: settings.sms_auth_token!,
-    fromNumber: settings.sms_from_number || null,
-    messagingServiceSid: settings.sms_messaging_service_sid || null,
-  })
-
-  const sendResult = await smsService.send({
-    to: options.to,
-    message: options.message,
-    messagingServiceSid: settings.sms_messaging_service_sid || undefined,
-    from: settings.sms_from_number || undefined,
-  })
-
-  if (!sendResult.success) {
-    recordProviderFailure('twilio_sms', 'send', 'SMS send failed')
-    throw new Error('Failed to send SMS')
-  }
-
-  const aiPurpose = inferSmsPurpose(options.message)
-  const aiOutcome = sendResult.status === 'failed' ? 'Failed to send' : 'Sent successfully'
-  const aiSummary = `${aiPurpose} SMS to ${options.to}`
-  const smsOccurredAt = new Date().toISOString()
-
-  const { data: activity, error: activityError } = await supabase
+  const { data: activity, error: insertErr } = await supabase
     .from('activities')
     .insert({
       tenant_id: context.tenantId,
@@ -376,26 +474,68 @@ export async function dispatchSms(options: {
       subject: 'SMS',
       snippet: options.message.substring(0, 200),
       integration_provider: 'twilio_sms',
-      external_id: sendResult.messageId || null,
-      from_number: settings.sms_from_number || null,
+      from_number: settings?.sms_from_number ?? null,
       to_number: options.to,
-      message_status: sendResult.status || 'queued',
+      message_status: 'pending',
       metadata: {
-        ai_purpose: aiPurpose,
-        ai_outcome: aiOutcome,
-        ai_summary: aiSummary,
+        ai_purpose: inferSmsPurpose(options.message),
         ai_sentiment: 'neutral',
       },
-      // Phase 2b.1.b.1: explicit occurred_at so the FirstResponse detector can match.
       occurred_at: smsOccurredAt,
       created_at: smsOccurredAt,
     })
-    .select()
+    .select('id')
     .single()
 
-  if (activityError) {
-    console.error('[SMS] Activity log insert failed:', activityError)
-  } else if (activity) {
+  if (insertErr || !activity) {
+    console.error('[dispatchSms] activity insert failed', insertErr)
+    throw new Error('Failed to record outbound SMS attempt')
+  }
+
+  if (!settings || !settings.is_sms_configured) {
+    await markActivityFailed(supabase, activity.id, notConfiguredMsg, null)
+    recordProviderFailure('twilio_sms', 'send_sms', 'not_configured')
+    throw new Error(notConfiguredMsg)
+  }
+
+  try {
+    await smsService.initialize({
+      accountSid: settings.sms_account_sid!,
+      authToken: settings.sms_auth_token!,
+      fromNumber: settings.sms_from_number || null,
+      messagingServiceSid: settings.sms_messaging_service_sid || null,
+    })
+
+    const sendResult = await smsService.send({
+      to: options.to,
+      message: options.message,
+      messagingServiceSid: settings.sms_messaging_service_sid || undefined,
+      from: settings.sms_from_number || undefined,
+    })
+
+    if (!sendResult.success) {
+      throw new Error('Failed to send SMS')
+    }
+
+    const aiPurpose = inferSmsPurpose(options.message)
+    const aiOutcome = 'Sent successfully'
+    const aiSummary = `${aiPurpose} SMS to ${options.to}`
+
+    await supabase
+      .from('activities')
+      .update({
+        external_id: sendResult.messageId ?? null,
+        message_status: sendResult.status || 'queued',
+        integration_metadata: { response: sendResult.providerResponse ?? null },
+        metadata: {
+          ai_purpose: aiPurpose,
+          ai_outcome: aiOutcome,
+          ai_summary: aiSummary,
+          ai_sentiment: 'neutral',
+        },
+      })
+      .eq('id', activity.id)
+
     await supabase.from('integration_logs').insert({
       tenant_id: context.tenantId,
       integration_type: 'sms',
@@ -405,32 +545,36 @@ export async function dispatchSms(options: {
       external_id: sendResult.messageId || null,
       request_data: { to: options.to, message_length: options.message.length, ai_purpose: aiPurpose },
       response_data: sendResult.providerResponse || null,
-      status: sendResult.success ? 'success' : 'error',
-      error_message: sendResult.success ? null : 'Twilio send failed',
+      status: 'success',
+      error_message: null,
     })
-  }
 
-  // Phase 2b.1.b.1: fire FirstResponse Google Ads conversion event if applicable.
-  if (context.dealId) {
-    await detectAndFireFirstResponse(
-      {
-        tenant_id: context.tenantId,
-        contact_id: context.contactId ?? null,
-        deal_id: context.dealId,
-        direction: 'outbound',
-        occurred_at: smsOccurredAt,
-      },
-      supabase
-    )
-  }
+    if (context.dealId) {
+      await detectAndFireFirstResponse(
+        {
+          tenant_id: context.tenantId,
+          contact_id: context.contactId ?? null,
+          deal_id: context.dealId,
+          direction: 'outbound',
+          occurred_at: smsOccurredAt,
+        },
+        supabase
+      )
+    }
 
-  return {
-    activityId: activity?.id ?? null,
-    externalId: sendResult.messageId || null,
-    status: sendResult.status || 'queued',
-    aiPurpose,
-    aiOutcome,
-    aiSummary,
+    return {
+      activityId: activity.id,
+      externalId: sendResult.messageId || null,
+      status: sendResult.status || 'queued',
+      aiPurpose,
+      aiOutcome,
+      aiSummary,
+    }
+  } catch (providerErr) {
+    const friendly = friendlySmsError(providerErr)
+    await markActivityFailed(supabase, activity.id, friendly, providerErr)
+    recordProviderFailure('twilio_sms', 'send_sms', providerErr)
+    throw providerErr
   }
 }
 
@@ -442,37 +586,13 @@ export async function dispatchWhatsApp(options: {
 }) {
   const supabase = createServiceClient()
   const { context } = options
+  const whatsappOccurredAt = new Date().toISOString()
+  const notConfiguredMsg =
+    'WhatsApp provider not configured. Please configure in Settings → Integrations.'
 
   const settings = await loadTenantIntegrationSettings(context.tenantId, { supabase })
 
-  if (!settings || !settings.is_whatsapp_configured) {
-    recordProviderFailure('twilio_whatsapp', 'send', 'WhatsApp integration not configured')
-    throw new Error('WhatsApp integration not configured. Please configure in Settings → Integrations.')
-  }
-
-  await whatsappService.initialize(
-    settings.whatsapp_account_sid!,
-    settings.whatsapp_auth_token!,
-    settings.whatsapp_from_number!
-  )
-
-  const sendResult = await whatsappService.send({
-    to: options.to,
-    message: options.message,
-    mediaUrl: options.mediaUrl,
-  })
-
-  if (!sendResult.success) {
-    recordProviderFailure('twilio_whatsapp', 'send', 'WhatsApp send failed')
-    throw new Error('Failed to send WhatsApp message')
-  }
-
-  const aiPurpose = inferWhatsAppPurpose(options.message)
-  const aiOutcome = sendResult.status === 'failed' ? 'Failed to send' : 'Sent successfully'
-  const aiSummary = `${aiPurpose} WhatsApp to ${options.to}${options.mediaUrl ? ' (with attachment)' : ''}`
-  const whatsappOccurredAt = new Date().toISOString()
-
-  const { data: activity, error: activityError } = await supabase
+  const { data: activity, error: insertErr } = await supabase
     .from('activities')
     .insert({
       tenant_id: context.tenantId,
@@ -484,14 +604,11 @@ export async function dispatchWhatsApp(options: {
       subject: 'WhatsApp Message',
       snippet: options.message.substring(0, 200),
       integration_provider: 'twilio_whatsapp',
-      external_id: sendResult.messageId || null,
-      from_number: settings.whatsapp_from_number,
+      from_number: settings?.whatsapp_from_number ?? null,
       to_number: `whatsapp:${options.to}`,
-      message_status: sendResult.status || 'queued',
+      message_status: 'pending',
       metadata: {
-        ai_purpose: aiPurpose,
-        ai_outcome: aiOutcome,
-        ai_summary: aiSummary,
+        ai_purpose: inferWhatsAppPurpose(options.message),
         ai_sentiment: 'neutral',
         has_media: Boolean(options.mediaUrl),
       },
@@ -499,16 +616,64 @@ export async function dispatchWhatsApp(options: {
         has_media: Boolean(options.mediaUrl),
         media_url: options.mediaUrl || null,
       },
-      // Phase 2b.1.b.1: explicit occurred_at so the FirstResponse detector can match.
       occurred_at: whatsappOccurredAt,
       created_at: whatsappOccurredAt,
     })
-    .select()
+    .select('id')
     .single()
 
-  if (activityError) {
-    console.error('[WHATSAPP] Activity log insert failed:', activityError)
-  } else if (activity) {
+  if (insertErr || !activity) {
+    console.error('[dispatchWhatsApp] activity insert failed', insertErr)
+    throw new Error('Failed to record outbound WhatsApp attempt')
+  }
+
+  if (!settings || !settings.is_whatsapp_configured) {
+    await markActivityFailed(supabase, activity.id, notConfiguredMsg, null)
+    recordProviderFailure('twilio_whatsapp', 'send_whatsapp', 'not_configured')
+    throw new Error(notConfiguredMsg)
+  }
+
+  try {
+    await whatsappService.initialize(
+      settings.whatsapp_account_sid!,
+      settings.whatsapp_auth_token!,
+      settings.whatsapp_from_number!
+    )
+
+    const sendResult = await whatsappService.send({
+      to: options.to,
+      message: options.message,
+      mediaUrl: options.mediaUrl,
+    })
+
+    if (!sendResult.success) {
+      throw new Error('Failed to send WhatsApp message')
+    }
+
+    const aiPurpose = inferWhatsAppPurpose(options.message)
+    const aiOutcome = 'Sent successfully'
+    const aiSummary = `${aiPurpose} WhatsApp to ${options.to}${options.mediaUrl ? ' (with attachment)' : ''}`
+
+    await supabase
+      .from('activities')
+      .update({
+        external_id: sendResult.messageId ?? null,
+        message_status: sendResult.status || 'queued',
+        integration_metadata: {
+          has_media: Boolean(options.mediaUrl),
+          media_url: options.mediaUrl || null,
+          response: sendResult.providerResponse ?? null,
+        },
+        metadata: {
+          ai_purpose: aiPurpose,
+          ai_outcome: aiOutcome,
+          ai_summary: aiSummary,
+          ai_sentiment: 'neutral',
+          has_media: Boolean(options.mediaUrl),
+        },
+      })
+      .eq('id', activity.id)
+
     await supabase.from('integration_logs').insert({
       tenant_id: context.tenantId,
       integration_type: 'whatsapp',
@@ -516,34 +681,43 @@ export async function dispatchWhatsApp(options: {
       provider: 'twilio',
       activity_id: activity.id,
       external_id: sendResult.messageId || null,
-      request_data: { to: options.to, message_length: options.message.length, has_media: Boolean(options.mediaUrl), ai_purpose: aiPurpose },
-      response_data: sendResult.providerResponse || null,
-      status: sendResult.success ? 'success' : 'error',
-      error_message: sendResult.success ? null : 'Twilio WhatsApp send failed',
-    })
-  }
-
-  // Phase 2b.1.b.1: fire FirstResponse Google Ads conversion event if applicable.
-  if (context.dealId) {
-    await detectAndFireFirstResponse(
-      {
-        tenant_id: context.tenantId,
-        contact_id: context.contactId ?? null,
-        deal_id: context.dealId,
-        direction: 'outbound',
-        occurred_at: whatsappOccurredAt,
+      request_data: {
+        to: options.to,
+        message_length: options.message.length,
+        has_media: Boolean(options.mediaUrl),
+        ai_purpose: aiPurpose,
       },
-      supabase
-    )
-  }
+      response_data: sendResult.providerResponse || null,
+      status: 'success',
+      error_message: null,
+    })
 
-  return {
-    activityId: activity?.id ?? null,
-    externalId: sendResult.messageId || null,
-    status: sendResult.status || 'queued',
-    aiPurpose,
-    aiOutcome,
-    aiSummary,
+    if (context.dealId) {
+      await detectAndFireFirstResponse(
+        {
+          tenant_id: context.tenantId,
+          contact_id: context.contactId ?? null,
+          deal_id: context.dealId,
+          direction: 'outbound',
+          occurred_at: whatsappOccurredAt,
+        },
+        supabase
+      )
+    }
+
+    return {
+      activityId: activity.id,
+      externalId: sendResult.messageId || null,
+      status: sendResult.status || 'queued',
+      aiPurpose,
+      aiOutcome,
+      aiSummary,
+    }
+  } catch (providerErr) {
+    const friendly = friendlyWhatsAppError(providerErr)
+    await markActivityFailed(supabase, activity.id, friendly, providerErr)
+    recordProviderFailure('twilio_whatsapp', 'send_whatsapp', providerErr)
+    throw providerErr
   }
 }
 

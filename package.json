@@ -102,6 +102,7 @@
     "grapesjs-preset-newsletter": "^1.0.2",
     "html2canvas": "^1.4.1",
     "ioredis": "^5.4.1",
+    "isomorphic-dompurify": "^3.13.0",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "libphonenumber-js": "^1.12.24",
