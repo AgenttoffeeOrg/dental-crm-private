@@ -165,6 +165,18 @@ export function GlobalActivityFeed({ tenantId }: { tenantId?: string }) {
                           <Badge variant="outline" className="text-xs">via {activity.integration_provider}</Badge>
                         </>
                       )}
+                      {activity.message_status === 'failed' && (
+                        <>
+                          <span className="text-gray-300">•</span>
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-red-50 border-red-200 text-red-700"
+                            title={activity.integration_metadata?.error?.message}
+                          >
+                            Failed
+                          </Badge>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

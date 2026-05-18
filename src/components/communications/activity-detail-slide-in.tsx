@@ -58,6 +58,20 @@ const ACTIVITY_ICONS = {
   note: FileText
 }
 
+export function hasRealAiInsights(metadata: Record<string, unknown> | null | undefined): boolean {
+  const m = metadata ?? {}
+  const arr = (v: unknown): v is unknown[] => Array.isArray(v) && v.length > 0
+  const str = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0
+
+  return (
+    arr(m.ai_key_points) ||
+    arr(m.ai_actions) ||
+    str(m.ai_engagement) ||
+    str(m.ai_urgency) ||
+    arr(m.treatments_mentioned)
+  )
+}
+
 export function ActivityDetailSlideIn({
   isOpen,
   onClose,
@@ -633,7 +647,29 @@ export function ActivityDetailSlideIn({
                       {activity.message_status && (
                         <div className="p-3 bg-gray-50 rounded-lg">
                           <p className="text-xs text-gray-600 mb-1">Status</p>
-                          <Badge variant="outline" className="text-xs capitalize">{activity.message_status}</Badge>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'text-xs capitalize',
+                              activity.message_status === 'failed' &&
+                                'bg-red-50 border-red-200 text-red-700 hover:bg-red-50'
+                            )}
+                            title={
+                              activity.message_status === 'failed'
+                                ? activity.integration_metadata?.error?.message
+                                : undefined
+                            }
+                          >
+                            {activity.message_status === 'failed'
+                              ? 'Failed'
+                              : activity.message_status}
+                          </Badge>
+                          {activity.message_status === 'failed' &&
+                            activity.integration_metadata?.error?.message && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {activity.integration_metadata.error.message}
+                              </p>
+                            )}
                         </div>
                       )}
                     </div>
@@ -658,7 +694,7 @@ export function ActivityDetailSlideIn({
           </div>
 
           {/* RIGHT COLUMN: AI Insights (40%) */}
-          {activity && (
+          {activity && hasRealAiInsights(activity.metadata) && (
             <div className="w-[40%] flex flex-col bg-gradient-to-br from-purple-50 to-blue-50">
               <div className="p-4 border-b bg-white/50 backdrop-blur">
                 <div className="flex items-center gap-2">
@@ -675,9 +711,11 @@ export function ActivityDetailSlideIn({
                       <FileText className="h-4 w-4 text-purple-600" />
                       <h4 className="font-semibold text-sm">Executive Summary</h4>
                     </div>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {activity.metadata?.ai_summary || 'This conversation was about discussing treatment options. Patient showed interest in orthodontic procedures and requested a consultation appointment. Next steps: Schedule initial consultation and send follow-up email with pricing information.'}
-                    </p>
+                    {activity.metadata?.ai_summary && (
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {activity.metadata.ai_summary}
+                      </p>
+                    )}
                   </div>
 
                   {/* Sentiment */}
@@ -689,7 +727,7 @@ export function ActivityDetailSlideIn({
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Sentiment:</span>
-                        {(activity.metadata?.ai_sentiment || 'positive') === 'positive' && (
+                        {activity.metadata?.ai_sentiment === 'positive' && (
                           <Badge className="bg-green-100 text-green-700 border-green-200">
                             <ThumbsUp className="h-3 w-3 mr-1" />
                             Positive
@@ -708,14 +746,22 @@ export function ActivityDetailSlideIn({
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Engagement:</span>
-                        <span className="text-sm font-medium text-green-600">High</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Urgency:</span>
-                        <Badge variant="outline" className="text-xs">Medium</Badge>
-                      </div>
+                      {activity.metadata?.ai_engagement && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Engagement:</span>
+                          <span className="text-sm font-medium text-green-600">
+                            {activity.metadata.ai_engagement}
+                          </span>
+                        </div>
+                      )}
+                      {activity.metadata?.ai_urgency && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Urgency:</span>
+                          <Badge variant="outline" className="text-xs">
+                            {activity.metadata.ai_urgency}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -726,12 +772,7 @@ export function ActivityDetailSlideIn({
                       <h4 className="font-semibold text-sm">Key Points</h4>
                     </div>
                     <ul className="space-y-2">
-                      {(activity.metadata?.ai_key_points || [
-                        'Patient interested in orthodontic treatment',
-                        'Concerned about treatment duration',
-                        'Budget range: $3,000 - $5,000',
-                        'Prefers flexible payment options'
-                      ]).map((point: string, idx: number) => (
+                      {(activity.metadata?.ai_key_points ?? []).map((point: string, idx: number) => (
                         <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
                           <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                           <span>{point}</span>
@@ -747,12 +788,7 @@ export function ActivityDetailSlideIn({
                       <h4 className="font-semibold text-sm">Next Actions</h4>
                     </div>
                     <ul className="space-y-2">
-                      {(activity.metadata?.ai_actions || [
-                        'Schedule initial consultation',
-                        'Send pricing breakdown email',
-                        'Prepare treatment plan options',
-                        'Follow up in 3 days if no response'
-                      ]).map((action: string, idx: number) => (
+                      {(activity.metadata?.ai_actions ?? []).map((action: string, idx: number) => (
                         <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
                           <div className="h-5 w-5 rounded border-2 border-orange-600 flex-shrink-0 mt-0.5" />
                           <span>{action}</span>

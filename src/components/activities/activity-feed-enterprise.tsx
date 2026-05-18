@@ -504,6 +504,14 @@ const sanitizedContactPhone = useMemo(
                       </span>
                     </div>
                   )
+                ) : activity.message_status === 'failed' ? (
+                  <div
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-semibold bg-red-50 border-red-200 text-red-700"
+                    title={activity.integration_metadata?.error?.message}
+                  >
+                    <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="text-xs">Failed</span>
+                  </div>
                 ) : (activity.type === 'email' || activity.type === 'sms' || activity.type === 'whatsapp') && activity.metadata?.ai_outcome ? (
                   <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-semibold",
                     activity.message_status === 'delivered' || activity.message_status === 'read' ? 'bg-green-50 border-green-200 text-green-700' :
