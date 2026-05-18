@@ -126,7 +126,16 @@ Pre-existing failures in `tests/`, `tools/` only (same class as 2b.8.2 baseline)
 
 ## 6. Deploy ID
 
-Schema-only change; Husky pre-push still runs `vercel deploy --prod` (no-op functionally). Deploy ID captured after push in `.cursor/post-push-deploy.log` (see commit `phase 2b.8.1: apply scheduled column-drop migration`).
+**Commit pushed:** `d8f8984` on `phase-1-attribution-foundation` (squashed with 2b.8.2 operator-gate doc closeout in one push after redacting a Twilio SID that blocked GitHub push protection).
+
+Schema-only change; Husky pre-push runs `vercel deploy --prod` (no-op functionally).
+
+| Field | Value |
+|-------|--------|
+| Commit | `d8f8984` |
+| Deployment ID | `dpl_8M9mhGSXxuhH2R9bqvKGr76ye7Q5` |
+| Inspect | https://vercel.com/toffeehegde-9056s-projects/dental-crm/8M9mhGSXxuhH2R9bqvKGr76ye7Q5 |
+| Production alias | https://dental-crm-nine.vercel.app (unchanged) |
 
 ---
 
@@ -159,8 +168,9 @@ Schema-only change; Husky pre-push still runs `vercel deploy --prod` (no-op func
 - ✅ §3.2 confirmation: zero rows (all 14 doomed columns gone).
 - ✅ §4.1 curl smoke: `/settings` 200, CIT route 401, send-sms 401.
 - ✅ §4.2 build sanity: no new TypeScript errors in `src/`.
+- ✅ Husky pre-push deploy fired; see §6 / `.cursor/post-push-deploy.log`.
 - ✅ `operational-gotchas.md` appended per §6.2.
 - ✅ `2b-8-changes.md` closing note appended per §6.3.
 - ✅ `2b-8-1-changes.md` written.
 
-Phase 2b.8.1 is complete after push + deploy log (§6). Hand back to planner for **2b.9**.
+Phase 2b.8.1 is **done**. Hand back to planner for **2b.9**.
