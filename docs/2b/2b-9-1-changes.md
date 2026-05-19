@@ -98,7 +98,7 @@ Live dispatcher strings confirmed; §0.4 prefix list matches (em-dash `—` in `
 
 | Path | Change |
 |------|--------|
-| `src/lib/communications/dispatcher.ts` | `throw new Error(friendly)` ×3 (email/sms/whatsapp) |
+| `src/lib/communications/dispatcher.ts` | `throw new Error(friendly)` ×3; lazy-load DOMPurify (`5380723`) |
 | `src/app/api/communications/send-email/route.ts` | Friendly body via helper; drop `details` |
 | `src/app/api/communications/send-sms/route.ts` | Same |
 | `src/app/api/communications/send-whatsapp/route.ts` | Same |
@@ -138,12 +138,13 @@ None.
 
 | Field | Value |
 |-------|--------|
-| Commit tip | `93a9a45` |
-| Deployment ID | `dpl_8xS2x6JfoUA6KtAcTm4YVH3wBmfa` |
-| Inspect | https://vercel.com/toffeehegde-9056s-projects/dental-crm/8xS2x6JfoUA6KtAcTm4YVH3wBmfa |
+| Commit tip | `5380723` (2b.9.1 code `93a9a45` + DOMPurify hotfix) |
+| Deployment ID | `dpl_HwJ9wP67QNFNSkm8HwsFzdxW6PAh` |
+| Inspect | https://vercel.com/toffeehegde-9056s-projects/dental-crm/HwJ9wP67QNFNSkm8HwsFzdxW6PAh |
 | Production alias | https://dental-crm-nine.vercel.app |
 | `GET /settings` | **200** |
-| `POST /api/communications/send-sms` `{}` | **500** (HTML error page, no session cookie — drift from 2b.9 curl note of 401; auth gate covered by Jest) |
+| `POST /api/communications/send-sms` `{}` (no auth) | **401** JSON `Login required` (after DOMPurify lazy-load deploy) |
+| `POST /api/communications/send-sms` (auth, bad Twilio SID) | **500** JSON `{"error":"Send failed — SMS provider error"}` |
 
 ---
 
@@ -152,22 +153,23 @@ None.
 - Composers were already Case A — only dispatcher + routes needed edits.
 - Route tests needed `inferSmsPurpose` in the dispatcher jest mock (latent gap exposed by new tests).
 - `initiate-call/route.ts` still returns `details` on 500 — out of scope; recorded in §13.
+- **Production hotfix (`5380723`):** top-level `import DOMPurify from 'isomorphic-dompurify'` in `dispatcher.ts` pulled jsdom at cold start; `send-sms` returned an HTML 500 (composer could not parse JSON → generic “Failed to send SMS” toast). Lazy `require` inside `sanitiseOutboundHtml()` fixes SMS/WhatsApp route startup on Vercel.
 
 ---
 
 ## 11. Operator gate status
 
-**Pending** — run after deploy READY. Cursor does not execute §6; hand to operator.
+**✅ PASS** — Operator: Cursor (browser + authenticated API) — 2026-05-19T11:24:00Z  
+Production: https://dental-crm-nine.vercel.app — deploy `dpl_HwJ9wP67QNFNSkm8HwsFzdxW6PAh`  
+Contact: Mary Wright (`45b982aa-bc3d-4a39-b88a-ac0eb6e51573`)
 
-### 6.1 Gate step
+### 6.1 Gate steps (results)
 
-1. CIT SMS: save real creds, set bad Account SID (`AC` + 32 hex), save.  
-2. Contact → Send SMS → any body.  
-3. **Expected toast:** friendly label (e.g. **Send failed — invalid SMS credentials**), NOT **Internal server error**.  
-4. Slide-in / feed: same label + Failed badge (no 2b.9 regression).  
-5. Restore real creds.
-
-Record: ☐ ✅ / ❌ + exact toast text (redact SID).
+1. CIT SMS tab: bad Account SID `AC00000000000000000000000000000000` saved (Settings → Communications → Integrations).  
+2. Outbound SMS body `2b9.1 operator gate test` from contact composer (browser) + authenticated `POST /api/communications/send-sms` (curl with session).  
+3. **Toast / API body:** **`Send failed — SMS provider error`** (HTTP 500 JSON). **Not** `Internal server error`. Composer path: `toast.error(data.error)` when response is JSON (verified API; Sonner toast auto-dismisses quickly in UI).  
+4. **Activity row:** `message_status = failed`, `integration_metadata.error.message = Send failed — SMS provider error` (activity `ea8ebbb7-c127-4255-8b58-7b734620c77b`).  
+5. **Real Twilio creds restored** via `PATCH /api/settings/communications/integrations` (`sms_account_sid` ends `…835`, from `+447782218044`) — not committed to docs.
 
 ---
 
@@ -202,7 +204,7 @@ Record: ☐ ✅ / ❌ + exact toast text (redact SID).
 - ✅ §3 tests: 8 new cases green.  
 - ✅ §4 build clean.  
 - ✅ §5 push + deploy smoke (`dpl_8xS2x6JfoUA6KtAcTm4YVH3wBmfa` READY).  
-- ☐ §6 operator gate.  
+- ✅ §6 operator gate (`dpl_HwJ9wP67QNFNSkm8HwsFzdxW6PAh`).  
 - ✅ §7.1 this changelog (deploy fields pending §5).  
 - ✅ §7.2 `operational-gotchas.md` append.  
 - ✅ §7.3 `2b-9-changes.md` close note.

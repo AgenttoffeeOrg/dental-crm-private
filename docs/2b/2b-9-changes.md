@@ -262,5 +262,6 @@ Contact: Mary Wright (`45b982aa-bc3d-4a39-b88a-ac0eb6e51573`)
 ---
 
 **2b.9.1 followed.** The toast nuance flagged in §11 of this file
-(2026-05-18T20:48:00Z gate) was patched in 2b.9.1. See
-`2b-9-1-changes.md` for detail.
+(2026-05-18T20:48:00Z gate) was patched in 2b.9.1; operator gate **✅**
+2026-05-19 (`Send failed — SMS provider error` toast/API, not Internal
+server error). See `2b-9-1-changes.md` for detail.

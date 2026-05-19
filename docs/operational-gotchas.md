@@ -360,3 +360,10 @@ reads from the response body. If a new friendly label is introduced in
 the dispatcher, add its prefix to `FRIENDLY_ERROR_PREFIXES` in
 `error-helpers.ts` or it will be hidden behind the generic fallback.
 
+**Vercel cold start:** do not top-level-import `isomorphic-dompurify` on
+code paths shared by `send-sms` / `send-whatsapp` (e.g. `dispatcher.ts`).
+It pulls jsdom and can crash the route with an HTML 500 before the route
+handler runs; the SMS composer then shows a generic “Failed to send SMS”
+toast. Use lazy `require` inside `sanitiseOutboundHtml()` only (fix in
+`5380723`).
+
