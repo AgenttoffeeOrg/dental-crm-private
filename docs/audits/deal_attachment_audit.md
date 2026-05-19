@@ -6,6 +6,7 @@
 > **Branch:** `phase-1-attribution-foundation` (working tree had unrelated unstaged edits at audit time; this file is the only deliverable).
 > **Test tenant:** `5aadca14-9786-4aef-bc53-e9287cdd0bbf` ("Deepak's Dental Practice")
 > **Scope:** How `activities.deal_id` is set on inbound (`ingestLead`) and outbound (dispatcher + composers), deal/pipeline data model, UI affordances, audit infrastructure. Excludes `conversation_id` (2b.11), automation engine (2b.12), deal merge UI.
+> **Post-push deploy (docs-only):** `dpl_QumNBUdcAS8VuApAnpcCuw6JYiah` — Ready 2026-05-19 ~22:35 UTC (`8c7dc22`).
 
 **Pre-flight reference docs**
 
@@ -419,4 +420,4 @@ Dedicated `activity_deal_changes` table only if compliance needs immutable appen
 
 ---
 
-*End of audit. Deploy ID to be appended after docs commit push.*
+*End of audit.*
