@@ -410,7 +410,7 @@ export async function sendEmailWithIntegration(
 }
 
 // Resend HTTP API. The `resend` SDK is already a dependency (used by
-// src/lib/email-service.ts for transactional system emails); this adapter
+// src/lib/services/email-service.ts for transactional system emails); this adapter
 // makes the dispatcher's `email_provider='resend'` path work end-to-end.
 // API key is stored in `integration_settings.email_api_key` per tenant,
 // matching the SendGrid pattern.

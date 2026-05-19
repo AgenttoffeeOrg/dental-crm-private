@@ -3,7 +3,7 @@
  *
  * Adapters for delivering notifications via multiple channels:
  * - In-App (database insert + Realtime — handled directly by the router)
- * - Email (Resend, via the shared EmailService helper)
+ * - Email (multi-provider, via sendEmail from lib/services/email-service)
  * - SMS (Twilio)
  * - WhatsApp (Twilio)
  * - Push (Firebase — future)
@@ -14,7 +14,7 @@
  */
 
 import { createServiceClient as createClient } from '@/lib/supabase-server'
-import { emailService } from '@/lib/email-service'
+import { sendEmail } from '@/lib/services/email-service'
 
 interface NotificationPayload {
   notification_id: string
@@ -88,9 +88,9 @@ export async function sendEmailNotification(payload: NotificationPayload): Promi
   })
 
   try {
-    const result = await emailService.send({
-      to: payload.user_email,
-      from: fromEmail,
+    const result = await sendEmail({
+      to: { email: payload.user_email },
+      from: { email: fromEmail },
       subject: payload.title,
       html: generateEmailHTML(payload),
     })
