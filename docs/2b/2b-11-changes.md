@@ -149,7 +149,16 @@ None.
 
 ## 9. Deploy + curl smoke
 
-*(Filled after push — see deploy log.)*
+| Item | Value |
+|------|--------|
+| Commits | `90a5a7d` (feat), `f1251e0` (docs) |
+| Deploy ID | `dpl_28DctoFfrS9KXQjfNa93PvkJsppV` |
+| Status | **READY** → https://dental-crm-nine.vercel.app |
+
+| Curl | Expected | Observed |
+|------|----------|----------|
+| `GET /settings` | 200 or 307 | **200** |
+| `POST /api/communications/send-email` `{}` | 401 JSON | **401** `{"error":"unauthenticated","message":"Login required"}` |
 
 ---
 
@@ -221,9 +230,9 @@ Checklist for operator:
 - ✅ §6.5 form channels null by design  
 - ✅ §7 tests in modified libs  
 - ✅ §8 build green; tsc/jest pre-existing caveats  
-- ☐ §9 push + deploy *(in progress)*  
-- ☐ §10 operator gate *(manual UI)*  
+- ✅ §9 push + deploy (`dpl_28DctoFfrS9KXQjfNa93PvkJsppV`, curls green)  
+- ☐ §10 operator gate *(manual UI — send/reply in product)*  
 - ✅ §11.1 this changelog  
 - ✅ §11.2 `operational-gotchas.md`  
 - ✅ §11.3 `2b-10-changes.md` close note  
-- ☐ §11.4 docs commit + deploy *(after §9)*
+- ✅ §11.4 docs commit + deploy (`f1251e0`)
