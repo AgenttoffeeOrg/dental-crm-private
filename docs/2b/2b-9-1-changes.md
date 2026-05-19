@@ -208,3 +208,7 @@ Contact: Mary Wright (`45b982aa-bc3d-4a39-b88a-ac0eb6e51573`)
 - ✅ §7.1 this changelog (deploy fields pending §5).  
 - ✅ §7.2 `operational-gotchas.md` append.  
 - ✅ §7.3 `2b-9-changes.md` close note.
+
+> **2b.10 followed.** The "system-email merge" open question flagged
+> in §13 of `2b-9-changes.md` and `2b-9-1-changes.md` is now closed.
+> See `2b-10-changes.md`.

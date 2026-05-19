@@ -367,3 +367,14 @@ handler runs; the SMS composer then shows a generic “Failed to send SMS”
 toast. Use lazy `require` inside `sanitiseOutboundHtml()` only (fix in
 `5380723`).
 
+## Phase 2b.10 — System-email module merge
+
+> **There is now exactly one system-email module.**
+> `src/lib/services/email-service.ts` is the canonical system-email
+> surface (user invites, join-request notifications, join
+> approve/reject, seat-limit warnings). It branches by
+> `getEmailProvider()` across Resend / SendGrid / Console.
+> `src/lib/email-service.ts` no longer exists — any code referencing
+> `EmailService`, `emailService`, or `@/lib/email-service` is reading a
+> pre-2b.10 repo.
+
