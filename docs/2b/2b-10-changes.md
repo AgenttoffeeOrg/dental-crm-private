@@ -270,6 +270,10 @@ Tenant: `5aadca14-9786-4aef-bc53-e9287cdd0bbf`
 2. **Provider Message-ID capture** — Resend, SendGrid, Twilio return different ID shapes. Store as `metadata.message_id` (string) per audit P3 #29; whether to also store provider-specific raw IDs separately is a 2b.11 sub-question.
 3. **Inbound parser stamping** — inbound SMS / WhatsApp webhooks already write activities; confirm `conversation_id` stamp adds no measurable latency on the inbound hot path.
 
+> **2b.11 followed.** The conversation_id and message_id open
+> questions flagged in §13 of `2b-10-changes.md` are now closed.
+> See `2b-11-changes.md`.
+
 ---
 
 ## 14. Definition of done

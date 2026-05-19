@@ -378,3 +378,34 @@ toast. Use lazy `require` inside `sanitiseOutboundHtml()` only (fix in
 > `EmailService`, `emailService`, or `@/lib/email-service` is reading a
 > pre-2b.10 repo.
 
+## Phase 2b.11 — Conversation rows + Message-ID capture
+
+> **Every activity on email/SMS/WhatsApp now has a `conversation_id`.**
+> The value is derived as
+> `uuidv5(CONVERSATION_NAMESPACE_UUID, tenantId + ':' + contactId + ':' + type)`
+> where `type` is the activities row type (`'email' | 'sms' | 'whatsapp'`).
+> The namespace UUID is hardcoded in
+> `src/lib/communications/conversation-id.ts` and in the migration
+> file. Do not change either — rotating the namespace orphans every
+> stored conversation_id.
+>
+> Voice activities have `conversation_id = null` deliberately. Activities
+> on web-form / Google-Lead-Form channels also have null because their
+> activity `type` is not in the supported set.
+>
+> Outbound emails now ship an RFC 5322 `Message-ID:` header of the form
+> `<uuid@dental-crm-nine.vercel.app>`, stored verbatim in
+> `metadata.message_id`. When the real outbound domain is purchased
+> post-launch, swap the hostname in `dispatcher.ts` only; existing
+> stored values stay as-is (matching is exact-string).
+>
+> Twilio Message SIDs are stored as `metadata.message_id` on outbound
+> SMS/WhatsApp activities. `metadata.provider_name` always identifies
+> which provider's ID is in `message_id`.
+>
+> **Migration apply:** `supabase db push` may fail when remote-only
+> migration versions are not in the local tree (see 2b.8.1). Use
+> `scripts/apply-2b11-conversation-id-migration.mjs` with
+> `SUPABASE_DB_PASSWORD` set, or Management API `database/query`, then
+> record version `20260519120000` in `supabase_migrations.schema_migrations`.
+
