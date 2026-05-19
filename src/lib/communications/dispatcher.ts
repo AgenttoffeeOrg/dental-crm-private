@@ -1,5 +1,7 @@
+import { v4 as uuidv4 } from 'uuid'
 import { createServiceClient } from '@/lib/supabase-server'
 import { sendEmailWithIntegration } from '@/lib/integrations/email-provider'
+import { computeConversationId } from '@/lib/communications/conversation-id'
 import { smsService } from '@/lib/sms-service'
 import { whatsappService } from '@/lib/whatsapp-service'
 import { voiceService } from '@/lib/voice-service'
@@ -301,6 +303,14 @@ export async function dispatchEmail(options: {
 
   const settings = await loadTenantIntegrationSettings(context.tenantId, { supabase })
 
+  const conversationId = computeConversationId({
+    tenantId: context.tenantId,
+    contactId: context.contactId,
+    channel: 'email',
+  })
+  const messageIdRfc5322 = `<${uuidv4()}@dental-crm-nine.vercel.app>`
+  const emailProviderName = settings?.email_provider ?? null
+
   const { data: activity, error: insertErr } = await supabase
     .from('activities')
     .insert({
@@ -313,15 +323,18 @@ export async function dispatchEmail(options: {
       subject: options.subject,
       snippet: (options.html ?? '').slice(0, 200),
       rich_content: null,
-      integration_provider: settings?.email_provider ?? null,
+      integration_provider: emailProviderName,
       email_to: options.to,
       email_cc: options.cc || [],
       email_bcc: options.bcc || [],
       email_from: settings?.email_from_address ?? null,
       message_status: 'pending',
+      conversation_id: conversationId,
       metadata: {
         ai_purpose: inferEmailPurpose(options.subject, options.html),
         ai_sentiment: 'neutral',
+        message_id: messageIdRfc5322,
+        provider_name: emailProviderName,
       },
       occurred_at: emailOccurredAt,
       created_at: emailOccurredAt,
@@ -362,6 +375,7 @@ export async function dispatchEmail(options: {
       fromEmail: settings.email_from_address || undefined,
       fromName: settings.email_from_name || undefined,
       replyTo: settings.email_reply_to_address || undefined,
+      headers: { 'Message-ID': messageIdRfc5322 },
     })
 
     if (!sendResult.success) {
@@ -398,6 +412,9 @@ export async function dispatchEmail(options: {
           ai_outcome: aiOutcome,
           ai_summary: aiSummary,
           ai_sentiment: 'neutral',
+          message_id: messageIdRfc5322,
+          provider_name: emailProviderName,
+          provider_message_id: sendResult.providerMessageId ?? sendResult.externalId ?? null,
         },
       })
       .eq('id', activity.id)
@@ -468,6 +485,12 @@ export async function dispatchSms(options: {
 
   const settings = await loadTenantIntegrationSettings(context.tenantId, { supabase })
 
+  const smsConversationId = computeConversationId({
+    tenantId: context.tenantId,
+    contactId: context.contactId,
+    channel: 'sms',
+  })
+
   const { data: activity, error: insertErr } = await supabase
     .from('activities')
     .insert({
@@ -483,6 +506,7 @@ export async function dispatchSms(options: {
       from_number: settings?.sms_from_number ?? null,
       to_number: options.to,
       message_status: 'pending',
+      conversation_id: smsConversationId,
       metadata: {
         ai_purpose: inferSmsPurpose(options.message),
         ai_sentiment: 'neutral',
@@ -527,10 +551,11 @@ export async function dispatchSms(options: {
     const aiOutcome = 'Sent successfully'
     const aiSummary = `${aiPurpose} SMS to ${options.to}`
 
+    const twilioSid = sendResult.messageId ?? null
     await supabase
       .from('activities')
       .update({
-        external_id: sendResult.messageId ?? null,
+        external_id: twilioSid,
         message_status: sendResult.status || 'queued',
         integration_metadata: { response: sendResult.providerResponse ?? null },
         metadata: {
@@ -538,6 +563,9 @@ export async function dispatchSms(options: {
           ai_outcome: aiOutcome,
           ai_summary: aiSummary,
           ai_sentiment: 'neutral',
+          message_id: twilioSid,
+          provider_message_id: twilioSid,
+          provider_name: 'twilio',
         },
       })
       .eq('id', activity.id)
@@ -598,6 +626,12 @@ export async function dispatchWhatsApp(options: {
 
   const settings = await loadTenantIntegrationSettings(context.tenantId, { supabase })
 
+  const whatsappConversationId = computeConversationId({
+    tenantId: context.tenantId,
+    contactId: context.contactId,
+    channel: 'whatsapp',
+  })
+
   const { data: activity, error: insertErr } = await supabase
     .from('activities')
     .insert({
@@ -613,6 +647,7 @@ export async function dispatchWhatsApp(options: {
       from_number: settings?.whatsapp_from_number ?? null,
       to_number: `whatsapp:${options.to}`,
       message_status: 'pending',
+      conversation_id: whatsappConversationId,
       metadata: {
         ai_purpose: inferWhatsAppPurpose(options.message),
         ai_sentiment: 'neutral',
@@ -660,10 +695,11 @@ export async function dispatchWhatsApp(options: {
     const aiOutcome = 'Sent successfully'
     const aiSummary = `${aiPurpose} WhatsApp to ${options.to}${options.mediaUrl ? ' (with attachment)' : ''}`
 
+    const whatsappSid = sendResult.messageId ?? null
     await supabase
       .from('activities')
       .update({
-        external_id: sendResult.messageId ?? null,
+        external_id: whatsappSid,
         message_status: sendResult.status || 'queued',
         integration_metadata: {
           has_media: Boolean(options.mediaUrl),
@@ -676,6 +712,9 @@ export async function dispatchWhatsApp(options: {
           ai_summary: aiSummary,
           ai_sentiment: 'neutral',
           has_media: Boolean(options.mediaUrl),
+          message_id: whatsappSid,
+          provider_message_id: whatsappSid,
+          provider_name: 'twilio',
         },
       })
       .eq('id', activity.id)
@@ -780,6 +819,9 @@ export async function dispatchVoiceCall(options: {
   const callOccurredAt = new Date().toISOString()
 
   try {
+    // Phase 2b.11: voice activities deliberately do not get conversation_id.
+    // Calls are discrete events, not threaded back-and-forth. Future
+    // Conversations UI will surface voice separately. See docs/2b/2b-11-changes.md §0.4.
     const { data: activity, error: activityError } = await supabase
       .from('activities')
       .insert({

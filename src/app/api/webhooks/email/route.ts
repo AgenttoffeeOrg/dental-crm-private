@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
+import { computeConversationId } from '@/lib/communications/conversation-id'
 
 /**
  * EMAIL WEBHOOK ENDPOINT
@@ -55,14 +56,23 @@ export async function POST(request: NextRequest) {
       // TODO: Optionally create new contact or log as unmatched
     }
 
+    const tenantId =
+      contact?.tenant_id || body.tenant_id || request.headers.get('X-Tenant-ID')
+    const conversationId = computeConversationId({
+      tenantId: tenantId ?? '',
+      contactId: contact?.id ?? null,
+      channel: 'email',
+    })
+
     // 2. Create activity for incoming email
     const { data: activity, error: activityError } = await supabase
       .from('activities')
       .insert({
-        tenant_id: contact?.tenant_id || body.tenant_id || request.headers.get('X-Tenant-ID'), // TODO: Better tenant detection
+        tenant_id: tenantId, // TODO: Better tenant detection
         type: 'email',
         contact_id: contact?.id || null,
         deal_id: null, // TODO: Smart deal detection based on email thread
+        conversation_id: conversationId,
         direction: 'inbound',
         subject,
         snippet: (text || html || '').substring(0, 200),

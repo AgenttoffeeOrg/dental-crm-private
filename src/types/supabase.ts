@@ -94,6 +94,7 @@ export type Database = {
           call_sid: string | null
           call_to: string | null
           contact_id: string | null
+          conversation_id: string | null
           created_at: string | null
           deal_id: string | null
           deleted_at: string | null
@@ -144,6 +145,7 @@ export type Database = {
           call_sid?: string | null
           call_to?: string | null
           contact_id?: string | null
+          conversation_id?: string | null
           created_at?: string | null
           deal_id?: string | null
           deleted_at?: string | null
@@ -194,6 +196,7 @@ export type Database = {
           call_sid?: string | null
           call_to?: string | null
           contact_id?: string | null
+          conversation_id?: string | null
           created_at?: string | null
           deal_id?: string | null
           deleted_at?: string | null

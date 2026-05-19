@@ -20,11 +20,13 @@ export interface EmailSendPayload {
   replyTo?: string
   fromEmail?: string
   fromName?: string
+  headers?: Record<string, string>
 }
 
 export interface EmailSendResult {
   success: boolean
   externalId?: string
+  providerMessageId?: string
   status?: string
   providerResponse?: Record<string, any>
   updatedToken?: {
@@ -69,6 +71,11 @@ function buildMimeMessage(payload: EmailSendPayload, fromAddress: string) {
 
   if (payload.replyTo) {
     headers.push(`Reply-To: ${payload.replyTo}`)
+  }
+
+  const messageIdHeader = payload.headers?.['Message-ID']
+  if (messageIdHeader) {
+    headers.push(`Message-ID: ${messageIdHeader}`)
   }
 
   const message = `${headers.join('\r\n')}\r\n\r\n${payload.html}`
@@ -167,12 +174,16 @@ async function sendViaSendGrid(settings: EmailIntegrationSettings, payload: Emai
       subject: payload.subject,
       html: payload.html,
       replyTo: payload.replyTo,
+      headers: payload.headers,
     }
 
     const response = await sgMail.default.send(message)
+    const providerMessageId =
+      response[0].headers['x-message-id'] || response[0].headers['x-sendgrid-message-id']
     return {
       success: true,
-      externalId: response[0].headers['x-message-id'] || response[0].headers['x-sendgrid-message-id'],
+      externalId: providerMessageId,
+      providerMessageId,
       status: response[0].statusCode === 202 ? 'queued' : 'sent',
       providerResponse: {
         headers: response[0].headers,
@@ -228,6 +239,7 @@ async function sendViaGmail(settings: EmailIntegrationSettings, payload: EmailSe
     return {
       success: true,
       externalId: data.id || undefined,
+      providerMessageId: data.id || undefined,
       status: data.labelIds?.includes('SENT') ? 'sent' : 'queued',
       providerResponse: data,
       updatedToken: settings.email_oauth_token
@@ -265,6 +277,11 @@ async function sendViaOutlook(settings: EmailIntegrationSettings, payload: Email
     emailAddress: { address },
   })
 
+  const internetMessageHeaders =
+    payload.headers && Object.keys(payload.headers).length > 0
+      ? Object.entries(payload.headers).map(([name, value]) => ({ name, value }))
+      : undefined
+
   const message = {
     subject: payload.subject,
     body: {
@@ -281,6 +298,7 @@ async function sendViaOutlook(settings: EmailIntegrationSettings, payload: Email
         name: payload.fromName || undefined,
       },
     },
+    internetMessageHeaders,
   }
 
   const response = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
@@ -300,9 +318,11 @@ async function sendViaOutlook(settings: EmailIntegrationSettings, payload: Email
     return { success: false, error: `Outlook send failed: ${errorText || response.statusText}` }
   }
 
+  const providerMessageId = response.headers.get('x-ms-request-id') || undefined
   return {
     success: true,
-    externalId: response.headers.get('x-ms-request-id') || undefined,
+    externalId: providerMessageId,
+    providerMessageId,
     status: 'queued',
     providerResponse: {
       requestId: response.headers.get('x-ms-request-id'),
@@ -366,6 +386,7 @@ async function sendViaSES(settings: EmailIntegrationSettings, payload: EmailSend
     return {
       success: true,
       externalId: response.MessageId,
+      providerMessageId: response.MessageId,
       status: 'queued',
       providerResponse: response,
     }
@@ -436,6 +457,7 @@ async function sendViaResend(settings: EmailIntegrationSettings, payload: EmailS
       subject: payload.subject,
       html: payload.html,
       reply_to: payload.replyTo,
+      headers: payload.headers,
     })
 
     if (error) {
@@ -445,6 +467,7 @@ async function sendViaResend(settings: EmailIntegrationSettings, payload: EmailS
     return {
       success: true,
       externalId: data?.id,
+      providerMessageId: data?.id,
       status: 'queued',
       providerResponse: { id: data?.id },
     }

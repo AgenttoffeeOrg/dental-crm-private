@@ -308,6 +308,25 @@ describe('ingestLead — activity row is correctly typed', () => {
     expect(state.activities.inserts[0].source_channel).toBe('whatsapp_website_button')
     expect(state.activities.inserts[0].type).toBe('whatsapp')
   })
+
+  it('stamps conversation_id for whatsapp inbound activity type', async () => {
+    const { client, state } = makeFake()
+    state.contacts.insertReturns.push({ id: 'c-wa-conv' })
+    state.attribution_touchpoints.insertReturns.push({ id: 'tp-wa-conv' })
+    state.activities.insertReturns.push({ id: 'a-wa-conv' })
+
+    await ingestLead(
+      baseInput({
+        tenant_id: '5aadca14-9786-4aef-bc53-e9287cdd0bbf',
+        source_channel: 'whatsapp_inbound',
+      }),
+      client
+    )
+
+    const row = state.activities.inserts[0]
+    expect(row.conversation_id).toBeTruthy()
+    expect(row.type).toBe('whatsapp')
+  })
 })
 
 // Phase 2a.5: routing_log_id is plumbed on IngestLeadResult for 2b's webhook

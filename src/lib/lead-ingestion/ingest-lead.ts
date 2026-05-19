@@ -16,6 +16,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { computeConversationId } from '@/lib/communications/conversation-id'
 import { createServiceClient } from '@/lib/supabase-server'
 import { resolveDedup, type DedupDecision, type DedupSignals } from './dedup-engine'
 import { resolveSLA, type SLAResolveOutput } from './sla-resolver'
@@ -707,6 +708,13 @@ async function insertActivity(
     input.treatment_intent_text?.trim() ||
     `New lead via ${input.source_channel}`
 
+  const activityType = mapSourceChannelToActivityType(input.source_channel)
+  const conversationId = computeConversationId({
+    tenantId: input.tenant_id,
+    contactId,
+    channel: activityType,
+  })
+
   const { data, error } = await supabase
     .from('activities')
     .insert({
@@ -716,9 +724,10 @@ async function insertActivity(
       // up on the deal's timeline as well as the contact's. NULL is fine — the
       // graceful-skip paths in deal-creation leave the activity contact-scoped.
       deal_id: dealId,
-      type: mapSourceChannelToActivityType(input.source_channel),
+      type: activityType,
       direction: 'inbound',
       source_channel: input.source_channel,
+      conversation_id: conversationId,
       occurred_at: arrivedAt.toISOString(),
       title: 'Lead received',
       description,
