@@ -1,4 +1,3 @@
-import DOMPurify from 'isomorphic-dompurify'
 import { createServiceClient } from '@/lib/supabase-server'
 import { sendEmailWithIntegration } from '@/lib/integrations/email-provider'
 import { smsService } from '@/lib/sms-service'
@@ -8,9 +7,16 @@ import { recordProviderFailure } from '@/lib/monitoring/metrics'
 import { loadTenantIntegrationSettings } from '@/lib/integrations/tenant-integration-config'
 import { detectAndFireFirstResponse } from '@/lib/conversions/first-response-detector'
 
+/** Lazy-load so SMS/WhatsApp send routes do not pull jsdom at cold start (Vercel). */
+function getDOMPurify() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mod = require('isomorphic-dompurify') as { default: { sanitize: (html: string, opts: object) => string } }
+  return mod.default
+}
+
 export function sanitiseOutboundHtml(html: string | undefined): string {
   if (!html) return ''
-  return DOMPurify.sanitize(html, {
+  return getDOMPurify().sanitize(html, {
     USE_PROFILES: { html: true },
   })
 }
