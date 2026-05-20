@@ -213,9 +213,9 @@ Existing `PATCH` in `activities/[id]/route.ts` extended: deal-only body `{ deal_
 
 | Item | Value |
 |------|-------|
-| Commit | _(pending push)_ |
-| Deploy ID | _(pending)_ |
-| Unauthenticated PATCH | Expect 401 JSON |
+| Commit | `86cfab6` |
+| Deploy ID | `dpl_EYAoZ7UKp5JVMxWeYWHYeRq2HU7u` |
+| Unauthenticated PATCH | 401 JSON (smoke pass) |
 
 ### §5 Operator gate
 
