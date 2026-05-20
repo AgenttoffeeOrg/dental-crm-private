@@ -47,3 +47,6 @@ next-env.d.ts
 # is never meaningful to commit (rolling per-machine record of `vercel
 # deploy --prod` output).
 .cursor/post-push-deploy.log
+
+# Autopilot test credentials (never commit)
+.claude/test-credentials.json
