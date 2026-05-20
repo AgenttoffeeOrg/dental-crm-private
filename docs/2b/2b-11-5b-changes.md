@@ -107,7 +107,12 @@ Existing `PATCH` in `activities/[id]/route.ts` extended: deal-only body `{ deal_
 
 ## 9. Deploy + curl smoke (§8)
 
-Pending operator push. Baseline deploy: `dpl_FmnL6oFXBfLF9sbC3uLdxWy4JVJa`.
+| Item | Value |
+|------|-------|
+| Commit | `0fbcb63` |
+| Deploy ID | `dpl_Ey8q3k51QqGD7tjK19iiw4ic9wRm` |
+| `GET /settings` | 307 (redirect — OK) |
+| `PATCH /api/activities/…` unauthenticated | JSON `Unauthorized` (401) |
 
 ---
 
@@ -146,8 +151,8 @@ Pending operator push. Baseline deploy: `dpl_FmnL6oFXBfLF9sbC3uLdxWy4JVJa`.
 - ✅ §4.3 `isDealClosed` flag-based (contact-detail)  
 - ✅ §5 PATCH + audit + 7 route tests  
 - ✅ §6 ChangeDealAffordance + slide-in + composers + 5 component tests  
-- ☐ §8 push + deploy smoke (awaiting commit/push)  
+- ✅ §8 push + deploy smoke (`dpl_Ey8q3k51QqGD7tjK19iiw4ic9wRm`)  
 - ☐ §9 operator gate (manual)  
 - ✅ §10.1 this changelog  
-- ☐ §10.2–10.3 gotchas + audit close note  
-- ☐ §10.4 docs commit push  
+- ✅ §10.2–10.3 gotchas + audit close note (same commit)  
+- ✅ §10.4 included in `0fbcb63`  
