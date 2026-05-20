@@ -66,7 +66,7 @@ export async function resolveMostRecentlyActiveOpenDeal(
 
   const sorted = sortDealsByRecentActivity(openDeals, maxActivityByDeal)
   const top = sorted[0]
-  return top ? { id: top.id, title: top.title } : null
+  return top ? { id: top.id, title: top.title ?? 'Deal' } : null
 }
 
 async function fetchOpenDealsForContact(input: ResolveDealInput): Promise<DealRow[]> {
@@ -88,7 +88,9 @@ async function fetchOpenDealsForContact(input: ResolveDealInput): Promise<DealRo
     return []
   }
 
-  return (data ?? []) as DealRow[]
+  return (data ?? []).filter(
+    (row): row is DealRow => row != null && typeof (row as DealRow).id === 'string'
+  ) as DealRow[]
 }
 
 async function fetchMaxActivityByDeal(

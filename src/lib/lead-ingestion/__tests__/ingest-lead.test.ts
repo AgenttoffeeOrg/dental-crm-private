@@ -74,6 +74,7 @@ function makeFake(): { client: SupabaseClient; state: FakeState } {
     let pendingUpdate: any = null
     let limitN: number | null = null
     const eqs: Array<[string, unknown]> = []
+    const inFilters: Array<[string, unknown[]]> = []
 
     const builder: any = {
       select: (_cols?: string) => {
@@ -93,6 +94,10 @@ function makeFake(): { client: SupabaseClient; state: FakeState } {
       },
       eq: (col: string, val: unknown) => {
         eqs.push([col, val])
+        return builder
+      },
+      in: (col: string, vals: unknown[]) => {
+        inFilters.push([col, vals])
         return builder
       },
       ilike: () => builder,
@@ -145,7 +150,12 @@ function makeFake(): { client: SupabaseClient; state: FakeState } {
         if (mode === 'select') {
           t.selectFilters.push(eqs.slice())
           const count = limitN ?? t.rows.length
-          const drained = t.rows.splice(0, count)
+          // `deals` list fetch (deal-resolver) must not drain rows queued for
+          // `.maybeSingle()` owner / reuse lookups in the same test.
+          const drained =
+            tableName === 'deals'
+              ? t.rows.slice(0, count)
+              : t.rows.splice(0, count)
           return Promise.resolve({ data: drained, error: null }).then(onFulfilled)
         }
         return Promise.resolve({ data: null, error: null }).then(onFulfilled)
@@ -519,13 +529,8 @@ describe('ingestLead — Phase 2a.7 re-engagement (matched contact)', () => {
     state.activities.insertReturns.push({ id: 'act-reeng' })
     state.deals.insertReturns.push({ id: 'deal-reeng' })
     stageOfferingHappyPath(state)
-    // Phase 2b.2.a.3: createDealForLead now calls findReusableOpenDeal first
-    // (one .maybeSingle() against `deals`). Push an explicit `null` so that
-    // lookup short-circuits with "no reusable deal" and the prior-deal-owner
-    // lookup that follows still sees the staged owner row.
-    state.deals.rows.push(null as unknown as { id: string })
-    // Prior-deal owner lookup returns a non-null user → owner inherited; no
-    // SLA-routed lookup needed.
+    // Phase 2b.11.5b: no open-deal rows with `id` → resolver returns null.
+    // Prior-deal owner lookup (maybeSingle) consumes the staged owner row.
     state.deals.rows.push({ owner_user_id: PRIOR_OWNER })
 
     const result = await ingestLead(
@@ -550,9 +555,7 @@ describe('ingestLead — Phase 2a.7 re-engagement (matched contact)', () => {
     state.activities.insertReturns.push({ id: 'act-second' })
     state.deals.insertReturns.push({ id: 'deal-second' })
     stageOfferingHappyPath(state)
-    // Phase 2b.2.a.3: explicit null for findReusableOpenDeal so we exercise
-    // the "no reusable deal → create" branch.
-    state.deals.rows.push(null as unknown as { id: string })
+    // No open deals staged (owner-only row has no `id`) → create branch.
     state.deals.rows.push({ owner_user_id: 'user-existing' })
 
     const result = await ingestLead(
@@ -586,7 +589,12 @@ describe('ingestLead — Phase 2b.2.a.3 deal reuse for returning contacts', () =
     // findReusableOpenDeal pops one row from `deals.rows` — this row is the
     // open deal we want it to find. Subsequent owner lookup must NOT run on
     // the reuse path, so no further deals.rows are needed.
-    state.deals.rows.push({ id: REUSED_DEAL_ID })
+    state.deals.rows.push({
+      id: REUSED_DEAL_ID,
+      title: 'Reused deal',
+      updated_at: '2026-05-20T00:00:00Z',
+      pipeline_stages: { is_won: false, is_lost: false },
+    })
 
     const result = await ingestLead(
       baseInput({ treatment_offering_id: OFFERING_ID }),
@@ -613,7 +621,12 @@ describe('ingestLead — Phase 2b.2.a.3 deal reuse for returning contacts', () =
     state.contacts.rows.push({ id: 'existing-contact-reuse-2' })
     state.attribution_touchpoints.insertReturns.push({ id: 'tp-reuse-2' })
     state.activities.insertReturns.push({ id: 'act-reuse-2' })
-    state.deals.rows.push({ id: REUSED_DEAL_ID })
+    state.deals.rows.push({
+      id: REUSED_DEAL_ID,
+      title: 'Reused deal',
+      updated_at: '2026-05-20T00:00:00Z',
+      pipeline_stages: { is_won: false, is_lost: false },
+    })
 
     const result = await ingestLead(
       baseInput({ treatment_offering_id: 'a-different-offering' }),
@@ -634,8 +647,7 @@ describe('ingestLead — Phase 2b.2.a.3 deal reuse for returning contacts', () =
     state.activities.insertReturns.push({ id: 'act-new-create' })
     state.deals.insertReturns.push({ id: 'deal-fresh-create' })
     stageOfferingHappyPath(state)
-    // Explicit null tells findReusableOpenDeal "no open deal" → fall through.
-    state.deals.rows.push(null as unknown as { id: string })
+    // No open deals in `deals.rows` → resolver returns null → fall through.
     state.practice_notification_routing.rows.push({ primary_user_id: SLA_USER_ID })
 
     const result = await ingestLead(

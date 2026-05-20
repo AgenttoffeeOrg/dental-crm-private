@@ -22,6 +22,7 @@ import { findReusableOpenDeal } from '../deal-creation'
 
 interface FakeDealRow {
   id: string
+  title: string
   tenant_id: string
   contact_id: string
   pipeline_id: string
@@ -209,6 +210,7 @@ const OTHER_CONTACT = '33333333-3333-3333-3333-333333333333'
 // itself stays a flat merge rather than a long ?-chain (Lizard CCN budget).
 const DEAL_DEFAULTS: FakeDealRow = {
   id: 'deal-x',
+  title: 'Test deal',
   tenant_id: TENANT,
   contact_id: CONTACT,
   pipeline_id: 'pipeline-A',

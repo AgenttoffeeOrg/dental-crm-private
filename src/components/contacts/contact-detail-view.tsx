@@ -154,15 +154,6 @@ export function ContactDetailView({
         setDeals(dealsData || [])
       }
 
-      if (tenantId) {
-        const recommended = await resolveMostRecentlyActiveOpenDeal({
-          tenantId,
-          contactId,
-          supabase,
-        })
-        setRecommendedOutboundDealId(recommended?.id ?? null)
-      }
-
     } catch (error) {
       console.error('Error fetching contact data:', error)
       toast.error('Failed to load contact details')
@@ -238,6 +229,20 @@ export function ContactDetailView({
     fetchContactData()
     fetchPsychProfile()
   }, [contactId])
+
+  useEffect(() => {
+    if (!tenantId || !contactId) return
+    const loadRecommendedDeal = async () => {
+      const supabase = createClient()
+      const recommended = await resolveMostRecentlyActiveOpenDeal({
+        tenantId,
+        contactId,
+        supabase,
+      })
+      setRecommendedOutboundDealId(recommended?.id ?? null)
+    }
+    void loadRecommendedDeal()
+  }, [tenantId, contactId])
 
   const getLeadScoreColor = (score: number) => {
     if (score >= 80) return 'bg-red-100 text-red-800'
