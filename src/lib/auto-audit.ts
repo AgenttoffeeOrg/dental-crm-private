@@ -5,7 +5,9 @@
  * Admin-only visibility for sensitive operations
  */
 
+import { randomUUID } from 'crypto'
 import { createClient } from '@/lib/supabase-client'
+import { createServiceClient } from '@/lib/supabase-server'
 
 export type AuditActionType = 
   | 'create' | 'update' | 'delete' | 'assign' | 'unassign' 
@@ -33,6 +35,98 @@ export interface AuditLogParams {
   tags?: string[]
 }
 
+export class AuditLogWriteError extends Error {
+  readonly internalErrorId: string
+  readonly causeDetail: unknown
+
+  constructor(internalErrorId: string, causeDetail: unknown) {
+    super('audit_trail insert failed')
+    this.name = 'AuditLogWriteError'
+    this.internalErrorId = internalErrorId
+    this.causeDetail = causeDetail
+  }
+}
+
+function buildAuditEntry(params: AuditLogParams) {
+  let changedFields = params.changedFields
+  if (!changedFields && params.beforeState && params.afterState) {
+    changedFields = Object.keys(params.afterState).filter((key) => {
+      const before = params.beforeState![key]
+      const after = params.afterState![key]
+      return JSON.stringify(before) !== JSON.stringify(after)
+    })
+  }
+
+  return {
+    tenant_id: params.tenantId,
+    user_id: params.userId || null,
+    action_type: params.actionType,
+    action_category: params.category,
+    action_description: params.description ?? null,
+    entity_type: params.entityType,
+    entity_id: params.entityId ?? null,
+    entity_name: params.entityName ?? null,
+    before_state: params.beforeState ?? null,
+    after_state: params.afterState ?? null,
+    changed_fields: changedFields ?? [],
+    ip_address: null as string | null,
+    user_agent: null as string | null,
+    session_id: null,
+    visible_to_admin_only: params.adminOnly ?? false,
+    sensitive_data: params.sensitive ?? false,
+    tags: params.tags ?? [],
+    severity: params.severity ?? 'info',
+    created_at: new Date().toISOString(),
+  }
+}
+
+/**
+ * Server-side audit write (service role). Required for API routes:
+ * `audit_trail` RLS only allows INSERT via service_role.
+ * Throws {@link AuditLogWriteError} on failure — callers must roll back mutations.
+ */
+export async function logAuditServer(params: AuditLogParams): Promise<string> {
+  const supabase = createServiceClient()
+  const auditEntry = buildAuditEntry(params)
+
+  const { data, error } = await supabase
+    .from('audit_trail')
+    .insert(auditEntry)
+    .select('id')
+    .single()
+
+  if (error || !data?.id) {
+    const internalErrorId = randomUUID()
+    console.error('[logAuditServer] audit_trail insert failed', {
+      internal_error_id: internalErrorId,
+      entity_type: params.entityType,
+      entity_id: params.entityId,
+      error,
+    })
+    throw new AuditLogWriteError(internalErrorId, error)
+  }
+
+  return data.id as string
+}
+
+/** Compensating delete when a mutation fails after audit was written. */
+export async function deleteAuditRowServer(auditId: string, tenantId: string): Promise<void> {
+  const supabase = createServiceClient()
+  const { error } = await supabase
+    .from('audit_trail')
+    .delete()
+    .eq('id', auditId)
+    .eq('tenant_id', tenantId)
+
+  if (error) {
+    console.error('[deleteAuditRowServer] compensating delete failed', {
+      audit_id: auditId,
+      tenant_id: tenantId,
+      error,
+    })
+  }
+}
+
 /**
  * Log an action to the audit trail
  */
@@ -49,37 +143,10 @@ export async function logAudit(params: AuditLogParams): Promise<void> {
       // IP will be captured server-side
     }
 
-    // Determine changed fields if not provided
-    let changedFields = params.changedFields
-    if (!changedFields && params.beforeState && params.afterState) {
-      changedFields = Object.keys(params.afterState).filter(key => {
-        const before = params.beforeState![key]
-        const after = params.afterState![key]
-        return JSON.stringify(before) !== JSON.stringify(after)
-      })
-    }
-
-    // Build audit entry
     const auditEntry = {
-      tenant_id: params.tenantId,
-      user_id: params.userId || null,
-      action_type: params.actionType,
-      action_category: params.category,
-      action_description: params.description,
-      entity_type: params.entityType,
-      entity_id: params.entityId,
-      entity_name: params.entityName,
-      before_state: params.beforeState || null,
-      after_state: params.afterState || null,
-      changed_fields: changedFields || [],
+      ...buildAuditEntry(params),
       ip_address: ipAddress,
       user_agent: userAgent,
-      session_id: null, // TODO: Get from auth session
-      visible_to_admin_only: params.adminOnly || false,
-      sensitive_data: params.sensitive || false,
-      tags: params.tags || [],
-      severity: params.severity || 'info',
-      created_at: new Date().toISOString()
     }
 
     const { error } = await supabase

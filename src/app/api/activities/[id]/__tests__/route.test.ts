@@ -1,10 +1,12 @@
 /**
  * @jest-environment node
  *
- * Phase 2b.11.5b — PATCH /api/activities/[id] deal reassignment tests.
+ * Phase 2b.11.5b / 2b.11.5b.1 — PATCH /api/activities/[id] deal reassignment tests.
+ * Audit writes go through logAuditServer (service role); tests assert real row shape.
  */
 
 import { NextRequest } from 'next/server'
+import { AuditLogWriteError } from '@/lib/auto-audit'
 
 const TENANT = '5aadca14-9786-4aef-bc53-e9287cdd0bbf'
 const OTHER_TENANT = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -14,9 +16,11 @@ const DEAL_A = '22222222-2222-2222-2222-222222222222'
 const DEAL_B = '33333333-3333-3333-3333-333333333333'
 const CONTACT = '44444444-4444-4444-4444-444444444444'
 const OTHER_CONTACT = '55555555-5555-5555-5555-555555555555'
+const AUDIT_ROW_ID = '99999999-9999-9999-9999-999999999999'
 
 let permissionGrant = true
 let authError: { status: number; message: string } | null = null
+let auditInsertFails = false
 
 const tables = {
   activities: [
@@ -47,6 +51,18 @@ const tables = {
   audit_trail: [] as Record<string, unknown>[],
 }
 
+const mockLogAuditServer = jest.fn()
+const mockDeleteAuditRowServer = jest.fn()
+
+jest.mock('@/lib/auto-audit', () => {
+  const actual = jest.requireActual('@/lib/auto-audit')
+  return {
+    ...actual,
+    logAuditServer: (...args: unknown[]) => mockLogAuditServer(...args),
+    deleteAuditRowServer: (...args: unknown[]) => mockDeleteAuditRowServer(...args),
+  }
+})
+
 jest.mock('@/lib/api/context', () => {
   const { ApiContextError } = jest.requireActual('@/lib/api/context')
   return {
@@ -67,7 +83,7 @@ jest.mock('@/lib/api/context', () => {
 
 function makeSupabase() {
   return {
-    rpc: async (name: string, args: Record<string, unknown>) => {
+    rpc: async (name: string) => {
       if (name === 'user_has_permission') {
         return { data: permissionGrant, error: null }
       }
@@ -82,7 +98,6 @@ function makeSupabase() {
 function makeBuilder(table: keyof typeof tables) {
   const eqs: Array<[string, unknown]> = []
   let patch: Record<string, unknown> | null = null
-  let insertRow: Record<string, unknown> | null = null
 
   const builder: Record<string, unknown> = {
     select: () => builder,
@@ -94,13 +109,6 @@ function makeBuilder(table: keyof typeof tables) {
       patch = values
       return builder
     },
-    insert: (row: Record<string, unknown>) => {
-      insertRow = row
-      if (table === 'audit_trail') {
-        tables.audit_trail.push(row)
-      }
-      return builder
-    },
     single: () => {
       const rows = filterRows(tables[table], eqs)
       if (patch) {
@@ -109,9 +117,6 @@ function makeBuilder(table: keyof typeof tables) {
       return Promise.resolve({ data: rows[0] ?? null, error: rows[0] ? null : { code: 'PGRST116' } })
     },
     then: (resolve: (v: { data: unknown; error: unknown }) => void) => {
-      if (insertRow && table === 'audit_trail') {
-        return Promise.resolve({ data: insertRow, error: null }).then(resolve)
-      }
       const rows = filterRows(tables[table], eqs)
       if (patch) {
         for (const row of rows) Object.assign(row, patch)
@@ -141,8 +146,31 @@ const { PATCH } = require('../route')
 beforeEach(() => {
   permissionGrant = true
   authError = null
+  auditInsertFails = false
   tables.activities[0].deal_id = DEAL_A
   tables.audit_trail.length = 0
+  mockLogAuditServer.mockReset()
+  mockDeleteAuditRowServer.mockReset()
+
+  mockLogAuditServer.mockImplementation(async (params: Record<string, unknown>) => {
+    if (auditInsertFails) {
+      throw new AuditLogWriteError('test-internal-error-id', { message: 'simulated insert failure' })
+    }
+    const row = {
+      id: AUDIT_ROW_ID,
+      tenant_id: params.tenantId,
+      user_id: params.userId,
+      action_type: params.actionType,
+      action_category: params.category,
+      entity_type: params.entityType,
+      entity_id: params.entityId,
+      changed_fields: params.changedFields,
+      before_state: params.beforeState,
+      after_state: params.afterState,
+    }
+    tables.audit_trail.push(row)
+    return AUDIT_ROW_ID
+  })
 })
 
 describe('PATCH /api/activities/[id] — deal reassignment', () => {
@@ -160,16 +188,30 @@ describe('PATCH /api/activities/[id] — deal reassignment', () => {
     expect(body.error).toBe('permission_denied')
   })
 
-  it('reassigns deal A → deal B with 200', async () => {
+  it('reassigns deal A → deal B with 200 (audit before activity update)', async () => {
     const res = await PATCH(patchReq({ deal_id: DEAL_B }), { params: { id: ACTIVITY_ID } })
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.activity.deal_id).toBe(DEAL_B)
     expect(tables.activities[0].deal_id).toBe(DEAL_B)
+    expect(mockLogAuditServer).toHaveBeenCalledTimes(1)
   })
 
-  it('writes audit_trail row with before/after deal_id', async () => {
+  it('writes audit_trail row with before/after deal_id via logAuditServer', async () => {
     await PATCH(patchReq({ deal_id: DEAL_B }), { params: { id: ACTIVITY_ID } })
+    expect(mockLogAuditServer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: TENANT,
+        userId: USER,
+        actionType: 'update',
+        category: 'deal',
+        entityType: 'activity',
+        entityId: ACTIVITY_ID,
+        changedFields: ['deal_id'],
+        beforeState: { deal_id: DEAL_A },
+        afterState: { deal_id: DEAL_B },
+      })
+    )
     expect(tables.audit_trail).toHaveLength(1)
     const row = tables.audit_trail[0]
     expect(row.entity_type).toBe('activity')
@@ -186,11 +228,25 @@ describe('PATCH /api/activities/[id] — deal reassignment', () => {
     expect(tables.audit_trail[0].after_state).toEqual({ deal_id: null })
   })
 
+  it('returns 500 audit_log_failed and does not change deal_id when audit insert fails', async () => {
+    auditInsertFails = true
+    const res = await PATCH(patchReq({ deal_id: DEAL_B }), { params: { id: ACTIVITY_ID } })
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe('audit_log_failed')
+    expect(body.internal_error_id).toBe('test-internal-error-id')
+    expect(tables.activities[0].deal_id).toBe(DEAL_A)
+    expect(tables.audit_trail).toHaveLength(0)
+    expect(mockDeleteAuditRowServer).not.toHaveBeenCalled()
+  })
+
   it('returns 400 when target deal is in a different tenant', async () => {
     const res = await PATCH(patchReq({ deal_id: '66666666-6666-6666-6666-666666666666' }), {
       params: { id: ACTIVITY_ID },
     })
     expect(res.status).toBe(400)
+    expect(mockLogAuditServer).not.toHaveBeenCalled()
   })
 
   it('returns 400 when target deal belongs to a different contact', async () => {
@@ -200,5 +256,6 @@ describe('PATCH /api/activities/[id] — deal reassignment', () => {
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.error).toContain('different contact')
+    expect(mockLogAuditServer).not.toHaveBeenCalled()
   })
 })

@@ -118,7 +118,21 @@ Existing `PATCH` in `activities/[id]/route.ts` extended: deal-only body `{ deal_
 
 ## 10. Operator gate (§9)
 
-**OPERATOR ACTION REQUIRED** — not run in this session (browser + SMS steps). Sub-steps 9.1–9.6 documented in prompt; record results here after manual gate.
+**Test contact:** Richard Rivera — `13994c8a-3387-4814-9bdc-f94d3c5e61cf`  
+**Recommended deal (resolver SQL):** Wisdom Teeth Extraction — `7775a1b5-2521-4ea3-aa11-f225a2ae7c38`  
+**Gate run:** 2026-05-20 (production, logged in as Deepak Hegde)  
+**Unit tests:** 61/61 PASS (`deal-resolver`, `find-reusable-open-deal`, `activities/[id]/route`, `change-deal-affordance`, `ingest-lead`)
+
+| Step | Result | Notes |
+|------|--------|-------|
+| **9.1** Inbound SMS parity | **SKIP** | Requires physical SMS to `+447782218044` from a matching contact phone; not sent in this session. |
+| **9.2** Outbound composer chip | **PASS** | Contact page SMS composer shows `Deal: Wisdom Teeth Extraction - Richard Rivera` (matches resolver). |
+| **9.3** Composer preview override | **PASS** | Chip updated to `Deal: Dental Assessment - Richard Rivera` after confirm (preview only; outbound send not completed in this pass). |
+| **9.4** Slide-in PATCH + audit | **PARTIAL** | Activity `7b37361e-9be0-4db4-b445-b6bc1e9a1b82`: `deal_id` updated `7775a1b5…` → `e30bbdda…` (Dental Assessment); slide-in chip updated. **`audit_trail` query returned 0 rows** for this entity — investigate insert/RLS in follow-up. |
+| **9.5** Detach | **PASS** | Same activity: `deal_id` → `null`; slide-in chip `No deal · Attach`. |
+| **9.6** Reply inherits current deal_id | **PASS (UI + code)** | Reply on detached activity: context chip `No deal · Attach`; `handleReply` sends `deal_id: activity.deal_id` (null). Outbound WhatsApp send not completed (UI click blocked). |
+
+**Follow-ups:** Run §9.1 inbound SMS; complete §9.3 send + §9.6 outbound send to verify DB `deal_id` on new rows; fix `audit_trail` persistence if inserts are failing silently in production.
 
 ---
 
@@ -152,7 +166,72 @@ Existing `PATCH` in `activities/[id]/route.ts` extended: deal-only body `{ deal_
 - ✅ §5 PATCH + audit + 7 route tests  
 - ✅ §6 ChangeDealAffordance + slide-in + composers + 5 component tests  
 - ✅ §8 push + deploy smoke (`dpl_Ey8q3k51QqGD7tjK19iiw4ic9wRm`)  
-- ☐ §9 operator gate (manual)  
+- ☐ §9 operator gate (manual — re-run §9.4/§9.5 after 2b.11.5b.1 deploy)  
 - ✅ §10.1 this changelog  
+
+---
+
+## Phase 2b.11.5b.1 — `audit_trail` insert failure on activity reassignment
+
+**Scope:** Fix silent `audit_trail` insert failure on `PATCH /api/activities/[id]` deal reassignment; fail loud with rollback. No schema changes.
+
+### Summary
+
+2b.11.5b wrote `deal_id` updates correctly but used the **user-scoped** Supabase client for `audit_trail` INSERT. RLS on `audit_trail` only allows writes via **`service_role`** (`2025101620_phase_5_complete_rls.sql`). The route logged the error and returned 200 anyway. This patch routes audit writes through `logAuditServer()` (service role), orders **audit before activity update**, compensates on activity-update failure, and returns **500 `audit_log_failed`** when audit insert fails (activity unchanged).
+
+### §1 Pre-flight diagnostic
+
+| § | Finding |
+|---|---------|
+| **1.1 Branch** | `phase-1-attribution-foundation`, HEAD `de7b894` |
+| **1.3 Route vs `logAudit()`** | 2b.11.5b used direct `audit_trail.insert` on user client, not `logAudit()`. `logAudit()` uses browser `createClient()` — also unsuitable server-side. |
+| **1.4 Working callers** | Marketing modules insert via service/worker contexts; table had **0 rows** for test tenant (and likely all tenants) because no INSERT policy exists for authenticated users. |
+| **1.5 Schema + RLS** | NOT NULL: `action_type`, `action_category`, `entity_type`. RLS enabled. Policies: `Tenant isolation SELECT` (`tenant_id = get_user_org_id()`); **`Service role audit_trail` FOR ALL** where `auth.role() = 'service_role'`. **No INSERT policy for `authenticated`.** |
+| **1.6 Error** | PostgREST/Supabase RLS violation on user-client insert (not surfaced to operator; `console.error` only in route). |
+| **1.7 Gap candidates** | Activity `7b37361e-9be0-4db4-b445-b6bc1e9a1b82` reassigned during operator gate (May 2026); `before_state` not reconstructible. |
+| **1.8 Cause** | **#3 RLS blocking** — user-scoped client cannot INSERT; only service_role can. |
+
+### §2 Execution
+
+| Item | Change |
+|------|--------|
+| **§2.3** | `logAuditServer()` + `deleteAuditRowServer()` in `src/lib/auto-audit.ts` using `createServiceClient()` |
+| **§2.5** | Audit-first: `logAuditServer` → `activities.update`; on update failure, `deleteAuditRowServer`; on audit failure, 500 `audit_log_failed` + no activity change |
+| **§2.6 Backfill** | Best-effort note row for `7b37361e-…` (before_state flagged unknown) if applied via SQL |
+
+**Files:** `src/lib/auto-audit.ts`, `src/app/api/activities/[id]/route.ts`, `src/app/api/activities/[id]/__tests__/route.test.ts`
+
+### §3 Validation
+
+| Check | Result |
+|-------|--------|
+| `npx jest "activities/[id]"` | 8/8 PASS |
+| Rollback test | PASS (`audit_log_failed`, `deal_id` unchanged) |
+| Silent swallow | Removed — audit failure returns 500 |
+
+### §4 Deploy + curl smoke
+
+| Item | Value |
+|------|-------|
+| Commit | _(pending push)_ |
+| Deploy ID | _(pending)_ |
+| Unauthenticated PATCH | Expect 401 JSON |
+
+### §5 Operator gate
+
+**OPERATOR ACTION REQUIRED** after deploy:
+
+| Step | Criterion |
+|------|-----------|
+| **5.1** Re-run 2b.11.5b §9.4 PATCH | `audit_trail` row with `changed_fields = ['deal_id']`, correct before/after |
+| **5.3** Detach | Second audit row with `after_state.deal_id = null` |
+
+### §8 Definition of done (2b.11.5b.1)
+
+- ✅ §1 diagnosis (RLS / service role)
+- ✅ §2 fix + fail-loud
+- ✅ §2.7 route tests (8/8, incl. rollback)
+- ☐ §4 deploy smoke
+- ☐ §5 operator gate
 - ✅ §10.2–10.3 gotchas + audit close note (same commit)  
 - ✅ §10.4 included in `0fbcb63`  

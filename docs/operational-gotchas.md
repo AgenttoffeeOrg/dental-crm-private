@@ -446,3 +446,25 @@ delivers to the Resend account email until a domain is verified.
 > facts stay historical. The `audit_trail` row is the canonical
 > record of who moved what when. Permission: **`deals.edit`**.
 
+## Phase 2b.11.5b.1 — audit_trail insert hardening
+
+> **`audit_trail` inserts must succeed or the action must roll back.**
+> Routes that write to `audit_trail` (currently: the PATCH
+> activity-deal-association route) follow the "audit first, then
+> mutate, then compensate-delete on failure" pattern. If the audit
+> insert fails, the route returns 500 with
+> `{ error: 'audit_log_failed' }` and the user-visible mutation does
+> not happen. Silent audit-log failures shipped briefly in
+> 2b.11.5b's first deploy and are documented in `2b-11-5b-changes.md`
+> §"Phase 2b.11.5b.1".
+>
+> **RLS:** `audit_trail` has no INSERT policy for authenticated users —
+> only `service_role` can write. Server routes must use
+> `logAuditServer()` in `src/lib/auto-audit.ts` (service-role client),
+> not the user-scoped Supabase client or browser `logAudit()`.
+>
+> **Test pattern:** route tests that involve `audit_trail` writes
+> must NOT mock away the audit helper without asserting the row shape
+> passed to `logAuditServer()`. Mocking the helper masks insert
+> failures.
+

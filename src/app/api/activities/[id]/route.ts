@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { ApiContextError, getApiRequestContext } from '@/lib/api/context'
+import {
+  AuditLogWriteError,
+  deleteAuditRowServer,
+  logAuditServer,
+} from '@/lib/auto-audit'
 import { ActivityUpdateSchema, safeValidateActivity } from '@/schemas/activity.schema'
 
 const ActivityIdSchema = z.object({ id: z.string().uuid('Invalid activity id') })
@@ -40,32 +45,40 @@ async function requireDealsEditPermission(
   return null
 }
 
-async function writeDealReassignmentAudit(
-  supabase: { from: (table: string) => { insert: (row: Record<string, unknown>) => Promise<{ error: unknown }> } },
-  params: {
-    tenantId: string
-    userId: string
-    activityId: string
-    beforeDealId: string | null
-    afterDealId: string | null
-  }
-) {
-  const { error } = await supabase.from('audit_trail').insert({
-    tenant_id: params.tenantId,
-    user_id: params.userId,
-    action_type: 'update',
-    action_category: 'deal',
-    entity_type: 'activity',
-    entity_id: params.activityId,
-    before_state: { deal_id: params.beforeDealId },
-    after_state: { deal_id: params.afterDealId },
-    changed_fields: ['deal_id'],
+function auditLogFailedResponse(err: AuditLogWriteError) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: 'audit_log_failed',
+      message:
+        'Reassignment was rolled back because the audit trail could not be written. Please try again or contact support.',
+      internal_error_id: err.internalErrorId,
+    },
+    { status: 500 }
+  )
+}
+
+async function writeDealReassignmentAudit(params: {
+  tenantId: string
+  userId: string
+  activityId: string
+  beforeDealId: string | null
+  afterDealId: string | null
+}): Promise<string> {
+  return logAuditServer({
+    tenantId: params.tenantId,
+    userId: params.userId,
+    actionType: 'update',
+    category: 'deal',
+    entityType: 'activity',
+    entityId: params.activityId,
+    description: 'Activity deal association changed',
+    beforeState: { deal_id: params.beforeDealId },
+    afterState: { deal_id: params.afterDealId },
+    changedFields: ['deal_id'],
     severity: 'info',
-    created_at: new Date().toISOString(),
+    tags: ['activity', 'deal_id', 'reassignment'],
   })
-  if (error) {
-    console.error('[API:activity:id] audit_trail insert failed', error)
-  }
 }
 
 export async function GET(
@@ -194,6 +207,32 @@ export async function PATCH(
 
       const beforeDealId = existing.deal_id as string | null
 
+      if (beforeDealId === newDealId) {
+        const { data: current } = await supabase
+          .from('activities')
+          .select('*')
+          .eq('id', params.id)
+          .eq('tenant_id', tenantId)
+          .single()
+        return NextResponse.json({ activity: current })
+      }
+
+      let auditId: string | null = null
+      try {
+        auditId = await writeDealReassignmentAudit({
+          tenantId,
+          userId: user.id,
+          activityId: params.id,
+          beforeDealId,
+          afterDealId: newDealId,
+        })
+      } catch (err) {
+        if (err instanceof AuditLogWriteError) {
+          return auditLogFailedResponse(err)
+        }
+        throw err
+      }
+
       const { data: updated, error: updateError } = await supabase
         .from('activities')
         .update({ deal_id: newDealId })
@@ -202,19 +241,18 @@ export async function PATCH(
         .select('*')
         .single()
 
-      if (updateError) {
-        console.error('[API:activity:id] Failed to update activity deal_id', updateError)
-        return NextResponse.json({ error: 'Failed to update activity' }, { status: 500 })
-      }
-
-      if (beforeDealId !== newDealId) {
-        await writeDealReassignmentAudit(supabase, {
-          tenantId,
-          userId: user.id,
-          activityId: params.id,
-          beforeDealId,
-          afterDealId: newDealId,
+      if (updateError || !updated) {
+        console.error('[API:activity:id] Failed to update activity deal_id', {
+          activity_id: params.id,
+          user_id: user.id,
+          before_deal_id: beforeDealId,
+          after_deal_id: newDealId,
+          error: updateError,
         })
+        if (auditId) {
+          await deleteAuditRowServer(auditId, tenantId)
+        }
+        return NextResponse.json({ error: 'Failed to update activity' }, { status: 500 })
       }
 
       return NextResponse.json({ activity: updated })
@@ -298,6 +336,26 @@ export async function PATCH(
     const beforeDealId = existing.deal_id as string | null
     const afterDealId =
       data.deal_id !== undefined ? (data.deal_id as string | null) : beforeDealId
+    const dealIdChanging =
+      data.deal_id !== undefined && beforeDealId !== afterDealId
+
+    let auditId: string | null = null
+    if (dealIdChanging) {
+      try {
+        auditId = await writeDealReassignmentAudit({
+          tenantId,
+          userId: user.id,
+          activityId: params.id,
+          beforeDealId,
+          afterDealId,
+        })
+      } catch (err) {
+        if (err instanceof AuditLogWriteError) {
+          return auditLogFailedResponse(err)
+        }
+        throw err
+      }
+    }
 
     const { data: updated, error: updateError } = await supabase
       .from('activities')
@@ -307,19 +365,16 @@ export async function PATCH(
       .select('*')
       .single()
 
-    if (updateError) {
-      console.error('[API:activity:id] Failed to update activity', updateError)
-      return NextResponse.json({ error: 'Failed to update activity' }, { status: 500 })
-    }
-
-    if (data.deal_id !== undefined && beforeDealId !== afterDealId) {
-      await writeDealReassignmentAudit(supabase, {
-        tenantId,
-        userId: user.id,
-        activityId: params.id,
-        beforeDealId,
-        afterDealId,
+    if (updateError || !updated) {
+      console.error('[API:activity:id] Failed to update activity', {
+        activity_id: params.id,
+        user_id: user.id,
+        error: updateError,
       })
+      if (auditId) {
+        await deleteAuditRowServer(auditId, tenantId)
+      }
+      return NextResponse.json({ error: 'Failed to update activity' }, { status: 500 })
     }
 
     return NextResponse.json({ activity: updated })
