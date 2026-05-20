@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
+import { ChangeDealAffordance, type DealForAttachment } from '@/components/communications/change-deal-affordance'
 
 interface SMSComposerPanelProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ interface SMSComposerPanelProps {
   to?: string
   contactId?: string
   dealId?: string
+  deals?: DealForAttachment[]
   tenantId?: string
   userId?: string
 }
@@ -32,10 +34,12 @@ export function SMSComposerPanel({
   onClose,
   to = '',
   contactId,
-  dealId,
+  dealId: dealIdProp,
+  deals = [],
   tenantId,
   userId
 }: SMSComposerPanelProps) {
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(dealIdProp ?? null)
   const [toNumber, setToNumber] = useState(sanitizePhoneNumber(to))
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -47,8 +51,12 @@ export function SMSComposerPanel({
   useEffect(() => {
     if (isOpen) {
       setToNumber(sanitizePhoneNumber(to))
+      setSelectedDealId(dealIdProp ?? null)
     }
-  }, [isOpen, to])
+  }, [isOpen, to, dealIdProp])
+
+  const currentDealTitle =
+    deals.find((d) => d.id === selectedDealId)?.title ?? null
 
   const handleSend = async () => {
     const normalizedTo = sanitizePhoneNumber(toNumber)
@@ -68,7 +76,7 @@ export function SMSComposerPanel({
           to: normalizedTo,
           message,
           contact_id: contactId,
-          deal_id: dealId,
+          deal_id: selectedDealId,
           tenant_id: tenantId,
           user_id: userId
         })
@@ -109,29 +117,42 @@ export function SMSComposerPanel({
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-purple-600" />
             <h2 className="text-lg font-semibold">Send SMS</h2>
-            {dealId && <Badge variant="secondary" className="text-xs">Deal Related</Badge>}
+            {selectedDealId && <Badge variant="secondary" className="text-xs">Deal Related</Badge>}
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between text-sm text-gray-600">
+        <div className="px-4 py-3 border-b bg-gray-50 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
           <div>
             <p className="font-medium text-gray-900">
               {toNumber || 'Add a recipient number'}
             </p>
             <p className="text-xs text-gray-500">
-              {dealId
+              {selectedDealId
                 ? 'This SMS will be tracked on the related deal.'
                 : contactId
                 ? 'Linked to the selected contact.'
                 : 'Manual SMS communication.'}
             </p>
           </div>
-          <Badge variant="outline" className="text-xs">
-            SMS
-          </Badge>
+          <div className="flex items-center gap-2">
+            {contactId && tenantId && deals.length > 0 && (
+              <ChangeDealAffordance
+                mode="preview"
+                contactId={contactId}
+                tenantId={tenantId}
+                deals={deals}
+                currentDealId={selectedDealId}
+                currentDealTitle={currentDealTitle}
+                onChange={setSelectedDealId}
+              />
+            )}
+            <Badge variant="outline" className="text-xs">
+              SMS
+            </Badge>
+          </div>
         </div>
 
         {/* SMS Form */}

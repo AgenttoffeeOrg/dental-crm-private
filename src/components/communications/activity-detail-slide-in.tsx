@@ -40,6 +40,7 @@ import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { ChangeDealAffordance, type DealForAttachment } from '@/components/communications/change-deal-affordance'
 
 interface ActivityDetailSlideInProps {
   isOpen: boolean
@@ -88,6 +89,7 @@ export function ActivityDetailSlideIn({
   const [transcript, setTranscript] = useState<string | null>(null)
   const [transcriptLoading, setTranscriptLoading] = useState(false)
   const [transcriptSearch, setTranscriptSearch] = useState('')
+  const [contactDeals, setContactDeals] = useState<DealForAttachment[]>([])
 
   useEffect(() => {
     if (isOpen && activityId) {
@@ -118,24 +120,48 @@ export function ActivityDetailSlideIn({
         .eq('id', activityId)
         .single()
 
+      let loaded: Record<string, unknown> | null = null
+
       if (error && (error.code === 'PGRST205' || error.code === '42P01')) {
-        // Fallback to regular activities table
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('activities')
           .select('*')
           .eq('id', activityId)
           .single()
-        
+
         if (fallbackError) throw fallbackError
+        loaded = fallbackData
         setActivity(fallbackData)
       } else if (error) {
         throw error
       } else {
+        loaded = data
         setActivity(data)
       }
 
-      // Load transcript if it's a call
-      if (data?.type === 'call') {
+      const contactIdForDeals = loaded?.contact_id as string | undefined
+      if (contactIdForDeals && tenantId) {
+        const { data: dealsData } = await supabase
+          .from('deals')
+          .select('id, title, updated_at, last_activity_at, stage:pipeline_stages(is_won, is_lost)')
+          .eq('contact_id', contactIdForDeals)
+          .eq('tenant_id', tenantId)
+          .is('deleted_at', null)
+        setContactDeals(
+          (dealsData ?? []).map((d) => ({
+            id: d.id as string,
+            title: d.title as string,
+            updated_at: d.updated_at as string | null,
+            last_activity_at: d.last_activity_at as string | null,
+            stage: {
+              is_won: (d.stage as { is_won?: boolean })?.is_won ?? false,
+              is_lost: (d.stage as { is_lost?: boolean })?.is_lost ?? false,
+            },
+          }))
+        )
+      }
+
+      if (loaded?.type === 'call') {
         loadTranscript()
       }
     } catch (error) {
@@ -345,28 +371,40 @@ export function ActivityDetailSlideIn({
                         </div>
                       )}
 
-                      {/* Deal */}
-                      {activity.deal_title && (
-                        <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="font-medium text-purple-900">{activity.deal_title}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-xs">{activity.deal_stage}</Badge>
-                                <Badge variant="secondary" className="text-xs">{activity.deal_pipeline}</Badge>
-                                {activity.deal_value && (
-                                  <span className="text-sm text-purple-700 font-medium">
-                                    ${(activity.deal_value / 100).toLocaleString()}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <a href={`/pipeline?deal=${activity.deal_id}`} target="_blank">
-                              <Button variant="ghost" size="sm">
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
+                      {/* Deal — Phase 2b.11.5b Change Deal */}
+                      {contactDeals.length > 0 && tenantId && activity.contact_id && (
+                        <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg space-y-2">
+                          <ChangeDealAffordance
+                            mode="patch"
+                            activityId={activity.id}
+                            contactId={activity.contact_id}
+                            tenantId={tenantId}
+                            deals={contactDeals}
+                            currentDealId={activity.deal_id ?? null}
+                            currentDealTitle={activity.deal_title ?? null}
+                            onChange={(newDealId) => {
+                              const picked = contactDeals.find((d) => d.id === newDealId)
+                              setActivity((prev: Record<string, unknown>) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      deal_id: newDealId,
+                                      deal_title: picked?.title ?? null,
+                                    }
+                                  : prev
+                              )
+                            }}
+                          />
+                          {activity.deal_id && (
+                            <a
+                              href={`/pipeline?deal=${activity.deal_id}`}
+                              target="_blank"
+                              className="inline-flex items-center text-xs text-purple-700 hover:underline"
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              Open deal in pipeline
                             </a>
-                          </div>
+                          )}
                         </div>
                       )}
                     </div>

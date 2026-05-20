@@ -44,6 +44,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { resolveMostRecentlyActiveOpenDeal } from '@/lib/deal-resolver'
 import type { SourceChannelEnum } from './types'
 
 // ---------------------------------------------------------------------------
@@ -262,35 +263,12 @@ export async function findReusableOpenDeal(
   supabase: SupabaseClient,
   args: { tenantId: string; contactId: string }
 ): Promise<string | null> {
-  // PostgREST embedded select with `!inner` makes the join required, so a
-  // deal with no matching pipeline_stages row (data integrity issue) is
-  // excluded rather than treated as open. The two `.eq()` filters apply at
-  // the joined-table level via dotted path.
-  const { data, error } = await supabase
-    .from('deals')
-    .select('id, last_activity_at, updated_at, pipeline_stages!inner(is_won, is_lost)')
-    .eq('tenant_id', args.tenantId)
-    .eq('contact_id', args.contactId)
-    .eq('pipeline_stages.is_won', false)
-    .eq('pipeline_stages.is_lost', false)
-    .is('deleted_at', null)
-    .order('last_activity_at', { ascending: false, nullsFirst: false })
-    .order('updated_at', { ascending: false, nullsFirst: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (error) {
-    console.warn('[deal-creation] findReusableOpenDeal lookup failed (non-fatal)', {
-      tenantId: args.tenantId,
-      contactId: args.contactId,
-      error: error.message,
-    })
-    return null
-  }
-  if (!data) return null
-
-  const id = (data as { id?: string | null }).id
-  return id ?? null
+  const resolved = await resolveMostRecentlyActiveOpenDeal({
+    tenantId: args.tenantId,
+    contactId: args.contactId,
+    supabase,
+  })
+  return resolved?.id ?? null
 }
 
 // ---------------------------------------------------------------------------

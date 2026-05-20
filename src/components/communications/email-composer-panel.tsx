@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase-client'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
+import { ChangeDealAffordance, type DealForAttachment } from '@/components/communications/change-deal-affordance'
 
 interface EmailComposerPanelProps {
   isOpen: boolean
@@ -28,6 +29,7 @@ interface EmailComposerPanelProps {
   to?: string
   contactId?: string
   dealId?: string
+  deals?: DealForAttachment[]
   replyToActivityId?: string
   tenantId?: string
   userId?: string
@@ -38,12 +40,14 @@ export function EmailComposerPanel({
   onClose,
   to = '',
   contactId,
-  dealId,
+  dealId: dealIdProp,
+  deals = [],
   replyToActivityId,
   tenantId,
   userId
 }: EmailComposerPanelProps) {
   const supabase = createClient()
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(dealIdProp ?? null)
   const [toEmail, setToEmail] = useState(to)
   const [cc, setCc] = useState('')
   const [bcc, setBcc] = useState('')
@@ -53,6 +57,15 @@ export function EmailComposerPanel({
   const [showBcc, setShowBcc] = useState(false)
   const [sending, setSending] = useState(false)
   const [aiDrafting, setAiDrafting] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDealId(dealIdProp ?? null)
+    }
+  }, [isOpen, dealIdProp])
+
+  const currentDealTitle =
+    deals.find((d) => d.id === selectedDealId)?.title ?? null
 
   const handleSend = async () => {
     if (!toEmail || !subject || !body) {
@@ -92,7 +105,7 @@ export function EmailComposerPanel({
           subject,
           body,
           contact_id: contactId,
-          deal_id: dealId,
+          deal_id: selectedDealId,
           tenant_id: tenantId,
           user_id: userId
         })
@@ -149,7 +162,7 @@ export function EmailComposerPanel({
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">Compose Email</h2>
-            {dealId && <Badge variant="secondary" className="text-xs">Deal Related</Badge>}
+            {selectedDealId && <Badge variant="secondary" className="text-xs">Deal Related</Badge>}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -167,20 +180,31 @@ export function EmailComposerPanel({
           </div>
         </div>
 
-        <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between text-sm text-gray-600">
+        <div className="px-4 py-3 border-b bg-gray-50 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
           <div>
             <p className="font-medium text-gray-900">
               {toEmail || 'Add a recipient to begin'}
             </p>
             <p className="text-xs text-gray-500">
-              {dealId
+              {selectedDealId
                 ? 'This email will be logged against the active deal.'
                 : contactId
                 ? 'Contact-linked communication.'
                 : 'Manual outreach.'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {contactId && tenantId && deals.length > 0 && (
+              <ChangeDealAffordance
+                mode="preview"
+                contactId={contactId}
+                tenantId={tenantId}
+                deals={deals}
+                currentDealId={selectedDealId}
+                currentDealTitle={currentDealTitle}
+                onChange={setSelectedDealId}
+              />
+            )}
             <Badge variant="outline" className="text-xs">
               Email
             </Badge>

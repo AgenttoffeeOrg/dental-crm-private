@@ -421,3 +421,13 @@ Dedicated `activity_deal_changes` table only if compliance needs immutable appen
 ---
 
 *End of audit.*
+
+---
+
+> **2b.11.5b shipped.** All §8 recommendations implemented. P0 issue
+> D1 (inbound/outbound mismatch) resolved by the shared resolver.
+> P1 issues D2 (stale `last_activity_at`) and D3 (no UI) addressed by
+> using activity-based query + Change Deal dropdown. See
+> `docs/2b/2b-11-5b-changes.md`. P2/P3 items D4–D8 either resolved
+> (D4 / D5 via `isDealClosed` alignment) or deliberately deferred
+> (D6 needs settings UI; D7 documented as intended; D8 is seed data).

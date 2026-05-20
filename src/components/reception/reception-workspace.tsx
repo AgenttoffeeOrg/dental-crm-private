@@ -6,6 +6,11 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase-client'
 import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
+import {
+  isDealClosedByStage,
+  resolveMostRecentlyActiveOpenDeal,
+  type DealForAttachment,
+} from '@/lib/deal-resolver'
 import { ClickToCallDialer } from '@/components/communications/click-to-call-dialer'
 import { EmailComposerPanel } from '@/components/communications/email-composer-panel'
 import { SMSComposerPanel } from '@/components/communications/sms-composer-panel'
@@ -47,6 +52,8 @@ type DealSummary = {
   status?: string | null
   stage?: {
     name?: string | null
+    is_won?: boolean | null
+    is_lost?: boolean | null
   } | null
 }
 
@@ -76,6 +83,7 @@ type PersonaSnapshot = {
 type ContactDetails = {
   contact: ContactSummary
   deals: DealSummary[]
+  recommendedOutboundDealId: string | null
   openDealCount: number
   pipelineValueCents: number
   upcomingTasks: TaskSummary[]
@@ -233,7 +241,9 @@ export function ReceptionWorkspace() {
         ] = await Promise.all([
           supabase
             .from('deals')
-            .select('id, title, value_estimate_cents, updated_at, status, stage:pipeline_stages(name)')
+            .select(
+              'id, title, value_estimate_cents, updated_at, status, stage:pipeline_stages(name, is_won, is_lost)'
+            )
             .eq('contact_id', contactId)
             .order('updated_at', { ascending: false })
             .limit(6),
@@ -275,10 +285,17 @@ export function ReceptionWorkspace() {
           (sum, deal) => sum + (deal.value_estimate_cents || 0),
           0
         )
-        const openDealCount = deals.filter((deal) => {
-          const stageName = deal.stage?.name?.toLowerCase() ?? ''
-          return !stageName.includes('closed_won') && !stageName.includes('closed_lost')
-        }).length
+        const openDealCount = deals.filter((deal) => !isDealClosedByStage(deal.stage)).length
+
+        let recommendedOutboundDealId: string | null = null
+        if (tenantId) {
+          const recommended = await resolveMostRecentlyActiveOpenDeal({
+            tenantId,
+            contactId,
+            supabase,
+          })
+          recommendedOutboundDealId = recommended?.id ?? null
+        }
 
         const tasks = (tasksData as TaskSummary[]) ?? []
         const lastActivityList = (activityData as ActivitySummary[]) ?? []
@@ -303,6 +320,7 @@ export function ReceptionWorkspace() {
         setDetails({
           contact: contactData as ContactSummary,
           deals,
+          recommendedOutboundDealId,
           openDealCount,
           pipelineValueCents,
           upcomingTasks: tasks,
@@ -317,7 +335,7 @@ export function ReceptionWorkspace() {
         setDetailsLoading(false)
       }
     },
-    [supabase]
+    [supabase, tenantId]
   )
 
   useEffect(() => {
@@ -400,7 +418,21 @@ export function ReceptionWorkspace() {
     [heroContact?.primary_phone]
   )
 
-  const primaryDealId = details?.deals?.[0]?.id ?? null
+  const primaryDealId = details?.recommendedOutboundDealId ?? null
+
+  const dealsForAttachment: DealForAttachment[] = useMemo(
+    () =>
+      (details?.deals ?? []).map((deal) => ({
+        id: deal.id,
+        title: deal.title ?? 'Deal',
+        updated_at: deal.updated_at,
+        stage: {
+          is_won: deal.stage?.is_won ?? false,
+          is_lost: deal.stage?.is_lost ?? false,
+        },
+      })),
+    [details?.deals]
+  )
 
   const enabledFlagBadges =
     flagsInsights?.flags?.filter((flag: any) => flag.effectiveEnabled).slice(0, 3) ?? []
@@ -1138,6 +1170,7 @@ export function ReceptionWorkspace() {
             to={sanitizedPhone || heroContact.primary_phone || ''}
             contactId={heroContact.id}
             dealId={primaryDealId || undefined}
+            deals={dealsForAttachment}
             tenantId={tenantId || undefined}
             userId={currentUserId || undefined}
           />
@@ -1147,6 +1180,7 @@ export function ReceptionWorkspace() {
             to={heroContact.primary_email || ''}
             contactId={heroContact.id}
             dealId={primaryDealId || undefined}
+            deals={dealsForAttachment}
             tenantId={tenantId || undefined}
             userId={currentUserId || undefined}
           />
@@ -1156,6 +1190,7 @@ export function ReceptionWorkspace() {
             to={sanitizedPhone || heroContact.primary_phone || ''}
             contactId={heroContact.id}
             dealId={primaryDealId || undefined}
+            deals={dealsForAttachment}
             tenantId={tenantId || undefined}
             userId={currentUserId || undefined}
           />

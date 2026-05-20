@@ -31,18 +31,33 @@ interface FakeDealRow {
   pipeline_stages: { is_won: boolean; is_lost: boolean }
 }
 
+interface FakeActivityRow {
+  deal_id: string
+  occurred_at: string
+  tenant_id: string
+}
+
 interface CapturedQuery {
   table: string
   selectCols: string | null
   eqs: Array<[string, unknown]>
   isFilters: Array<[string, unknown]>
+  inFilters: Array<[string, string[]]>
   orders: Array<{ col: string; ascending: boolean; nullsFirst: boolean }>
   limitN: number | null
   terminal: 'maybeSingle' | 'single' | null
 }
 
-function makeFakeClient(deals: FakeDealRow[], opts: { error?: { message: string } } = {}) {
+function makeFakeClient(
+  deals: FakeDealRow[],
+  opts: {
+    dealsError?: { message: string }
+    activitiesError?: { message: string }
+    activities?: FakeActivityRow[]
+  } = {}
+) {
   const captured: CapturedQuery[] = []
+  const activities = opts.activities ?? []
 
   const client = {
     from(table: string) {
@@ -51,6 +66,7 @@ function makeFakeClient(deals: FakeDealRow[], opts: { error?: { message: string 
         selectCols: null,
         eqs: [],
         isFilters: [],
+        inFilters: [],
         orders: [],
         limitN: null,
         terminal: null,
@@ -70,6 +86,10 @@ function makeFakeClient(deals: FakeDealRow[], opts: { error?: { message: string 
           q.isFilters.push([col, val])
           return builder
         },
+        in: (col: string, vals: string[]) => {
+          q.inFilters.push([col, vals])
+          return builder
+        },
         order: (col: string, opts2: { ascending?: boolean; nullsFirst?: boolean } = {}) => {
           q.orders.push({
             col,
@@ -84,10 +104,37 @@ function makeFakeClient(deals: FakeDealRow[], opts: { error?: { message: string 
         },
         maybeSingle: () => {
           q.terminal = 'maybeSingle'
-          if (opts.error) return Promise.resolve({ data: null, error: opts.error })
+          if (table === 'deals' && opts.dealsError) {
+            return Promise.resolve({ data: null, error: opts.dealsError })
+          }
           const filtered = applyFilters(deals, q)
           const ordered = applyOrders(filtered, q)
           return Promise.resolve({ data: ordered[0] ?? null, error: null })
+        },
+        then: (resolve: (v: { data: unknown; error: unknown }) => void) => {
+          if (table === 'activities') {
+            if (opts.activitiesError) {
+              return Promise.resolve({ data: null, error: opts.activitiesError }).then(resolve)
+            }
+            let rows = activities.slice()
+            for (const [col, val] of q.eqs) {
+              rows = rows.filter((r) => (r as Record<string, unknown>)[col] === val)
+            }
+            for (const [col, vals] of q.inFilters) {
+              if (col === 'deal_id') {
+                rows = rows.filter((r) => vals.includes(r.deal_id))
+              }
+            }
+            return Promise.resolve({ data: rows, error: null }).then(resolve)
+          }
+          if (table === 'deals') {
+            if (opts.dealsError) {
+              return Promise.resolve({ data: null, error: opts.dealsError }).then(resolve)
+            }
+            const filtered = applyFilters(deals, q)
+            return Promise.resolve({ data: filtered, error: null }).then(resolve)
+          }
+          return Promise.resolve({ data: [], error: null }).then(resolve)
         },
       }
       return builder
@@ -219,24 +266,21 @@ describe('findReusableOpenDeal', () => {
     expect(result).toBeNull()
   })
 
-  it('returns the most-recently-touched open deal when multiple exist (last_activity_at wins)', async () => {
-    const { client } = makeFakeClient([
-      deal({
-        id: 'older',
-        last_activity_at: '2026-04-01T00:00:00Z',
-        updated_at: '2026-04-01T00:00:00Z',
-      }),
-      deal({
-        id: 'newer',
-        last_activity_at: '2026-05-08T00:00:00Z',
-        updated_at: '2026-04-15T00:00:00Z',
-      }),
-      deal({
-        id: 'middle',
-        last_activity_at: '2026-05-01T00:00:00Z',
-        updated_at: '2026-04-15T00:00:00Z',
-      }),
-    ])
+  it('returns the open deal with latest activity when multiple exist', async () => {
+    const { client } = makeFakeClient(
+      [
+        deal({ id: 'older', updated_at: '2026-04-01T00:00:00Z' }),
+        deal({ id: 'newer', updated_at: '2026-04-15T00:00:00Z' }),
+        deal({ id: 'middle', updated_at: '2026-04-15T00:00:00Z' }),
+      ],
+      {
+        activities: [
+          { deal_id: 'older', occurred_at: '2026-04-01T00:00:00Z', tenant_id: TENANT },
+          { deal_id: 'newer', occurred_at: '2026-05-08T00:00:00Z', tenant_id: TENANT },
+          { deal_id: 'middle', occurred_at: '2026-05-01T00:00:00Z', tenant_id: TENANT },
+        ],
+      }
+    )
     const result = await findReusableOpenDeal(client, {
       tenantId: TENANT,
       contactId: CONTACT,
@@ -244,33 +288,37 @@ describe('findReusableOpenDeal', () => {
     expect(result).toBe('newer')
   })
 
-  it('falls back to updated_at when last_activity_at is null on the candidate row', async () => {
-    // A deal whose last_activity_at is NULL but updated_at is more recent
-    // than another deal's last_activity_at should still be sortable
-    // (NULLs LAST keeps it after the populated row when last_activity_at is
-    // the primary key, but among the NULL group the secondary updated_at
-    // tiebreaker still ranks). When ALL candidates have last_activity_at,
-    // updated_at is the tiebreaker.
+  it('falls back to updated_at when no activities exist on any open deal', async () => {
     const { client } = makeFakeClient([
-      deal({
-        id: 'd-with-activity',
-        last_activity_at: '2026-05-01T00:00:00Z',
-        updated_at: '2026-05-01T00:00:00Z',
-      }),
-      deal({
-        id: 'd-no-activity',
-        last_activity_at: null,
-        updated_at: '2026-05-08T00:00:00Z',
-      }),
+      deal({ id: 'd-a', updated_at: '2026-05-01T00:00:00Z' }),
+      deal({ id: 'd-b', updated_at: '2026-05-08T00:00:00Z' }),
     ])
     const result = await findReusableOpenDeal(client, {
       tenantId: TENANT,
       contactId: CONTACT,
     })
-    // last_activity_at is the primary order key (DESC, NULLS LAST), so the
-    // populated row beats the NULL row regardless of updated_at deltas.
-    // This locks in the documented "last_activity_at is canonical" choice.
-    expect(result).toBe('d-with-activity')
+    expect(result).toBe('d-b')
+  })
+
+  it('reuses the middle open deal when it has the latest activity (not created_at order)', async () => {
+    const { client } = makeFakeClient(
+      [
+        deal({ id: 'first-created', updated_at: '2026-01-01T00:00:00Z' }),
+        deal({ id: 'middle-hot', updated_at: '2026-02-01T00:00:00Z' }),
+        deal({ id: 'last-created', updated_at: '2026-03-01T00:00:00Z' }),
+      ],
+      {
+        activities: [
+          { deal_id: 'middle-hot', occurred_at: '2026-05-20T12:00:00Z', tenant_id: TENANT },
+          { deal_id: 'first-created', occurred_at: '2026-05-01T00:00:00Z', tenant_id: TENANT },
+        ],
+      }
+    )
+    const result = await findReusableOpenDeal(client, {
+      tenantId: TENANT,
+      contactId: CONTACT,
+    })
+    expect(result).toBe('middle-hot')
   })
 
   it('returns the open deal when the contact has a mix of open and closed deals', async () => {
@@ -299,22 +347,18 @@ describe('findReusableOpenDeal', () => {
   })
 
   it('reuses an open deal across pipelines (no pipeline filter applied)', async () => {
-    // Deal in pipeline B is more recently touched than the one in pipeline A.
-    // The product rule explicitly does NOT filter by pipeline — any open deal
-    // for the contact qualifies, regardless of which treatment offering /
-    // pipeline lane.
-    const { client } = makeFakeClient([
-      deal({
-        id: 'open-pipeline-A',
-        pipeline_id: 'pipeline-A',
-        last_activity_at: '2026-04-01T00:00:00Z',
-      }),
-      deal({
-        id: 'open-pipeline-B',
-        pipeline_id: 'pipeline-B',
-        last_activity_at: '2026-05-08T00:00:00Z',
-      }),
-    ])
+    const { client } = makeFakeClient(
+      [
+        deal({ id: 'open-pipeline-A', pipeline_id: 'pipeline-A' }),
+        deal({ id: 'open-pipeline-B', pipeline_id: 'pipeline-B' }),
+      ],
+      {
+        activities: [
+          { deal_id: 'open-pipeline-A', occurred_at: '2026-04-01T00:00:00Z', tenant_id: TENANT },
+          { deal_id: 'open-pipeline-B', occurred_at: '2026-05-08T00:00:00Z', tenant_id: TENANT },
+        ],
+      }
+    )
     const result = await findReusableOpenDeal(client, {
       tenantId: TENANT,
       contactId: CONTACT,
@@ -368,33 +412,30 @@ describe('findReusableOpenDeal', () => {
     expect(result).toBeNull()
   })
 
-  it('returns null (does not throw) on supabase error', async () => {
+  it('returns null (does not throw) on supabase deals error', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const { client } = makeFakeClient([], { error: { message: 'connection refused' } })
+    const { client } = makeFakeClient([], { dealsError: { message: 'connection refused' } })
     const result = await findReusableOpenDeal(client, {
       tenantId: TENANT,
       contactId: CONTACT,
     })
     expect(result).toBeNull()
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('findReusableOpenDeal'),
-      expect.objectContaining({
-        tenantId: TENANT,
-        contactId: CONTACT,
-      })
+      expect.stringContaining('[deal-resolver]'),
+      expect.objectContaining({ tenantId: TENANT, contactId: CONTACT })
     )
     warnSpy.mockRestore()
   })
 
-  it('issues exactly one query: SELECT from deals with pipeline_stages embedded join + tenant/contact filters', async () => {
+  it('queries open deals then activities for max occurred_at (Phase 2b.11.5b)', async () => {
     const { client, captured } = makeFakeClient([deal({ id: 'd-1' })])
     await findReusableOpenDeal(client, { tenantId: TENANT, contactId: CONTACT })
 
-    expect(captured).toHaveLength(1)
-    const q = captured[0]
-    expect(q.table).toBe('deals')
-    expect(q.selectCols).toContain('pipeline_stages!inner(is_won, is_lost)')
-    expect(q.eqs).toEqual(
+    expect(captured.length).toBeGreaterThanOrEqual(2)
+    const dealsQ = captured.find((q) => q.table === 'deals')
+    const actQ = captured.find((q) => q.table === 'activities')
+    expect(dealsQ?.selectCols).toContain('pipeline_stages!inner(is_won, is_lost)')
+    expect(dealsQ?.eqs).toEqual(
       expect.arrayContaining([
         ['tenant_id', TENANT],
         ['contact_id', CONTACT],
@@ -402,13 +443,7 @@ describe('findReusableOpenDeal', () => {
         ['pipeline_stages.is_lost', false],
       ])
     )
-    expect(q.isFilters).toEqual(expect.arrayContaining([['deleted_at', null]]))
-    expect(q.limitN).toBe(1)
-    expect(q.terminal).toBe('maybeSingle')
-    // Ordering is canonical: last_activity_at DESC, then updated_at DESC.
-    expect(q.orders.map((o) => `${o.col} ${o.ascending ? 'ASC' : 'DESC'}`)).toEqual([
-      'last_activity_at DESC',
-      'updated_at DESC',
-    ])
+    expect(actQ?.eqs).toEqual(expect.arrayContaining([['tenant_id', TENANT]]))
+    expect(actQ?.inFilters).toEqual(expect.arrayContaining([['deal_id', ['d-1']]]))
   })
 })

@@ -44,6 +44,11 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import {
+  isDealClosedByStage,
+  resolveMostRecentlyActiveOpenDeal,
+  type DealForAttachment,
+} from '@/lib/deal-resolver'
+import {
   Contact,
   Deal,
   DealWithRelations,
@@ -70,6 +75,9 @@ export function ContactDetailView({
   const { userId: currentUserId } = useCurrentUser()
   const [contact, setContact] = useState<Contact | null>(null)
   const [deals, setDeals] = useState<DealWithRelations[]>([])
+  const [recommendedOutboundDealId, setRecommendedOutboundDealId] = useState<string | null>(
+    null
+  )
   const [loading, setLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [createDealDialogOpen, setCreateDealDialogOpen] = useState(false)
@@ -95,13 +103,22 @@ export function ContactDetailView({
   const [psychHistory, setPsychHistory] = useState<ContactPsychProfileHistory[]>([])
   const [analyzingPersona, setAnalyzingPersona] = useState(false)
 
-  const primaryDealId = useMemo(() => {
-    const activeDeal = deals.find(deal => {
-      const stageName = deal.stage?.name?.toLowerCase() || ''
-      return !['closed_won', 'closed_lost'].includes(stageName)
-    })
-    return activeDeal?.id ?? deals[0]?.id ?? null
-  }, [deals])
+  const primaryDealId = recommendedOutboundDealId
+
+  const dealsForAttachment: DealForAttachment[] = useMemo(
+    () =>
+      deals.map((deal) => ({
+        id: deal.id,
+        title: deal.title,
+        updated_at: deal.updated_at,
+        last_activity_at: deal.last_activity_at,
+        stage: {
+          is_won: deal.stage?.is_won ?? false,
+          is_lost: deal.stage?.is_lost ?? false,
+        },
+      })),
+    [deals]
+  )
 
   const fetchContactData = async () => {
     try {
@@ -135,6 +152,15 @@ export function ContactDetailView({
         console.error('Deals error:', dealsError)
       } else {
         setDeals(dealsData || [])
+      }
+
+      if (tenantId) {
+        const recommended = await resolveMostRecentlyActiveOpenDeal({
+          tenantId,
+          contactId,
+          supabase,
+        })
+        setRecommendedOutboundDealId(recommended?.id ?? null)
       }
 
     } catch (error) {
@@ -234,10 +260,7 @@ export function ContactDetailView({
     }).format(cents / 100)
   }
 
-  const isDealClosed = (deal: DealWithRelations) => {
-    const stageName = deal.stage?.name?.toLowerCase() ?? ''
-    return stageName.includes('closed') || stageName.includes('won') || stageName.includes('lost')
-  }
+  const isDealClosed = (deal: DealWithRelations) => isDealClosedByStage(deal.stage)
 
   const openDeals = useMemo(
     () => deals.filter((deal) => !isDealClosed(deal)),
@@ -252,10 +275,7 @@ export function ContactDetailView({
   const wonPipelineValue = useMemo(
     () =>
       deals
-        .filter((deal) => {
-          const stageName = deal.stage?.name?.toLowerCase() ?? ''
-          return stageName.includes('won')
-        })
+        .filter((deal) => Boolean(deal.stage?.is_won))
         .reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0),
     [deals]
   )
@@ -1433,7 +1453,7 @@ export function ContactDetailView({
             <div className="p-6 bg-gray-50">
               <ActivityFeedEnterprise
                 contactId={contactId}
-                dealId={deals.length > 0 ? deals[0].id : undefined}
+                dealId={recommendedOutboundDealId ?? undefined}
                 onActivityCreated={fetchContactData}
                 showAllContactActivities={true}
                 tenantId={tenantId}
@@ -1535,7 +1555,8 @@ export function ContactDetailView({
             onClose={() => setEmailComposerOpen(false)}
             to={contact.primary_email}
             contactId={contactId}
-            dealId={deals.length > 0 ? deals[0].id : undefined}
+            dealId={recommendedOutboundDealId ?? undefined}
+            deals={dealsForAttachment}
             tenantId={tenantId || undefined}
             userId={currentUserId || undefined}
           />
@@ -1545,7 +1566,8 @@ export function ContactDetailView({
             onClose={() => setSmsComposerOpen(false)}
         to={sanitizedPrimaryPhone}
             contactId={contactId}
-            dealId={deals.length > 0 ? deals[0].id : undefined}
+            dealId={recommendedOutboundDealId ?? undefined}
+            deals={dealsForAttachment}
             tenantId={tenantId || undefined}
             userId={currentUserId || undefined}
           />
@@ -1556,7 +1578,7 @@ export function ContactDetailView({
         phoneNumber={sanitizedPrimaryPhone}
             contactName={contact.full_name}
             contactId={contactId}
-            dealId={deals.length > 0 ? deals[0].id : undefined}
+            dealId={recommendedOutboundDealId ?? undefined}
             tenantId={tenantId || undefined}
             userId={currentUserId || undefined}
           />

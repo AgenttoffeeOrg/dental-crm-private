@@ -12,5 +12,6 @@ module.exports = {
     '^@/lib/(.*)$': '<rootDir>/src/lib/$1',
     '^@/app/(.*)$': '<rootDir>/src/app/$1',
     '^@/types/(.*)$': '<rootDir>/src/types/$1',
+    '^@/schemas/(.*)$': '<rootDir>/src/schemas/$1',
   },
 }

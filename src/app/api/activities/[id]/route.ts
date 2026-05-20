@@ -5,6 +5,12 @@ import { ActivityUpdateSchema, safeValidateActivity } from '@/schemas/activity.s
 
 const ActivityIdSchema = z.object({ id: z.string().uuid('Invalid activity id') })
 
+const DealIdPatchSchema = z.object({
+  deal_id: z.string().uuid('Invalid deal id').nullable(),
+})
+
+const PERMISSION_DEAL_EDIT = 'deals.edit'
+
 function handleError(error: unknown) {
   if (error instanceof ApiContextError) {
     return NextResponse.json({ error: error.message }, { status: error.status })
@@ -14,8 +20,56 @@ function handleError(error: unknown) {
   return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 }
 
+async function requireDealsEditPermission(
+  supabase: { rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  userId: string,
+  tenantId: string
+): Promise<NextResponse | null> {
+  const { data, error } = await supabase.rpc('user_has_permission', {
+    p_user_id: userId,
+    p_tenant_id: tenantId,
+    p_permission_code: PERMISSION_DEAL_EDIT,
+  })
+  if (error) {
+    console.error('[API:activity:id] permission check failed', error)
+    return NextResponse.json({ error: 'permission_check_failed' }, { status: 500 })
+  }
+  if (!data) {
+    return NextResponse.json({ error: 'permission_denied' }, { status: 403 })
+  }
+  return null
+}
+
+async function writeDealReassignmentAudit(
+  supabase: { from: (table: string) => { insert: (row: Record<string, unknown>) => Promise<{ error: unknown }> } },
+  params: {
+    tenantId: string
+    userId: string
+    activityId: string
+    beforeDealId: string | null
+    afterDealId: string | null
+  }
+) {
+  const { error } = await supabase.from('audit_trail').insert({
+    tenant_id: params.tenantId,
+    user_id: params.userId,
+    action_type: 'update',
+    action_category: 'deal',
+    entity_type: 'activity',
+    entity_id: params.activityId,
+    before_state: { deal_id: params.beforeDealId },
+    after_state: { deal_id: params.afterDealId },
+    changed_fields: ['deal_id'],
+    severity: 'info',
+    created_at: new Date().toISOString(),
+  })
+  if (error) {
+    console.error('[API:activity:id] audit_trail insert failed', error)
+  }
+}
+
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -24,7 +78,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid activity id' }, { status: 400 })
     }
 
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, membership, accessibleLocationIds } = context
 
     const { data: activity, error } = await supabase
@@ -76,6 +130,96 @@ export async function PATCH(
     }
 
     const payload = await request.json()
+    const context = await getApiRequestContext(request)
+    const { supabase, tenantId, user, membership, accessibleLocationIds } = context
+
+    const isDealOnlyPatch =
+      payload &&
+      typeof payload === 'object' &&
+      Object.keys(payload).length === 1 &&
+      'deal_id' in payload
+
+    if (isDealOnlyPatch) {
+      const dealPatch = DealIdPatchSchema.safeParse(payload)
+      if (!dealPatch.success) {
+        return NextResponse.json(
+          { error: 'Validation failed', details: dealPatch.error.errors },
+          { status: 400 }
+        )
+      }
+
+      const permDenied = await requireDealsEditPermission(supabase, user.id, tenantId)
+      if (permDenied) return permDenied
+
+      const { data: existing, error: existingError } = await supabase
+        .from('activities')
+        .select('id, deal_id, contact_id, location_id, tenant_id')
+        .eq('id', params.id)
+        .eq('tenant_id', tenantId)
+        .single()
+
+      if (existingError || !existing) {
+        return NextResponse.json({ error: 'Activity not found' }, { status: 404 })
+      }
+
+      if (!membership.all_locations && existing.location_id) {
+        if (!accessibleLocationIds?.includes(existing.location_id)) {
+          return NextResponse.json({ error: 'Location access denied' }, { status: 403 })
+        }
+      }
+
+      const newDealId = dealPatch.data.deal_id
+
+      if (newDealId) {
+        const { data: targetDeal, error: dealError } = await supabase
+          .from('deals')
+          .select('id, contact_id, deleted_at')
+          .eq('id', newDealId)
+          .eq('tenant_id', tenantId)
+          .single()
+
+        if (dealError || !targetDeal) {
+          return NextResponse.json({ error: 'Deal not found for tenant' }, { status: 400 })
+        }
+        if (targetDeal.deleted_at) {
+          return NextResponse.json({ error: 'Deal is deleted' }, { status: 400 })
+        }
+        if (targetDeal.contact_id !== existing.contact_id) {
+          return NextResponse.json(
+            { error: 'Deal belongs to a different contact than this activity' },
+            { status: 400 }
+          )
+        }
+      }
+
+      const beforeDealId = existing.deal_id as string | null
+
+      const { data: updated, error: updateError } = await supabase
+        .from('activities')
+        .update({ deal_id: newDealId })
+        .eq('id', params.id)
+        .eq('tenant_id', tenantId)
+        .select('*')
+        .single()
+
+      if (updateError) {
+        console.error('[API:activity:id] Failed to update activity deal_id', updateError)
+        return NextResponse.json({ error: 'Failed to update activity' }, { status: 500 })
+      }
+
+      if (beforeDealId !== newDealId) {
+        await writeDealReassignmentAudit(supabase, {
+          tenantId,
+          userId: user.id,
+          activityId: params.id,
+          beforeDealId,
+          afterDealId: newDealId,
+        })
+      }
+
+      return NextResponse.json({ activity: updated })
+    }
+
     const validation = safeValidateActivity(payload, ActivityUpdateSchema)
 
     if (!validation.success) {
@@ -86,12 +230,10 @@ export async function PATCH(
     }
 
     const data = validation.data
-    const context = await getApiRequestContext()
-    const { supabase, tenantId, membership, accessibleLocationIds } = context
 
     const { data: existing, error: existingError } = await supabase
       .from('activities')
-      .select('id, location_id')
+      .select('id, deal_id, location_id, contact_id')
       .eq('id', params.id)
       .eq('tenant_id', tenantId)
       .single()
@@ -121,16 +263,28 @@ export async function PATCH(
       }
     }
 
-    if (data.deal_id) {
-      const { data: deal } = await supabase
-        .from('deals')
-        .select('id')
-        .eq('id', data.deal_id)
-        .eq('tenant_id', tenantId)
-        .single()
+    if (data.deal_id !== undefined) {
+      const permDenied = await requireDealsEditPermission(supabase, user.id, tenantId)
+      if (permDenied) return permDenied
 
-      if (!deal) {
-        return NextResponse.json({ error: 'Deal not found for tenant' }, { status: 404 })
+      if (data.deal_id) {
+        const { data: deal } = await supabase
+          .from('deals')
+          .select('id, contact_id, deleted_at')
+          .eq('id', data.deal_id)
+          .eq('tenant_id', tenantId)
+          .single()
+
+        if (!deal || deal.deleted_at) {
+          return NextResponse.json({ error: 'Deal not found for tenant' }, { status: 400 })
+        }
+        const activityContactId = data.contact_id ?? existing.contact_id
+        if (deal.contact_id !== activityContactId) {
+          return NextResponse.json(
+            { error: 'Deal belongs to a different contact than this activity' },
+            { status: 400 }
+          )
+        }
       }
     }
 
@@ -140,6 +294,10 @@ export async function PATCH(
         updatePayload[key] = value
       }
     }
+
+    const beforeDealId = existing.deal_id as string | null
+    const afterDealId =
+      data.deal_id !== undefined ? (data.deal_id as string | null) : beforeDealId
 
     const { data: updated, error: updateError } = await supabase
       .from('activities')
@@ -154,6 +312,16 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update activity' }, { status: 500 })
     }
 
+    if (data.deal_id !== undefined && beforeDealId !== afterDealId) {
+      await writeDealReassignmentAudit(supabase, {
+        tenantId,
+        userId: user.id,
+        activityId: params.id,
+        beforeDealId,
+        afterDealId,
+      })
+    }
+
     return NextResponse.json({ activity: updated })
   } catch (error) {
     return handleError(error)
@@ -161,7 +329,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -170,7 +338,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid activity id' }, { status: 400 })
     }
 
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, membership, accessibleLocationIds } = context
 
     const { data: activity } = await supabase
@@ -206,8 +374,3 @@ export async function DELETE(
     return handleError(error)
   }
 }
-
-
-
-
-

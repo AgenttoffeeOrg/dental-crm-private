@@ -60,6 +60,7 @@ import { ClickToCallDialer } from '@/components/communications/click-to-call-dia
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
 import { ActivityMedia, type ActivityMediaItem } from './activity-media'
 import { signMessageMediaUrls } from '@/lib/inbound-media/signed-urls'
+import type { DealForAttachment } from '@/lib/deal-resolver'
 
 interface Activity {
   id: string
@@ -223,6 +224,7 @@ export function ActivityFeedEnterprise({
   const [whatsappComposerOpen, setWhatsappComposerOpen] = useState(false)
   const [callDialerOpen, setCallDialerOpen] = useState(false)
   const [composerContext, setComposerContext] = useState<any>({})
+  const [contactDeals, setContactDeals] = useState<DealForAttachment[]>([])
   
   const supabase = createClient()
 
@@ -296,6 +298,31 @@ const sanitizedContactPhone = useMemo(
   useEffect(() => {
     fetchActivities()
   }, [contactId, dealId, showAllContactActivities])
+
+  useEffect(() => {
+    if (!contactId) return
+    const loadDeals = async () => {
+      const { data } = await supabase
+        .from('deals')
+        .select('id, title, updated_at, last_activity_at, stage:pipeline_stages(is_won, is_lost)')
+        .eq('contact_id', contactId)
+        .is('deleted_at', null)
+        .order('updated_at', { ascending: false })
+      setContactDeals(
+        (data ?? []).map((d) => ({
+          id: d.id as string,
+          title: d.title as string,
+          updated_at: d.updated_at as string | null,
+          last_activity_at: d.last_activity_at as string | null,
+          stage: {
+            is_won: (d.stage as { is_won?: boolean })?.is_won ?? false,
+            is_lost: (d.stage as { is_lost?: boolean })?.is_lost ?? false,
+          },
+        }))
+      )
+    }
+    void loadDeals()
+  }, [contactId, supabase])
 
   const startEdit = (activity: Activity) => {
     setEditingId(activity.id)
@@ -959,7 +986,8 @@ const sanitizedContactPhone = useMemo(
         }}
         to={composerContext.to}
         contactId={composerContext.contactId}
-        dealId={composerContext.dealId}
+        dealId={composerContext.dealId ?? dealId}
+        deals={contactDeals}
         replyToActivityId={composerContext.replyToActivityId}
         tenantId={tenantId}
         userId={userId}
@@ -974,7 +1002,8 @@ const sanitizedContactPhone = useMemo(
         }}
         to={composerContext.to}
         contactId={composerContext.contactId}
-        dealId={composerContext.dealId}
+        dealId={composerContext.dealId ?? dealId}
+        deals={contactDeals}
         tenantId={tenantId}
         userId={userId}
       />
@@ -988,7 +1017,8 @@ const sanitizedContactPhone = useMemo(
         }}
         to={composerContext.to}
         contactId={composerContext.contactId}
-        dealId={composerContext.dealId}
+        dealId={composerContext.dealId ?? dealId}
+        deals={contactDeals}
         tenantId={tenantId}
         userId={userId}
       />

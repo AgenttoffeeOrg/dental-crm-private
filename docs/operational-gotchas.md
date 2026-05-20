@@ -367,6 +367,13 @@ handler runs; the SMS composer then shows a generic “Failed to send SMS”
 toast. Use lazy `require` inside `sanitiseOutboundHtml()` only (fix in
 `5380723`).
 
+**Vercel email send (2b.11 operator session):** DOMPurify can also throw at
+*runtime* inside `sanitiseOutboundHtml()` on `send-email`, leaving activities
+stuck `pending` and returning generic `Internal server error`. Dispatcher now
+falls back to script-tag stripping if DOMPurify fails (deploy
+`dpl_Gpd7mu27kCXmoFPScNPRRwWasg7v`). Resend with `onboarding@resend.dev` only
+delivers to the Resend account email until a domain is verified.
+
 ## Phase 2b.10 — System-email module merge
 
 > **There is now exactly one system-email module.**
@@ -408,4 +415,34 @@ toast. Use lazy `require` inside `sanitiseOutboundHtml()` only (fix in
 > `scripts/apply-2b11-conversation-id-migration.mjs` with
 > `SUPABASE_DB_PASSWORD` set, or Management API `database/query`, then
 > record version `20260519120000` in `supabase_migrations.schema_migrations`.
+
+## Phase 2b.11.5b — Unified deal-attachment + Change Deal UI
+
+> **One rule for "which deal" everywhere.** Inbound (`ingestLead` →
+> `findReusableOpenDeal`) and outbound from contact-level surfaces
+> both use `resolveMostRecentlyActiveOpenDeal` in
+> `src/lib/deal-resolver.ts`. Definition: open deal
+> (`pipeline_stages.is_won = false AND is_lost = false`) with the
+> latest `MAX(activities.occurred_at)` for that (tenant, contact);
+> `deals.updated_at DESC` as tiebreaker.
+>
+> **Deal-specific surfaces are unchanged** — they pass explicit
+> `dealId` (deal modal, deal page, slide-in Reply). Slide-in Reply
+> inherits the source activity's `deal_id`; do not change.
+>
+> **`deals.last_activity_at` is still stale** — the resolver computes
+> from `activities` directly so this doesn't matter for attachment
+> decisions. Pipeline-board ordering still uses the stale value;
+> separate fix in a future phase if needed.
+>
+> **`isDealClosed` on contact detail is now flag-based** (`stage.is_won ||
+> stage.is_lost`). Stage-name substring matching was removed from that
+> path — reintroducing it would split the source of truth again.
+>
+> **Reassigning a deal via PATCH does NOT** re-fire
+> `activities_stamp_deal_first_response` (INSERT-only trigger),
+> update `deals.first_response_at`, or re-fire Google Ads
+> conversions. Reassignment is purely a tagging fix; historical
+> facts stay historical. The `audit_trail` row is the canonical
+> record of who moved what when. Permission: **`deals.edit`**.
 

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
+import { ChangeDealAffordance, type DealForAttachment } from '@/components/communications/change-deal-affordance'
 
 interface WhatsAppComposerPanelProps {
   isOpen: boolean
@@ -24,6 +25,7 @@ interface WhatsAppComposerPanelProps {
   to?: string
   contactId?: string
   dealId?: string
+  deals?: DealForAttachment[]
   tenantId?: string
   userId?: string
 }
@@ -33,10 +35,12 @@ export function WhatsAppComposerPanel({
   onClose,
   to = '',
   contactId,
-  dealId,
+  dealId: dealIdProp,
+  deals = [],
   tenantId,
   userId
 }: WhatsAppComposerPanelProps) {
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(dealIdProp ?? null)
   const [toNumber, setToNumber] = useState(sanitizePhoneNumber(to))
   const [message, setMessage] = useState('')
   const [mediaUrl, setMediaUrl] = useState('')
@@ -45,8 +49,12 @@ export function WhatsAppComposerPanel({
   useEffect(() => {
     if (isOpen) {
       setToNumber(sanitizePhoneNumber(to))
+      setSelectedDealId(dealIdProp ?? null)
     }
-  }, [isOpen, to])
+  }, [isOpen, to, dealIdProp])
+
+  const currentDealTitle =
+    deals.find((d) => d.id === selectedDealId)?.title ?? null
 
   const handleSend = async () => {
     const normalizedTo = sanitizePhoneNumber(toNumber)
@@ -67,7 +75,7 @@ export function WhatsAppComposerPanel({
           message,
           media_url: mediaUrl || undefined,
           contact_id: contactId,
-          deal_id: dealId,
+          deal_id: selectedDealId,
           tenant_id: tenantId,
           user_id: userId
         })
@@ -109,12 +117,26 @@ export function WhatsAppComposerPanel({
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-emerald-600" />
             <h2 className="text-lg font-semibold text-emerald-900">Send WhatsApp Message</h2>
-            {dealId && <Badge variant="secondary" className="text-xs">Deal Related</Badge>}
+            {selectedDealId && <Badge variant="secondary" className="text-xs">Deal Related</Badge>}
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
+
+        {contactId && tenantId && deals.length > 0 && (
+          <div className="px-4 py-2 border-b bg-gray-50">
+            <ChangeDealAffordance
+              mode="preview"
+              contactId={contactId}
+              tenantId={tenantId}
+              deals={deals}
+              currentDealId={selectedDealId}
+              currentDealTitle={currentDealTitle}
+              onChange={setSelectedDealId}
+            />
+          </div>
+        )}
 
         {/* WhatsApp Form */}
         <div className="p-4 space-y-4">
