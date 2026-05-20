@@ -125,14 +125,33 @@ Existing `PATCH` in `activities/[id]/route.ts` extended: deal-only body `{ deal_
 
 | Step | Result | Notes |
 |------|--------|-------|
-| **9.1** Inbound SMS parity | **SKIP** | Requires physical SMS to `+447782218044` from a matching contact phone; not sent in this session. |
+| **9.1** Inbound SMS parity | **PASS** | Operator sent inbound SMS from Joey Baby (`+447424805475`) to Twilio `+447782218044` on 2026-05-20. Two rows in last 60 min (see §9.1 evidence below). Both attached to resolver pick **Inquiry** `357ccbb7-cb9f-4e44-9fc6-2866695a57cc`. |
 | **9.2** Outbound composer chip | **PASS** | Contact page SMS composer shows `Deal: Wisdom Teeth Extraction - Richard Rivera` (matches resolver). |
 | **9.3** Composer preview override | **PASS** | Chip updated to `Deal: Dental Assessment - Richard Rivera` after confirm (preview only; outbound send not completed in this pass). |
-| **9.4** Slide-in PATCH + audit | **PARTIAL** | Activity `7b37361e-9be0-4db4-b445-b6bc1e9a1b82`: `deal_id` updated `7775a1b5…` → `e30bbdda…` (Dental Assessment); slide-in chip updated. **`audit_trail` query returned 0 rows** for this entity — investigate insert/RLS in follow-up. |
-| **9.5** Detach | **PASS** | Same activity: `deal_id` → `null`; slide-in chip `No deal · Attach`. |
+| **9.4** Slide-in PATCH + audit | **PASS** (re-run 2026-05-20 after `dpl_EYAoZ7UKp5JVMxWeYWHYeRq2HU7u`) | Activity `7b37361e-9be0-4db4-b445-b6bc1e9a1b82`: attach null → `e30bbdda…` (Dental Assessment). Audit `6dd50dcf-bb00-448d-810d-59c2f8f45fdd`: `changed_fields=['deal_id']`, `before_state.deal_id=null`, `after_state.deal_id=e30bbdda…`, `user_id=224bdacf…`. Slide-in chip `Deal: Dental Assessment…`. |
+| **9.5** Detach | **PASS** (re-run 2026-05-20) | Same activity: `deal_id` → `null`; slide-in chip `No deal · Attach`. Audit `8d347565-82a8-49b7-bebb-0c21e2f9cda8`: `before_state.deal_id=e30bbdda…`, `after_state.deal_id=null`. |
 | **9.6** Reply inherits current deal_id | **PASS (UI + code)** | Reply on detached activity: context chip `No deal · Attach`; `handleReply` sends `deal_id: activity.deal_id` (null). Outbound WhatsApp send not completed (UI click blocked). |
 
-**Follow-ups:** Run §9.1 inbound SMS; complete §9.3 send + §9.6 outbound send to verify DB `deal_id` on new rows; fix `audit_trail` persistence if inserts are failing silently in production.
+**§9.1 verification evidence (2026-05-20, query-driven):**
+
+| Field | Value |
+|-------|-------|
+| Contact | Joey Baby — `eff2b8c1-9b25-47e5-bc33-0cd6e64d5848` |
+| Phone | `+447424805475` (`primary_phone_e164`) |
+| Open deals | Inquiry `357ccbb7…` (7 prior activities); Implant Deal `36848e4d…` (0 activities, `updated_at` newer) |
+
+**§A.2 — inbound SMS (last 60 min):**
+
+| activity_id | deal_id (actual) | deal_title | created_at |
+|-------------|------------------|------------|------------|
+| `8c98fcba-19ab-45f7-b419-ebca4ccd8f2d` | `357ccbb7-cb9f-4e44-9fc6-2866695a57cc` | Inquiry | `2026-05-20 17:29:34Z` |
+| `82d979e2-7e0c-4632-a410-3067eaf7d570` | `357ccbb7-cb9f-4e44-9fc6-2866695a57cc` | Inquiry | `2026-05-20 17:29:55Z` |
+
+**§A.3 — resolver pick (first inbound, exclude `8c98fcba…`):** Inquiry `357ccbb7…` (`last_act` = `2026-05-19 21:43:35Z` on Inquiry vs null on Implant Deal). **PASS** — expected = actual.
+
+**§A.4 — second inbound (exclude `82d979e2…`):** Inquiry `357ccbb7…` (`last_act` = first inbound `17:29:33Z`). **PASS** — expected = actual.
+
+**Follow-ups:** Complete §9.3 send + §9.6 outbound send to verify DB `deal_id` on new outbound rows (optional; not blocking 2b.11.5b close). `audit_trail` persistence fixed in 2b.11.5b.1 — §9.4/§9.5 re-verified above.
 
 ---
 
@@ -166,7 +185,7 @@ Existing `PATCH` in `activities/[id]/route.ts` extended: deal-only body `{ deal_
 - ✅ §5 PATCH + audit + 7 route tests  
 - ✅ §6 ChangeDealAffordance + slide-in + composers + 5 component tests  
 - ✅ §8 push + deploy smoke (`dpl_Ey8q3k51QqGD7tjK19iiw4ic9wRm`)  
-- ☐ §9 operator gate (manual — re-run §9.4/§9.5 after 2b.11.5b.1 deploy)  
+- ✅ §9 operator gate — all six sub-steps PASS (§9.1 closed 2026-05-20 via SQL verification)  
 - ✅ §10.1 this changelog  
 
 ---
@@ -219,19 +238,26 @@ Existing `PATCH` in `activities/[id]/route.ts` extended: deal-only body `{ deal_
 
 ### §5 Operator gate
 
-**OPERATOR ACTION REQUIRED** after deploy:
+**Run:** 2026-05-20 UTC on production `https://dental-crm-nine.vercel.app` (deploy `dpl_EYAoZ7UKp5JVMxWeYWHYeRq2HU7u`), logged in as Deepak Hegde (`224bdacf-dc6b-4b13-a9b8-f2f23fe08d53`).
 
-| Step | Criterion |
-|------|-----------|
-| **5.1** Re-run 2b.11.5b §9.4 PATCH | `audit_trail` row with `changed_fields = ['deal_id']`, correct before/after |
-| **5.3** Detach | Second audit row with `after_state.deal_id = null` |
+**Test activity:** `7b37361e-9be0-4db4-b445-b6bc1e9a1b82` (WhatsApp “Appointment reminder”, Richard Rivera `13994c8a-…`)
+
+| Step | Result | Evidence |
+|------|--------|----------|
+| **5.1** Attach (null → Dental Assessment) | **PASS** | UI: slide-in `Deal: Dental Assessment - Richard Rivera Change`. DB: `activities.deal_id=e30bbdda-1ba1-48f9-aeae-e74d715e8609`. Audit `6dd50dcf-bb00-448d-810d-59c2f8f45fdd` @ `2026-05-20 17:20:42Z`: `changed_fields=['deal_id']`, `before_state.deal_id=null`, `after_state.deal_id=e30bbdda…`, `user_id=224bdacf…`. |
+| **5.3** Detach | **PASS** | UI: `No deal · Attach Change`. DB: `activities.deal_id=null`. Audit `8d347565-82a8-49b7-bebb-0c21e2f9cda8` @ `2026-05-20 17:20:56Z`: `before_state.deal_id=e30bbdda…`, `after_state.deal_id=null`. |
+
+Prior backfill row `72318c5a-65b5-4f13-a958-3b422e7370a7` (unknown before_state) remains; live PATCH rows supersede for gate proof.
+
+> **2b.11.5b fully closed.** All six operator-gate sub-steps PASS.
+> Hand back to planner for 2b.12 (automation engine audit).
 
 ### §8 Definition of done (2b.11.5b.1)
 
 - ✅ §1 diagnosis (RLS / service role)
 - ✅ §2 fix + fail-loud
 - ✅ §2.7 route tests (8/8, incl. rollback)
-- ☐ §4 deploy smoke
-- ☐ §5 operator gate
+- ✅ §4 deploy smoke
+- ✅ §5 operator gate
 - ✅ §10.2–10.3 gotchas + audit close note (same commit)  
 - ✅ §10.4 included in `0fbcb63`  
