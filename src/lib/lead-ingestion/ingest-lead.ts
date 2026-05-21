@@ -311,6 +311,82 @@ export async function ingestLead(
   }
 
   // ---------------------------------------------------------------------------
+  // 8b. Phase 2b.14: emit unified automation events.
+  //
+  // Best-effort, never blocks ingestion. The events feed into the
+  // in-process automation event listener (bootstrapped from
+  // instrumentation.ts) which finds matching `automations` rows for
+  // the tenant and starts a run via the engine. The listener is
+  // lazy-init from here as well so we tolerate any cold-start path
+  // that hasn't gone through instrumentation yet.
+  // ---------------------------------------------------------------------------
+  try {
+    const { initializeAutomationEventListener } = await import(
+      '@/lib/automations/automation-event-listener'
+    )
+    initializeAutomationEventListener()
+
+    const { events } = await import('@/lib/events-unified')
+    const eventBody = (input.raw_payload?.body as string | undefined) ?? null
+    const eventFrom = (input.raw_payload?.from as string | undefined) ?? null
+    const receivedAt = arrivedAt.toISOString()
+
+    if (input.source_channel === 'sms_inbound' && contactId && activityId) {
+      events.inboundSmsReceived({
+        tenantId: input.tenant_id,
+        contactId,
+        dealId: dealId ?? null,
+        activityId,
+        body: eventBody ?? '',
+        fromNumber: eventFrom ?? '',
+        externalMessageId: input.external_message_id ?? undefined,
+        rawPayload: input.raw_payload,
+        receivedAt,
+      })
+    } else if (input.source_channel === 'whatsapp_inbound' && contactId && activityId) {
+      events.inboundWhatsappReceived({
+        tenantId: input.tenant_id,
+        contactId,
+        dealId: dealId ?? null,
+        activityId,
+        body: eventBody ?? '',
+        fromNumber: eventFrom ?? '',
+        externalMessageId: input.external_message_id ?? undefined,
+        rawPayload: input.raw_payload,
+        receivedAt,
+      })
+    } else if (
+      contactId &&
+      (input.source_channel === 'form_embedded' ||
+        input.source_channel === 'form_hosted_landing' ||
+        input.source_channel === 'booking_widget_webform')
+    ) {
+      events.marketingFormSubmitted({
+        formId: input.form_id ?? null,
+        contactId,
+        tenantId: input.tenant_id,
+        dealId: dealId ?? null,
+        activityId,
+        sourceChannel: input.source_channel,
+        rawPayload: input.raw_payload,
+        submittedAt: receivedAt,
+      })
+    } else if (input.source_channel === 'google_lead_form' && contactId) {
+      events.marketingGoogleLeadFormSubmitted({
+        formId: input.form_id ?? null,
+        contactId,
+        tenantId: input.tenant_id,
+        dealId: dealId ?? null,
+        activityId,
+        rawPayload: input.raw_payload,
+        submittedAt: receivedAt,
+      })
+    }
+  } catch (err) {
+    console.error('[ingestLead] automation event emit failed (non-fatal):', err)
+  }
+
+  // ---------------------------------------------------------------------------
   // 9. Phase 2b.1.b.1: fire `Lead` conversion event to Google Ads.
   //
   // Only fires if a deal was created (so we have a stable id to dedup on) AND

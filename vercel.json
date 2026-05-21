@@ -3,7 +3,10 @@
     {
       "path": "/api/cron/scheduled-audits",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/process-automation-waits",
+      "schedule": "* * * * *"
     }
   ]
 }
-

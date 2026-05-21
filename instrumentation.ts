@@ -11,7 +11,21 @@ export async function register() {
     // const { logger } = await import('./src/lib/logger')
     // logger.info('Server instrumentation initialized')
     console.log('Server instrumentation initialized')
-    
+
+    // Phase 2b.14: bootstrap the automation event listener so unified
+    // events emitted from server code (e.g. ingestLead) actually reach
+    // the automation engine in this Node process. Lazy-imported so the
+    // service-role supabase client isn't pulled in until runtime.
+    // Idempotent — safe across cold-starts.
+    try {
+      const { initializeAutomationEventListener } = await import(
+        './src/lib/automations/automation-event-listener'
+      )
+      initializeAutomationEventListener()
+    } catch (err) {
+      console.error('[instrumentation] automation listener init failed (non-fatal):', err)
+    }
+
     // TODO: Initialize Sentry server SDK when DSN is provided
     // if (process.env.SENTRY_DSN) {
     //   const Sentry = await import('@sentry/nextjs')

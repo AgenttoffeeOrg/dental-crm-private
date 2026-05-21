@@ -304,9 +304,23 @@ export interface EventMap {
     clickedAt: string
   }
   'MARKETING.FORM_SUBMITTED': {
-    formId: string
+    formId: string | null
     contactId: string
     tenantId: string
+    /** Phase 2b.14: dealId + activityId carry the ingestion result. */
+    dealId?: string | null
+    activityId?: string | null
+    sourceChannel?: string
+    rawPayload?: Record<string, unknown>
+    submittedAt: string
+  }
+  'MARKETING.GOOGLE_LEAD_FORM_SUBMITTED': {
+    formId: string | null
+    contactId: string
+    tenantId: string
+    dealId?: string | null
+    activityId?: string | null
+    rawPayload?: Record<string, unknown>
     submittedAt: string
   }
   'MARKETING.UNSUBSCRIBED': {
@@ -314,6 +328,34 @@ export interface EventMap {
     contactId: string
     tenantId: string
     unsubscribedAt: string
+  }
+
+  // ========================================
+  // INBOUND MESSAGING EVENTS (Phase 2b.14)
+  // ========================================
+  'INBOUND.SMS_RECEIVED': {
+    tenantId: string
+    contactId: string
+    dealId?: string | null
+    activityId: string
+    /** Inbound message body (already normalised by the webhook). */
+    body: string
+    fromNumber: string
+    /** Provider message id (Twilio SID etc) for idempotency. */
+    externalMessageId?: string
+    rawPayload?: Record<string, unknown>
+    receivedAt: string
+  }
+  'INBOUND.WHATSAPP_RECEIVED': {
+    tenantId: string
+    contactId: string
+    dealId?: string | null
+    activityId: string
+    body: string
+    fromNumber: string
+    externalMessageId?: string
+    rawPayload?: Record<string, unknown>
+    receivedAt: string
   }
 
   // ========================================
@@ -621,10 +663,18 @@ export const events = {
     eventService.emit('MARKETING.EMAIL_OPENED', data),
   marketingLinkClicked: (data: EventMap['MARKETING.LINK_CLICKED']) => 
     eventService.emit('MARKETING.LINK_CLICKED', data),
-  marketingFormSubmitted: (data: EventMap['MARKETING.FORM_SUBMITTED']) => 
+  marketingFormSubmitted: (data: EventMap['MARKETING.FORM_SUBMITTED']) =>
     eventService.emit('MARKETING.FORM_SUBMITTED', data),
-  marketingUnsubscribed: (data: EventMap['MARKETING.UNSUBSCRIBED']) => 
+  marketingGoogleLeadFormSubmitted: (data: EventMap['MARKETING.GOOGLE_LEAD_FORM_SUBMITTED']) =>
+    eventService.emit('MARKETING.GOOGLE_LEAD_FORM_SUBMITTED', data),
+  marketingUnsubscribed: (data: EventMap['MARKETING.UNSUBSCRIBED']) =>
     eventService.emit('MARKETING.UNSUBSCRIBED', data),
+
+  // Inbound messaging events (Phase 2b.14)
+  inboundSmsReceived: (data: EventMap['INBOUND.SMS_RECEIVED']) =>
+    eventService.emit('INBOUND.SMS_RECEIVED', data),
+  inboundWhatsappReceived: (data: EventMap['INBOUND.WHATSAPP_RECEIVED']) =>
+    eventService.emit('INBOUND.WHATSAPP_RECEIVED', data),
 
   // Call events
   callMissed: (data: EventMap['CALL.MISSED']) => eventService.emit('CALL.MISSED', data),

@@ -1,29 +1,26 @@
 /**
- * AUTOMATION EVENT LISTENER
- * 
- * This module connects the unified event system to the automation engine.
- * Whenany CRM event is emitted, this listener checks for matching automations
- * and triggers them automatically.
- * 
- * Architecture:
- * - Subscribes to all relevant events from events-unified.ts
- * - Maps event types to automation triggers
- * - Finds and executes matching automations
- * - Logs triggered automations for audit trail
+ * AUTOMATION EVENT LISTENER (Phase 2b.14 rewrite)
+ *
+ * Subscribes to unified events, maps each one to a `trigger_type`
+ * string from `automation_trigger_metadata`, finds all active
+ * automations matching that trigger on the tenant, and asks the new
+ * engine (`lib/automations/automation-engine.ts`) to start a run.
+ *
+ * Server-only. Uses the service-role Supabase client so the listener
+ * is not blocked by RLS. Bootstrapped from `instrumentation.ts` plus
+ * lazy init in `ingest-lead.ts` (defence in depth — whichever runs
+ * first wins).
  */
 
-import { eventService, EventMap } from '@/lib/events-unified'
-import { createClient } from '@/lib/supabase-client'
-import { AutomationEngine } from '@/lib/marketing/automation-engine'
+import { eventService, type EventMap } from '@/lib/events-unified'
+import { createServiceClient } from '@/lib/supabase-server'
+import { getAutomationEngine } from '@/lib/automations/automation-engine'
 
 // =====================================================
-// EVENT TO TRIGGER MAPPING
+// EVENT → TRIGGER MAP
 // =====================================================
+// Mapped strings must match rows in `automation_trigger_metadata`.
 
-/**
- * Maps unified event types to automation trigger types
- * This allows automations to subscribe to specific event patterns
- */
 const EVENT_TO_TRIGGER_MAP: Partial<Record<keyof EventMap, string>> = {
   // Deal events
   'DEAL.CREATED': 'deal_created',
@@ -58,8 +55,15 @@ const EVENT_TO_TRIGGER_MAP: Partial<Record<keyof EventMap, string>> = {
   // Marketing events
   'MARKETING.EMAIL_OPENED': 'email_opened',
   'MARKETING.LINK_CLICKED': 'link_clicked',
-  'MARKETING.FORM_SUBMITTED': 'form_submit',
+  // 2b.14 fix: canonicalise on `form_submitted` (matches metadata + DB
+  // seed). Previously this said `form_submit`, which never matched.
+  'MARKETING.FORM_SUBMITTED': 'form_submitted',
+  'MARKETING.GOOGLE_LEAD_FORM_SUBMITTED': 'google_lead_form_submitted',
   'MARKETING.UNSUBSCRIBED': 'unsubscribed',
+
+  // Inbound messaging (Phase 2b.14)
+  'INBOUND.SMS_RECEIVED': 'inbound_sms',
+  'INBOUND.WHATSAPP_RECEIVED': 'inbound_whatsapp',
 
   // Call events
   'CALL.MISSED': 'call_missed',
@@ -80,347 +84,199 @@ const EVENT_TO_TRIGGER_MAP: Partial<Record<keyof EventMap, string>> = {
 }
 
 // =====================================================
-// AUTOMATION EVENT LISTENER CLASS
+// Listener
 // =====================================================
 
 export class AutomationEventListener {
-  private supabase = createClient()
-  private automationEngine: AutomationEngine
+  private supabase = createServiceClient()
   private unsubscribers: Array<() => void> = []
   private isListening = false
 
-  constructor() {
-    this.automationEngine = new AutomationEngine()
-  }
-
-  /**
-   * Start listening to all relevant events
-   */
   startListening(): void {
-    if (this.isListening) {
-      console.warn('[Automation Listener] Already listening')
-      return
-    }
+    if (this.isListening) return
 
-    console.log('[Automation Listener] Starting event listeners...')
+    console.log('[automation-listener] starting...')
 
-    // Subscribe to all mapped events
-    Object.keys(EVENT_TO_TRIGGER_MAP).forEach(eventType => {
-      const unsubscribe = eventService.on(
-        eventType as keyof EventMap,
-        async (data) => {
+    Object.keys(EVENT_TO_TRIGGER_MAP).forEach((eventType) => {
+      const off = eventService.on(eventType as keyof EventMap, async (data) => {
+        try {
           await this.handleEvent(eventType as keyof EventMap, data)
+        } catch (err) {
+          console.error('[automation-listener] handler crashed', { eventType, err })
         }
-      )
-      this.unsubscribers.push(unsubscribe)
+      })
+      this.unsubscribers.push(off)
     })
 
     this.isListening = true
-    console.log(`[Automation Listener] Listening to ${this.unsubscribers.length} event types`)
+    console.log(`[automation-listener] subscribed to ${this.unsubscribers.length} event types`)
   }
 
-  /**
-   * Stop listening to events
-   */
   stopListening(): void {
-    if (!this.isListening) {
-      return
-    }
-
-    console.log('[Automation Listener] Stopping event listeners...')
-    this.unsubscribers.forEach(unsub => unsub())
+    this.unsubscribers.forEach((u) => u())
     this.unsubscribers = []
     this.isListening = false
   }
 
-  /**
-   * Handle a specific event
-   */
   private async handleEvent<K extends keyof EventMap>(
     eventType: K,
     eventData: EventMap[K]
   ): Promise<void> {
-    try {
-      const triggerType = EVENT_TO_TRIGGER_MAP[eventType]
-      if (!triggerType) {
-        console.warn(`[Automation Listener] No trigger mapping for event: ${eventType}`)
-        return
-      }
+    const triggerType = EVENT_TO_TRIGGER_MAP[eventType]
+    if (!triggerType) return
 
-      // Extract common fields
-      const data = eventData as Record<string, unknown>
-      const tenantId = data.tenantId as string
-      const contactId = data.contactId as string | undefined
-
-      if (!tenantId) {
-        console.warn(`[Automation Listener] Event missing tenantId: ${eventType}`)
-        return
-      }
-
-      console.log(`[Automation Listener] Event received: ${eventType} → ${triggerType}`)
-
-      // Find matching automations
-      const matchingAutomations = await this.findMatchingAutomations(
-        tenantId,
-        triggerType,
-        eventData
-      )
-
-      if (matchingAutomations.length === 0) {
-        console.log(`[Automation Listener] No matching automations for ${triggerType}`)
-        return
-      }
-
-      console.log(`[Automation Listener] Found ${matchingAutomations.length} matching automations`)
-
-      // Trigger each matching automation
-      const triggeredAutomationIds: string[] = []
-      const automationRunIds: string[] = []
-
-      for (const automation of matchingAutomations) {
-        try {
-          // Determine contactId for automation (some events don't have contactId)
-          const effectiveContactId = contactId || await this.resolveContactId(automation, eventData)
-
-          if (!effectiveContactId) {
-            console.warn(`[Automation Listener] Cannot resolve contactId for automation ${automation.id}`)
-            continue
-          }
-
-          // Start automation journey
-          const runId = await this.automationEngine.startJourney(
-            automation.id,
-            effectiveContactId,
-            { eventType, eventData }
-          )
-
-          triggeredAutomationIds.push(automation.id)
-          automationRunIds.push(runId)
-
-          console.log(`[Automation Listener] Triggered automation ${automation.id} for contact ${effectiveContactId}`)
-        } catch (error) {
-          console.error(`[Automation Listener] Error triggering automation ${automation.id}:`, error)
-        }
-      }
-
-      // Update event log with triggered automations
-      await this.updateEventLog(eventType, eventData, triggeredAutomationIds, automationRunIds)
-
-    } catch (error) {
-      console.error(`[Automation Listener] Error handling event ${eventType}:`, error)
-    }
-  }
-
-  /**
-   * Find automations that match the trigger and conditions
-   */
-  private async findMatchingAutomations(
-    tenantId: string,
-    triggerType: string,
-    eventData: unknown
-  ): Promise<Array<{ id: string; trigger_type: string; trigger_config: unknown; category: string }>> {
-    try {
-      // Query active automations from NEW standalone table
-      const { data: automations, error } = await this.supabase
-        .from('automations')
-        .select('id, trigger_type, trigger_config, category')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'active')
-        .eq('trigger_type', triggerType)
-
-      if (error) {
-        console.error('[Automation Listener] Error querying automations:', error)
-        return []
-      }
-
-      if (!automations || automations.length === 0) {
-        return []
-      }
-
-      // Filter by conditions if specified
-      const matchingAutomations = automations.filter(automation => {
-        return this.matchesConditions(automation.trigger_config, eventData)
-      })
-
-      // Filter out marketing automations if marketing feature is disabled
-      const filteredAutomations = await this.filterByFeatureFlags(matchingAutomations)
-
-      return filteredAutomations
-    } catch (error) {
-      console.error('[Automation Listener] Error finding matching automations:', error)
-      return []
-    }
-  }
-
-  /**
-   * Filter automations based on feature flags
-   * Marketing automations only execute if marketing feature is enabled
-   */
-  private async filterByFeatureFlags(
-    automations: Array<{ id: string; trigger_type: string; trigger_config: unknown; category: string }>
-  ): Promise<Array<{ id: string; trigger_type: string; trigger_config: unknown; category: string }>> {
-    try {
-      // Get feature flags (simplified - in production, get from database)
-      // For now, check if marketing_journeys table has data to determine if marketing is enabled
-      const { count } = await this.supabase
-        .from('marketing_journeys')
-        .select('*', { count: 'exact', head: true })
-        .limit(1)
-
-      const isMarketingEnabled = (count || 0) > 0 // Simplified check
-
-      // Filter out marketing automations if marketing not enabled
-      return automations.filter(automation => {
-        if (automation.category === 'marketing' && !isMarketingEnabled) {
-          console.log(`[Automation Listener] Skipping marketing automation ${automation.id} - marketing feature disabled`)
-          return false
-        }
-        return true
-      })
-    } catch (error) {
-      console.error('[Automation Listener] Error filtering by feature flags:', error)
-      // On error, allow all non-marketing automations
-      return automations.filter(a => a.category !== 'marketing')
-    }
-  }
-
-  /**
-   * Check if event data matches automation conditions
-   */
-  private matchesConditions(triggerConfig: unknown, eventData: unknown): boolean {
-    // If no conditions, always match
-    if (!triggerConfig || typeof triggerConfig !== 'object') {
-      return true
-    }
-
-    const config = triggerConfig as Record<string, unknown>
     const data = eventData as Record<string, unknown>
-
-    // Check conditions (if specified)
-    const conditions = config.conditions as Record<string, unknown> | undefined
-    if (!conditions) {
-      return true
+    const tenantId = data.tenantId as string | undefined
+    if (!tenantId) {
+      console.warn(`[automation-listener] ${eventType} missing tenantId`)
+      return
     }
 
-    // Simple condition matching (can be enhanced)
-    for (const [key, expectedValue] of Object.entries(conditions)) {
-      const actualValue = data[key]
-      
-      // Handle different condition types
-      if (typeof expectedValue === 'object' && expectedValue !== null) {
-        const condObj = expectedValue as Record<string, unknown>
-        
-        // Range conditions (e.g., { min: 100, max: 1000 })
-        if ('min' in condObj && actualValue < (condObj.min as number)) {
-          return false
-        }
-        if ('max' in condObj && actualValue > (condObj.max as number)) {
-          return false
-        }
-      } else {
-        // Exact match
-        if (actualValue !== expectedValue) {
-          return false
-        }
+    const contactId = (data.contactId as string | undefined) ?? null
+    const dealId = (data.dealId as string | undefined) ?? null
+
+    const { data: matches, error } = await this.supabase
+      .from('automations')
+      .select('id, trigger_config, category')
+      .eq('tenant_id', tenantId)
+      .eq('status', 'active')
+      .eq('trigger_type', triggerType)
+      .is('deleted_at', null)
+
+    if (error) {
+      console.error('[automation-listener] match query failed', { eventType, error })
+      return
+    }
+    if (!matches || matches.length === 0) return
+
+    const filtered = matches.filter((m) =>
+      matchesTriggerConditions(m.trigger_config as Record<string, unknown> | null, eventData)
+    )
+
+    if (filtered.length === 0) return
+
+    const engine = getAutomationEngine()
+    const runIds: string[] = []
+    const fired: string[] = []
+
+    for (const auto of filtered) {
+      const effectiveContact = contactId ?? (await this.resolveContactId(eventData))
+      if (!effectiveContact) {
+        console.warn(`[automation-listener] no contact for ${auto.id}, skipping`)
+        continue
+      }
+      try {
+        const result = await engine.startRun({
+          tenantId,
+          automationId: auto.id as string,
+          contactId: effectiveContact,
+          dealId,
+          triggerEventType: eventType,
+          triggerPayload: eventData as unknown as Record<string, unknown>,
+        })
+        runIds.push(result.runId)
+        fired.push(auto.id as string)
+      } catch (err) {
+        console.error('[automation-listener] startRun failed', {
+          automationId: auto.id,
+          err,
+        })
       }
     }
 
-    return true
+    if (fired.length > 0) {
+      try {
+        await this.supabase.from('automation_event_log').insert({
+          tenant_id: tenantId,
+          event_type: eventType,
+          event_data: eventData as unknown as Record<string, unknown>,
+          triggered_automation_ids: fired,
+          automation_run_ids: runIds,
+        })
+      } catch (err) {
+        console.error('[automation-listener] event log insert failed', err)
+      }
+    }
   }
 
-  /**
-   * Resolve contactId for events that don't have one directly
-   */
-  private async resolveContactId(
-    automation: { id: string },
-    eventData: unknown
-  ): Promise<string | null> {
+  private async resolveContactId(eventData: unknown): Promise<string | null> {
     const data = eventData as Record<string, unknown>
-
-    // If dealId present, get contact from deal
     if (data.dealId) {
       const { data: deal } = await this.supabase
         .from('deals')
         .select('contact_id')
-        .eq('id', data.dealId)
+        .eq('id', data.dealId as string)
         .single()
-      
-      return deal?.contact_id || null
+      return (deal?.contact_id as string | null) ?? null
     }
-
-    // If taskId present, get contact from task
     if (data.taskId) {
       const { data: task } = await this.supabase
         .from('tasks')
         .select('contact_id')
-        .eq('id', data.taskId)
+        .eq('id', data.taskId as string)
         .single()
-      
-      return task?.contact_id || null
+      return (task?.contact_id as string | null) ?? null
     }
-
     return null
-  }
-
-  /**
-   * Update event log with triggered automation info
-   */
-  private async updateEventLog(
-    eventType: string,
-    eventData: unknown,
-    triggeredAutomationIds: string[],
-    automationRunIds: string[]
-  ): Promise<void> {
-    try {
-      const data = eventData as Record<string, unknown>
-      const tenantId = data.tenantId as string
-
-      await this.supabase.from('automation_event_log').upsert({
-        tenant_id: tenantId,
-        event_type: eventType,
-        event_data: eventData,
-        triggered_automation_ids: triggeredAutomationIds,
-        automation_run_ids: automationRunIds,
-      })
-    } catch (error) {
-      // Silent fail - event logging shouldn't block automation execution
-      console.error('[Automation Listener] Error updating event log:', error)
-    }
   }
 }
 
 // =====================================================
-// SINGLETON INSTANCE
+// Singleton + bootstrap
 // =====================================================
 
 let listenerInstance: AutomationEventListener | null = null
 
-/**
- * Get or create the singleton automation event listener
- */
 export function getAutomationEventListener(): AutomationEventListener {
-  if (!listenerInstance) {
-    listenerInstance = new AutomationEventListener()
-  }
+  if (!listenerInstance) listenerInstance = new AutomationEventListener()
   return listenerInstance
 }
 
-/**
- * Initialize automation event listener (call on app startup)
- */
+let bootstrapped = false
+/** Idempotent. Safe to call multiple times across cold-start paths. */
 export function initializeAutomationEventListener(): void {
+  if (bootstrapped) return
+  bootstrapped = true
   const listener = getAutomationEventListener()
   listener.startListening()
-  console.log('[Automation System] Event listener initialized')
 }
 
-/**
- * Cleanup automation event listener (call on app shutdown)
- */
 export function cleanupAutomationEventListener(): void {
   if (listenerInstance) {
     listenerInstance.stopListening()
     listenerInstance = null
+    bootstrapped = false
   }
 }
 
+// ---------------------------------------------------------------------------
+// Trigger condition matching
+// ---------------------------------------------------------------------------
+
+function matchesTriggerConditions(
+  triggerConfig: Record<string, unknown> | null,
+  eventData: unknown
+): boolean {
+  if (!triggerConfig) return true
+
+  // Keyword filter for inbound messaging triggers — array of substrings
+  // (case-insensitive). If `keywords` is set, the message body must
+  // contain at least one of them.
+  const keywords = triggerConfig.keywords
+  if (Array.isArray(keywords) && keywords.length > 0) {
+    const body = ((eventData as Record<string, unknown>).body as string | undefined)?.toLowerCase()
+    if (!body) return false
+    const hit = (keywords as unknown[]).some(
+      (k) => typeof k === 'string' && k.length > 0 && body.includes(k.toLowerCase())
+    )
+    if (!hit) return false
+  }
+
+  // Form id filter for form-submitted triggers.
+  if (typeof triggerConfig.form_id === 'string') {
+    const formId = (eventData as Record<string, unknown>).formId as string | null | undefined
+    if (formId !== triggerConfig.form_id) return false
+  }
+
+  return true
+}
