@@ -18,11 +18,20 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   const expected = process.env.CRON_SECRET
-  if (expected) {
-    const header = request.headers.get('authorization') ?? ''
-    if (header !== `Bearer ${expected}`) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-    }
+  if (!expected) {
+    // Fail closed: a missing secret means the route would otherwise be
+    // publicly callable and let anyone drive the engine. 500 (not 401)
+    // because this is a server-side misconfiguration, not a caller
+    // problem.
+    console.error('[cron/process-automation-waits] CRON_SECRET is unset')
+    return NextResponse.json(
+      { error: 'cron_not_configured', message: 'CRON_SECRET env var is required' },
+      { status: 500 }
+    )
+  }
+  const header = request.headers.get('authorization') ?? ''
+  if (header !== `Bearer ${expected}`) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
   // Defence-in-depth listener boot. The cron is one of the cold-start

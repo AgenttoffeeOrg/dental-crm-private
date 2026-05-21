@@ -205,7 +205,7 @@ describe('AutomationEngine.startRun', () => {
     expect(payload.current_node_key).toBe('n2')
   })
 
-  it('writes a stub activity row for send_email and continues', async () => {
+  it('logs send_email node execution but does NOT write an activity row (2b.14 stub)', async () => {
     makeAutomation({
       start_key: 'n1',
       nodes: [
@@ -213,10 +213,6 @@ describe('AutomationEngine.startRun', () => {
         { key: 'n2', type: 'end' },
       ],
     })
-    // Engine looks up contact_id from automation_runs via runContactId — the
-    // mock's `single()` returns nothing for that path, so contact_id resolves
-    // to null and the stub-send short-circuits without inserting.
-    // For a complete test, override the maybeSingle / single for that path.
     const engine = new AutomationEngine(supabaseMock as never)
     const result = await engine.startRun({
       tenantId: 't1',
@@ -233,6 +229,12 @@ describe('AutomationEngine.startRun', () => {
     )
     expect(sendLog).toBeDefined()
     expect((sendLog!.payload as Record<string, unknown>).status).toBe('completed')
+
+    // 2b.14 must NOT insert an activity row for stub send_* nodes —
+    // a partial activity without conversation_id/Message-ID would
+    // violate locked principles. 2b.15 wires the real dispatcher.
+    const activityInsert = ops.find((o) => o.table === 'activities' && o.op === 'insert')
+    expect(activityInsert).toBeUndefined()
   })
 
   it('rejects send_ai_reply (deferred to 2b.15)', async () => {
@@ -260,7 +262,10 @@ describe('AutomationEngine.startRun', () => {
         {
           key: 'n1',
           type: 'condition',
-          config: { field: 'first_name', operator: 'equals', value: 'Joey' },
+          // full_name is on the engine's condition-field whitelist; the
+          // engine rejects non-whitelisted fields to keep PII columns
+          // out of the condition read.
+          config: { field: 'full_name', operator: 'equals', value: 'Joey Baby' },
           next_true: 'win',
           next_false: 'lose',
         },
@@ -268,7 +273,7 @@ describe('AutomationEngine.startRun', () => {
         { key: 'lose', type: 'end' },
       ],
     })
-    contactRow = { id: 'c1', first_name: 'Joey' }
+    contactRow = { id: 'c1', full_name: 'Joey Baby' }
     const engine = new AutomationEngine(supabaseMock as never)
     const result = await engine.startRun({
       tenantId: 't1',

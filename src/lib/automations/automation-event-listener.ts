@@ -194,6 +194,10 @@ export class AutomationEventListener {
           automation_run_ids: runIds,
         })
       } catch (err) {
+        // automation_event_log is observability-only — it records which
+        // automations fired for a given event. A logging failure here
+        // must NOT roll back the runs we just started or block future
+        // events. Failure is logged for ops visibility and swallowed.
         console.error('[automation-listener] event log insert failed', err)
       }
     }

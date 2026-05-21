@@ -193,8 +193,11 @@ export class AutomationEngine {
       .limit(50)
 
     if (error) {
+      // Surface to the caller so the cron route returns 500 rather
+      // than masking a persistent DB issue behind a 200/resumed=0
+      // response. (Originally swallowed; flagged by code-review HIGH.)
       console.error('[automation-engine] processWaitingRuns query failed', error)
-      return { resumed: 0, failed: 0 }
+      throw new Error(`processWaitingRuns query failed: ${error.message ?? 'unknown'}`)
     }
     if (!runs || runs.length === 0) {
       return { resumed: 0, failed: 0 }
@@ -417,9 +420,13 @@ export class AutomationEngine {
       case 'send_email':
       case 'send_sms':
       case 'send_whatsapp':
-        // 2b.14 stub: write an activity row so the run completes. 2b.15
-        // replaces this with the real dispatcher call.
-        await this.writeStubSendActivity(runId, tenantId, automation, node)
+        // 2b.14: no-op stub — DO NOT write an activity row here. A
+        // partial activity (missing conversation_id, Message-ID,
+        // dispatcher metadata) would violate locked principles #3 and
+        // #10 and pollute conversation views. 2b.15 wires the real
+        // dispatcher call which writes the activity with all the
+        // required stamping. The run still completes through this
+        // node; the execution_log row is the audit trail until then.
         return { kind: 'continue', output: { stubbed: true, action: node.type } }
 
       case 'send_ai_reply':
@@ -430,18 +437,15 @@ export class AutomationEngine {
       case 'add_tag': {
         const tag = ((node.config ?? {}) as { tag?: string }).tag
         if (!tag) return { kind: 'continue' }
-        const { data: contactRow } = await this.supabase
-          .from('contacts')
-          .select('tags, id')
-          .eq('id', (await this.runContactId(runId)) as string)
-          .single()
-        const tags = (contactRow?.tags as string[] | null) ?? []
-        if (!tags.includes(tag)) {
-          await this.supabase
-            .from('contacts')
-            .update({ tags: [...tags, tag] })
-            .eq('id', contactRow!.id as string)
-        }
+        const contactId = await this.runContactId(runId)
+        if (!contactId) return { kind: 'continue' }
+        // Atomic — guards against the read-modify-write race on
+        // contacts.tags when two automations target the same contact.
+        await this.supabase.rpc('automation_add_contact_tag', {
+          p_tenant_id: tenantId,
+          p_contact_id: contactId,
+          p_tag: tag,
+        })
         return { kind: 'continue', output: { added_tag: tag } }
       }
 
@@ -449,18 +453,12 @@ export class AutomationEngine {
         const tag = ((node.config ?? {}) as { tag?: string }).tag
         if (!tag) return { kind: 'continue' }
         const contactId = await this.runContactId(runId)
-        const { data: contactRow } = await this.supabase
-          .from('contacts')
-          .select('tags')
-          .eq('id', contactId as string)
-          .single()
-        const tags = (contactRow?.tags as string[] | null) ?? []
-        if (tags.includes(tag)) {
-          await this.supabase
-            .from('contacts')
-            .update({ tags: tags.filter((t) => t !== tag) })
-            .eq('id', contactId as string)
-        }
+        if (!contactId) return { kind: 'continue' }
+        await this.supabase.rpc('automation_remove_contact_tag', {
+          p_tenant_id: tenantId,
+          p_contact_id: contactId,
+          p_tag: tag,
+        })
         return { kind: 'continue', output: { removed_tag: tag } }
       }
 
@@ -507,13 +505,15 @@ export class AutomationEngine {
           operator?: 'equals' | 'not_equals' | 'contains' | 'gt' | 'lt'
           value?: unknown
         }
-        if (!cfg.field || !cfg.operator) {
+        if (!cfg.field || !cfg.operator || !isWhitelistedConditionField(cfg.field)) {
           return { kind: 'branch', conditionResult: false }
         }
         const contactId = await this.runContactId(runId)
         const { data: contact } = await this.supabase
           .from('contacts')
-          .select('*')
+          // Narrow the column read so we don't pull every PII column
+          // of the contact into the engine process on each evaluation.
+          .select(cfg.field)
           .eq('id', contactId as string)
           .single()
         const actual = (contact as Record<string, unknown> | null)?.[cfg.field]
@@ -595,34 +595,6 @@ export class AutomationEngine {
     await this.supabase.from('automations').update(patch).eq('id', automation.id)
   }
 
-  private async writeStubSendActivity(
-    runId: string,
-    tenantId: string,
-    automation: AutomationRow,
-    node: AutomationNode
-  ): Promise<void> {
-    const channelMap: Record<string, 'email' | 'sms' | 'whatsapp'> = {
-      send_email: 'email',
-      send_sms: 'sms',
-      send_whatsapp: 'whatsapp',
-    }
-    const channel = channelMap[node.type]
-    if (!channel) return
-    const contactId = await this.runContactId(runId)
-    if (!contactId) return
-    const cfg = (node.config ?? {}) as { body?: string; subject?: string }
-    await this.supabase.from('activities').insert({
-      tenant_id: tenantId,
-      contact_id: contactId,
-      type: channel,
-      direction: 'outbound',
-      subject: cfg.subject ?? null,
-      description: cfg.body ?? '[automation 2b.14 stub — real dispatcher integration in 2b.15]',
-      marketing_campaign_id: automation.id,
-      marketing_event_type: 'automation_send_stub',
-      occurred_at: new Date().toISOString(),
-    })
-  }
 }
 
 interface AutomationRow {
@@ -658,6 +630,29 @@ function computeWaitMs(duration: number, unit: string): number {
     default:
       return duration * minute
   }
+}
+
+/**
+ * Whitelist of `contacts` columns a condition node is allowed to read.
+ * Keeps PII columns (medical_conditions, allergies, etc.) and free-text
+ * audit columns out of the condition path. Extend deliberately as the
+ * UI exposes more fields.
+ */
+const CONDITION_FIELD_WHITELIST = new Set([
+  'full_name',
+  'primary_email',
+  'primary_phone',
+  'preferred_name',
+  'city',
+  'country',
+  'lead_score',
+  'source',
+  'tags',
+  'title',
+])
+
+function isWhitelistedConditionField(field: string): boolean {
+  return CONDITION_FIELD_WHITELIST.has(field)
 }
 
 function evaluateCondition(
