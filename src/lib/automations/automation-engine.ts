@@ -36,6 +36,12 @@
 
 import { createServiceClient } from '@/lib/supabase-server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+// dispatcher + ai-reply-drafter are lazy-required inside their use
+// sites — dispatcher pulls in DOMPurify/jsdom on the cold-start path
+// and the locked principle #12 in CLAUDE.md mandates lazy-require for
+// heavy server-side libs. Engine should be importable from tests and
+// non-send paths without that cost.
+import type { DrafterChannel } from '@/lib/automations/ai-reply-drafter'
 
 // ---------------------------------------------------------------------------
 // Graph shapes
@@ -170,6 +176,18 @@ export class AutomationEngine {
       throw new Error(
         `automation_runs insert failed: ${runErr?.message ?? 'no row returned'}`
       )
+    }
+
+    // 2b.15: stash the triggering activity id for downstream send_ai_reply
+    // nodes. Cleared in walk() on terminal state.
+    const triggerActivityId =
+      (input.triggerPayload?.activityId as string | undefined) ??
+      (input.triggerPayload?.['activityId'] as string | undefined)
+    if (triggerActivityId) {
+      runTriggerContext.set(run.id as string, {
+        activityId: triggerActivityId,
+        eventType: input.triggerEventType,
+      })
     }
 
     await this.supabase
@@ -420,19 +438,15 @@ export class AutomationEngine {
       case 'send_email':
       case 'send_sms':
       case 'send_whatsapp':
-        // 2b.14: no-op stub — DO NOT write an activity row here. A
-        // partial activity (missing conversation_id, Message-ID,
-        // dispatcher metadata) would violate locked principles #3 and
-        // #10 and pollute conversation views. 2b.15 wires the real
-        // dispatcher call which writes the activity with all the
-        // required stamping. The run still completes through this
-        // node; the execution_log row is the audit trail until then.
-        return { kind: 'continue', output: { stubbed: true, action: node.type } }
+        // 2b.15: real dispatcher integration. Dispatcher stamps
+        // conversation_id + Message-ID and writes the activity row;
+        // engine just calls it.
+        return await this.executeSendStatic(runId, tenantId, automation, node)
 
       case 'send_ai_reply':
-        // 2b.15 will wire AI drafter + dispatcher. Stub-fail for now so
-        // a workflow author can't ship one before then.
-        throw new Error('send_ai_reply is not implemented until 2b.15')
+        // 2b.15: draft via Claude, send via dispatcher. If AI throws,
+        // attempt the configured fallback template.
+        return await this.executeSendAiReply(runId, tenantId, automation, node)
 
       case 'add_tag': {
         const tag = ((node.config ?? {}) as { tag?: string }).tag
@@ -537,6 +551,220 @@ export class AutomationEngine {
   // Private — small helpers
   // -------------------------------------------------------------------------
 
+  // -------------------------------------------------------------------------
+  // Private — send_* via dispatcher (2b.15)
+  // -------------------------------------------------------------------------
+
+  private async executeSendStatic(
+    runId: string,
+    tenantId: string,
+    _automation: AutomationRow,
+    node: AutomationNode
+  ): Promise<NodeOutcome> {
+    const ctx = await this.runContext(runId)
+    if (!ctx.contactId) {
+      throw new Error('send_* node requires a contact_id on the run')
+    }
+
+    const cfg = (node.config ?? {}) as {
+      subject?: string
+      body?: string
+      to?: string
+      message?: string
+      html?: string
+    }
+    const body = cfg.body ?? cfg.message ?? ''
+    if (!body.trim()) {
+      throw new Error(`${node.type} node has empty body/message config`)
+    }
+
+    const channelContact = await this.resolveChannelTarget(ctx.contactId, node.type)
+    if (!channelContact) {
+      throw new Error(`${node.type}: contact ${ctx.contactId} has no usable address for this channel`)
+    }
+
+    const dispatcher = await import('@/lib/communications/dispatcher')
+
+    if (node.type === 'send_email') {
+      const result = await dispatcher.dispatchEmail({
+        context: { tenantId, contactId: ctx.contactId, dealId: ctx.dealId ?? undefined },
+        to: [channelContact],
+        subject: cfg.subject ?? 'A note from your dental practice',
+        html: cfg.html ?? `<p>${escapeHtml(body)}</p>`,
+      })
+      return { kind: 'continue', output: { dispatched: true, channel: 'email', activity_id: result?.activityId } }
+    }
+    if (node.type === 'send_sms') {
+      const result = await dispatcher.dispatchSms({
+        context: { tenantId, contactId: ctx.contactId, dealId: ctx.dealId ?? undefined },
+        to: channelContact,
+        message: body,
+      })
+      return { kind: 'continue', output: { dispatched: true, channel: 'sms', activity_id: result?.activityId } }
+    }
+    if (node.type === 'send_whatsapp') {
+      const result = await dispatcher.dispatchWhatsApp({
+        context: { tenantId, contactId: ctx.contactId, dealId: ctx.dealId ?? undefined },
+        to: channelContact,
+        message: body,
+      })
+      return { kind: 'continue', output: { dispatched: true, channel: 'whatsapp', activity_id: result?.activityId } }
+    }
+    throw new Error(`executeSendStatic: unsupported node type ${node.type}`)
+  }
+
+  private async executeSendAiReply(
+    runId: string,
+    tenantId: string,
+    _automation: AutomationRow,
+    node: AutomationNode
+  ): Promise<NodeOutcome> {
+    const cfg = (node.config ?? {}) as {
+      channel?: DrafterChannel
+      tone_override?: string
+      escalation_phrase?: string
+      fallback_template?: string
+      model?: string
+    }
+    const channel = cfg.channel
+    if (!channel || !['sms', 'whatsapp', 'email'].includes(channel)) {
+      throw new Error('send_ai_reply requires config.channel = sms|whatsapp|email')
+    }
+
+    const ctx = await this.runContext(runId)
+    if (!ctx.contactId) {
+      throw new Error('send_ai_reply requires a contact_id on the run')
+    }
+    const trigger = runTriggerContext.get(runId)
+    const channelContact = await this.resolveChannelTarget(ctx.contactId, `send_${channel}`)
+    if (!channelContact) {
+      throw new Error(`send_ai_reply: contact ${ctx.contactId} has no usable address for channel ${channel}`)
+    }
+
+    let draftBody: string
+    let draftSubject: string | undefined
+    let metadata: Record<string, unknown> = {}
+
+    try {
+      const { draftAiReply } = await import('@/lib/automations/ai-reply-drafter')
+      const draft = await draftAiReply(
+        {
+          tenantId,
+          contactId: ctx.contactId,
+          channel,
+          triggerActivityId: trigger?.activityId,
+          toneOverride: cfg.tone_override,
+          escalationPhrase: cfg.escalation_phrase,
+          model: cfg.model,
+        },
+        { supabase: this.supabase }
+      )
+      draftBody = draft.body
+      draftSubject = draft.subject
+      metadata = draft.metadata as unknown as Record<string, unknown>
+    } catch (aiErr) {
+      // AI failure → fallback template path.
+      const fallback = cfg.fallback_template?.trim()
+      if (!fallback) {
+        throw new Error(
+          `AI draft failed and no fallback_template configured: ${(aiErr as Error)?.message ?? aiErr}`
+        )
+      }
+      console.warn('[automation-engine] AI draft failed; falling back to template', {
+        runId,
+        nodeKey: node.key,
+        error: (aiErr as Error)?.message,
+      })
+      draftBody = fallback
+      metadata = {
+        provider: 'fallback_template',
+        ai_error: (aiErr as Error)?.message ?? String(aiErr),
+      }
+    }
+
+    const dispatcher = await import('@/lib/communications/dispatcher')
+
+    if (channel === 'email') {
+      const result = await dispatcher.dispatchEmail({
+        context: { tenantId, contactId: ctx.contactId, dealId: ctx.dealId ?? undefined },
+        to: [channelContact],
+        subject: draftSubject ?? 'A note from your dental practice',
+        html: `<p>${escapeHtml(draftBody).replace(/\n/g, '<br/>')}</p>`,
+      })
+      await this.stampAiMetadata(result?.activityId, metadata)
+      return { kind: 'continue', output: { dispatched: true, channel, ai: metadata.provider } }
+    }
+    if (channel === 'sms') {
+      const result = await dispatcher.dispatchSms({
+        context: { tenantId, contactId: ctx.contactId, dealId: ctx.dealId ?? undefined },
+        to: channelContact,
+        message: draftBody,
+      })
+      await this.stampAiMetadata(result?.activityId, metadata)
+      return { kind: 'continue', output: { dispatched: true, channel, ai: metadata.provider } }
+    }
+    const result = await dispatcher.dispatchWhatsApp({
+      context: { tenantId, contactId: ctx.contactId, dealId: ctx.dealId ?? undefined },
+      to: channelContact,
+      message: draftBody,
+    })
+    await this.stampAiMetadata(result?.activityId, metadata)
+    return { kind: 'continue', output: { dispatched: true, channel, ai: metadata.provider } }
+  }
+
+  private async stampAiMetadata(
+    activityId: string | undefined,
+    metadata: Record<string, unknown>
+  ): Promise<void> {
+    if (!activityId) return
+    // Merge into existing integration_metadata.ai so dispatcher's own
+    // error/raw subkeys are preserved.
+    const { data: row } = await this.supabase
+      .from('activities')
+      .select('integration_metadata')
+      .eq('id', activityId)
+      .maybeSingle()
+    const current = ((row?.integration_metadata as Record<string, unknown> | null) ?? {})
+    const next = { ...current, ai: { ...((current.ai as Record<string, unknown> | undefined) ?? {}), ...metadata } }
+    await this.supabase
+      .from('activities')
+      .update({ integration_metadata: next })
+      .eq('id', activityId)
+  }
+
+  private async resolveChannelTarget(
+    contactId: string,
+    forNodeType: string
+  ): Promise<string | null> {
+    const { data } = await this.supabase
+      .from('contacts')
+      .select('primary_email, primary_phone, secondary_email, secondary_phone')
+      .eq('id', contactId)
+      .maybeSingle()
+    if (!data) return null
+    if (forNodeType === 'send_email') {
+      return (data.primary_email as string | null) ?? (data.secondary_email as string | null) ?? null
+    }
+    if (forNodeType === 'send_sms' || forNodeType === 'send_whatsapp') {
+      return (data.primary_phone as string | null) ?? (data.secondary_phone as string | null) ?? null
+    }
+    return null
+  }
+
+  private async runContext(
+    runId: string
+  ): Promise<{ contactId: string | null; dealId: string | null }> {
+    const { data } = await this.supabase
+      .from('automation_runs')
+      .select('contact_id, deal_id')
+      .eq('id', runId)
+      .maybeSingle()
+    return {
+      contactId: (data?.contact_id as string | null) ?? null,
+      dealId: (data?.deal_id as string | null) ?? null,
+    }
+  }
+
   private async runContactId(runId: string): Promise<string | null> {
     const { data } = await this.supabase
       .from('automation_runs')
@@ -609,10 +837,26 @@ interface AutomationRow {
   failed_runs: number | null
 }
 
+// In-memory per-run trigger payload, used by send_ai_reply to know
+// which inbound activity it's replying to. Set by startRun + walk
+// resume (loaded from automation_runs metadata in a future phase;
+// 2b.15 keeps it in-process — Vercel functions are stateful for the
+// duration of a single startRun cascade, which is enough).
+const runTriggerContext = new Map<string, { activityId?: string; eventType?: string }>()
+
 type NodeOutcome =
   | { kind: 'continue'; output?: Record<string, unknown> }
   | { kind: 'wait'; waitUntil: Date; reason?: string }
   | { kind: 'branch'; conditionResult: boolean; output?: Record<string, unknown> }
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
 
 function computeWaitMs(duration: number, unit: string): number {
   const minute = 60_000

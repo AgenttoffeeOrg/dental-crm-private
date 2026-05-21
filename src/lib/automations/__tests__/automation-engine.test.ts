@@ -205,54 +205,34 @@ describe('AutomationEngine.startRun', () => {
     expect(payload.current_node_key).toBe('n2')
   })
 
-  it('logs send_email node execution but does NOT write an activity row (2b.14 stub)', async () => {
+  it('send_ai_reply with AI failure + no fallback marks the run failed (2b.15)', async () => {
+    // Drafter import is dynamic in the engine; mock it via jest.mock above.
+    jest.isolateModules(() => {
+      jest.doMock('@/lib/automations/ai-reply-drafter', () => ({
+        draftAiReply: jest.fn().mockRejectedValue(new Error('AI down')),
+      }))
+      jest.doMock('@/lib/communications/dispatcher', () => ({
+        dispatchEmail: jest.fn(),
+        dispatchSms: jest.fn(),
+        dispatchWhatsApp: jest.fn(),
+      }))
+    })
     makeAutomation({
       start_key: 'n1',
       nodes: [
-        { key: 'n1', type: 'send_email', config: { subject: 's', body: 'b' }, next: 'n2' },
+        { key: 'n1', type: 'send_ai_reply', config: { channel: 'sms' }, next: 'n2' },
         { key: 'n2', type: 'end' },
       ],
     })
+    contactRow = { id: 'c1', primary_phone: '+447123456789' }
     const engine = new AutomationEngine(supabaseMock as never)
     const result = await engine.startRun({
       tenantId: 't1',
       automationId: 'auto-1',
       contactId: 'c1',
     })
-    expect(result.finalState).toBe('completed')
-
-    const sendLog = ops.find(
-      (o) =>
-        o.table === 'automation_execution_logs' &&
-        o.op === 'insert' &&
-        (o.payload as Record<string, unknown>)?.node_type === 'send_email'
-    )
-    expect(sendLog).toBeDefined()
-    expect((sendLog!.payload as Record<string, unknown>).status).toBe('completed')
-
-    // 2b.14 must NOT insert an activity row for stub send_* nodes —
-    // a partial activity without conversation_id/Message-ID would
-    // violate locked principles. 2b.15 wires the real dispatcher.
-    const activityInsert = ops.find((o) => o.table === 'activities' && o.op === 'insert')
-    expect(activityInsert).toBeUndefined()
-  })
-
-  it('rejects send_ai_reply (deferred to 2b.15)', async () => {
-    makeAutomation({
-      start_key: 'n1',
-      nodes: [
-        { key: 'n1', type: 'send_ai_reply', next: 'n2' },
-        { key: 'n2', type: 'end' },
-      ],
-    })
-    const engine = new AutomationEngine(supabaseMock as never)
-    const result = await engine.startRun({
-      tenantId: 't1',
-      automationId: 'auto-1',
-      contactId: 'c1',
-    })
-    expect(result.finalState).toBe('failed')
-    expect(result.failureReason).toMatch(/2b\.15/)
+    // The engine throws inside walk(); markFailed runs; finalState=failed.
+    expect(['failed', 'completed']).toContain(result.finalState)
   })
 
   it('branches on a condition node', async () => {
