@@ -81,11 +81,21 @@ is up — defence in depth.
 
 ### 1.5 Vercel cron — `/api/cron/process-automation-waits`
 
-`vercel.json` adds the cron at `* * * * *` (every minute). The route:
+`vercel.json` adds the cron at `0 2 * * *` (daily at 02:00 UTC). The route:
 
 - Optional `CRON_SECRET` bearer check (skipped if env var unset).
 - Lazy-init the listener on entry (cold-start safety net).
 - Call `engine.processWaitingRuns()` and return `{ ok, resumed, failed, ranAt }`.
+
+> **Scheduling limitation (current Vercel plan).** Vercel Hobby caps
+> cron at once-per-day. Wait-node resumption with minute-level
+> granularity needs either (a) Vercel Pro plan (which permits any
+> cron expression — `* * * * *` ready to swap in) or (b) Supabase
+> `pg_cron` + `pg_net` (both available on the project but not
+> installed). The route is correctly implemented and callable
+> on-demand via curl/MCP; daily auto-fire is a stopgap. Wait
+> nodes with sub-day delays will not resume until the cadence is
+> upgraded. Flagged as a phase-23 follow-up.
 
 ### 1.6 `ingestLead` event emission — `src/lib/lead-ingestion/ingest-lead.ts`
 
