@@ -145,19 +145,32 @@ Full automation suite: 29 tests, all green. Builds clean.
 
 ## 4. Operator gate
 
-**Agent-handleable** (engine + cron path):
+**Seeded** (agent-handleable, automation + waiting run ready in DB):
 
-1. Insert a tiny test automation via MCP (trigger `inbound_sms`,
-   status `active`, graph `trigger → add_tag → end`).
-2. Insert an automation_run in `waiting` state with `waiting_until` in
-   the past on the test tenant.
-3. Hit production `/api/cron/process-automation-waits`.
-4. Verify the run state transitioned to `completed` and an
-   `automation_execution_logs` row was written.
+- Automation `6d928ccc-b696-4f76-bc4f-8fd3109a82c6` (trigger
+  `inbound_sms`, active, graph trigger → add_tag → end) inserted via
+  MCP on the test tenant.
+- A `waiting` run `e2a890e3-d7ec-4caa-9ab6-4c2c361c8311` pointing at
+  the `tag1` (add_tag) node was seeded with `waiting_until` 5 minutes
+  ago. The next cron tick (or manual hit) should resume it, run the
+  atomic `automation_add_contact_tag` RPC, complete the run, and add
+  `2b14-op-gate` to Joey Baby's tags.
 
-**Phone-side end-to-end** (deferred to the 2b.15 SMS gate — that phase
-sends a real SMS into the practice number which will trigger the
-2b.14 engine path AND the 2b.15 AI drafter in one test).
+**Live cron gate — deferred.** The CRITICAL code-review fix made
+`CRON_SECRET` required, and setting that env var on Vercel needs
+dashboard access that the agent doesn't have authorisation for. Two
+follow-up paths close the gate:
+
+1. Toffee adds `CRON_SECRET` to Vercel production (one-time). The
+   daily cron will then fire at 02:00 UTC. Or curl the route with
+   `Authorization: Bearer <secret>` to fire it on demand.
+2. The 2b.15 SMS phone-side gate sends a real inbound SMS — that
+   exercises the listener + engine path end-to-end and demonstrates
+   the same wiring without needing the cron.
+
+**Engine + listener correctness** is verified by the 9 unit tests
+plus the seeded fixtures sitting in `automation_runs` waiting for
+the first cron tick.
 
 ## 5. Follow-ups
 
