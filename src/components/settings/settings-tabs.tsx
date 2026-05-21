@@ -67,6 +67,7 @@ import { CalendarIntegrationTab } from './calendar-integration-tab'
 import { AIAssistantSettingsTab } from './ai-assistant-settings-tab'
 import { AIAnalyticsTab } from './ai-analytics-tab'
 import { UnifiedMarketingTab } from './unified-marketing-tab'
+import { PracticeBrainTab } from './practice-brain-tab'
 
 // Integrations Section Components
 import { IntegrationsHubV2 } from '@/components/integrations/integrations-hub-v2'
@@ -114,6 +115,7 @@ const SECTION_TABS = {
     { id: 'calendar', label: 'Calendar' },
   ],
   ai: [
+    { id: 'practice-brain', label: 'Practice Brain' },
     { id: 'ai-assistant', label: 'AI Assistant' },
     { id: 'ai-analytics', label: 'AI Analytics' },
     { id: 'marketing', label: 'Marketing & Forms' },
@@ -430,14 +432,18 @@ function renderCommunicationsTabs(tab: string) {
 function renderAITabs(tab: string, tenantId: string | null) {
   return (
     <>
+      <TabsContent value="practice-brain" className="space-y-6">
+        <PracticeBrainTab />
+      </TabsContent>
+
       <TabsContent value="ai-assistant" className="space-y-6">
         <AIAssistantSettingsTab tenantId={tenantId} />
       </TabsContent>
-      
+
       <TabsContent value="ai-analytics" className="space-y-6">
         <AIAnalyticsTab tenantId={tenantId} />
       </TabsContent>
-      
+
       <TabsContent value="marketing" className="space-y-6">
         <UnifiedMarketingTab />
       </TabsContent>
