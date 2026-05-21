@@ -115,6 +115,16 @@ Installed **`uuid@9.0.1`** (CommonJS-compatible with Jest). `uuid@14` is ESM-onl
 | `package.json` / `package-lock.json` | `uuid@9.0.1`, `@types/uuid@9.0.8` |
 | `scripts/apply-2b11-conversation-id-migration.mjs` | Direct Postgres apply helper |
 
+### 5.1 Post-gate hotfix (operator session — not in `90a5a7d`)
+
+| File | Change |
+|------|--------|
+| `src/lib/communications/dispatcher.ts` | `sanitiseOutboundHtml()` try/catch fallback when DOMPurify/jsdom fails on Vercel |
+| `src/components/settings/communications-integrations-tab.tsx` | Add **Resend** to email provider dropdown (DB already used `resend`) |
+| `src/lib/communications/__tests__/dispatcher.test.ts` | +1 test for sanitise fallback |
+
+**Note:** Hotfix code was deployed live first, then committed as part of the 2b.11 follow-up commit.
+
 ---
 
 ## 6. Files deleted
@@ -151,36 +161,47 @@ None.
 
 | Item | Value |
 |------|--------|
-| Commits | `90a5a7d` (feat), `f1251e0` (docs) |
-| Deploy ID | `dpl_28DctoFfrS9KXQjfNa93PvkJsppV` |
+| Commits | `90a5a7d` (feat), `f1251e0` (docs), `7629ff3` (docs deploy note) |
+| Deploy ID (2b.11) | `dpl_28DctoFfrS9KXQjfNa93PvkJsppV` |
+| Deploy ID (email hotfix) | `dpl_Gpd7mu27kCXmoFPScNPRRwWasg7v` |
 | Status | **READY** → https://dental-crm-nine.vercel.app |
 
 | Curl | Expected | Observed |
 |------|----------|----------|
 | `GET /settings` | 200 or 307 | **200** |
 | `POST /api/communications/send-email` `{}` | 401 JSON | **401** `{"error":"unauthenticated","message":"Login required"}` |
+| `POST /api/communications/send-email` (authed, post-hotfix) | 200 JSON | **200** `success: true`, `activity_id` + Resend `external_id` |
 
 ---
 
 ## 10. Operator gate (§10)
 
-**PENDING manual UI sends** — migration and code are live; operator must complete §10.1–10.5 in-product (email/SMS/WhatsApp send + inbound SMS reply).
+**Run:** 2026-05-19 on production (`https://dental-crm-nine.vercel.app`), test tenant `5aadca14-9786-4aef-bc53-e9287cdd0bbf`.
 
-Checklist for operator:
+| Step | Result | Evidence |
+|------|--------|----------|
+| §10.1 Outbound email | **PASS** (after hotfix deploy) | Resend tenant: `onboarding@resend.dev`, API key configured. Initial gate: activities stuck `pending` + API 500 (DOMPurify/jsdom crash on Vercel — not Resend). **Hotfix** `sanitiseOutboundHtml` try/catch fallback deployed `dpl_Gpd7mu27kCXmoFPScNPRRwWasg7v`. Post-fix activity `92181f42-…`: `conversation_id` `3ddfd5e1-e94c-522b-a84b-34f3fa5c5fbc`, RFC `metadata.message_id`, Resend id `67ebb39d-…`, API **200**. Operator confirmed **two** test emails received at `deepakshegde@gmail.com`. |
+| §10.2 Outbound SMS | **PASS** | Contact **Unknown Lead** `eff2b8c1-…` → `+447424805475`. Activity `5041f3f4-…` / `4c64b699-…`: `conversation_id` `2d65d216-38c2-5112-8c34-f51d13b5a132`, Twilio SID in `metadata.message_id`. |
+| §10.3 Outbound WhatsApp | **PASS** | Twilio sandbox `+14155238886` → `+919916558958`. Activities `8d7980d7-…`, `df1c7349-…`: `conversation_id` `8d946aea-7aa6-5e15-80d0-769739844524`. Contact page **WhatsApp** quick action opens **Add Note** dialog (known UI bug; out of scope — use API or Reception). |
+| §10.3b Inbound WhatsApp | **PASS** | Inbound `02399df0-…` at 2026-05-19 21:43 UTC — same `conversation_id` `8d946aea-…` as outbound. |
+| §10.4 Inbound SMS roundtrip | **PASS** | Inbound `7c9d384a-…`, `5d71a041-…`, `ddd5d981-…` — same `conversation_id` `2d65d216-…` as outbound. |
+| §10.5 Backfill spot-check | **PASS** | Mary Wright `45b982aa-…`: one `conversation_id` per channel. Deepak Hegde whatsapp thread: single `8d946aea-…`. |
 
-1. Apply migration (script or Management API).  
-2. Outbound email → verify `conversation_id`, `metadata.message_id`, Resend header match.  
-3. Outbound SMS/WhatsApp → verify Twilio SID in `metadata.message_id`.  
-4. Inbound SMS reply → same `conversation_id` as outbound for contact.  
-5. Backfill spot-check → one row per channel per contact.
+**Contacts used**
+
+| Channel | Contact | ID | Phone / email |
+|---------|---------|-----|----------------|
+| SMS in/out | Unknown Lead | `eff2b8c1-9b25-47e5-bc33-0cd6e64d5848` | `+447424805475` |
+| WhatsApp | Deepak Hegde | `4ef5a768-2b39-4758-b085-52e2f9a56672` | `+919916558958` |
+| Email | Mary Wright | `45b982aa-bc3d-4a39-b88a-ac0eb6e51573` | `deepakshegde@gmail.com` |
 
 ---
 
 ## 11. Drift findings
 
 - `supabase db push` blocked by remote-only migration versions (documented in `operational-gotchas.md`).  
-- Supabase MCP unavailable.  
-- Prompt SQL used `channel`; schema uses `type`.
+- Prompt SQL used `channel`; schema uses `type`.  
+- Resend works with `onboarding@resend.dev` for **account-owner email only** until a custom domain is verified (not a 2b.11 blocker).
 
 ---
 
@@ -211,8 +232,8 @@ Checklist for operator:
 ## 14. Definition of done
 
 - ✅ §1 pre-flight: branch `phase-1-attribution-foundation`, tip `36bead4`, temp-only dirty tree  
-- ⚠️ §1.2 deploy READY — not re-checked this session  
-- ⚠️ §1.3 schema reconnaissance — pending live queries post-migrate  
+- ✅ §1.2 deploy READY (`dpl_Gpd7mu27kCXmoFPScNPRRwWasg7v` post-hotfix)  
+- ✅ §1.3 schema reconnaissance — §2.2–2.3 live counts  
 - ✅ §1.4 insert sites mapped (§3.2)  
 - ✅ §1.5 dispatcher anatomy — inserts L304/L471/L601/L783, updates L388/L530/L663  
 - ✅ §1.6 Message-ID header support documented (§3.5 SES caveat)  
@@ -231,8 +252,8 @@ Checklist for operator:
 - ✅ §7 tests in modified libs  
 - ✅ §8 build green; tsc/jest pre-existing caveats  
 - ✅ §9 push + deploy (`dpl_28DctoFfrS9KXQjfNa93PvkJsppV`, curls green)  
-- ☐ §10 operator gate *(manual UI — send/reply in product)*  
-- ✅ §11.1 this changelog  
+- ✅ §10 operator gate — **all steps PASS** (email after hotfix; operator confirmed inbox delivery)  
+- ✅ §11.1 this changelog (final operator + hotfix results recorded)  
 - ✅ §11.2 `operational-gotchas.md`  
 - ✅ §11.3 `2b-10-changes.md` close note  
 - ✅ §11.4 docs commit + deploy (`f1251e0`)

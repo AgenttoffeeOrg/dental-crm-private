@@ -365,7 +365,7 @@ export function CommunicationsIntegrationsTab() {
                 )}
               </CardTitle>
               <CardDescription>
-                Send and receive emails directly from the CRM. Supports SendGrid, Gmail, Outlook, and Amazon SES.
+                Send and receive emails directly from the CRM. Supports Resend, SendGrid, Gmail, Outlook, and Amazon SES.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -376,6 +376,7 @@ export function CommunicationsIntegrationsTab() {
                   value={settings.email_provider}
                   onChange={(e) => setSettings({...settings, email_provider: e.target.value})}
                 >
+                  <option value="resend">Resend</option>
                   <option value="sendgrid">SendGrid</option>
                   <option value="gmail">Gmail (OAuth)</option>
                   <option value="outlook">Outlook (OAuth)</option>

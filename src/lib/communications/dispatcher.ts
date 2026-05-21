@@ -18,9 +18,15 @@ function getDOMPurify() {
 
 export function sanitiseOutboundHtml(html: string | undefined): string {
   if (!html) return ''
-  return getDOMPurify().sanitize(html, {
-    USE_PROFILES: { html: true },
-  })
+  try {
+    return getDOMPurify().sanitize(html, {
+      USE_PROFILES: { html: true },
+    })
+  } catch (error) {
+    // jsdom/DOMPurify can fail on Vercel serverless; strip scripts and continue send.
+    console.error('[sanitiseOutboundHtml] DOMPurify unavailable, using fallback', error)
+    return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  }
 }
 
 async function markActivityFailed(

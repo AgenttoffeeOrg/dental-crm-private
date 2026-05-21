@@ -2,13 +2,16 @@
  * @jest-environment node
  */
 
+const mockSanitize = jest.fn((html: string) =>
+  html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/javascript:/gi, '')
+)
+
 jest.mock('isomorphic-dompurify', () => ({
   __esModule: true,
   default: {
-    sanitize: (html: string) =>
-      html
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/javascript:/gi, ''),
+    sanitize: (html: string) => mockSanitize(html),
   },
 }))
 
@@ -130,6 +133,19 @@ describe('sanitiseOutboundHtml', () => {
   it('strips javascript: href', () => {
     const out = sanitiseOutboundHtml('<a href="javascript:alert(1)">x</a>')
     expect(out).not.toContain('javascript:')
+  })
+
+  it('falls back when DOMPurify throws (e.g. Vercel serverless)', () => {
+    mockSanitize.mockImplementationOnce(() => {
+      throw new Error('jsdom unavailable')
+    })
+    const out = sanitiseOutboundHtml('<script>x</script><p>ok</p>')
+    expect(out).toBe('<p>ok</p>')
+    mockSanitize.mockImplementation((html: string) =>
+      html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/javascript:/gi, '')
+    )
   })
 })
 
