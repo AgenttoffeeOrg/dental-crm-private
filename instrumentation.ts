@@ -26,6 +26,17 @@ export async function register() {
       console.error('[instrumentation] automation listener init failed (non-fatal):', err)
     }
 
+    // Phase 2b.17: bootstrap stop-conditions listener (notes / calls /
+    // patient replies → mark active automation_runs stopped).
+    try {
+      const { initializeStopConditionsListener } = await import(
+        './src/lib/automations/stop-conditions'
+      )
+      initializeStopConditionsListener()
+    } catch (err) {
+      console.error('[instrumentation] stop-conditions init failed (non-fatal):', err)
+    }
+
     // TODO: Initialize Sentry server SDK when DSN is provided
     // if (process.env.SENTRY_DSN) {
     //   const Sentry = await import('@sentry/nextjs')

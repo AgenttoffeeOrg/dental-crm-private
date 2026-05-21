@@ -352,19 +352,22 @@ export class AutomationEngine {
 
       // Wait node — persist waiting state and bail out of the walk.
       if (outcome.kind === 'wait') {
-        const nextKey = pickNextKey(node)
+        // Quiet-hours defer wants to re-run the SAME node on resume.
+        // Regular wait nodes advance to the next node before sleeping.
+        const resumeKey = outcome.resumeAtSameNode ? node.key : pickNextKey(node)
+        const completedAfter = outcome.resumeAtSameNode ? completed : nextCompleted
         await this.supabase
           .from('automation_runs')
           .update({
             state: 'waiting',
-            current_node_key: nextKey,
-            nodes_completed: nextCompleted,
+            current_node_key: resumeKey,
+            nodes_completed: completedAfter,
             waiting_until: outcome.waitUntil.toISOString(),
             waiting_reason: outcome.reason ?? 'wait',
             updated_at: new Date().toISOString(),
           })
           .eq('id', runId)
-        return { runId, finalState: 'waiting', nodesExecuted: nextCompleted }
+        return { runId, finalState: 'waiting', nodesExecuted: completedAfter }
       }
 
       const nextKey =
@@ -558,13 +561,16 @@ export class AutomationEngine {
   private async executeSendStatic(
     runId: string,
     tenantId: string,
-    _automation: AutomationRow,
+    automation: AutomationRow,
     node: AutomationNode
   ): Promise<NodeOutcome> {
     const ctx = await this.runContext(runId)
     if (!ctx.contactId) {
       throw new Error('send_* node requires a contact_id on the run')
     }
+
+    const quiet = await this.maybeDeferForQuietHours(tenantId, automation, 'send_static')
+    if (quiet) return quiet
 
     const cfg = (node.config ?? {}) as {
       subject?: string
@@ -616,9 +622,12 @@ export class AutomationEngine {
   private async executeSendAiReply(
     runId: string,
     tenantId: string,
-    _automation: AutomationRow,
+    automation: AutomationRow,
     node: AutomationNode
   ): Promise<NodeOutcome> {
+    const quiet = await this.maybeDeferForQuietHours(tenantId, automation, 'send_ai_reply')
+    if (quiet) return quiet
+
     const cfg = (node.config ?? {}) as {
       channel?: DrafterChannel
       tone_override?: string
@@ -732,6 +741,46 @@ export class AutomationEngine {
       .eq('id', activityId)
   }
 
+  /**
+   * Check the automation's workflow_config.respect_quiet_hours. If
+   * set AND the tenant's Practice Brain opening_hours says we're
+   * outside open hours, return a `wait` outcome that resumes at the
+   * SAME node at the next opening. Otherwise return null and let the
+   * send proceed.
+   */
+  private async maybeDeferForQuietHours(
+    tenantId: string,
+    automation: AutomationRow,
+    _kind: 'send_static' | 'send_ai_reply'
+  ): Promise<NodeOutcome | null> {
+    const cfg = (automation.workflow_config ?? {}) as WorkflowConfig
+    if (cfg.respect_quiet_hours !== true) return null
+
+    try {
+      const [{ loadPracticeBrain }, { evaluateQuietHours }] = await Promise.all([
+        import('@/lib/automations/practice-brain'),
+        import('@/lib/automations/quiet-hours'),
+      ])
+      const brain = await loadPracticeBrain(tenantId)
+      const check = evaluateQuietHours(brain.opening_hours)
+      if (check.isOpenNow) return null
+      if (!check.nextOpenAt) return null
+      return {
+        kind: 'wait',
+        waitUntil: check.nextOpenAt,
+        reason: 'quiet_hours',
+        resumeAtSameNode: true,
+      }
+    } catch (err) {
+      // Quiet-hours load failure should not block sends.
+      console.warn('[automation-engine] quiet-hours check failed (allowing send)', {
+        tenantId,
+        err,
+      })
+      return null
+    }
+  }
+
   private async resolveChannelTarget(
     contactId: string,
     forNodeType: string
@@ -777,7 +826,9 @@ export class AutomationEngine {
   private async loadAutomation(id: string): Promise<AutomationRow | null> {
     const { data, error } = await this.supabase
       .from('automations')
-      .select('id, tenant_id, name, status, graph_json, active_runs, total_runs, successful_runs, failed_runs')
+      .select(
+        'id, tenant_id, name, status, graph_json, active_runs, total_runs, successful_runs, failed_runs, workflow_config'
+      )
       .eq('id', id)
       .maybeSingle()
     if (error) {
@@ -835,6 +886,13 @@ interface AutomationRow {
   total_runs: number | null
   successful_runs: number | null
   failed_runs: number | null
+  workflow_config?: WorkflowConfig | null
+}
+
+export interface WorkflowConfig {
+  on_patient_reply?: 'stop' | 'ai_continue'
+  respect_quiet_hours?: boolean
+  stop_rules?: Array<{ when: string; reason?: string }>
 }
 
 // In-memory per-run trigger payload, used by send_ai_reply to know
@@ -846,7 +904,7 @@ const runTriggerContext = new Map<string, { activityId?: string; eventType?: str
 
 type NodeOutcome =
   | { kind: 'continue'; output?: Record<string, unknown> }
-  | { kind: 'wait'; waitUntil: Date; reason?: string }
+  | { kind: 'wait'; waitUntil: Date; reason?: string; resumeAtSameNode?: boolean }
   | { kind: 'branch'; conditionResult: boolean; output?: Record<string, unknown> }
 
 function escapeHtml(s: string): string {
