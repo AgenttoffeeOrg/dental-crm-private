@@ -64,6 +64,12 @@ export interface CreateDealForLeadInput {
   contactId: string
   treatmentOfferingId: string | null
   sourceChannel: SourceChannelEnum
+  /**
+   * Phase 2b.16: free-text intent (e.g. inbound SMS body, web-form
+   * notes, Google Lead Form first_name + treatment field). Optional;
+   * used by the pipeline router when there's no offering match.
+   */
+  intentText?: string | null
 }
 
 export interface DealContext {
@@ -78,6 +84,9 @@ export interface DealContext {
     | 'with_offering'
     | 'no_offering_inquiry'
     | 'fallback_no_offering_match'
+    | 'router_keyword'
+    | 'router_ai'
+    | 'router_unsorted'
 }
 
 /**
@@ -293,9 +302,18 @@ async function resolveDealContext(
   | { ok: false; reason: DealSkipReason; context: DealContext | null }
 > {
   const offering = await fetchOffering(supabase, input)
-  const partial = offering
-    ? buildOfferingPartial(offering)
-    : await buildFallbackPartial(supabase, input)
+  let partial: PartialDealContext | null
+
+  if (offering) {
+    partial = buildOfferingPartial(offering)
+  } else {
+    // 2b.16: try the pipeline router (keyword + AI + unsorted) before
+    // falling all the way back to the default pipeline.
+    partial = await buildRoutedPartial(supabase, input)
+    if (!partial) {
+      partial = await buildFallbackPartial(supabase, input)
+    }
+  }
 
   if (!partial) {
     console.warn('[deal-creation] skipped', {
@@ -384,6 +402,42 @@ function buildOfferingPartial(offering: OfferingRow): PartialDealContext {
     treatmentOfferingId: offering.id,
     treatmentLabel,
     resolutionPath: 'with_offering',
+  }
+}
+
+async function buildRoutedPartial(
+  supabase: SupabaseClient,
+  input: CreateDealForLeadInput
+): Promise<PartialDealContext | null> {
+  if (!input.intentText || input.intentText.trim().length === 0) return null
+  try {
+    const { routePipeline } = await import('@/lib/automations/pipeline-router')
+    const route = await routePipeline(
+      { tenantId: input.tenantId, intentText: input.intentText },
+      { supabase }
+    )
+    if (!route) return null
+    const resolutionPath: DealContext['resolutionPath'] =
+      route.source === 'keyword'
+        ? 'router_keyword'
+        : route.source === 'ai'
+        ? 'router_ai'
+        : 'router_unsorted'
+    return {
+      title: 'Inquiry',
+      pipelineId: route.pipelineId,
+      stageOverride: route.stageId ?? null,
+      valueEstimateCents: null,
+      treatmentOfferingId: null,
+      treatmentLabel: null,
+      resolutionPath,
+    }
+  } catch (err) {
+    console.warn('[deal-creation] pipeline router crashed (non-fatal)', {
+      tenantId: input.tenantId,
+      error: (err as Error)?.message,
+    })
+    return null
   }
 }
 

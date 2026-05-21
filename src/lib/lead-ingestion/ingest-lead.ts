@@ -258,6 +258,15 @@ export async function ingestLead(
     contactId,
     treatmentOfferingId: input.treatment_offering_id ?? null,
     sourceChannel: input.source_channel,
+    // 2b.16: hand the pipeline router a chunk of free text so it can
+    // route the lead. Prefer the explicit treatment_intent_text the
+    // caller provides; fall back to a body/message-shaped field on
+    // the raw payload (inbound SMS / WhatsApp ingest carries these).
+    intentText:
+      input.treatment_intent_text ??
+      (input.raw_payload?.body as string | undefined) ??
+      (input.raw_payload?.message as string | undefined) ??
+      null,
   })
   const dealId = dealOutcome.ok ? dealOutcome.dealId : null
   // Phase 2b.2.a.3 — extracted into a helper so the reused/created/skipped
