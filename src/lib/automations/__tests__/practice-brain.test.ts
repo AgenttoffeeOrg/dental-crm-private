@@ -73,11 +73,13 @@ describe('loadPracticeBrain', () => {
     expect(brain.services_offered).toEqual([])
   })
 
-  it('returns empty default on db error (does not throw)', async () => {
+  it('throws on db error (no silent empty fallback)', async () => {
     mockMaybeSingleResult = { data: null, error: { message: 'boom' } }
-    const brain = await loadPracticeBrain(TENANT)
-    expect(brain.tenant_id).toBe(TENANT)
-    expect(brain.brand_voice).toBeNull()
+    await expect(loadPracticeBrain(TENANT)).rejects.toThrow(/loadPracticeBrain failed/)
+  })
+
+  it('throws when called without a tenantId', async () => {
+    await expect(loadPracticeBrain('')).rejects.toThrow(/requires a tenantId/)
   })
 
   it('hydrates fields from a real row', async () => {

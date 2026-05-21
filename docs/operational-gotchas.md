@@ -468,3 +468,34 @@ delivers to the Resend account email until a domain is verified.
 > passed to `logAuditServer()`. Mocking the helper masks insert
 > failures.
 
+## Phase 2b.13 — Supabase MCP is now the canonical migration apply path
+
+> **Reach for `mcp__supabase__apply_migration` first** for any new
+> schema migration in this branch. The Supabase MCP server was
+> registered mid-2b.13 (`.mcp.json` + agent skills under `.agents/`,
+> authenticated to the linked project). Verified end-to-end on 2b.13:
+> applying `tenant_ai_context` via the MCP succeeded where
+> `supabase db push --linked` was still blocked by remote-only drift
+> (the same drift documented in the Phase 2b.11 section above).
+>
+> **Order of preference for migration apply** going forward:
+>
+> 1. `mcp__supabase__apply_migration` — cleanest, no credentials in
+>    the shell, auto-records the migration version in
+>    `supabase_migrations.schema_migrations`.
+> 2. `scripts/apply-*.mjs` direct-Postgres helper with
+>    `SUPABASE_DB_PASSWORD` set — fallback when the MCP server is not
+>    connected. Requires the password from `.claude/test-credentials.json`.
+> 3. Supabase SQL Editor (Dashboard → SQL Editor → New query) — last
+>    resort for human-driven applies. Does not record the migration
+>    version automatically; record manually after apply.
+>
+> **Do not** use `supabase db push --linked` on this branch until the
+> remote-only drift is reconciled. It will fail with the version-skew
+> error documented in Phase 2b.11.
+>
+> **After apply via MCP**, regenerate `src/types/supabase.ts` with
+> `mcp__supabase__generate_typescript_types` so downstream phases get
+> the new tables typed. (2b.13 did this for `tenant_ai_context` so the
+> 2b.15 AI drafter can rely on the typed read.)
+

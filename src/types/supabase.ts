@@ -21990,6 +21990,87 @@ export type Database = {
           },
         ]
       }
+      tenant_ai_context: {
+        Row: {
+          additional_instructions: string | null
+          brand_voice: string | null
+          created_at: string
+          escalation_rules: string | null
+          faqs: Json
+          id: string
+          opening_hours: Json
+          practice_description: string | null
+          pricing: Json
+          services_offered: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          additional_instructions?: string | null
+          brand_voice?: string | null
+          created_at?: string
+          escalation_rules?: string | null
+          faqs?: Json
+          id?: string
+          opening_hours?: Json
+          practice_description?: string | null
+          pricing?: Json
+          services_offered?: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          additional_instructions?: string | null
+          brand_voice?: string | null
+          created_at?: string
+          escalation_rules?: string | null
+          faqs?: Json
+          id?: string
+          opening_hours?: Json
+          practice_description?: string | null
+          pricing?: Json
+          services_offered?: Json
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_ai_context_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "backup_statistics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tenant_ai_context_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "executive_dashboard_kpis"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tenant_ai_context_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "rate_limit_usage"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tenant_ai_context_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_ai_context_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "user_accessible_locations"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       tenant_entitlements: {
         Row: {
           created_at: string | null

@@ -76,8 +76,17 @@ export function emptyPracticeBrain(tenantId: string): PracticeBrain {
 }
 
 /**
- * Loads the Practice Brain for a tenant. Never throws on absence:
- * returns the empty default if no row exists yet.
+ * Loads the Practice Brain for a tenant.
+ *
+ * - Returns the empty default if no row exists yet (e.g. a fresh tenant
+ *   before the 2b.22 seeding hook runs). This is the only intentional
+ *   "success-shaped empty" path.
+ * - Throws on DB error so the calling route can return a real 500
+ *   instead of silently advertising "Practice Brain is empty" while the
+ *   read actually failed.
+ * - Throws on empty tenantId — there is no legitimate caller; an empty
+ *   string would otherwise leak as a `tenant_id: ''` brain into the
+ *   downstream AI features.
  *
  * Uses the service-role client so server-side AI features (engine,
  * FAQ responder, drafter) can read regardless of RLS context. UI calls
@@ -85,7 +94,9 @@ export function emptyPracticeBrain(tenantId: string): PracticeBrain {
  * helper directly.
  */
 export async function loadPracticeBrain(tenantId: string): Promise<PracticeBrain> {
-  if (!tenantId) return emptyPracticeBrain('')
+  if (!tenantId) {
+    throw new Error('loadPracticeBrain requires a tenantId')
+  }
 
   const supabase = createServiceClient()
   const { data, error } = await supabase
@@ -98,7 +109,11 @@ export async function loadPracticeBrain(tenantId: string): Promise<PracticeBrain
 
   if (error) {
     console.error('[loadPracticeBrain] db error', { tenantId, error })
-    return emptyPracticeBrain(tenantId)
+    throw new Error(
+      `loadPracticeBrain failed for tenant ${tenantId}: ${
+        (error as { message?: string })?.message ?? 'unknown db error'
+      }`
+    )
   }
 
   if (!data) return emptyPracticeBrain(tenantId)
