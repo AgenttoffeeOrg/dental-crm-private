@@ -1,12 +1,14 @@
 # CLAUDE.md — Dental CRM project manifest
 
-> This file is the canonical project context. **Read it in full at the start of every session.** It tells you who Toffee is, how features get built, what's been locked, what to never do, and where to find deeper docs. Without this file, you start blind.
+> This file is the canonical project context. **Read it in full at the start of every session.** It tells you who Toffee is, how features get built, how bugs get fixed, what's locked, and where to find deeper docs. Without this file, you start blind.
 
 ## Project at a glance
 
 UK dental SaaS CRM, pre-launch. Target: 10 paying Limelight Digital practice clients running paid ads. Built solo by **Toffee (Deepak)**, founder and product owner. Toffee is non-technical and uses Claude Code as the engineering team.
 
 The CRM captures prospective patients from every channel (forms, ads, messaging) into one Contact record per real person, with attribution back to the marketing campaign. First customers come via Limelight Digital running paid ads.
+
+**Important context:** There are no real customers yet. Only Toffee (and possibly one other test user) is using the app. Everything is test data. The full release happens only when the entire product is ready and Toffee says so. Until then, you have wide latitude to ship boldly, fix forward, and try things without fear of breaking production for real users.
 
 ## Stack
 
@@ -26,185 +28,263 @@ The CRM captures prospective patients from every channel (forms, ads, messaging)
 - **SMS test number:** `+447782218044` (real Twilio UK number)
 - **WhatsApp test number:** `+14155238886` (shared Twilio sandbox)
 
+## Model preference
+
+Use **Claude Opus 4.7** for the main session and any subagent that doesn't specify its own model in frontmatter. Toffee is on a Max plan and explicitly wants Opus 4.7 for its decision quality — this is what makes the autonomous workflow safe. Don't downgrade to Sonnet to save tokens unless a subagent is doing genuinely narrow, repetitive read-only work.
+
 ---
 
 ## How Toffee operates
 
-Toffee is the founder and product owner. He is non-technical. He gives feature directives **from his phone** via Claude Code Remote Control. He **does not want phase-level instructions**; he wants feature-level instructions.
+Toffee is the founder and product owner. He is non-technical. He gives feature directives **from his phone** via Claude Code Remote Control. He **does not want phase-level instructions or plan approvals**; he wants feature-level instructions.
 
-What Toffee gives you: `"Build the automations feature"` or `"Ship appointment reminders"` or similar.
+What Toffee gives you (examples):
 
-What you do with that: run the **Orchestrator workflow** below — kickoff discussion, phase breakdown, plan approval, then full multi-phase execution, end to end, until the entire feature is shipped. He should only hear from you at meaningful checkpoints.
+- `"Build the automations feature."`
+- `"Build appointment reminders."`
+- `"Build the patient portal login."`
+- `"Add a settings page for per-tenant brand voice."`
+- `"There's a bug — the WhatsApp button on the contact page opens the Add Note dialog."`
+
+For features: run the **Feature workflow** below. For bugs: use the **Bug fix workflow** below.
+
+The CRM is your standing job. Build the entire product end-to-end to Toffee's vision over time. He'll keep giving you features and bugs; you handle each one with the right workflow. No new products outside the CRM. No scope expansion he hasn't asked for.
 
 ---
 
-## Orchestrator workflow (feature-level operation)
+## Feature workflow (the only workflow for new features)
 
-When Toffee sends a feature request, the main session acts as the orchestrator. Follow these stages in order.
+When Toffee sends a feature request, the main session acts as the orchestrator. Follow these six stages in order.
 
-### Stage 1 — Kickoff discussion (interactive)
+### Stage 1 — Discussion (interactive, on his phone)
 
-Push a single message to Toffee acknowledging the feature request, then start asking clarifying questions **one at a time**. Continue until you genuinely understand:
+Push a single message to Toffee acknowledging the feature request, then start asking questions **one at a time**. Go DEEP into his vision. This is the only conversation you'll have with him about this feature — make it count.
 
-- **What** the feature does (in his words, plain English).
+Things to surface in the discussion:
+
+- **What** the feature does, in his words.
 - **Why** it matters — who benefits and how.
 - **What success looks like** — concrete observable outcomes.
 - **Edge cases** he cares about.
-- **Out of scope** — adjacent things he does NOT want bundled.
-- **Brand voice** for any customer-facing copy (only if the feature produces messages/emails/UI text).
+- **What's NOT in it** — adjacent things he does NOT want bundled.
+- **Brand voice and copy** if customer-facing text is involved.
 - **Hard constraints** — anything that must or must not happen.
 
 Rules for the discussion:
 
-- Ask **one question at a time**. He's on his phone; multi-question messages are painful.
-- Keep each question short. Plain English, no jargon.
-- After every answer, decide whether you have enough to continue or whether the answer raised a new ambiguity. If the latter, ask the follow-up.
-- Don't move on until you can write a coherent one-page scope. If after 8-10 exchanges the scope is still fuzzy, summarize what you have, flag the open ambiguities, and ask him to confirm — sometimes "fuzzy" IS the scope.
-- Don't ask engineering questions (schema, libraries, file structure). Decide those yourself.
+- **One question at a time.** He's on his phone; multi-question messages are painful.
+- **Plain English. No jargon.** Every message must be readable by a non-technical person. Don't say "we'll add a UUIDv5 namespace"; say "we'll give each conversation a permanent ID so the system never gets confused about which thread it is."
+- After every answer, decide whether you have enough or whether the answer raised a new ambiguity. If new ambiguity, ask the follow-up.
+- Keep going until you can write a coherent one-page understanding of his vision. Don't rush. Don't move on while anything's vague. If you've had 10+ exchanges and scope is still fuzzy, summarize what you've got, name the remaining ambiguities, and ask him to confirm — sometimes "fuzzy" IS the answer.
+- **Never ask engineering questions** (schema, libraries, file structure, code patterns). You decide those silently.
 
-### Stage 2 — Plan breakdown
+When the discussion is settled, Toffee will say something like "yes, build it" or "go ahead." That's the only approval gate. Move to Stage 2.
 
-Once Stage 1 settles, produce a phase breakdown. Each phase: ~1.5 days of focused work. If a phase looks bigger, split it.
+### Stage 2 — Repo audit (silent, no ping)
 
-For each phase, capture:
-- Phase number (continuing the project's `2b.X` sequence — see "Phase numbering").
+Read the relevant parts of the codebase to understand what's already there. No audit doc, no ping to Toffee — this is your internal preparation.
+
+For each part of the feature, figure out:
+
+- **What's already built** that you can reuse.
+- **What needs editing** in existing code.
+- **What needs updating** (e.g. a function that handles 80% of what's needed but missing a case).
+- **What's net-new** that you have to build from scratch.
+
+Read at minimum:
+- `docs/operational-gotchas.md` (every session, always).
+- The relevant Tier-3 deep-dive doc (`docs/D<N>_*.md`) for the subsystem you're touching.
+- Any existing audit doc in `docs/audits/` for the same area.
+- Recent phase changelogs in `docs/2b/` that mention the area.
+
+If you find that the discussion missed something — e.g., a constraint in the existing code that conflicts with what Toffee asked for — pause and ping him per the Mid-feature surprises section. Otherwise, proceed silently to Stage 3.
+
+### Stage 3 — Plan (silent, no approval needed)
+
+Break the feature into small phases. Each phase: ~1-2 days of focused work. If a phase looks bigger, split it. The reason for small phases: catching mistakes early. A big single phase that breaks in 12 places is harder to fix than 4 small phases that break in 3 places.
+
+For each phase, decide internally:
+- Phase number (continuing the project's `2b.X` sequence — see Phase numbering).
 - One-sentence purpose.
-- Effort estimate in days.
-- The operator gate type at the end of that phase (agent-handleable or phone-side).
+- Files you'll touch.
+- Tests you'll add.
+- The type of operator gate at the end (agent-handleable or phone-side).
 
-Format the breakdown as a small table or numbered list. Keep it scannable on a phone.
+**Do not push the plan to Toffee for approval.** The discussion in Stage 1 already settled the vision. You're trusted to execute it.
 
-### Stage 3 — Plan approval (push to phone)
-
-Send the breakdown to Toffee. Format:
-
-```
-Plan for <feature>:
-
-Phase X.1 — <purpose> (~Y days, gate: <type>)
-Phase X.2 — <purpose> (~Y days, gate: <type>)
-...
-
-Total: ~N days across M phases.
-
-Reply "approved" to start, or tell me what to change.
-```
-
-Wait for his approval. If he asks for changes, revise and re-send. **Do not start executing without explicit approval.**
+Save the plan internally (or to a working notes file) for your own reference during execution. Move to Stage 4.
 
 ### Stage 4 — Per-phase execution loop
 
 For each phase in order:
 
-1. **Audit (if the phase requires investigation)** — invoke the `audit-researcher` subagent. Result is a docs-only audit at `docs/audits/<topic>_audit.md`. If the audit surfaces a genuinely surprising finding that changes the plan, escalate to Toffee per "Mid-feature surprises". Otherwise proceed.
+1. **Execute** — write the code. Make all engineering decisions yourself. Don't ping Toffee for technical choices.
 
-2. **Plan the phase** — write a brief internal phase plan (don't send to Toffee). Include: files to touch, decisions you're making, tests to add.
+2. **Validate** — `npx tsc --noEmit`, `npx jest`, `npm run build`. All clean before push. Fix any failures yourself.
 
-3. **Execute** — write the code. Make all engineering decisions yourself. Don't ping Toffee for technical choices.
+3. **Push and deploy** — commit with message format `<type>(<phase>): <summary>`, then `git push`. Wait at least 90 seconds. Check `dental-crm/.cursor/post-push-deploy.log` for READY status. If the deploy fails, diagnose and fix; don't move on.
 
-4. **Validate** — `npx tsc --noEmit`, `npx jest`, `npm run build`. All clean before push. Fix any failures yourself.
+4. **Operator gate** — run per the Operator gates section below. Agent-handleable gates: do them yourself. Phone-side gates: push to Toffee in real time, wait for his "done" reply, then check the result yourself and continue. **Don't queue phone-side gates to the end.** Verify each phase fully before starting the next, so bugs surface where the cause is fresh.
 
-5. **Push and deploy** — commit with message format `<type>(<phase>): <summary>`, then `git push`. Wait at least 90 seconds. Check `dental-crm/.cursor/post-push-deploy.log` for READY status. If the deploy fails, diagnose and fix; don't move on.
+5. **Documentation** — write `docs/2b/<phase>-changes.md` recording what happened. Append to `docs/operational-gotchas.md` if a new gotcha emerged.
 
-6. **Operator gate** — run the gate per "Operator gates" below. Agent-handleable gates: do them yourself. Phone-side gates: push to Toffee.
+6. **Invoke the `code-reviewer` subagent** on the phase's changes. If it flags CRITICAL or HIGH issues, fix them and re-run validation. If MEDIUM/LOW, log them in the phase changelog under "Deferred" and continue.
 
-7. **Documentation** — write `docs/2b/<phase>-changes.md` recording what happened in the phase. Append to `docs/operational-gotchas.md` if a new gotcha emerged.
+7. Move to the next phase.
 
-8. **Invoke the `code-reviewer` subagent** on the phase's changes. If it flags CRITICAL or HIGH issues, fix them and re-run validation. If MEDIUM/LOW, log them in the phase changelog under "Deferred" and continue.
+### Stage 5 — Bug sweep across the whole feature
 
-9. Move to the next phase.
+After all phases are done, do a sweep:
 
-### Stage 5 — Final summary (push to phone)
+- Re-run the full test suite (`npx jest`).
+- Invoke `code-reviewer` against the cumulative diff from the start of the feature.
+- Run an agent-handleable end-to-end test of the feature's main user path (log into CRM, use the feature, verify expected outcomes).
+- Fix anything that surfaces. Re-validate. Re-push if needed.
 
-When all phases are done, send a final summary to Toffee. Format:
+### Stage 6 — Final summary (push to phone)
+
+Send Toffee a single message in plain English. Format:
 
 ```
 <Feature name> — DONE
 
-Phases shipped: <list>
-Files changed: <count>
-Tests added: <count>
-Operator gates passed: <list>
-Deployment: <latest deploy ID>
+What I built (plain English):
+- <bullet 1>
+- <bullet 2>
+- ...
 
-What to check on your end:
-- <any post-launch verification steps he should do>
+How to check it works:
+- <thing he can do in 1-2 minutes to see it working>
 
-Open items deferred to future phases:
-- <anything that didn't fit but should track for later>
+What I decided along the way (so you know):
+- <any meaningful decision you made silently — kept short and non-technical>
 
-Audit log entries written: <count>
+What I left for later:
+- <anything deferred to a future phase>
 ```
 
 Then stop. Wait for his review.
 
 ---
 
-## Operator gates — what Toffee does vs what the agent does
+## Bug fix workflow (separate path)
+
+When Toffee reports a bug, decide for yourself whether it's small or big.
+
+**Small bug** — fix it silently. No discussion, no plan, no notification.
+
+A bug is small if ALL of these are true:
+- The fix is localized (a single function, a single component, a small handful of files).
+- It doesn't change customer-visible behavior in a way Toffee would notice as a product change.
+- It doesn't require a schema migration.
+- It doesn't touch any locked product principle.
+- It doesn't broaden any RLS policy or change auth behavior.
+
+For small bugs: investigate → fix → test → deploy → log to a `docs/2b/<phase>.X-fix.md` changelog → move on. Bundle into the next feature's final summary or mention in passing.
+
+**Big bug** — run the full Feature workflow above.
+
+A bug is big if ANY of these are true:
+- It changes customer-visible behavior in a way Toffee would notice.
+- It requires a schema migration.
+- It touches a locked product principle.
+- It involves auth, RLS, payments, or data the practice would care about.
+- You're not sure how to fix it without making product trade-offs.
+
+For big bugs: kickoff discussion, repo audit, plan, build, sweep, summary. Same as a feature.
+
+**When in doubt, decide and proceed.** Default toward "small bug, just fix it" rather than "big bug, ping Toffee." If you're wrong, surface it in the summary at the end. Better to over-decide and over-explain than under-decide and over-ping.
+
+---
+
+## Communication style with Toffee
+
+Every message you send Toffee — kickoff questions, surprise pings, operator gate requests, the final summary — must be in **plain, dumbed-down English**.
+
+Rules:
+
+- **No jargon.** Don't say "RLS policy," "uuidv5 namespace," "Husky pre-push," "Supabase MCP," "service-role client." Say what those things DO in plain English ("the rule that decides who can see which data," "a permanent ID for the conversation," "the thing that auto-deploys when I push code," etc.).
+- **No technical specs.** Don't send him code snippets, schema definitions, or file paths unless he specifically asks.
+- **Short.** He's on his phone. Long messages are unread messages.
+- **One thing at a time.** Don't bundle a question with an update with a heads-up. Separate messages.
+- **Lead with the thing he needs to do.** If you need him to send an SMS, the first line is "Send any SMS to +447782218044 from your phone now," not three lines of context first.
+- **Reply expected.** Tell him exactly what to reply ("'done' when sent" / "reply 'go' to continue" / "tell me option 1, 2, or 3").
+
+Imagine you're texting a smart product owner who doesn't write code. He has strong instincts about what to build but zero patience for engineering language. That's the bar.
+
+---
+
+## Operator gates — what you do vs what Toffee does
 
 Every phase ends with an operator gate. Sort each one into one of two buckets.
 
-### Agent-handleable gates (agent does these inline; no phone ping needed)
+### Agent-handleable gates (you do these inline; no phone ping)
 
-These only require activity inside the CRM at https://dental-crm-nine.vercel.app. The agent logs in with the test account credentials (see "Test credentials" below) and performs the test itself, then reports results in the phase changelog. Examples:
+Anything inside the CRM at https://dental-crm-nine.vercel.app. You log in with the test account credentials (see Test credentials below) and perform the test yourself. Examples:
 
 - Click a button in the CRM UI and verify the resulting database state.
 - Send a test email from the CRM's email composer and verify the activity row was written.
 - Reassign an activity's deal via the Change Deal dropdown and verify the `audit_trail` row.
 - Navigate to a settings page and verify a field saves correctly.
 - Trigger an in-app notification and verify it renders.
-- Verify a query returns the expected result count.
+- Verify a query returns the expected result.
 - Any UI smoke test that doesn't require an external device.
 
-For these gates, the agent uses browser automation (Playwright is the canonical choice — install at the project level via `npx playwright install` if not already, and write scripts as needed). The agent logs in, performs the test, captures the result, logs to the phase changelog, and continues.
+For these gates, use browser automation (Playwright is the canonical choice — install at project level via `npx playwright install` if not already). Log in, perform the test, capture the result, log to the phase changelog, continue. Don't tell Toffee about these unless something failed.
 
-### Phone-side gates (push to Toffee's phone; wait for confirmation)
+### Phone-side gates (push to Toffee; wait for "done")
 
-These require Toffee's actual phone or external device. The agent cannot do these. Examples:
+Anything that requires Toffee's actual phone or external device. Examples:
 
-- Send an SMS from Toffee's phone to the Twilio test number and verify inbound handling.
-- Send a WhatsApp message from his phone and verify inbound handling.
-- Open an email Toffee received on `deepakshegde@gmail.com` and verify rendering.
-- Verify a push notification arrived on his actual phone.
-- Any test that requires a real human's external device.
+- Send an SMS from his phone to the Twilio test number.
+- Send a WhatsApp message from his phone.
+- Open an email he received on `deepakshegde@gmail.com` and verify how it looks.
+- Verify a push notification arrived on his phone.
 
-For these gates, push a single message to Toffee with:
-- The exact action to take ("Send any SMS to +447782218044 from your phone now")
-- The query he should run, OR the cue that you'll check automatically after he replies
-- Reply expected ("'done' when sent")
+For these gates, push a single message in plain English:
 
-Wait for his "done" reply, then check the result yourself via Supabase queries, log to the phase changelog, and continue. **Do not push multiple gates simultaneously**; one at a time, in order.
+> Send any SMS to +447782218044 from your phone now. Reply "done" when sent and I'll check it on my end.
+
+Wait for "done." Then check the result yourself via Supabase queries. Log to the phase changelog. Continue.
+
+**One phone-side gate at a time.** Don't push him two requests at once.
+
+**Real-time, not queued.** Phone-side gates happen at the end of the phase that needs them, not at the very end of the whole feature. Verify each phase fully before starting the next.
 
 ---
 
-## Mid-feature surprises — when to ping Toffee
+## Mid-feature surprises — when to pause and ping Toffee
 
-While executing the feature, push a notification to Toffee's phone ONLY if one of these is true:
+While executing, push a notification to Toffee's phone ONLY if one of these is true:
 
-1. **Scope discovery** — the phase reveals work that wasn't in the original plan and would meaningfully extend the timeline. Example: "Phase X.3 was meant to be a 1-day code edit but the audit revealed we need a schema migration first. Adds ~1 day. Proceed?"
+1. **The discussion missed something material.** The repo audit (Stage 2) or a phase reveals a constraint, ambiguity, or product-shaped question that wasn't covered in Stage 1. Example: "While building this, I found out we'd need to change how the practice settings page works. Want me to keep it the way it is now, or change it?"
 
-2. **Genuinely product-shaped decision** — a choice that affects what a real practice or patient sees, that wasn't covered in the kickoff. Example: "Should the auto-reply respect business hours, or always send 24/7? Recommendation: 24/7. Options: 24/7 / business hours only."
+2. **Genuinely product-shaped decision.** A choice that affects what a practice or patient sees, that wasn't covered in kickoff. Always come with a recommendation. Example: "Should the auto-reply respect business hours, or always send 24/7? I recommend 24/7. Tell me '24/7' or 'business hours only'."
 
-3. **Dangerous operation** — anything destructive (deletions, force pushes, data wipes, RLS policy changes that broaden access). Always confirm before proceeding even if Auto Mode would allow it.
+3. **Dangerous operation.** Anything destructive (deletions, force pushes, data wipes, RLS policy that broadens access). Confirm before proceeding even if you're confident.
 
-4. **Security concern** — credentials in code, exposed PII, missing auth check. Surface immediately.
+4. **Security concern.** Credentials in code, exposed PII, missing auth check. Surface immediately.
 
-5. **Persistent failure** — a phase has failed validation 3+ times despite fix attempts. Don't loop forever; surface for human input.
+5. **Persistent failure.** A phase has failed validation 3+ times despite fix attempts. Don't loop forever; surface for human input.
 
-Do NOT push for:
+Do NOT ping for:
+
 - Routine code completion or test passes.
 - Successful deploys.
 - Code review subagent flagging issues you can fix yourself.
 - Engineering decisions (schema choices, library versions, file structure, error handling patterns).
-- Anything covered by a "locked product principle".
+- Anything covered by a locked product principle.
+- Bugs you've already classified as small (just fix).
 
-Format pings: one line of context, one line of recommendation, options listed as numbered choices. Keep it < 4 lines total. He's on his phone.
+**Default for ambiguous cases:** decide and proceed. Note what you decided in the final summary. Over-deciding and over-explaining is better than over-pinging.
+
+Format pings: one line of context, one line of recommendation, options as numbered choices. Keep it < 4 lines total. Plain English.
 
 ---
 
 ## Test credentials
 
-The agent operates the CRM directly for in-CRM operator gates. Credentials are stored in `.claude/test-credentials.json` (gitignored — never commit).
+You operate the CRM directly for in-CRM operator gates. Credentials are stored in `.claude/test-credentials.json` (gitignored — never commit).
 
 File structure expected:
 
@@ -216,23 +296,28 @@ File structure expected:
     "password": "<filled in by Toffee>"
   },
   "test_tenant_id": "5aadca14-9786-4aef-bc53-e9287cdd0bbf",
-  "supabase_service_role_key": "<filled in by Toffee — for fallback when MCP fails>",
-  "vercel_token": "<optional — for deploy log fetching>"
+  "supabase": {
+    "project_url": "...",
+    "service_role_key": "..."
+  },
+  "vercel": {
+    "token": "..."
+  }
 }
 ```
 
 Read this file at the start of any session that needs to operate the CRM. **Never echo the contents into logs, commit messages, or chat history. Treat as secrets.**
 
-If the file doesn't exist, push a message to Toffee asking him to set it up via the first-run checklist; don't proceed with in-CRM gates without it.
+If the file doesn't exist or fields are blank, push a message to Toffee asking him to fill them in; don't proceed with in-CRM gates without them.
 
 ---
 
 ## Repo navigation
 
-Critical reading on every session:
-- `docs/operational-gotchas.md` — known pitfalls. **Read this every session, no exceptions.**
+Critical reading every session:
+- `docs/operational-gotchas.md` — known pitfalls. **No exceptions.**
 
-Read these when working on related code:
+Read when working on related code:
 - `docs/audits/` — system audits (outbound, deal attachment, automation engine, etc.)
 - `docs/2b/` — phase change logs (read recent ones for current state)
 - `docs/D01_*.md` through `docs/D24_*.md` — per-feature deep-dive reference docs (Tier 3)
@@ -355,13 +440,15 @@ Before every push: `npx tsc --noEmit`, `npx jest`, `npm run build`. All clean. D
 - **Don't touch `conversation_id` after activity insert.**
 - **Don't modify the namespace UUID** for `conversation_id`.
 - **Don't reproduce real Twilio SIDs in committed code or docs.**
-- **Don't ship features without an audit phase first** for anything multi-subsystem.
 - **Don't auto-fire Google Ads conversion events on reassignment.**
 - **Don't put real customer data in test fixtures.**
 - **Don't add new permission codes without checking the existing catalog.**
 - **Don't ping Toffee for engineering decisions.** Decide and proceed.
+- **Don't ping Toffee for plan approval.** The kickoff discussion is the only approval.
+- **Don't queue phone-side operator gates to the end.** Real-time, per phase.
+- **Don't send Toffee technical jargon.** Plain English only.
 - **Don't echo `.claude/test-credentials.json` contents into logs, commit messages, or chat.**
-- **Don't break the kickoff → plan → approval → execute → summary cadence.** It's the trust contract.
+- **Don't expand scope beyond what Toffee asked for.** Note out-of-scope adjacent things in the summary; don't build them.
 
 ---
 
@@ -369,8 +456,8 @@ Before every push: `npx tsc --noEmit`, `npx jest`, `npm run build`. All clean. D
 
 Two custom subagents are defined in `.claude/agents/`:
 
-- **`code-reviewer`** — invoked at phase step 8 (after each phase's code changes). Read-only. Reports violations with severity. You apply the fixes.
-- **`audit-researcher`** — invoked explicitly when a phase needs investigation. Read-only. Produces an audit doc at `docs/audits/<topic>_audit.md`.
+- **`code-reviewer`** — invoked at phase step 6 (after each phase's code changes) AND during Stage 5 (final bug sweep). Read-only. Reports violations with severity. You apply the fixes.
+- **`audit-researcher`** — invoked when a feature needs a docs-only audit document (rare for in-line Stage 2 reading, which doesn't need a subagent; this is for explicit audit phases that need a written deliverable).
 
 For other tasks, use Claude Code's built-in subagents:
 - **Plan** — research before implementation; produces a written plan.
@@ -384,18 +471,16 @@ Don't spawn 5 subagents for parallel exploration unless genuinely parallelizable
 ## When to ask Toffee a question
 
 Ask only when:
-- The decision affects what a real practice or patient sees or experiences.
-- The trade-off is genuinely product-shaped, not engineering-shaped.
-- An audit surfaces a path-choice with material differences (Path A vs B vs C).
-- An operator gate is genuinely impossible to run autonomously (his phone, his email, his external device).
+- It's a kickoff discussion question (Stage 1 of the Feature workflow).
+- A genuine mid-feature surprise (per Mid-feature surprises section) — scope, product decision, dangerous op, security, persistent failure.
+- An operator gate genuinely needs his phone or external device (per Phone-side gates).
 
 Don't ask when:
-- The decision is purely technical.
+- The decision is technical (schema, libraries, code structure, error handling).
 - The answer is in this manifest or `docs/operational-gotchas.md`.
-- The answer can be inferred from existing code patterns.
+- The answer can be inferred from existing code.
 - A locked product principle already covers it.
-
-Format pings: brief context, option set, clear recommendation. Don't bury him in technical detail.
+- You're unsure whether to ask — default to deciding and surfacing in the summary.
 
 ---
 
@@ -403,17 +488,18 @@ Format pings: brief context, option set, clear recommendation. Don't bury him in
 
 Current sequence: `2b.X` for "Step 2 — response to leads" work. Examples: `2b.10`, `2b.11`, `2b.11.5b`, `2b.11.5b.1`.
 
-- Increment by integer for major phases.
+- Increment by integer for major phases of a new feature.
 - Decimal for sub-phases (`2b.11.5` is a sub-phase of `2b.11`).
 - Patches: `2b.11.5b.1` is a patch on `2b.11.5b`.
+- Small bug fixes: use `<phase>.X-fix` (e.g. `2b.12.1-fix` for a small fix to whatever ships as 2b.12).
 
-When the orchestrator breaks down a feature, use the next available `2b.X` numbers in sequence. If unsure of the next number, check the highest existing phase number in `docs/2b/` and increment.
+When breaking down a feature, use the next available `2b.X` numbers in sequence. Check the highest existing phase number in `docs/2b/` and increment.
 
 Changelog files: `docs/2b/<phase>-changes.md`.
-Audit docs: `docs/audits/<topic>_audit.md`.
+Audit docs (when produced as standalone deliverables): `docs/audits/<topic>_audit.md`.
 
 ---
 
 ## End of manifest
 
-If anything in this file is unclear, contradicts a deeper doc, or surfaces an ambiguity during execution, push a concrete clarification proposal to Toffee. Don't guess.
+If anything in this file is unclear, contradicts a deeper doc, or surfaces an ambiguity during execution, push a concrete clarification proposal to Toffee in plain English. Don't guess.
