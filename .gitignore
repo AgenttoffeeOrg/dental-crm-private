@@ -50,3 +50,6 @@ next-env.d.ts
 
 # Autopilot test credentials (never commit)
 .claude/test-credentials.json
+
+# Supabase CLI transient linked-project state (regenerated on `supabase link`)
+supabase/.temp/
