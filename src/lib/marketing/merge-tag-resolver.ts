@@ -128,6 +128,101 @@ export function resolveMergeTags(
   return resolved
 }
 
+// ---------------------------------------------------------------------------
+// Phase 2b.21 — Automation-step merge tags
+// ---------------------------------------------------------------------------
+
+/**
+ * Extended merge-tag resolver for automation message nodes.
+ *
+ * Beyond the contact / today / practice / link tags resolveMergeTags
+ * handles, this also supports:
+ *   - deal.title / deal.value / deal.currency
+ *   - tenant.name / tenant.email / tenant.phone (synonyms of practice.*
+ *     kept for clarity when copy refers to the business rather than
+ *     the brick-and-mortar practice)
+ *   - practice.opening_hours.monday … sunday (rendered as "09:00–17:00"
+ *     or "closed")
+ *   - practice.services_offered (comma-joined list of names)
+ *   - practice.brand_voice (the practice's voice description)
+ *
+ * Returns the content with all known tags replaced. Unresolved tags
+ * are wiped out by the underlying resolveMergeTags fallback rule.
+ */
+export function resolveAutomationMergeTags(
+  content: string,
+  contact: Contact,
+  options: {
+    deal?: { title?: string | null; value_estimate_cents?: number | null; currency?: string | null } | null
+    tenant?: { name?: string | null; email?: string | null; phone?: string | null } | null
+    /**
+     * Practice Brain shape (subset). When passed, exposes
+     * practice.opening_hours.<day>, practice.services_offered, and
+     * practice.brand_voice tags.
+     */
+    practiceBrain?: {
+      opening_hours?: Record<string, { open?: string; close?: string; closed?: boolean }> | null
+      services_offered?: Array<{ name?: string }> | null
+      brand_voice?: string | null
+    } | null
+    campaignId?: string
+  } = {}
+): string {
+  let resolved = resolveMergeTags(content, contact, options.tenant ?? undefined, options.campaignId)
+
+  // The base resolver wipes unresolved {{...}} tags at the end, so we
+  // need to do our injections BEFORE that pass. Re-process the raw
+  // content first, then run the base resolver on the result.
+  let pre = content
+
+  if (options.deal) {
+    pre = pre.replace(/\{\{deal\.title\}\}/g, options.deal.title ?? '')
+    const valueText =
+      options.deal.value_estimate_cents != null
+        ? formatMoney(options.deal.value_estimate_cents, options.deal.currency ?? 'GBP')
+        : ''
+    pre = pre.replace(/\{\{deal\.value\}\}/g, valueText)
+    pre = pre.replace(/\{\{deal\.currency\}\}/g, options.deal.currency ?? '')
+  }
+
+  if (options.tenant) {
+    pre = pre.replace(/\{\{tenant\.name\}\}/g, options.tenant.name ?? '')
+    pre = pre.replace(/\{\{tenant\.email\}\}/g, options.tenant.email ?? '')
+    pre = pre.replace(/\{\{tenant\.phone\}\}/g, options.tenant.phone ?? '')
+  }
+
+  if (options.practiceBrain) {
+    const hours = options.practiceBrain.opening_hours ?? {}
+    for (const day of ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']) {
+      const entry = hours[day]
+      let label = ''
+      if (entry) {
+        if (entry.closed) label = 'closed'
+        else if (entry.open && entry.close) label = `${entry.open}–${entry.close}`
+      }
+      pre = pre.replace(new RegExp(`\\{\\{practice\\.opening_hours\\.${day}\\}\\}`, 'g'), label)
+    }
+    const services = (options.practiceBrain.services_offered ?? [])
+      .map((s) => s?.name)
+      .filter(Boolean)
+      .join(', ')
+    pre = pre.replace(/\{\{practice\.services_offered\}\}/g, services)
+    pre = pre.replace(/\{\{practice\.brand_voice\}\}/g, options.practiceBrain.brand_voice ?? '')
+  }
+
+  // Hand the pre-processed string back to the base resolver which
+  // handles contact / today / practice / link / unresolved cleanup.
+  return resolveMergeTags(pre, contact, options.tenant ?? undefined, options.campaignId)
+}
+
+function formatMoney(cents: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(cents / 100)
+  } catch {
+    return `${(cents / 100).toFixed(2)} ${currency}`
+  }
+}
+
 /**
  * Get first name from full name
  */
@@ -179,11 +274,11 @@ export function previewMergeTags(
   content: string,
   sampleContact?: Partial<Contact>
 ): string {
-  const sample = sampleContact || {
+  const sample: Partial<Contact> = {
     full_name: 'John Smith',
     primary_email: 'john.smith@example.com',
     primary_phone: '+44 20 1234 5678',
-    ...sampleContact
+    ...(sampleContact ?? {}),
   }
   
   return resolveMergeTags(content, sample as Contact)
