@@ -37,6 +37,14 @@ export async function register() {
       console.error('[instrumentation] stop-conditions init failed (non-fatal):', err)
     }
 
+    // Phase 2b.18: bootstrap the always-on FAQ responder.
+    try {
+      const { initializeFaqResponder } = await import('./src/lib/automations/faq-responder')
+      initializeFaqResponder()
+    } catch (err) {
+      console.error('[instrumentation] faq-responder init failed (non-fatal):', err)
+    }
+
     // TODO: Initialize Sentry server SDK when DSN is provided
     // if (process.env.SENTRY_DSN) {
     //   const Sentry = await import('@sentry/nextjs')
