@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
-import { 
-  verifyTwilioSignature, 
+import {
+  verifyTwilioSignature,
   formDataToParams,
-  hashPayload 
+  hashPayload,
 } from '@/lib/integrations/webhook-security'
+import {
+  resolveTenantByVoiceNumber,
+  findOrCreateContactByPhone,
+  classifyCallShape,
+} from '@/lib/voice/inbound'
 import crypto from 'crypto'
 
 /**
@@ -131,20 +136,44 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    // 5. Find contact by phone number
-    const phoneToSearch = direction === 'inbound' ? from : to
-    
-    const { data: contacts } = await supabase
-      .from('contacts')
-      .select('*')
-      .or(`primary_phone.eq.${phoneToSearch},secondary_phone.eq.${phoneToSearch}`)
-      .limit(1)
+    // 5. 2b.26.1: resolve tenant by the practice's inbound number and
+    //    find-or-create the contact by the caller's phone. Per the locked
+    //    product rule, a brand-new caller gets a no-name contact (just a
+    //    phone number) so the practice can edit the name later. Without
+    //    this resolution, every inbound call from a new number was silently
+    //    orphaned with both tenant_id AND contact_id null.
+    const isInbound = direction === 'inbound'
+    const practiceNumber = isInbound ? to : from // tenant-owned receiving number
+    const callerNumber = isInbound ? from : to // patient's number
 
-    const contact = contacts && contacts.length > 0 ? contacts[0] : null
+    const tenantResolution = practiceNumber
+      ? await resolveTenantByVoiceNumber(supabase, practiceNumber)
+      : null
 
-    if (!contact) {
-      console.log(`[WEBHOOK VOICE][${correlationId}] No contact found for: ${phoneToSearch}`)
+    if (isInbound && !tenantResolution) {
+      console.warn(`[WEBHOOK VOICE][${correlationId}] No tenant claims inbound number`, {
+        to: practiceNumber,
+      })
+      // Match SMS / WhatsApp behaviour: 401 on unknown-number to avoid
+      // leaking which numbers belong to which practices.
+      return NextResponse.json(
+        { error: 'Unknown receiving number', correlation_id: correlationId },
+        { status: 401 }
+      )
     }
+
+    let contactRef: { contactId: string; isNew: boolean } | null = null
+    if (tenantResolution && callerNumber) {
+      contactRef = await findOrCreateContactByPhone(
+        supabase,
+        tenantResolution.tenantId,
+        callerNumber
+      )
+    }
+
+    const tenantId = tenantResolution?.tenantId ?? null
+    const contactId = contactRef?.contactId ?? null
+    const callShape = classifyCallShape(callStatus, recordingUrl)
 
     // 6. Check if activity already exists for this call (for updates)
     const { data: existingActivities } = await supabase
@@ -172,17 +201,17 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         console.error(`[WEBHOOK VOICE][${correlationId}] Error updating activity:`, updateError)
-        
+
         await supabase.rpc('add_to_dlq', {
-          p_tenant_id: contact?.tenant_id || null,
+          p_tenant_id: tenantId,
           p_integration_type: 'twilio_voice',
           p_operation: 'update_activity',
           p_payload: { callSid, callStatus, duration, recordingUrl },
           p_error_message: updateError.message,
           p_error_code: updateError.code,
-          p_context: { correlation_id: correlationId }
+          p_context: { correlation_id: correlationId },
         })
-        
+
         return NextResponse.json(
           { error: 'Failed to update call', correlation_id: correlationId },
           { status: 500 }
@@ -191,17 +220,27 @@ export async function POST(request: NextRequest) {
 
       activity = updated
     } else {
-      // CREATE new activity (for inbound calls)
+      // CREATE new activity. 2b.26.1: per the locked product rule
+      // (calls live on the contact, never auto-attached to a deal),
+      // deal_id stays null. A later transcript callback can promote
+      // the activity to a deal if treatment intent is detected.
       const { data: created, error: createError } = await supabase
         .from('activities')
         .insert({
-          tenant_id: contact?.tenant_id,
+          tenant_id: tenantId,
           type: 'call',
-          contact_id: contact?.id || null,
+          contact_id: contactId,
           deal_id: null,
           direction,
-          source_channel: direction === 'inbound' ? 'phone_call_inbound' : null,
-          subject: direction === 'inbound' ? 'Incoming Call' : 'Outbound Call',
+          source_channel: isInbound ? 'phone_call_inbound' : null,
+          subject:
+            callShape === 'missed'
+              ? 'Missed call'
+              : callShape === 'voicemail'
+              ? 'Voicemail'
+              : isInbound
+              ? 'Incoming Call'
+              : 'Outbound Call',
           snippet: `Call from ${from} to ${to}`,
           integration_provider: 'twilio_voice',
           external_id: callSid,
@@ -211,9 +250,15 @@ export async function POST(request: NextRequest) {
           message_status: callStatus,
           duration_seconds: duration ? parseInt(duration) : null,
           recording_url: recordingUrl,
+          // 2b.26.1: surface call shape + new-caller flag on the
+          // activity metadata so the timeline UI can render a
+          // "Missed call ⚠️" badge and downstream automations /
+          // notifications can branch.
           integration_metadata: {
             direction,
             correlation_id: correlationId,
+            call_shape: callShape,
+            new_caller: contactRef?.isNew === true,
           },
         })
         .select()
@@ -221,17 +266,17 @@ export async function POST(request: NextRequest) {
 
       if (createError) {
         console.error(`[WEBHOOK VOICE][${correlationId}] Error creating activity:`, createError)
-        
+
         await supabase.rpc('add_to_dlq', {
-          p_tenant_id: contact?.tenant_id || null,
+          p_tenant_id: tenantId,
           p_integration_type: 'twilio_voice',
           p_operation: 'create_activity',
           p_payload: { callSid, callStatus, from, to, duration },
           p_error_message: createError.message,
           p_error_code: createError.code,
-          p_context: { correlation_id: correlationId }
+          p_context: { correlation_id: correlationId },
         })
-        
+
         return NextResponse.json(
           { error: 'Failed to log call', correlation_id: correlationId },
           { status: 500 }
@@ -246,7 +291,7 @@ export async function POST(request: NextRequest) {
       await supabase
         .from('integration_webhooks_log')
         .update({
-          tenant_id: contact?.tenant_id,
+          tenant_id: tenantId,
           status: 'processed',
           processed_at: new Date().toISOString(),
           processing_duration_ms: Date.now() - startTime,
@@ -258,7 +303,7 @@ export async function POST(request: NextRequest) {
 
     // 8. Log successful processing
     await supabase.from('integration_logs').insert({
-      tenant_id: contact?.tenant_id,
+      tenant_id: tenantId,
       integration_type: 'twilio_voice',
       operation: 'receive_webhook',
       direction: 'inbound',
@@ -266,7 +311,12 @@ export async function POST(request: NextRequest) {
       correlation_id: correlationId,
       external_id: callSid,
       request_payload: params,
-      response_payload: { activity_id: activity.id, call_status: callStatus },
+      response_payload: {
+        activity_id: activity.id,
+        call_status: callStatus,
+        call_shape: callShape,
+        new_caller: contactRef?.isNew === true,
+      },
       duration_ms: Date.now() - startTime,
     })
 
