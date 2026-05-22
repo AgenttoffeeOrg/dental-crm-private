@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/process-automation-waits",
-      "schedule": "0 2 * * *"
+      "schedule": "* * * * *"
     },
     {
       "path": "/api/cron/purge-automation-data",

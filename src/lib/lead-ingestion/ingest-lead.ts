@@ -340,8 +340,14 @@ export async function ingestLead(
     const eventFrom = (input.raw_payload?.from as string | undefined) ?? null
     const receivedAt = arrivedAt.toISOString()
 
+    // 2b.23.1 fix: AWAIT the event emit. Previously fire-and-forget, which
+    // meant the listener's startRun (DB write + first-node execution) could
+    // be torn down by the serverless runtime when the webhook returned.
+    // Symptom: inbound SMS arrived, activity row written, automation never
+    // fired. Awaiting is fine — emit() runs listeners with Promise.allSettled
+    // so a slow/erroring listener can't poison the response.
     if (input.source_channel === 'sms_inbound' && contactId && activityId) {
-      events.inboundSmsReceived({
+      await events.inboundSmsReceived({
         tenantId: input.tenant_id,
         contactId,
         dealId: dealId ?? null,
@@ -353,7 +359,7 @@ export async function ingestLead(
         receivedAt,
       })
     } else if (input.source_channel === 'whatsapp_inbound' && contactId && activityId) {
-      events.inboundWhatsappReceived({
+      await events.inboundWhatsappReceived({
         tenantId: input.tenant_id,
         contactId,
         dealId: dealId ?? null,
@@ -370,7 +376,7 @@ export async function ingestLead(
         input.source_channel === 'form_hosted_landing' ||
         input.source_channel === 'booking_widget_webform')
     ) {
-      events.marketingFormSubmitted({
+      await events.marketingFormSubmitted({
         formId: input.form_id ?? null,
         contactId,
         tenantId: input.tenant_id,
@@ -381,7 +387,7 @@ export async function ingestLead(
         submittedAt: receivedAt,
       })
     } else if (input.source_channel === 'google_lead_form' && contactId) {
-      events.marketingGoogleLeadFormSubmitted({
+      await events.marketingGoogleLeadFormSubmitted({
         formId: input.form_id ?? null,
         contactId,
         tenantId: input.tenant_id,
