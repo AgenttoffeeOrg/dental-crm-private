@@ -79,6 +79,17 @@ function buildSystemPrompt(
     "You are the practice's AI assistant drafting a reply on its behalf. Reply in the practice's voice. Be warm, helpful and brief. Never invent prices, treatments, opening hours, or guarantees the practice has not given you. If the patient mentions pain, an emergency, or anything that needs a human, escalate without trying to solve it."
   )
 
+  // 2b.24.6: personalise. When the patient's name is provided in the
+  // user prompt under "Patient name:", use their FIRST name (the first
+  // whitespace-separated token, ignoring titles like "Mr"/"Mrs"/"Dr")
+  // where it makes the reply feel personal — typically the opener on
+  // the first reply of a thread, or naturally inside a sentence. Don't
+  // force a greeting on every single message. If no name is provided,
+  // just reply without one.
+  sections.push(
+    "Personalise the reply. If a patient name is given, address them by their first name where it sounds natural — usually once near the start. Skip the name on quick follow-up replies in the same thread (no need to greet on every message). Never use the full name or a surname on its own. If no name is given, reply without one."
+  )
+
   if (toneOverride?.trim()) {
     sections.push(`Tone override for this reply:\n${toneOverride.trim()}`)
   }
@@ -136,7 +147,11 @@ async function loadConversationContext(
   channel: DrafterChannel,
   triggerActivityId: string | undefined,
   historyDepth: number
-): Promise<{ trigger: ActivityRow | null; history: ActivityRow[] }> {
+): Promise<{
+  trigger: ActivityRow | null
+  history: ActivityRow[]
+  contactName: string | null
+}> {
   let trigger: ActivityRow | null = null
 
   if (triggerActivityId) {
@@ -158,15 +173,45 @@ async function loadConversationContext(
     .order('occurred_at', { ascending: false })
     .limit(historyDepth)
 
-  return { trigger, history: (history as ActivityRow[] | null) ?? [] }
+  // 2b.24.6: pull the contact's name so Claude can personalise the
+  // reply. Best-effort — if the lookup fails or the name is empty,
+  // the prompt simply omits the "Patient name:" line and the
+  // drafter falls back to a name-free reply.
+  let contactName: string | null = null
+  try {
+    const { data: contactRow } = await supabase
+      .from('contacts')
+      .select('full_name')
+      .eq('id', contactId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle()
+    const raw = ((contactRow as { full_name?: string | null } | null)?.full_name ?? '')
+      .toString()
+      .trim()
+    if (raw.length > 0) contactName = raw
+  } catch {
+    contactName = null
+  }
+
+  return {
+    trigger,
+    history: (history as ActivityRow[] | null) ?? [],
+    contactName,
+  }
 }
 
 function buildUserPrompt(
   trigger: ActivityRow | null,
   history: ActivityRow[],
-  channel: DrafterChannel
+  channel: DrafterChannel,
+  contactName: string | null
 ): string {
   const lines: string[] = []
+
+  if (contactName) {
+    lines.push(`Patient name: ${contactName}`)
+    lines.push('')
+  }
 
   if (history.length > 0) {
     lines.push(`Previous ${channel} messages (newest first):`)
@@ -237,7 +282,12 @@ export async function draftAiReply(
     input.toneOverride,
     input.escalationPhrase
   )
-  const userPrompt = buildUserPrompt(history.trigger, history.history, input.channel)
+  const userPrompt = buildUserPrompt(
+    history.trigger,
+    history.history,
+    input.channel,
+    history.contactName
+  )
 
   const completion = await claudeOneShot({
     system: systemPrompt,
