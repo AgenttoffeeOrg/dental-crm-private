@@ -14,6 +14,10 @@ import type { MarketingForm } from '@/hooks/use-marketing-forms'
 export default function EmbedFormPage() {
   const params = useParams()
   const [form, setForm] = useState<MarketingForm | null>(null)
+  const [brand, setBrand] = useState<{ primary: string | null; accent: string | null }>({
+    primary: null,
+    accent: null,
+  })
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
@@ -39,6 +43,20 @@ export default function EmbedFormPage() {
       }
 
       setForm(data)
+
+      // 2b.28.2: best-effort brand colour fetch so the iframe form
+      // matches the practice's site rather than rendering generic blue.
+      if (data?.tenant_id) {
+        const { data: tenantRow } = await supabase
+          .from('tenants')
+          .select('primary_color, secondary_color')
+          .eq('id', data.tenant_id)
+          .maybeSingle()
+        setBrand({
+          primary: (tenantRow as { primary_color?: string | null } | null)?.primary_color ?? null,
+          accent: (tenantRow as { secondary_color?: string | null } | null)?.secondary_color ?? null,
+        })
+      }
 
       // Track view
       await supabase.rpc('increment_form_views', { form_id: params.id as string })
@@ -72,7 +90,12 @@ export default function EmbedFormPage() {
       {hasPageBreaks ? (
         <MultiStepFormRenderer form={form} standalone={true} />
       ) : (
-        <FormRenderer form={form} standalone={true} />
+        <FormRenderer
+          form={form}
+          standalone={true}
+          brandPrimaryColor={brand.primary}
+          brandAccentColor={brand.accent}
+        />
       )}
     </div>
   )

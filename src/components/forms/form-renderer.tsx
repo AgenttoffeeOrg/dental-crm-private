@@ -16,6 +16,15 @@ interface FormRendererProps {
   form: MarketingForm
   onSubmit?: (data: any) => void
   standalone?: boolean // For embedded forms
+  /**
+   * 2b.28.2 — Per-tenant brand colours. Optional; when set, override
+   * the default submit-button styling so the form matches the
+   * practice's site rather than looking like a generic CRM widget.
+   * Caller fetches tenants.primary_color / secondary_color and
+   * passes them down.
+   */
+  brandPrimaryColor?: string | null
+  brandAccentColor?: string | null
 }
 
 function prefillContactData(knownContactData: Record<string, any>, fieldsJson: FormField[], initialData: Record<string, any>) {
@@ -30,7 +39,13 @@ function prefillContactData(knownContactData: Record<string, any>, fieldsJson: F
   })
 }
 
-export function FormRenderer({ form, onSubmit, standalone = false }: FormRendererProps) {
+export function FormRenderer({
+  form,
+  onSubmit,
+  standalone = false,
+  brandPrimaryColor,
+  brandAccentColor,
+}: FormRendererProps) {
   const { appUser } = useAuth()
   const [formData, setFormData] = useState<Record<string, any>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -434,10 +449,44 @@ export function FormRenderer({ form, onSubmit, standalone = false }: FormRendere
 
       {visibleFields.map((field) => renderField(field))}
 
-      <Button type="submit" disabled={submitting} className="w-full">
+      <Button
+        type="submit"
+        disabled={submitting}
+        className="w-full"
+        // 2b.28.2: inline brand colour overrides the default. Tailwind's
+        // bg classes resolve at build time; injecting at runtime via style
+        // works for any tenant colour without a per-tenant build step.
+        style={
+          brandPrimaryColor
+            ? {
+                backgroundColor: brandPrimaryColor,
+                borderColor: brandPrimaryColor,
+                color: pickReadableTextColor(brandPrimaryColor),
+              }
+            : undefined
+        }
+      >
         {submitting ? 'Submitting...' : (form.button_text || 'Submit')}
       </Button>
     </form>
   )
+}
+
+/**
+ * 2b.28.2 — pick black or white text for a given background hex so the
+ * submit button stays legible on any practice brand colour. Falls back
+ * to white if the colour isn't a valid hex.
+ */
+function pickReadableTextColor(hex: string): string {
+  const m = hex.replace('#', '').match(/^([0-9a-f]{6}|[0-9a-f]{3})$/i)
+  if (!m) return '#ffffff'
+  const raw = m[1]
+  const expanded = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw
+  const r = parseInt(expanded.slice(0, 2), 16)
+  const g = parseInt(expanded.slice(2, 4), 16)
+  const b = parseInt(expanded.slice(4, 6), 16)
+  // Relative luminance per WCAG — anything above 0.5 needs dark text.
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return lum > 0.55 ? '#000000' : '#ffffff'
 }
 

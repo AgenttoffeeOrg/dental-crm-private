@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { useAuth } from '@/lib/auth'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
-import { Rocket, TrendingUp, Users, Mail, CheckCircle, Power } from 'lucide-react'
+import { Rocket, TrendingUp, Users, Mail, CheckCircle, Power, Palette } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase-client'
 import { authFetch } from '@/lib/auth-fetch'
 import { toast } from 'sonner'
@@ -20,11 +22,63 @@ export function GeneralSettingsPanel() {
   const [loading, setLoading] = useState(true)
   const [marketingEnabled, setMarketingEnabled] = useState<boolean | null>(null)
   const [toggling, setToggling] = useState(false)
+  // 2b.28.2: per-tenant brand colours so embedded / hosted forms
+  // can match the practice's site rather than render generic blue.
+  const [brandPrimary, setBrandPrimary] = useState<string>('#2563eb')
+  const [brandAccent, setBrandAccent] = useState<string>('#1d4ed8')
+  const [brandSaving, setBrandSaving] = useState(false)
+  const [brandLoaded, setBrandLoaded] = useState(false)
 
   useEffect(() => {
     loadStats()
     loadMarketingFlag()
+    loadBrandColors()
   }, [appUser])
+
+  const loadBrandColors = async () => {
+    if (!appUser?.tenant_id) return
+    const supabase = createClient()
+    try {
+      const { data } = await supabase
+        .from('tenants')
+        .select('primary_color, secondary_color')
+        .eq('id', appUser.tenant_id)
+        .maybeSingle()
+      const row = data as { primary_color?: string | null; secondary_color?: string | null } | null
+      if (row?.primary_color) setBrandPrimary(row.primary_color)
+      if (row?.secondary_color) setBrandAccent(row.secondary_color)
+      setBrandLoaded(true)
+    } catch (err) {
+      console.error('[brand-colors] load failed', err)
+      setBrandLoaded(true)
+    }
+  }
+
+  const handleSaveBrandColors = async () => {
+    if (brandSaving) return
+    setBrandSaving(true)
+    try {
+      const res = await authFetch('/api/org/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          primary_color: brandPrimary,
+          secondary_color: brandAccent,
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        toast.error(body?.error || 'Failed to save brand colours')
+        return
+      }
+      toast.success('Brand colours saved — they\'ll show on every form right away.')
+    } catch (err) {
+      console.error('[brand-colors] save failed', err)
+      toast.error('Failed to save brand colours')
+    } finally {
+      setBrandSaving(false)
+    }
+  }
 
   const loadStats = async () => {
     if (!appUser?.tenant_id) return
@@ -121,6 +175,85 @@ export function GeneralSettingsPanel() {
                 onCheckedChange={handleToggleMarketing}
                 aria-label="Toggle marketing module"
               />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 2b.28.2 — Brand colours. Applied to web-form submit buttons
+          (iframe and hosted variants) so the form looks like an
+          extension of the practice's site rather than a generic CRM
+          widget. Stored on tenants.primary_color / secondary_color. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-pink-600" />
+            Brand colours
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-600 max-w-2xl">
+            These colours appear on every web form, landing page and email so the practice's
+            forms feel like part of the practice's site, not a generic CRM widget.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+            <div className="space-y-2">
+              <Label htmlFor="brand-primary">Primary (main button colour)</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  id="brand-primary-picker"
+                  type="color"
+                  value={brandPrimary}
+                  onChange={(e) => setBrandPrimary(e.target.value)}
+                  className="h-10 w-14 p-1 cursor-pointer"
+                  aria-label="Primary brand colour picker"
+                />
+                <Input
+                  id="brand-primary"
+                  type="text"
+                  value={brandPrimary}
+                  onChange={(e) => setBrandPrimary(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="#2563eb"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="brand-accent">Accent (focus rings, secondary)</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  id="brand-accent-picker"
+                  type="color"
+                  value={brandAccent}
+                  onChange={(e) => setBrandAccent(e.target.value)}
+                  className="h-10 w-14 p-1 cursor-pointer"
+                  aria-label="Accent brand colour picker"
+                />
+                <Input
+                  id="brand-accent"
+                  type="text"
+                  value={brandAccent}
+                  onChange={(e) => setBrandAccent(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="#1d4ed8"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 pt-2">
+            <Button
+              type="button"
+              onClick={handleSaveBrandColors}
+              disabled={brandSaving || !brandLoaded}
+              style={{ backgroundColor: brandPrimary, borderColor: brandPrimary }}
+            >
+              {brandSaving ? 'Saving…' : 'Save brand colours'}
+            </Button>
+            <div
+              className="rounded-md border px-4 py-2 text-sm"
+              style={{ borderColor: brandAccent, color: brandAccent }}
+            >
+              Preview — this is your accent
             </div>
           </div>
         </CardContent>

@@ -10,6 +10,10 @@ import type { MarketingForm } from '@/hooks/use-marketing-forms'
 export default function PublicFormPage() {
   const params = useParams()
   const [form, setForm] = useState<MarketingForm | null>(null)
+  const [brand, setBrand] = useState<{ primary: string | null; accent: string | null }>({
+    primary: null,
+    accent: null,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
@@ -71,6 +75,20 @@ export default function PublicFormPage() {
       }
 
       setForm(data)
+      // 2b.28.2: fetch tenant brand colours so the form's submit button
+      // matches the practice's site rather than looking like a generic
+      // CRM widget. Best-effort — failure just falls back to default styling.
+      if (data?.tenant_id) {
+        const { data: tenantRow } = await supabase
+          .from('tenants')
+          .select('primary_color, secondary_color')
+          .eq('id', data.tenant_id)
+          .maybeSingle()
+        setBrand({
+          primary: (tenantRow as { primary_color?: string | null } | null)?.primary_color ?? null,
+          accent: (tenantRow as { secondary_color?: string | null } | null)?.secondary_color ?? null,
+        })
+      }
     } catch (err) {
       console.error('[PublicForm] Unexpected error:', err)
       setError('Failed to load form')
@@ -134,7 +152,13 @@ export default function PublicFormPage() {
           {hasPageBreaks ? (
             <MultiStepFormRenderer form={form} standalone={true} />
           ) : (
-            <FormRenderer form={form} standalone={true} />
+            /* 2b.28.2: pass tenant brand colours into the single-step renderer */
+            <FormRenderer
+              form={form}
+              standalone={true}
+              brandPrimaryColor={brand.primary}
+              brandAccentColor={brand.accent}
+            />
           )}
         </div>
 
