@@ -166,7 +166,7 @@ export async function PATCH(
 
       const { data: existing, error: existingError } = await supabase
         .from('activities')
-        .select('id, deal_id, contact_id, location_id, tenant_id')
+        .select('id, deal_id, contact_id, location_id, tenant_id, metadata')
         .eq('id', params.id)
         .eq('tenant_id', tenantId)
         .single()
@@ -233,9 +233,21 @@ export async function PATCH(
         throw err
       }
 
+      // 2b.24.3: when the operator reassigns the activity, the "AI wasn't
+      // sure" marker is no longer meaningful — the operator just made the
+      // decision themselves. Strip the flag from metadata so the UI marker
+      // disappears and the activity is no longer flagged as pending review.
+      const updatePatch: Record<string, unknown> = { deal_id: newDealId }
+      const existingMetadata =
+        (existing.metadata as Record<string, unknown> | null) ?? null
+      if (existingMetadata && existingMetadata.ai_attachment_uncertain) {
+        const { ai_attachment_uncertain: _stripped, ...rest } = existingMetadata
+        updatePatch.metadata = rest
+      }
+
       const { data: updated, error: updateError } = await supabase
         .from('activities')
-        .update({ deal_id: newDealId })
+        .update(updatePatch)
         .eq('id', params.id)
         .eq('tenant_id', tenantId)
         .select('*')

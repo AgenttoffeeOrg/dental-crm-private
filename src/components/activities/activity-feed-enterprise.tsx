@@ -474,6 +474,20 @@ const sanitizedContactPhone = useMemo(
                     {formatDuration(activity.duration_seconds)}
                   </Badge>
                 )}
+                {/* 2b.24.3: AI-uncertain attachment marker. Set on inbound
+                    activities where AI couldn't confidently choose between
+                    reusing an open deal vs creating a new one. Cleared
+                    automatically when the operator reassigns the activity
+                    to a different deal. */}
+                {activity.metadata?.ai_attachment_uncertain === true && (
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0 rounded text-xs font-medium bg-amber-50 border border-amber-200 text-amber-700"
+                    title="AI wasn't sure this message belonged here — review and reassign if needed."
+                  >
+                    <AlertCircle className="h-3 w-3" />
+                    AI unsure
+                  </span>
+                )}
               </div>
               <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
                 {formatDistanceToNow(new Date(activity.occurred_at), { addSuffix: true })}

@@ -258,4 +258,30 @@ describe('PATCH /api/activities/[id] — deal reassignment', () => {
     expect(body.error).toContain('different contact')
     expect(mockLogAuditServer).not.toHaveBeenCalled()
   })
+
+  // 2b.24.3 — clear ai_attachment_uncertain marker on reassignment
+  it('clears the ai_attachment_uncertain marker when the activity is reassigned', async () => {
+    tables.activities[0].metadata = {
+      ai_attachment_uncertain: true,
+      sla_due_at: '2026-05-22T13:00:00Z',
+    }
+
+    const res = await PATCH(patchReq({ deal_id: DEAL_B }), { params: { id: ACTIVITY_ID } })
+    expect(res.status).toBe(200)
+
+    const meta = tables.activities[0].metadata as Record<string, unknown>
+    expect(meta).not.toHaveProperty('ai_attachment_uncertain')
+    // Other metadata keys are preserved.
+    expect(meta.sla_due_at).toBe('2026-05-22T13:00:00Z')
+  })
+
+  it('leaves metadata untouched when the activity had no uncertainty flag', async () => {
+    tables.activities[0].metadata = { sla_due_at: '2026-05-22T13:00:00Z' }
+    const before = JSON.stringify(tables.activities[0].metadata)
+
+    const res = await PATCH(patchReq({ deal_id: DEAL_B }), { params: { id: ACTIVITY_ID } })
+    expect(res.status).toBe(200)
+
+    expect(JSON.stringify(tables.activities[0].metadata)).toBe(before)
+  })
 })
