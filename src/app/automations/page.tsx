@@ -165,13 +165,27 @@ export default function AutomationsPage() {
               <h1 className="text-3xl font-bold text-gray-900">
                 🤖 Automations
               </h1>
-              <Button 
-                className="bg-purple-600 hover:bg-purple-700"
-                onClick={() => setCreateSlideOverOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Automation
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* 2b.23.2: surface the new linear wizard as the primary
+                    create flow for marketing automations. The legacy
+                    slide-over still handles deal/pipeline/task. */}
+                {activeTab === 'marketing' ? (
+                  <Button asChild className="bg-purple-600 hover:bg-purple-700">
+                    <Link href="/automations/new">
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Marketing Automation
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    className="bg-purple-600 hover:bg-purple-700"
+                    onClick={() => setCreateSlideOverOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Automation
+                  </Button>
+                )}
+              </div>
             </div>
             <p className="text-gray-600">
               Build intelligent workflows across your entire CRM
@@ -371,12 +385,11 @@ function MarketingAutomationsTab({ automations, onRefresh }: { automations: Auto
           <p className="text-gray-600 mb-6">
             Automate marketing workflows: nurture sequences, form responses, campaign follow-ups
           </p>
-          <Button 
-            className="bg-purple-600 hover:bg-purple-700"
-            onClick={() => setCreateSlideOverOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create First Marketing Automation
+          <Button asChild className="bg-purple-600 hover:bg-purple-700">
+            <Link href="/automations/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Create First Marketing Automation
+            </Link>
           </Button>
         </div>
       </Card>
