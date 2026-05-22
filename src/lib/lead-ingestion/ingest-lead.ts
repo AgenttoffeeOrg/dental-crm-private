@@ -274,6 +274,12 @@ export async function ingestLead(
   // (Lizard CCN budget — pre-existing warning per 2b.2.a §3 row F).
   const dealTitle = resolveDealTitle(dealOutcome)
 
+  // Phase 2b.24: when AI judgement couldn't confidently assign this
+  // inbound to (or split from) an existing open deal, stamp the
+  // activity so the UI can surface the marker + the notification
+  // router can fire `lead.attachment_uncertain`.
+  const attachmentUncertain = dealOutcome.ok ? dealOutcome.attachmentUncertain === true : false
+
   // ---------------------------------------------------------------------------
   // 6. Activity (now references deal_id when available)
   // ---------------------------------------------------------------------------
@@ -284,7 +290,8 @@ export async function ingestLead(
     arrivedAt,
     sla,
     touchpointId,
-    dealId
+    dealId,
+    attachmentUncertain
   )
 
   // ---------------------------------------------------------------------------
@@ -793,7 +800,8 @@ async function insertActivity(
   arrivedAt: Date,
   sla: SLAResolveOutput,
   touchpointId: string,
-  dealId: string | null
+  dealId: string | null,
+  attachmentUncertain: boolean
 ): Promise<string> {
   const description =
     input.treatment_intent_text?.trim() ||
@@ -835,6 +843,11 @@ async function insertActivity(
               campaign: input.attribution.utm_campaign,
             }
           : null,
+        // Phase 2b.24: AI couldn't confidently judge whether this inbound
+        // belonged on the reused deal or warranted a new one. UI shows a
+        // marker, notification router fires lead.attachment_uncertain.
+        // Cleared by PATCH /api/activities/[id] when the operator reassigns.
+        ...(attachmentUncertain ? { ai_attachment_uncertain: true } : {}),
       },
     })
     .select('id')

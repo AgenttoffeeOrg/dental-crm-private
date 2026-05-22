@@ -44,7 +44,12 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { resolveMostRecentlyActiveOpenDeal } from '@/lib/deal-resolver'
+import {
+  resolveMostRecentlyActiveOpenDeal,
+  sortDealsByRecentActivity,
+  fetchMaxActivityTimestampsForDeals,
+} from '@/lib/deal-resolver'
+import { judgeInboundDealAttachment } from './judge-deal-attachment'
 import type { SourceChannelEnum } from './types'
 
 // ---------------------------------------------------------------------------
@@ -98,8 +103,29 @@ export interface DealContext {
  * metadata) must guard the `reused` branch.
  */
 export type DealCreationOutcome =
-  | { ok: true; dealId: string; reused: false; context: DealContext }
-  | { ok: true; dealId: string; reused: true; context: null }
+  | {
+      ok: true
+      dealId: string
+      reused: false
+      context: DealContext
+      /** Phase 2b.24: always false on the create path — a fresh deal can't be uncertain. */
+      attachmentUncertain: false
+    }
+  | {
+      ok: true
+      dealId: string
+      reused: true
+      context: null
+      /**
+       * Phase 2b.24: true when the AI couldn't confidently decide whether
+       * this inbound belonged on the reused deal or warranted a new one
+       * (empty / vague message, no router signal, or AI below confidence
+       * threshold). The activity insert stamps this onto
+       * `activities.metadata.ai_attachment_uncertain` so the UI can show a
+       * marker + notification, and the operator can re-assign in one click.
+       */
+      attachmentUncertain: boolean
+    }
   | { ok: false; reason: DealSkipReason; context: DealContext | null }
 
 export type DealSkipReason =
@@ -155,24 +181,38 @@ export async function createDealForLead(
   supabase: SupabaseClient,
   input: CreateDealForLeadInput
 ): Promise<DealCreationOutcome> {
-  // Phase 2b.2.a.3 — reuse-before-create. If the contact already has any
-  // open deal in any pipeline (open = stage NOT marked is_won OR is_lost),
-  // return that deal's id instead of inserting a duplicate. Engine-level
-  // fix benefits every channel that calls ingestLead — Google Lead Form,
-  // WhatsApp inbound, future Messenger / Meta Lead Ads, booking widget,
-  // landing pages. See docs/2b/2b-2-a-3-changes.md §1 for product rules.
-  const reusableDealId = await findReusableOpenDeal(supabase, {
-    tenantId: input.tenantId,
-    contactId: input.contactId,
-  })
-  if (reusableDealId) {
+  // Phase 2b.24: AI-aware attachment decision. Replaces the 2b.2.a.3
+  // unconditional `findReusableOpenDeal` short-circuit with a three-way
+  // judgement:
+  //
+  //   reuse  — message classifies into the same pipeline as an open deal,
+  //            OR no intent text, OR no open deals at all.
+  //   create — message classifies into a pipeline that no open deal
+  //            currently lives in (new treatment / different lane).
+  //   reuse-but-uncertain — open deals exist, intent text exists, but the
+  //            classifier returned unsorted / null / threw. Falls back to
+  //            most-recently-active reuse and flags the activity.
+  //
+  // See `judge-deal-attachment.ts` for the decision logic and
+  // `docs/2b/2b-24-changes.md` (forthcoming) for the product context.
+  const attachment = await decideDealAttachment(supabase, input)
+
+  if (attachment.kind === 'reuse') {
     console.log('[deal-creation] reused open deal', {
       tenantId: input.tenantId,
       contactId: input.contactId,
-      dealId: reusableDealId,
+      dealId: attachment.dealId,
       sourceChannel: input.sourceChannel,
+      reason: attachment.reason,
+      attachmentUncertain: attachment.attachmentUncertain,
     })
-    return { ok: true, dealId: reusableDealId, reused: true, context: null }
+    return {
+      ok: true,
+      dealId: attachment.dealId,
+      reused: true,
+      context: null,
+      attachmentUncertain: attachment.attachmentUncertain,
+    }
   }
 
   const ctxResult = await resolveDealContext(supabase, input)
@@ -224,7 +264,161 @@ export async function createDealForLead(
     dealId: (data as { id: string }).id,
     reused: false,
     context,
+    attachmentUncertain: false,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2b.24 — AI-aware attachment decision
+// ---------------------------------------------------------------------------
+
+type AttachmentDecision =
+  | {
+      kind: 'reuse'
+      dealId: string
+      attachmentUncertain: boolean
+      reason:
+        | 'no_intent_text'
+        | 'matching_pipeline'
+        | 'uncertain_fallback'
+    }
+  | { kind: 'create_new' }
+
+/**
+ * Decide whether to reuse an existing open deal for this contact or
+ * create a new one. AI-driven for inbound channels carrying intent
+ * text; falls back to most-recently-active-open for everything else.
+ *
+ * Three branches:
+ *   1) No open deals → create_new.
+ *   2) Open deals + no intent text → reuse most-recent (legacy behaviour).
+ *   3) Open deals + intent text → run `judgeInboundDealAttachment`:
+ *      - reuse_matching_pipeline → reuse that deal (most-recent if multiple)
+ *      - new_pipeline → create_new (resolveDealContext will route to that
+ *        same pipeline because both call routePipeline)
+ *      - uncertain → reuse most-recent + flag `attachmentUncertain = true`
+ */
+async function decideDealAttachment(
+  supabase: SupabaseClient,
+  input: CreateDealForLeadInput
+): Promise<AttachmentDecision> {
+  const intent = (input.intentText ?? '').trim()
+
+  // No intent signal (forms with offering-only, booking widget calendar,
+  // dedup-queue resolve, etc.) → use the legacy most-recently-active rule
+  // unchanged. The AI judgement is only meaningful for free-text inbound
+  // (SMS, WhatsApp) where the patient could be raising a different topic.
+  if (intent.length === 0) {
+    const reuseId = await findReusableOpenDeal(supabase, {
+      tenantId: input.tenantId,
+      contactId: input.contactId,
+    })
+    if (reuseId) {
+      return {
+        kind: 'reuse',
+        dealId: reuseId,
+        attachmentUncertain: false,
+        reason: 'no_intent_text',
+      }
+    }
+    return { kind: 'create_new' }
+  }
+
+  // Intent text present → consult judgement. fetch the open-deals-with-
+  // pipelines list only here (the legacy `findReusableOpenDeal` lookup
+  // doesn't need pipeline ids; this query does).
+  const openDeals = await fetchOpenDealsWithPipelines(
+    supabase,
+    input.tenantId,
+    input.contactId
+  )
+  if (openDeals.length === 0) {
+    return { kind: 'create_new' }
+  }
+
+  const judgement = await judgeInboundDealAttachment({
+    tenantId: input.tenantId,
+    messageText: intent,
+    openDeals: openDeals.map((d) => ({ id: d.id, pipelineId: d.pipelineId })),
+    supabase,
+  })
+
+  if (judgement.kind === 'reuse_matching_pipeline') {
+    const matchingIds = openDeals
+      .filter((d) => d.pipelineId === judgement.pipelineId)
+      .map((d) => d.id)
+    const targetDealId =
+      matchingIds.length === 1
+        ? matchingIds[0]
+        : (await pickMostRecentlyActiveFromIds(supabase, input.tenantId, matchingIds)) ??
+          matchingIds[0]
+    return {
+      kind: 'reuse',
+      dealId: targetDealId,
+      attachmentUncertain: false,
+      reason: 'matching_pipeline',
+    }
+  }
+
+  if (judgement.kind === 'new_pipeline') {
+    return { kind: 'create_new' }
+  }
+
+  // uncertain — fall back to legacy reuse rule + flag
+  const reuseId = await findReusableOpenDeal(supabase, {
+    tenantId: input.tenantId,
+    contactId: input.contactId,
+  })
+  if (reuseId) {
+    return { kind: 'reuse', dealId: reuseId, attachmentUncertain: true, reason: 'uncertain_fallback' }
+  }
+  return { kind: 'create_new' }
+}
+
+async function fetchOpenDealsWithPipelines(
+  supabase: SupabaseClient,
+  tenantId: string,
+  contactId: string
+): Promise<Array<{ id: string; pipelineId: string }>> {
+  const { data, error } = await supabase
+    .from('deals')
+    .select('id, pipeline_id, pipeline_stages!inner(is_won, is_lost)')
+    .eq('tenant_id', tenantId)
+    .eq('contact_id', contactId)
+    .eq('pipeline_stages.is_won', false)
+    .eq('pipeline_stages.is_lost', false)
+    .is('deleted_at', null)
+
+  if (error) {
+    console.warn('[deal-creation] open-deals lookup for judgement failed', {
+      tenantId,
+      contactId,
+      error: error.message,
+    })
+    return []
+  }
+
+  return ((data ?? []) as Array<{ id: string; pipeline_id: string }>)
+    .filter((row) => row.id && row.pipeline_id)
+    .map((row) => ({ id: row.id, pipelineId: row.pipeline_id }))
+}
+
+async function pickMostRecentlyActiveFromIds(
+  supabase: SupabaseClient,
+  tenantId: string,
+  dealIds: string[]
+): Promise<string | null> {
+  if (dealIds.length === 0) return null
+  const maxByDeal = await fetchMaxActivityTimestampsForDeals(
+    supabase,
+    tenantId,
+    dealIds
+  )
+  const sorted = sortDealsByRecentActivity(
+    dealIds.map((id) => ({ id, updated_at: null })),
+    maxByDeal
+  )
+  return sorted[0]?.id ?? null
 }
 
 // ---------------------------------------------------------------------------
