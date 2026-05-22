@@ -40,6 +40,7 @@ import {
   Search,
   Plus,
   Download,
+  Upload,
   MoreVertical,
   ArrowUpDown,
   ChevronLeft,
@@ -64,6 +65,7 @@ import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { Contact, AppUser } from '@/types/database'
 import { CreateContactSlideOver } from './create-contact-slide-over'
+import { CsvImportDialog } from './csv-import-dialog'
 import { useSavedContactViews, type ContactFilters } from '@/hooks/use-saved-contact-views'
 import { BookmarkIcon, ChevronDown } from 'lucide-react'
 
@@ -88,6 +90,8 @@ export function ContactsListEnterprise() {
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set())
   const [showCreateContact, setShowCreateContact] = useState(false)
   const [editingContact, setEditingContact] = useState<Contact | null>(null)
+  // 2b.25.3: bulk CSV import via ingestLead
+  const [showCsvImport, setShowCsvImport] = useState(false)
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -450,6 +454,16 @@ export function ContactsListEnterprise() {
           >
             <Download className="h-4 w-4 mr-2" />
             Export
+          </Button>
+          {/* 2b.25.3: bulk import via ingestLead — proper dedup,
+              attribution touchpoints, deals in the default pipeline. */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCsvImport(true)}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV
           </Button>
           <Button
             onClick={() => setShowCreateContact(true)}
@@ -949,6 +963,13 @@ export function ContactsListEnterprise() {
         }}
         contact={editingContact}
         mode={editingContact ? 'edit' : 'create'}
+      />
+
+      {/* 2b.25.3: CSV import via ingestLead */}
+      <CsvImportDialog
+        open={showCsvImport}
+        onOpenChange={setShowCsvImport}
+        onComplete={() => loadContacts()}
       />
     </div>
   )
