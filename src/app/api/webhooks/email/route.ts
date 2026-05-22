@@ -1,133 +1,158 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase-server'
-import { computeConversationId } from '@/lib/communications/conversation-id'
-
 /**
- * EMAIL WEBHOOK ENDPOINT
- * 
- * This endpoint receives incoming emails from your email provider (SendGrid, etc.)
- * Configure this URL in your email provider's webhook settings:
- * https://your-domain.com/api/webhooks/email
+ * Phase 2b.27 — Inbound email webhook.
+ *
+ * Replaces the previous stub (which only logged an activity for
+ * already-known contacts and silently dropped everything else).
+ * Inbound email now flows through the canonical `ingestLead` engine
+ * so:
+ *
+ *   - A new sender (unknown email) creates a no-name-needed contact
+ *     and a deal in the default pipeline. Practice can rename + claim
+ *     from the CRM.
+ *   - A known sender (matched by email) gets an additive update + a
+ *     fresh activity attached to whichever open deal the
+ *     pipeline-aware judgement picks (matching pipeline → reuse,
+ *     different pipeline → new deal, uncertain → stay on contact +
+ *     soft uncertainty flag).
+ *   - Replies on existing threads carry an idempotency key so a
+ *     provider retry doesn't double-ingest.
+ *
+ * Tenant resolution: the practice's receiving address is matched
+ * against `integration_settings.email_from_address`. Without a row
+ * in `integration_settings` for that address the webhook returns
+ * 401 — same posture as SMS / WhatsApp / voice.
+ *
+ * Configure in SendGrid / Mailgun / Postmark / Resend Inbound Parse:
+ *   https://<host>/api/webhooks/email
+ *
+ * No provider signature check yet (the previous stub had none either
+ * and providers vary widely). Production hardening pass should add
+ * per-provider Svix / Basic Auth verification.
  */
 
+import { NextRequest, NextResponse } from 'next/server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { ingestLead } from '@/lib/lead-ingestion/ingest-lead'
+import {
+  parseInboundEmailPayload,
+  resolveTenantByInboundEmailAddress,
+} from '@/lib/email/inbound'
+import crypto from 'crypto'
+
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
+  const correlationId = crypto.randomUUID()
   try {
-    const body = await request.json()
-    
-    // TODO: Parse email provider's webhook payload
-    // Different providers send different formats:
-    // - SendGrid: https://docs.sendgrid.com/for-developers/parsing-email/setting-up-the-inbound-parse-webhook
-    // - Gmail: Via Pub/Sub
-    // - Outlook: Via Microsoft Graph webhooks
-    
-    console.log('[WEBHOOK] Received email webhook:', JSON.stringify(body, null, 2))
+    const supabase = createServiceClient()
 
-    // Example SendGrid parse webhook format:
-    const {
-      to,
-      from,
-      subject,
-      text,
-      html,
-      attachments,
-      // ... other fields
-    } = body
+    // Providers send JSON or form-data depending on configuration.
+    // Try JSON first, fall back to form-data.
+    let body: Record<string, unknown> = {}
+    try {
+      body = (await request.json()) as Record<string, unknown>
+    } catch {
+      try {
+        const form = await request.formData()
+        body = Object.fromEntries(form.entries()) as Record<string, unknown>
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid request body', correlation_id: correlationId },
+          { status: 400 }
+        )
+      }
+    }
 
-    if (!from || !subject) {
+    const parsed = parseInboundEmailPayload(body)
+    if (!parsed) {
       return NextResponse.json(
-        { error: 'Invalid email webhook payload' },
+        { error: 'Could not parse inbound email payload', correlation_id: correlationId },
         { status: 400 }
       )
     }
 
-    const supabase = createServiceClient()
-
-    // 1. Find contact by email
-    const { data: contacts } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('primary_email', from)
-      .limit(1)
-
-    const contact = contacts && contacts.length > 0 ? contacts[0] : null
-
-    if (!contact) {
-      console.log(`[WEBHOOK] No contact found for email: ${from}. Creating placeholder contact...`)
-      // TODO: Optionally create new contact or log as unmatched
-    }
-
-    const tenantId =
-      contact?.tenant_id || body.tenant_id || request.headers.get('X-Tenant-ID')
-    const conversationId = computeConversationId({
-      tenantId: tenantId ?? '',
-      contactId: contact?.id ?? null,
-      channel: 'email',
-    })
-
-    // 2. Create activity for incoming email
-    const { data: activity, error: activityError } = await supabase
-      .from('activities')
-      .insert({
-        tenant_id: tenantId, // TODO: Better tenant detection
-        type: 'email',
-        contact_id: contact?.id || null,
-        deal_id: null, // TODO: Smart deal detection based on email thread
-        conversation_id: conversationId,
-        direction: 'inbound',
-        subject,
-        snippet: (text || html || '').substring(0, 200),
-        rich_content: html || text,
-        integration_provider: 'email_inbound',
-        email_from: from,
-        email_to: Array.isArray(to) ? to : [to],
-        message_status: 'received',
-        has_attachments: !!attachments && attachments.length > 0,
-        created_at: new Date().toISOString()
+    const tenant = await resolveTenantByInboundEmailAddress(supabase, parsed.toEmail)
+    if (!tenant) {
+      console.warn(`[WEBHOOK EMAIL][${correlationId}] No tenant claims inbound address`, {
+        to: parsed.toEmail,
       })
-      .select()
-      .single()
-
-    if (activityError) {
-      console.error('[WEBHOOK] Error creating activity:', activityError)
+      // 401 mirrors SMS / WhatsApp / voice — don't fingerprint which
+      // addresses belong to which practices.
       return NextResponse.json(
-        { error: 'Failed to log incoming email', details: activityError },
-        { status: 500 }
+        { error: 'Unknown receiving address', correlation_id: correlationId },
+        { status: 401 }
       )
     }
 
-    // 3. TODO: Process attachments if present
-    if (attachments && attachments.length > 0) {
-      console.log(`[WEBHOOK] Email has ${attachments.length} attachments. TODO: Save to storage.`)
-      // Save to Supabase Storage and link to activity
-    }
+    // The free-text body is the AI router's only signal here (no
+    // explicit treatment_offering_id from email). Subject + body
+    // concatenated give the judgement the best shot.
+    const intentText = [parsed.subject, parsed.textBody].filter(Boolean).join('\n\n').trim()
 
-    // 4. TODO: Trigger AI analysis for sentiment/intent
-    // Example: Analyze if this is urgent, what treatment they're asking about, etc.
+    const result = await ingestLead(
+      {
+        tenant_id: tenant.tenantId,
+        source_channel: 'email_inbound',
+        contact: {
+          email: parsed.fromEmail,
+          full_name: parsed.fromName,
+        },
+        treatment_intent_text: intentText.length > 0 ? intentText : null,
+        raw_payload: {
+          ...parsed.rawPayload,
+          _normalised: {
+            from: parsed.fromEmail,
+            to: parsed.toEmail,
+            subject: parsed.subject,
+            message_id: parsed.messageId,
+            in_reply_to: parsed.inReplyTo,
+            has_attachments: parsed.hasAttachments,
+          },
+        },
+        // Idempotency anchor: providers retry on 5xx and Resend's Svix
+        // pings can duplicate. `message-id` is the RFC 5322 stable id
+        // for an email; fall back to a synthetic id if the provider
+        // didn't surface it.
+        event_id: parsed.messageId
+          ? `email_inbound:${parsed.messageId}`
+          : `email_inbound:${parsed.fromEmail}:${parsed.subject ?? ''}:${Date.now()}`,
+        external_message_id: parsed.messageId,
+      },
+      supabase
+    )
 
-    console.log(`[WEBHOOK] ✅ Incoming email logged as activity ${activity.id}`)
+    console.log(`[WEBHOOK EMAIL][${correlationId}] ingested`, {
+      dedup: result.dedup_decision,
+      contact_id: result.contact_id,
+      deal_id: result.deal_id,
+      activity_id: result.activity_id,
+    })
 
     return NextResponse.json({
       success: true,
-      activity_id: activity.id,
-      message: 'Email received and logged'
+      correlation_id: correlationId,
+      dedup_decision: result.dedup_decision,
+      contact_id: result.contact_id,
+      deal_id: result.deal_id,
+      activity_id: result.activity_id,
     })
-
   } catch (error: unknown) {
-    console.error('[WEBHOOK] Email webhook error:', error)
+    console.error(`[WEBHOOK EMAIL][${correlationId}] error`, error)
     return NextResponse.json(
-      { error: 'Webhook processing failed', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Webhook processing failed',
+        details: error instanceof Error ? error.message : String(error),
+        correlation_id: correlationId,
+      },
       { status: 500 }
     )
   }
 }
 
-// Support GET for webhook verification (some providers require this)
-export async function GET(request: NextRequest) {
-  return NextResponse.json({ 
+export async function GET() {
+  return NextResponse.json({
     status: 'ready',
     endpoint: 'email-webhook',
-    message: 'Email webhook is active and ready to receive emails'
+    message: 'Inbound email webhook — flows through ingestLead (2b.27)',
   })
 }
-
-

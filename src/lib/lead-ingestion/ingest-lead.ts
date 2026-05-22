@@ -797,6 +797,8 @@ function mapSourceChannelToActivityType(channel: SourceChannelEnum): string {
       return 'fb_messenger'
     case 'sms_inbound':
       return 'sms'
+    case 'email_inbound':
+      return 'email'
     case 'phone_call_inbound':
     case 'phone_call_voicemail':
       return 'call'

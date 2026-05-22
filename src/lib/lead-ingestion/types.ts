@@ -27,6 +27,7 @@ export type SourceChannelEnum =
   | 'instagram_dm'
   | 'fb_messenger'
   | 'sms_inbound'
+  | 'email_inbound'
   | 'phone_call_inbound'
   | 'phone_call_voicemail'
   | 'online_booking_completed'
@@ -55,6 +56,7 @@ export const SOURCE_CHANNEL_VALUES: ReadonlyArray<SourceChannelEnum> = [
   'instagram_dm',
   'fb_messenger',
   'sms_inbound',
+  'email_inbound',
   'phone_call_inbound',
   'phone_call_voicemail',
   'online_booking_completed',
