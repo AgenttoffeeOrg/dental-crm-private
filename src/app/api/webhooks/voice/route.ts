@@ -175,6 +175,29 @@ export async function POST(request: NextRequest) {
     const contactId = contactRef?.contactId ?? null
     const callShape = classifyCallShape(callStatus, recordingUrl)
 
+    // 2b.26.3: Google Ads call-extension attribution. When Google's
+    // call-tracking number forwards an inbound call, the status-callback
+    // URL gets gclid (and friends) appended as query params. Capture them
+    // onto the activity so reporting can answer "this missed call cost
+    // £X in ad spend" — the Limelight ROI metric Toffee actually sells.
+    // Also accepts utm_* params for parity with the other channels.
+    const callUrl = (() => {
+      try {
+        return new URL(request.url)
+      } catch {
+        return null
+      }
+    })()
+    const attribution = {
+      gclid: callUrl?.searchParams.get('gclid') ?? null,
+      utm_source: callUrl?.searchParams.get('utm_source') ?? null,
+      utm_medium: callUrl?.searchParams.get('utm_medium') ?? null,
+      utm_campaign: callUrl?.searchParams.get('utm_campaign') ?? null,
+      utm_content: callUrl?.searchParams.get('utm_content') ?? null,
+      utm_term: callUrl?.searchParams.get('utm_term') ?? null,
+    }
+    const hasAttribution = Object.values(attribution).some((v) => v !== null && v !== '')
+
     // 6. Check if activity already exists for this call (for updates)
     const { data: existingActivities } = await supabase
       .from('activities')
@@ -254,11 +277,14 @@ export async function POST(request: NextRequest) {
           // activity metadata so the timeline UI can render a
           // "Missed call ⚠️" badge and downstream automations /
           // notifications can branch.
+          // 2b.26.3: gclid + utm_* attached when present so call ROI
+          // reports can match calls back to Google Ads / campaign spend.
           integration_metadata: {
             direction,
             correlation_id: correlationId,
             call_shape: callShape,
             new_caller: contactRef?.isNew === true,
+            ...(hasAttribution ? { attribution } : {}),
           },
         })
         .select()
