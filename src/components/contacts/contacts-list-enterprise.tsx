@@ -66,6 +66,10 @@ import { EmptyState } from '@/components/ui/empty-state'
 import type { Contact, AppUser } from '@/types/database'
 import { CreateContactSlideOver } from './create-contact-slide-over'
 import { CsvImportDialog } from './csv-import-dialog'
+import {
+  ACTIVE_SOURCE_CHANNELS,
+  getSourceLabel,
+} from '@/lib/source-channels/labels'
 import { useSavedContactViews, type ContactFilters } from '@/hooks/use-saved-contact-views'
 import { BookmarkIcon, ChevronDown } from 'lucide-react'
 
@@ -100,6 +104,11 @@ export function ContactsListEnterprise() {
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [locationFilter, setLocationFilter] = useState<string>('all') // NEW: Location filter
   const [tagFilter, setTagFilter] = useState<string>('all')
+  // 2b.30 — extra filter dimensions per the contacts audit.
+  //   ownerFilter: 'all' | 'unassigned' | <user-id>
+  //   dateAddedFilter: 'all' | 'today' | '7d' | '30d' | 'older'
+  const [ownerFilter, setOwnerFilter] = useState<string>('all')
+  const [dateAddedFilter, setDateAddedFilter] = useState<string>('all')
 
   // Sort
   const [sortField, setSortField] = useState<'full_name' | 'created_at' | 'updated_at'>('updated_at')
@@ -138,6 +147,8 @@ export function ContactsListEnterprise() {
     sourceFilter,
     locationFilter, // NEW: Re-load when location filter changes
     tagFilter,
+    ownerFilter,
+    dateAddedFilter,
     sortField,
     sortOrder,
     currentPage,
@@ -208,6 +219,32 @@ export function ContactsListEnterprise() {
 
       if (tagFilter !== 'all') {
         query = query.contains('tags', [tagFilter])
+      }
+
+      // 2b.30 — Owner filter. 'unassigned' = NULL on owner_user_id.
+      if (ownerFilter === 'unassigned') {
+        query = query.is('owner_user_id', null)
+      } else if (ownerFilter !== 'all') {
+        query = query.eq('owner_user_id', ownerFilter)
+      }
+
+      // 2b.30 — Date Added presets. Boundaries computed once on each
+      // load — fine for any list view because the user explicitly
+      // re-runs by changing the filter.
+      if (dateAddedFilter !== 'all') {
+        const now = Date.now()
+        const day = 24 * 60 * 60 * 1000
+        if (dateAddedFilter === 'today') {
+          const startOfToday = new Date()
+          startOfToday.setHours(0, 0, 0, 0)
+          query = query.gte('created_at', startOfToday.toISOString())
+        } else if (dateAddedFilter === '7d') {
+          query = query.gte('created_at', new Date(now - 7 * day).toISOString())
+        } else if (dateAddedFilter === '30d') {
+          query = query.gte('created_at', new Date(now - 30 * day).toISOString())
+        } else if (dateAddedFilter === 'older') {
+          query = query.lt('created_at', new Date(now - 30 * day).toISOString())
+        }
       }
 
       // Sort
@@ -412,6 +449,8 @@ export function ContactsListEnterprise() {
     sourceFilter !== 'all',
     locationFilter !== 'all', // NEW: Include location filter
     tagFilter !== 'all',
+    ownerFilter !== 'all',
+    dateAddedFilter !== 'all',
     debouncedSearchQuery !== '',
   ].filter(Boolean).length
 
@@ -422,6 +461,8 @@ export function ContactsListEnterprise() {
     setSourceFilter('all')
     setLocationFilter('all') // NEW: Clear location filter
     setTagFilter('all')
+    setOwnerFilter('all')
+    setDateAddedFilter('all')
     setCurrentPage(1)
   }
 
@@ -551,17 +592,23 @@ export function ContactsListEnterprise() {
         </Select>
 
         {/* Source Filter */}
+        {/* 2b.30: source filter now mirrors the actual source_channel enum
+            values stored on contacts. Previously it offered "website"/"facebook"
+            etc. which never matched real data and filtered to zero. */}
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="All Sources" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Sources</SelectItem>
-            <SelectItem value="website">Website</SelectItem>
-            <SelectItem value="referral">Referral</SelectItem>
-            <SelectItem value="google_ads">Google Ads</SelectItem>
-            <SelectItem value="facebook">Facebook</SelectItem>
-            <SelectItem value="walk_in">Walk-in</SelectItem>
+            {ACTIVE_SOURCE_CHANNELS.map((channel) => {
+              const src = getSourceLabel(channel)
+              return (
+                <SelectItem key={channel} value={channel}>
+                  {src.label}
+                </SelectItem>
+              )
+            })}
           </SelectContent>
         </Select>
 
@@ -581,6 +628,36 @@ export function ContactsListEnterprise() {
             </SelectContent>
           </Select>
         )}
+
+        {/* 2b.30: Owner filter — driven by team members already loaded. */}
+        <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All Owners" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All owners</SelectItem>
+            <SelectItem value="unassigned">— Unassigned</SelectItem>
+            {teamMembers.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.full_name || m.email || m.id.slice(0, 8)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* 2b.30: Date Added presets. */}
+        <Select value={dateAddedFilter} onValueChange={setDateAddedFilter}>
+          <SelectTrigger className="w-[170px]">
+            <SelectValue placeholder="Any date" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any date added</SelectItem>
+            <SelectItem value="today">Added today</SelectItem>
+            <SelectItem value="7d">Last 7 days</SelectItem>
+            <SelectItem value="30d">Last 30 days</SelectItem>
+            <SelectItem value="older">Older than 30 days</SelectItem>
+          </SelectContent>
+        </Select>
 
         {/* Clear Filters */}
         {activeFiltersCount > 0 && (
@@ -758,11 +835,17 @@ export function ContactsListEnterprise() {
                           <div className="font-medium text-gray-900 hover:text-blue-600">
                             {contact.full_name}
                           </div>
-                          {contact.source && (
-                            <div className="text-xs text-gray-500">
-                              Source: {contact.source}
-                            </div>
-                          )}
+                          {contact.source && (() => {
+                            // 2b.30: pretty channel label + icon instead of raw enum.
+                            const src = getSourceLabel(contact.source)
+                            const Icon = src.icon
+                            return (
+                              <div className="flex items-center gap-1 text-xs text-gray-500">
+                                <Icon className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                <span>{src.label}</span>
+                              </div>
+                            )
+                          })()}
                         </div>
                       </div>
                     </td>
