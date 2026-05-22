@@ -247,6 +247,28 @@ export const CONTACT_EVENTS: NotificationEventDefinition[] = [
     group_by: 'event_key', // thread multiple lead.arrived in the drawer; each lead's entity_id differs
     throttle_minutes: 0, // never throttle individual lead notifications
   },
+  {
+    event_key: 'lead.attachment_uncertain',
+    module: 'contacts',
+    title_template: "AI wasn't sure where this message belongs",
+    body_template:
+      'A new inbound message was attached to "{{deal_title}}", but the AI couldn\'t tell ' +
+      "whether it belonged there. Open the activity to review — reassigning will clear the flag.",
+    severity: 'info',
+    priority: 'medium',
+    default_channels: ['in_app'],
+    quick_actions: [
+      {
+        action_key: 'open_lead',
+        label: 'Review',
+        type: 'primary',
+        navigation_url: '/contacts/{{entity_id}}',
+      },
+    ],
+    default_audience: 'lead_routing',
+    group_by: 'event_key',
+    throttle_minutes: 0,
+  },
 ]
 
 // =====================================================

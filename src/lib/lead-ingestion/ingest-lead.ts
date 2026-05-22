@@ -136,7 +136,7 @@ export class IngestLeadValidationError extends Error {
 // =============================================================================
 
 export type EmitNotificationFn = (payload: {
-  event_key: 'lead.arrived'
+  event_key: 'lead.arrived' | 'lead.attachment_uncertain'
   event_id: string
   tenant_id: string
   metadata: Record<string, unknown>
@@ -324,6 +324,29 @@ export async function ingestLead(
     })
   } catch (err) {
     console.error('[ingestLead] emitNotification failed (non-fatal):', err)
+  }
+
+  // 2b.24.4: when AI couldn't confidently choose a deal for this inbound,
+  // raise a separate notification so the operator can review even if they
+  // don't open the deal page. The router's group_by='event_key' threads
+  // multiple of these together in the drawer. Best-effort like lead.arrived.
+  if (attachmentUncertain && contactId && activityId) {
+    try {
+      await _emitNotification({
+        event_key: 'lead.attachment_uncertain',
+        event_id: `lead.attachment_uncertain:${activityId}`,
+        tenant_id: input.tenant_id,
+        metadata: {
+          contact_id: contactId,
+          deal_id: dealId,
+          deal_title: dealTitle,
+          activity_id: activityId,
+          source_channel: input.source_channel,
+        },
+      })
+    } catch (err) {
+      console.error('[ingestLead] attachment_uncertain emit failed (non-fatal):', err)
+    }
   }
 
   // ---------------------------------------------------------------------------
