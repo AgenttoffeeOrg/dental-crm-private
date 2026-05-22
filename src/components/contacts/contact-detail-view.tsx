@@ -62,6 +62,7 @@ import { NextBestScriptPanel } from '@/components/scripts/next-best-script-panel
 import { formatDistanceToNow } from 'date-fns'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
 import { LearningLoopSummary } from '@/components/contacts/learning-loop-summary'
+import { NextBestActionCard } from '@/components/contacts/next-best-action-card'
 
 /**
  * Phase 2b.30.2 — Persona / psych-profile feature is paused.
@@ -74,6 +75,16 @@ import { LearningLoopSummary } from '@/components/contacts/learning-loop-summary
  * to `true` once the table + analyze API are designed and built.
  */
 const PSYCH_PROFILE_ENABLED = false
+
+/**
+ * Phase 2b.31.1 — Learning Loop signals (sales-script success rates,
+ * adoption leaders, revenue leaders) are gated too. The query against
+ * `sales_script_metrics` works, but the test tenant + every fresh
+ * practice has zero data, so the panel renders three "Need more data"
+ * placeholder boxes that make the page look unfinished. Pause until
+ * the sales-script system has organic data to surface.
+ */
+const LEARNING_LOOP_ENABLED = false
 
 interface ContactDetailViewProps {
   contactId: string
@@ -1067,14 +1078,32 @@ export function ContactDetailView({
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
         <div className="border-b border-gray-200 bg-white px-6 py-5 space-y-4">
+          {/* 2b.31.2 — Next-Best-Action card sits at the top of the
+              right column. Tells the operator what to DO with this
+              contact right now rather than just presenting data. */}
+          <NextBestActionCard
+            contactId={contactId}
+            tenantId={tenantId}
+            onSendSms={() => {
+              if (sanitizedPrimaryPhone) setSmsComposerOpen(true)
+              else toast.error('Add a phone number before sending an SMS.')
+            }}
+            onSendEmail={() => {
+              if (contact.primary_email) setEmailComposerOpen(true)
+              else toast.error('Add an email address before composing.')
+            }}
+            onSendWhatsapp={() => setCreateActivityDialogOpen(true)}
+            onCreateDeal={() => setCreateDealDialogOpen(true)}
+            onViewDeal={(dealId) => router.push(`/deals/${dealId}`)}
+          />
+
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Relationship Snapshot
+                Quick actions
               </p>
-              <h2 className="text-xl font-semibold text-gray-900">
-                {contact.full_name || 'Contact Overview'}
-              </h2>
+              {/* 2b.31.3 — duplicated contact name removed; left
+                  sidebar header is the canonical place. */}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -1171,12 +1200,14 @@ export function ContactDetailView({
           </div>
         </div>
 
-        <div className="mt-4">
-          <LearningLoopSummary
-            tenantId={tenantId}
-            onOpenCoaching={() => router.push(`/call-coaching?contactId=${contactId}`)}
-          />
-        </div>
+        {LEARNING_LOOP_ENABLED && (
+          <div className="mt-4">
+            <LearningLoopSummary
+              tenantId={tenantId}
+              onOpenCoaching={() => router.push(`/call-coaching?contactId=${contactId}`)}
+            />
+          </div>
+        )}
 
         <Tabs
           value={activeTab}
