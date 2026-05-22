@@ -473,7 +473,20 @@ function AutomationsList({
                   <p className="text-sm text-gray-600 line-clamp-2">{automation.description}</p>
                 )}
               </div>
-              {getStatusBadge(automation.status)}
+              <Badge
+                variant="secondary"
+                className={
+                  automation.status === 'active'
+                    ? 'bg-green-100 text-green-700'
+                    : automation.status === 'paused'
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : automation.status === 'archived'
+                    ? 'bg-gray-200 text-gray-600'
+                    : 'bg-blue-100 text-blue-700'
+                }
+              >
+                {automation.status}
+              </Badge>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-4 pt-4 border-t">
