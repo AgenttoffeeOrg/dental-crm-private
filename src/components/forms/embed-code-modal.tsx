@@ -18,6 +18,7 @@ import {
   generateQRCodeDataURL,
   generateUTMURL,
 } from '@/lib/forms/embed-generator'
+import { CmsEmbedWizard } from './cms-embed-wizard'
 
 interface EmbedCodeModalProps {
   form: MarketingForm
@@ -131,6 +132,13 @@ export function EmbedCodeModal({ form, open, onClose }: EmbedCodeModalProps) {
               and click IDs that the practice manually appends to the iframe URL. For paid Google
               or Meta ads where you want every <code>gclid</code>/<code>fbclid</code> captured,
               prefer the <strong>Hosted form URL</strong> tab.
+            </div>
+
+            {/* 2b.28.1 — Per-CMS step-by-step embed instructions. Most
+                practice owners aren't developers and need exact clicks
+                rather than "paste this in your HTML". */}
+            <div className="border-t pt-4">
+              <CmsEmbedWizard />
             </div>
           </TabsContent>
 
