@@ -320,6 +320,33 @@ export async function POST(request: NextRequest) {
       duration_ms: Date.now() - startTime,
     })
 
+    // 9. 2b.26.2: missed-call notification. Only fires on terminal
+    // states (missed / voicemail) — we don't want a notification per
+    // ringing / in-progress / answered status update. Best-effort:
+    // wrapped in try/catch and never blocks the 200 response Twilio
+    // expects.
+    const isTerminalMissed = !existingActivity && (callShape === 'missed' || callShape === 'voicemail')
+    if (isTerminalMissed && tenantId && contactId) {
+      try {
+        const { emitNotification } = await import('@/lib/notifications/notification-router')
+        await emitNotification({
+          event_key: 'lead.missed_call',
+          event_id: `voice.missed:${callSid}`,
+          tenant_id: tenantId,
+          metadata: {
+            contact_id: contactId,
+            activity_id: activity.id,
+            entity_id: contactId,
+            caller_label: from || 'unknown number',
+            call_shape: callShape,
+            recording_url: recordingUrl ?? null,
+          },
+        })
+      } catch (err) {
+        console.error(`[WEBHOOK VOICE][${correlationId}] missed-call notification failed (non-fatal):`, err)
+      }
+    }
+
     console.log(`[WEBHOOK VOICE][${correlationId}] ✅ Call ${callStatus} - activity ${activity.id}`)
     
     return NextResponse.json({

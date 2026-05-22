@@ -248,6 +248,28 @@ export const CONTACT_EVENTS: NotificationEventDefinition[] = [
     throttle_minutes: 0, // never throttle individual lead notifications
   },
   {
+    event_key: 'lead.missed_call',
+    module: 'contacts',
+    title_template: 'Missed call from {{caller_label}}',
+    body_template:
+      'Inbound call from {{caller_label}} ended without being answered. ' +
+      'Call back ASAP — patients reach a competitor if they don\'t hear back quickly.',
+    severity: 'warning',
+    priority: 'urgent',
+    default_channels: ['in_app', 'email'],
+    quick_actions: [
+      {
+        action_key: 'open_lead',
+        label: 'Open contact',
+        type: 'primary',
+        navigation_url: '/contacts/{{entity_id}}',
+      },
+    ],
+    default_audience: 'lead_routing',
+    group_by: 'entity_id',
+    throttle_minutes: 0,
+  },
+  {
     event_key: 'lead.attachment_uncertain',
     module: 'contacts',
     title_template: "AI wasn't sure where this message belongs",
