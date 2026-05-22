@@ -4,10 +4,13 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { useAuth } from '@/lib/auth'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
-import { Rocket, TrendingUp, Users, Mail, CheckCircle } from 'lucide-react'
+import { Rocket, TrendingUp, Users, Mail, CheckCircle, Power } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
+import { authFetch } from '@/lib/auth-fetch'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 export function GeneralSettingsPanel() {
@@ -15,14 +18,17 @@ export function GeneralSettingsPanel() {
   const { tenantPlan } = useFeatureFlags()
   const [stats, setStats] = useState({ campaigns: 0, contacts: 0, sent: 0 })
   const [loading, setLoading] = useState(true)
+  const [marketingEnabled, setMarketingEnabled] = useState<boolean | null>(null)
+  const [toggling, setToggling] = useState(false)
 
   useEffect(() => {
     loadStats()
+    loadMarketingFlag()
   }, [appUser])
 
   const loadStats = async () => {
     if (!appUser?.tenant_id) return
-    
+
     const supabase = createClient()
     try {
       const [campaigns, contacts, sends] = await Promise.all([
@@ -30,7 +36,7 @@ export function GeneralSettingsPanel() {
         supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('tenant_id', appUser.tenant_id),
         supabase.from('marketing_sends').select('id', { count: 'exact', head: true }),
       ])
-      
+
       setStats({
         campaigns: campaigns.count || 0,
         contacts: contacts.count || 0,
@@ -43,8 +49,83 @@ export function GeneralSettingsPanel() {
     }
   }
 
+  const loadMarketingFlag = async () => {
+    if (!appUser?.tenant_id) return
+    const supabase = createClient()
+    try {
+      const { data } = await supabase
+        .from('tenants')
+        .select('marketing_enabled')
+        .eq('id', appUser.tenant_id)
+        .maybeSingle()
+      setMarketingEnabled(Boolean((data as { marketing_enabled?: boolean } | null)?.marketing_enabled))
+    } catch (err) {
+      console.error('[marketing-toggle] flag load failed', err)
+      setMarketingEnabled(false)
+    }
+  }
+
+  const handleToggleMarketing = async (next: boolean) => {
+    if (toggling) return
+    setToggling(true)
+    try {
+      const res = await authFetch('/api/settings/marketing/enable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next ? { enabled: true } : { enabled: false }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        toast.error(
+          body?.message || (next ? 'Failed to enable marketing module' : 'Failed to disable marketing module')
+        )
+        return
+      }
+      setMarketingEnabled(next)
+      toast.success(next ? 'Marketing module enabled' : 'Marketing module disabled')
+    } catch (err) {
+      console.error('[marketing-toggle] toggle failed', err)
+      toast.error('Something went wrong toggling the marketing module')
+    } finally {
+      setToggling(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* 2b.25.2 — Master enable toggle. Forms, campaigns and journeys
+          all gate on tenants.marketing_enabled; without this UI a fresh
+          practice gets 403 MARKETING_DISABLED on every form submission
+          until someone hand-SQLs the flag. */}
+      <Card className={cn('border-2', marketingEnabled ? 'border-green-200 bg-green-50/30' : 'border-amber-200 bg-amber-50/30')}>
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0', marketingEnabled ? 'bg-green-100' : 'bg-amber-100')}>
+                <Power className={cn('h-5 w-5', marketingEnabled ? 'text-green-700' : 'text-amber-700')} />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">
+                  Marketing module — {marketingEnabled === null ? 'loading…' : marketingEnabled ? 'ON' : 'OFF'}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1 max-w-xl">
+                  Controls whether web forms, landing pages, campaigns, automations and SMS/email sends are active for this
+                  practice. New form submissions are rejected with a 403 when this is off.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center pt-1">
+              <Switch
+                checked={Boolean(marketingEnabled)}
+                disabled={marketingEnabled === null || toggling}
+                onCheckedChange={handleToggleMarketing}
+                aria-label="Toggle marketing module"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Marketing Overview</CardTitle>
