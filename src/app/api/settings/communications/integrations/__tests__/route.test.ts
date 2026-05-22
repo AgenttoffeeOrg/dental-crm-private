@@ -31,10 +31,26 @@ jest.mock('@/lib/auth/api-auth-helpers', () => ({
 
 let integrationMaybeRow: Record<string, unknown> | null | undefined
 let lastUpsertArg: Record<string, unknown> | null
+let lastTenantUpdateArg: Record<string, unknown> | null
+let lastTenantUpdateId: string | null
+let tenantUpdateError: { message: string } | null
 
 jest.mock('@/lib/supabase-server', () => ({
   createServiceClient: jest.fn(() => ({
     from(table: string) {
+      if (table === 'tenants') {
+        return {
+          update(patch: Record<string, unknown>) {
+            lastTenantUpdateArg = patch
+            return {
+              eq(_col: string, val: string) {
+                lastTenantUpdateId = val
+                return Promise.resolve({ data: null, error: tenantUpdateError })
+              },
+            }
+          },
+        }
+      }
       expect(table).toBe('integration_settings')
       return {
         select() {
@@ -92,6 +108,9 @@ beforeEach(() => {
   jest.clearAllMocks()
   integrationMaybeRow = undefined
   lastUpsertArg = null
+  lastTenantUpdateArg = null
+  lastTenantUpdateId = null
+  tenantUpdateError = null
   mockRequire.mockResolvedValue({
     userId: USER,
     tenantId: TENANT,
@@ -232,6 +251,91 @@ describe('PATCH /api/settings/communications/integrations', () => {
     expect(lastUpsertArg?.is_sms_configured).toBe(true)
   })
 
+  // 2b.25.1 — SMS inbound number is mirrored to tenants.sms_phone_number
+  it('mirrors sms_from_number to tenants.sms_phone_number so the inbound webhook resolver works', async () => {
+    const res = await PATCH(
+      makePatchReq({
+        channel: 'sms',
+        payload: {
+          sms_account_sid: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+          sms_auth_token: 'auth',
+          sms_from_number: '+14155551234',
+        },
+      })
+    )
+    expect(res.status).toBe(200)
+    expect(lastTenantUpdateId).toBe(TENANT)
+    expect(lastTenantUpdateArg).toMatchObject({ sms_phone_number: '+14155551234' })
+    // The outbound integration_settings upsert STILL happened after the mirror.
+    expect(lastUpsertArg?.sms_from_number).toBe('+14155551234')
+  })
+
+  it('mirrors whatsapp_from_number to tenants.whatsapp_phone_number', async () => {
+    const res = await PATCH(
+      makePatchReq({
+        channel: 'whatsapp',
+        payload: {
+          whatsapp_account_sid: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+          whatsapp_auth_token: 'tok',
+          whatsapp_from_number: '+447782218044',
+        },
+      })
+    )
+    expect(res.status).toBe(200)
+    expect(lastTenantUpdateId).toBe(TENANT)
+    expect(lastTenantUpdateArg).toMatchObject({ whatsapp_phone_number: '+447782218044' })
+  })
+
+  it('clears tenants.sms_phone_number when sms_from_number is set to an empty string (unbind)', async () => {
+    const res = await PATCH(
+      makePatchReq({
+        channel: 'sms',
+        payload: {
+          sms_account_sid: 'sid',
+          sms_auth_token: 'tok',
+          sms_from_number: '   ',
+        },
+      })
+    )
+    expect(res.status).toBe(200)
+    expect(lastTenantUpdateArg).toMatchObject({ sms_phone_number: null })
+  })
+
+  it('does NOT touch tenants for email channel — no inbound counterpart', async () => {
+    const res = await PATCH(
+      makePatchReq({
+        channel: 'email',
+        payload: {
+          email_provider: 'resend',
+          email_api_key: 'key',
+          email_from_address: 'practice@example.com',
+        },
+      })
+    )
+    expect(res.status).toBe(200)
+    expect(lastTenantUpdateArg).toBeNull()
+  })
+
+  it('returns 500 inbound_number_bind_failed when the tenants update errors — and integration_settings upsert is NOT attempted', async () => {
+    tenantUpdateError = { message: 'simulated failure' }
+    const res = await PATCH(
+      makePatchReq({
+        channel: 'sms',
+        payload: {
+          sms_account_sid: 'sid',
+          sms_auth_token: 'tok',
+          sms_from_number: '+14155551234',
+        },
+      })
+    )
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toBe('inbound_number_bind_failed')
+    // The integration_settings upsert was never attempted — confirms we
+    // didn't leave a half-state where outbound was configured but inbound
+    // routing was silently broken.
+    expect(lastUpsertArg).toBeNull()
+  })
 })
 
 describe('GET /api/settings/communications/integrations', () => {

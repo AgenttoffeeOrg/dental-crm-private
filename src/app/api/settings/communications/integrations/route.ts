@@ -197,6 +197,33 @@ export async function PATCH(request: NextRequest) {
     const writeRow = buildWriteRow(channel, payload as Record<string, unknown>)
 
     const supabase = createServiceClient()
+
+    // 2b.25.1: bind the inbound webhook resolver to the same number the
+    // operator just typed in. The SMS/WhatsApp inbound routes resolve
+    // tenant by `tenants.sms_phone_number` / `tenants.whatsapp_phone_number`,
+    // but historically this endpoint only wrote to `integration_settings.*_from_number`.
+    // Result: a fresh tenant looked configured but inbound messages 401'd.
+    // We update the canonical inbound column FIRST so a half-success state
+    // leaves outbound stale rather than inbound silently broken.
+    const tenantMirror = inboundNumberMirror(channel, payload as Record<string, unknown>)
+    if (tenantMirror) {
+      const { error: tenantErr } = await supabase
+        .from('tenants')
+        .update({ [tenantMirror.column]: tenantMirror.value, updated_at: new Date().toISOString() })
+        .eq('id', auth.tenantId)
+      if (tenantErr) {
+        console.error('[settings/communications/integrations PATCH] inbound number mirror failed', {
+          tenantId: auth.tenantId,
+          column: tenantMirror.column,
+          error: tenantErr.message,
+        })
+        return NextResponse.json(
+          { error: 'inbound_number_bind_failed', message: tenantErr.message },
+          { status: 500 }
+        )
+      }
+    }
+
     const { data, error } = await supabase
       .from('integration_settings')
       .upsert(
@@ -218,5 +245,29 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ ok: true, row: data }, { status: 200 })
   } catch (err) {
     return authErrorResponse(err)
+  }
+}
+
+/**
+ * For sms / whatsapp PATCH bodies, identify the `tenants` column the
+ * inbound webhook resolves against and the value we should set it to.
+ * Returns null for channels that don't have an inbound counterpart
+ * (email, voice — voice tenant binding lives elsewhere).
+ *
+ * Empty / whitespace-only inputs are normalised to NULL so a practice
+ * can unbind their inbound number cleanly.
+ */
+function inboundNumberMirror(
+  channel: IntegrationChannel,
+  payload: Record<string, unknown>
+): { column: 'sms_phone_number' | 'whatsapp_phone_number'; value: string | null } | null {
+  if (channel !== 'sms' && channel !== 'whatsapp') return null
+  const fromCol = channel === 'sms' ? 'sms_from_number' : 'whatsapp_from_number'
+  if (!(fromCol in payload)) return null
+  const raw = payload[fromCol]
+  const trimmed = typeof raw === 'string' ? raw.trim() : ''
+  return {
+    column: channel === 'sms' ? 'sms_phone_number' : 'whatsapp_phone_number',
+    value: trimmed.length > 0 ? trimmed : null,
   }
 }
