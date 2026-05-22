@@ -33,7 +33,9 @@ import { createClient } from '@/lib/supabase-client'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth'
+import { authFetch } from '@/lib/auth-fetch'
 import type { Contact } from '@/types/database'
+import { ACTIVE_SOURCE_CHANNELS, getSourceLabel } from '@/lib/source-channels/labels'
 
 interface CreateContactSlideOverProps {
   open: boolean
@@ -43,16 +45,14 @@ interface CreateContactSlideOverProps {
   mode?: 'create' | 'edit'
 }
 
-const SOURCE_OPTIONS = [
-  { value: 'website', label: 'Website' },
-  { value: 'referral', label: 'Referral' },
-  { value: 'google_ads', label: 'Google Ads' },
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'walk_in', label: 'Walk-in' },
-  { value: 'phone_call', label: 'Phone Call' },
-  { value: 'other', label: 'Other' },
-]
+// 2b.32 — dropdown options mirror the real source_channel_enum values
+// so the contact's source field matches what every other lead channel
+// writes. Previously a free-form list ("website / facebook / instagram")
+// never matched real data, breaking the Source filter on the list page.
+const SOURCE_OPTIONS = ACTIVE_SOURCE_CHANNELS.map((channel) => ({
+  value: channel,
+  label: getSourceLabel(channel).label,
+}))
 
 const CONTACT_TYPE_OPTIONS = [
   { value: 'patient', label: 'Patient' },
@@ -308,36 +308,37 @@ export function CreateContactSlideOver({
 
         toast.success('Contact updated successfully')
       } else {
-        // Create new contact
-        const insertData = {
-          ...contactData,
-          created_at: new Date().toISOString(),
-        }
-        console.log('🔵 Creating contact with data:', insertData)
-        console.log('🔵 Tenant ID:', appUser.tenant_id)
-        console.log('🔵 Full insertData:', JSON.stringify(insertData, null, 2))
-        
-        const response = await supabase
-          .from('contacts')
-          .insert(insertData)
-          .select()
-        
-        console.log('🔵 Full Supabase response:', response)
-        console.log('🔵 Response data:', response.data)
-        console.log('🔵 Response error:', response.error)
-        console.log('🔵 Response status:', response.status)
-        console.log('🔵 Response statusText:', response.statusText)
+        // 2b.32 — manual contact creation now goes through the canonical
+        // ingestLead engine via POST /api/contacts/manual-create. That gives
+        // us dedup, an attribution touchpoint, a default-pipeline deal, and
+        // the lead.arrived notification — same as every other lead-creation
+        // channel. The previous direct-INSERT path bypassed all of those.
+        const createRes = await authFetch('/api/contacts/manual-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name: formData.full_name.trim(),
+            primary_phone: formData.primary_phone
+              ? sanitizePhoneNumber(formData.primary_phone)
+              : null,
+            primary_email: formData.primary_email.trim().toLowerCase() || null,
+            source: formData.source || null,
+            notes: formData.notes || null,
+            tags: selectedTags,
+          }),
+        })
+        const createBody = await createRes.json().catch(() => ({}))
 
-        if (response.error) {
-          console.error('❌ Insert error object:', response.error)
-          console.error('❌ Insert error type:', typeof response.error)
-          console.error('❌ Insert error keys:', Object.keys(response.error))
-          console.error('❌ Insert error JSON:', JSON.stringify(response.error, null, 2))
-          throw response.error
+        if (createRes.status === 409 && createBody?.error === 'review_required') {
+          toast.warning(
+            createBody.message ||
+              'This contact looks like a possible duplicate. It has been queued on the Dedup Queue.'
+          )
+        } else if (!createRes.ok) {
+          throw new Error(createBody?.message || createBody?.error || 'Failed to create contact')
+        } else {
+          toast.success('Contact created — deal + attribution captured')
         }
-
-        console.log('✅ Contact created successfully:', response.data)
-        toast.success('Contact created successfully')
       }
 
       onContactCreated?.()

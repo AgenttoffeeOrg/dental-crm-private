@@ -261,16 +261,27 @@ export function ContactsListEnterprise() {
 
       // Enhance contacts with deal data (optimized query)
       const contactIds = (data || []).map(c => c.id)
-      
+
       if (contactIds.length > 0) {
-        const { data: dealStats } = await supabase
-          .from('deals')
-          .select('contact_id, value_estimate_cents')
-          .in('contact_id', contactIds)
-          .eq('tenant_id', appUser?.active_tenant_id)
+        // 2b.30.3: also fetch the latest activity timestamp per
+        // contact so the row sub-text can show "last touched 3h ago"
+        // — what an operator actually needs at a glance.
+        const [dealStatsRes, activityStatsRes] = await Promise.all([
+          supabase
+            .from('deals')
+            .select('contact_id, value_estimate_cents')
+            .in('contact_id', contactIds)
+            .eq('tenant_id', appUser?.active_tenant_id),
+          supabase
+            .from('activities')
+            .select('contact_id, occurred_at')
+            .in('contact_id', contactIds)
+            .eq('tenant_id', appUser?.active_tenant_id)
+            .order('occurred_at', { ascending: false }),
+        ])
 
         const dealMap = new Map<string, { count: number; value: number }>()
-        dealStats?.forEach(deal => {
+        dealStatsRes.data?.forEach(deal => {
           const existing = dealMap.get(deal.contact_id) || { count: 0, value: 0 }
           dealMap.set(deal.contact_id, {
             count: existing.count + 1,
@@ -278,10 +289,20 @@ export function ContactsListEnterprise() {
           })
         })
 
+        // First-seen per contact_id wins (rows already sorted desc).
+        const lastActivityMap = new Map<string, string>()
+        activityStatsRes.data?.forEach(row => {
+          if (!row.occurred_at) return
+          if (!lastActivityMap.has(row.contact_id)) {
+            lastActivityMap.set(row.contact_id, row.occurred_at)
+          }
+        })
+
         const enhanced: EnhancedContact[] = (data || []).map(contact => ({
           ...contact,
           deal_count: dealMap.get(contact.id)?.count || 0,
           total_deal_value: dealMap.get(contact.id)?.value || 0,
+          last_activity_at: lastActivityMap.get(contact.id) ?? undefined,
         }))
 
         setContacts(enhanced)
@@ -846,6 +867,13 @@ export function ContactsListEnterprise() {
                               </div>
                             )
                           })()}
+                          {contact.last_activity_at && (
+                            // 2b.30.3 — "last touched 3h ago" so the operator
+                            // doesn't have to click in to triage stale leads.
+                            <div className="text-xs text-gray-400">
+                              Last touch {formatDistanceToNow(new Date(contact.last_activity_at), { addSuffix: true })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>

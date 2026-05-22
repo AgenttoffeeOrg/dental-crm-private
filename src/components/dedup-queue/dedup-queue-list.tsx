@@ -33,6 +33,12 @@ export function DedupQueueList() {
   const [debouncedQ, setDebouncedQ] = useState('')
   const [items, setItems] = useState<DedupQueueItem[]>([])
   const [pendingTotal, setPendingTotal] = useState<number | null>(null)
+  // 2b.33 — also track resolved-total so the subtitle hints there's
+  // history when pending = 0 but past leads have been merged /
+  // dismissed. Audit noted operators couldn't tell the difference
+  // between "no dedup activity ever" and "all clean, but past
+  // resolutions exist".
+  const [resolvedTotal, setResolvedTotal] = useState<number | null>(null)
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [permissionDenied, setPermissionDenied] = useState(false)
@@ -101,13 +107,36 @@ export function DedupQueueList() {
     }
   }, [status])
 
+  // 2b.33 — fetch the "all resolved" total once on mount so the subtitle
+  // can hint at history when pending == 0. "All" status returns every
+  // row regardless of resolution state.
+  const fetchResolvedCount = useCallback(async () => {
+    try {
+      const [pendingRes, allRes] = await Promise.all([
+        authFetch('/api/dedup-queue?status=pending&limit=1'),
+        authFetch('/api/dedup-queue?status=all&limit=1'),
+      ])
+      const pendingBody = pendingRes.ok
+        ? await pendingRes.json().catch(() => null)
+        : null
+      const allBody = allRes.ok ? await allRes.json().catch(() => null) : null
+      const pending = pendingBody?.total ?? 0
+      const all = allBody?.total ?? 0
+      const resolved = Math.max(0, all - pending)
+      setResolvedTotal(resolved)
+    } catch {
+      // decorative
+    }
+  }, [])
+
   useEffect(() => {
     fetchItems()
   }, [fetchItems])
 
   useEffect(() => {
     fetchPendingCount()
-  }, [fetchPendingCount])
+    fetchResolvedCount()
+  }, [fetchPendingCount, fetchResolvedCount])
 
   const handleReview = (item: DedupQueueItem) => {
     setActiveItem(item)
@@ -122,8 +151,14 @@ export function DedupQueueList() {
   const subtitle = useMemo(() => {
     if (permissionDenied) return 'Access required'
     if (pendingTotal === null) return 'Loading…'
-    return `${pendingTotal} pending — review and resolve`
-  }, [permissionDenied, pendingTotal])
+    const base = `${pendingTotal} pending — review and resolve`
+    // 2b.33 — when pending = 0 but resolved history exists, hint at it
+    // so the operator knows to flip the filter to see what happened.
+    if (pendingTotal === 0 && resolvedTotal && resolvedTotal > 0) {
+      return `${base} · ${resolvedTotal} resolved earlier (switch the filter to view)`
+    }
+    return base
+  }, [permissionDenied, pendingTotal, resolvedTotal])
 
   if (permissionDenied) {
     return (
