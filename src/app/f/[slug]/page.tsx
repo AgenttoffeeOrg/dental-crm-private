@@ -75,19 +75,19 @@ export default function PublicFormPage() {
       }
 
       setForm(data)
-      // 2b.28.2: fetch tenant brand colours so the form's submit button
-      // matches the practice's site rather than looking like a generic
-      // CRM widget. Best-effort — failure just falls back to default styling.
-      if (data?.tenant_id) {
-        const { data: tenantRow } = await supabase
-          .from('tenants')
-          .select('primary_color, secondary_color')
-          .eq('id', data.tenant_id)
-          .maybeSingle()
-        setBrand({
-          primary: (tenantRow as { primary_color?: string | null } | null)?.primary_color ?? null,
-          accent: (tenantRow as { secondary_color?: string | null } | null)?.secondary_color ?? null,
-        })
+      // 2b.28.2: fetch tenant brand colours via the public endpoint
+      // (anon role can't read tenants directly via RLS — see
+      // /api/public/form-brand). Best-effort: failure falls back to default styling.
+      try {
+        const brandRes = await fetch(
+          `/api/public/form-brand?slug=${encodeURIComponent(String(params.slug))}`
+        )
+        if (brandRes.ok) {
+          const brandBody = await brandRes.json()
+          setBrand({ primary: brandBody.primary ?? null, accent: brandBody.accent ?? null })
+        }
+      } catch (brandErr) {
+        console.warn('[PublicForm] brand fetch failed', brandErr)
       }
     } catch (err) {
       console.error('[PublicForm] Unexpected error:', err)

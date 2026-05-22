@@ -44,18 +44,18 @@ export default function EmbedFormPage() {
 
       setForm(data)
 
-      // 2b.28.2: best-effort brand colour fetch so the iframe form
-      // matches the practice's site rather than rendering generic blue.
-      if (data?.tenant_id) {
-        const { data: tenantRow } = await supabase
-          .from('tenants')
-          .select('primary_color, secondary_color')
-          .eq('id', data.tenant_id)
-          .maybeSingle()
-        setBrand({
-          primary: (tenantRow as { primary_color?: string | null } | null)?.primary_color ?? null,
-          accent: (tenantRow as { secondary_color?: string | null } | null)?.secondary_color ?? null,
-        })
+      // 2b.28.2: brand colours via the public endpoint (anon role
+      // can't read tenants directly).
+      try {
+        const brandRes = await fetch(
+          `/api/public/form-brand?id=${encodeURIComponent(String(params.id))}`
+        )
+        if (brandRes.ok) {
+          const brandBody = await brandRes.json()
+          setBrand({ primary: brandBody.primary ?? null, accent: brandBody.accent ?? null })
+        }
+      } catch (brandErr) {
+        console.warn('[EmbedForm] brand fetch failed', brandErr)
       }
 
       // Track view
