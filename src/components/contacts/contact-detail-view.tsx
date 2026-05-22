@@ -63,6 +63,18 @@ import { formatDistanceToNow } from 'date-fns'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
 import { LearningLoopSummary } from '@/components/contacts/learning-loop-summary'
 
+/**
+ * Phase 2b.30.2 — Persona / psych-profile feature is paused.
+ *
+ * The underlying tables (`contact_psych_profiles`,
+ * `contact_psych_profile_history`) don't exist yet, so every contact
+ * page render was generating a Postgres 404 in the browser console.
+ * Per the 2026-05-22 product discussion, we keep the code (don't
+ * delete) but flip it off so the contact page is clean. Flip this
+ * to `true` once the table + analyze API are designed and built.
+ */
+const PSYCH_PROFILE_ENABLED = false
+
 interface ContactDetailViewProps {
   contactId: string
 }
@@ -227,7 +239,11 @@ export function ContactDetailView({
 
   useEffect(() => {
     fetchContactData()
-    fetchPsychProfile()
+    // 2b.30.2: psych profile is paused — skip the fetch so we don't
+    // hit the missing table and 404 in the console on every render.
+    if (PSYCH_PROFILE_ENABLED) {
+      fetchPsychProfile()
+    }
   }, [contactId])
 
   useEffect(() => {
@@ -585,7 +601,11 @@ export function ContactDetailView({
                 </div>
               )}
 
-              {/* Persona Insights */}
+              {/* 2b.30.2 — Persona Insights paused. Code preserved
+                  behind the PSYCH_PROFILE_ENABLED flag at the top of
+                  this file. Flip the flag back to `true` once the
+                  schema + analyze API are ready. */}
+              {PSYCH_PROFILE_ENABLED && (
               <div className="rounded-xl border border-blue-100 bg-white shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-blue-100 px-4 py-4">
                   <div>
@@ -860,6 +880,7 @@ export function ContactDetailView({
                   </div>
                 )}
               </div>
+              )}
 
               {/* Customer Value Summary */}
               <div>
