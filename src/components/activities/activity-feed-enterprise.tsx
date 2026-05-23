@@ -210,6 +210,11 @@ export function ActivityFeedEnterprise({
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState<string>('all')
+  // 2b.34.4 — deal-chip filter. 'all' = show every activity; a specific
+  // dealId = show only activities attached to that deal; 'unsorted' =
+  // show activities with no deal_id (unfiled). The chip strip above
+  // the feed drives this state.
+  const [filterDealId, setFilterDealId] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editSubject, setEditSubject] = useState('')
@@ -367,6 +372,42 @@ const sanitizedContactPhone = useMemo(
     setEditSnippet('')
   }
 
+  // 2b.34.4 — derive a deal-chip list from whatever's actually on the
+  // current activities. We don't query the deals table here because
+  // every activity already carries deal_id + deal_title from the
+  // activity feed's underlying join. De-duped, in order of latest-
+  // activity-first so the most-active deals chip up front.
+  interface DealChip {
+    id: string | 'unsorted'
+    title: string
+    count: number
+  }
+  const dealChips = useMemo<DealChip[]>(() => {
+    const seen = new Map<string, DealChip>()
+    let unfiledCount = 0
+    for (const a of activities) {
+      if (a.deal_id) {
+        const existing = seen.get(a.deal_id)
+        if (existing) {
+          existing.count += 1
+        } else {
+          seen.set(a.deal_id, {
+            id: a.deal_id,
+            title: a.deal_title || 'Untitled deal',
+            count: 1,
+          })
+        }
+      } else {
+        unfiledCount += 1
+      }
+    }
+    const chips = Array.from(seen.values()).sort((a, b) => b.count - a.count)
+    if (unfiledCount > 0) {
+      chips.push({ id: 'unsorted', title: 'Unsorted', count: unfiledCount })
+    }
+    return chips
+  }, [activities])
+
   // Filter and search
   const filteredActivities = useMemo(() => {
     let filtered = activities
@@ -374,6 +415,15 @@ const sanitizedContactPhone = useMemo(
     // Type filter
     if (filterType !== 'all') {
       filtered = filtered.filter(a => a.type === filterType)
+    }
+
+    // 2b.34.4 — deal-chip filter
+    if (filterDealId !== 'all') {
+      if (filterDealId === 'unsorted') {
+        filtered = filtered.filter(a => !a.deal_id)
+      } else {
+        filtered = filtered.filter(a => a.deal_id === filterDealId)
+      }
     }
 
     // Search
@@ -386,7 +436,7 @@ const sanitizedContactPhone = useMemo(
     }
 
     return filtered
-  }, [activities, filterType, searchQuery])
+  }, [activities, filterType, filterDealId, searchQuery])
 
   // Group by date
   const groupedActivities = useMemo(() => {
@@ -853,6 +903,52 @@ const sanitizedContactPhone = useMemo(
           WhatsApp
         </Button>
       </div>
+
+      {/* 2b.34.4 — Deal chip filter strip. One chip per deal that
+          appears on this contact's activity feed, plus an "Unsorted"
+          chip for any activity with deal_id = null. Tap to filter
+          the feed to that deal. Tap "All" to clear. Only renders
+          when there's >= 2 chips (otherwise it's noise). */}
+      {dealChips.length >= 2 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mr-1">
+            Filter by deal
+          </span>
+          <button
+            type="button"
+            onClick={() => setFilterDealId('all')}
+            className={cn(
+              'text-xs px-2.5 py-1 rounded-full transition-colors border',
+              filterDealId === 'all'
+                ? 'bg-gray-900 text-white border-gray-900'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            )}
+          >
+            All
+          </button>
+          {dealChips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() =>
+                setFilterDealId(filterDealId === chip.id ? 'all' : chip.id)
+              }
+              className={cn(
+                'text-xs px-2.5 py-1 rounded-full transition-colors border',
+                filterDealId === chip.id
+                  ? chip.id === 'unsorted'
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-purple-600 text-white border-purple-600'
+                  : chip.id === 'unsorted'
+                  ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                  : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+              )}
+            >
+              {chip.title} · {chip.count}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filters & Search */}
       <div className="flex items-center gap-3">
