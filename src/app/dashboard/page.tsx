@@ -42,6 +42,8 @@ import { TodaysPriorities } from '@/components/dashboard/todays-priorities'
 import { DashboardTopMetricStrip } from '@/components/dashboard/dashboard-top-metric-strip'
 import { DashboardTriageLanes } from '@/components/dashboard/dashboard-triage-lanes'
 import { DashboardSmartPrompts } from '@/components/dashboard/dashboard-smart-prompts'
+import { DashboardQuickActions } from '@/components/dashboard/dashboard-quick-actions'
+import { DashboardGlobalSearch } from '@/components/dashboard/dashboard-global-search'
 import { AIInsightsWidget } from '@/components/dashboard/ai-insights-widget'
 import { LiveCoachPanel } from '@/components/dashboard/live-coach-panel'
 import { KeyboardShortcutsModal } from '@/components/dashboard/keyboard-shortcuts-modal'
@@ -308,6 +310,14 @@ export default function DashboardRedesigned() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* 2b.53 — Global search in the header. ⌘K / Ctrl+K
+                  focuses from anywhere on the dashboard. Searches
+                  contacts + deals + activity bodies via parallel
+                  RLS-scoped Supabase queries (no new endpoint). */}
+              <DashboardGlobalSearch
+                tenantId={appUser?.active_tenant_id || appUser?.tenant_id || ''}
+              />
+
               <Button
                 onClick={() => {
                   setCurrentAction('create this contact')
@@ -388,6 +398,13 @@ export default function DashboardRedesigned() {
               Whole section vanishes when nothing applies. */}
           <DashboardSmartPrompts
             tenantId={appUser?.active_tenant_id || appUser?.tenant_id || ''}
+          />
+
+          {/* 2b.53 — Quick action buttons (New Contact / New Deal).
+              Opens the existing slide-overs in place. */}
+          <DashboardQuickActions
+            tenantId={appUser?.active_tenant_id || appUser?.tenant_id || ''}
+            onRefresh={() => loadData()}
           />
 
           {/* KPI CARDS - Compact & Efficient */}
