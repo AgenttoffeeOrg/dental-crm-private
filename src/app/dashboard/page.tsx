@@ -39,6 +39,7 @@ import { CreateContactSlideOver } from '@/components/contacts/create-contact-sli
 import { CreateTaskSlideOver } from '@/components/tasks/create-task-slide-over'
 import { CreateDealSlideOver } from '@/components/deals/create-deal-slide-over'
 import { TodaysPriorities } from '@/components/dashboard/todays-priorities'
+import { DashboardTopMetricStrip } from '@/components/dashboard/dashboard-top-metric-strip'
 import { AIInsightsWidget } from '@/components/dashboard/ai-insights-widget'
 import { LiveCoachPanel } from '@/components/dashboard/live-coach-panel'
 import { KeyboardShortcutsModal } from '@/components/dashboard/keyboard-shortcuts-modal'
@@ -360,6 +361,15 @@ export default function DashboardRedesigned() {
               </Button>
             </div>
           </div>
+
+          {/* 2b.49 — Top metric strip. Five at-a-glance numbers in
+              one line, each clickable. Replaces the dashboard's
+              "what's important right now" lens at the top of the
+              page; the older KPI cards (Revenue / Contacts / Deals /
+              Tasks) below stay for now and 2b.57 prunes them. */}
+          <DashboardTopMetricStrip
+            tenantId={appUser?.active_tenant_id || appUser?.tenant_id || ''}
+          />
 
           {/* KPI CARDS - Compact & Efficient */}
           <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
