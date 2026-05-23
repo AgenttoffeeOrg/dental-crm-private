@@ -891,148 +891,22 @@ export function ContactDetailView({
               </div>
               )}
 
-              {/* 2b.34.3 — "Customer Value" sidebar card removed.
-                  £4,000 + active-deals count were already shown in the
-                  top KPI strip; rendering them here again was the third
-                  duplicate that earned the audit's wrath. */}
+              {/* 2b.35.1 — sidebar "All Deals" list removed. With the
+                  deal-chip filter row above the activity timeline + the
+                  dedicated Deals tab, this third rendering of deals was
+                  the last redundancy on the page. The "New Deal" button
+                  that lived inside the empty-state CTA is preserved in
+                  the Quick Actions section below for the no-deals case. */}
 
-              {/* All Deals */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-900">All Deals</h3>
-                </div>
-                {deals.length > 0 ? (
-                  <div className="space-y-2">
-                    {deals.map(deal => {
-                      const isWon = deal.stage?.name?.toLowerCase() === 'closed_won'
-                      const isLost = deal.stage?.name?.toLowerCase() === 'closed_lost'
-                      const isActive = !isWon && !isLost
-                      
-                      return (
-                        <div
-                          key={deal.id}
-                          onClick={() => router.push(`/deals/${deal.id}`)}
-                          className={`p-3 rounded-lg border cursor-pointer group transition-all hover:shadow-sm ${
-                            isActive ? 'bg-blue-50 border-blue-200 hover:border-blue-300 hover:bg-blue-100' :
-                            isWon ? 'bg-green-50 border-green-200 hover:border-green-300' :
-                            isLost ? 'bg-red-50 border-red-200 hover:border-red-300' :
-                            'bg-gray-50 border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className={`font-medium text-sm truncate ${
-                                isActive ? 'text-blue-900' :
-                                isWon ? 'text-green-900' :
-                                isLost ? 'text-red-900' :
-                                'text-gray-900'
-                              }`}>
-                                {deal.title}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                {deal.stage && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs ${
-                                      isActive ? 'border-blue-300 text-blue-700' :
-                                      isWon ? 'border-green-300 text-green-700' :
-                                      isLost ? 'border-red-300 text-red-700' :
-                                      'border-gray-300 text-gray-700'
-                                    }`}
-                                  >
-                                    {deal.stage.name}
-                                  </Badge>
-                                )}
-                                {deal.value_estimate_cents > 0 && (
-                                  <span className={`text-xs font-medium ${
-                                    isActive ? 'text-blue-700' :
-                                    isWon ? 'text-green-700' :
-                                    isLost ? 'text-red-700' :
-                                    'text-gray-700'
-                                  }`}>
-                                    {formatCurrency(deal.value_estimate_cents)}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                Created {new Date(deal.created_at).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <ArrowRight className={`h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity ${
-                              isActive ? 'text-blue-400' :
-                              isWon ? 'text-green-400' :
-                              isLost ? 'text-red-400' :
-                              'text-gray-400'
-                            }`} />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-4 border-2 border-dashed border-gray-200 rounded-lg text-center">
-                    <div className="text-sm text-gray-500 mb-2">No deals yet</div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setCreateDealDialogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create First Deal
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Quick Actions */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Actions</h3>
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      if (sanitizedPrimaryPhone) {
-                        setCallDialerOpen(true)
-                      } else {
-                        toast.error('Add a phone number before placing a call.')
-                      }
-                    }}
-                    disabled={!sanitizedPrimaryPhone}
-                  >
-                    <PhoneCall className="h-4 w-4 mr-2" />
-                    Call Contact
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => setCreateActivityDialogOpen(true)}
-                  >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Send Email
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => setCreateActivityDialogOpen(true)}
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    WhatsApp
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => setCreateActivityDialogOpen(true)}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Add Note
-                  </Button>
-                </div>
-              </div>
+              {/* 2b.35.1 — sidebar "Quick Actions" block removed. The
+                  same Call / Email / SMS / Log Activity / New Deal
+                  buttons live on the page-level quick-actions row in
+                  the right column (below the NBA card). Keeping them
+                  here too put quick actions in THREE places (sidebar +
+                  page-level + activity-feed composer toggles). The
+                  page-level row stays canonical; the activity feed
+                  toggles stay because they carry the deal-chip filter
+                  context (compose attaches to the active deal). */}
             </>
           ) : (
             <div className="text-center py-8">
@@ -1184,137 +1058,16 @@ export function ContactDetailView({
           className="space-y-0"
         >
           <div className="px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
-            <TabsList className="grid w-full grid-cols-3 max-w-xl">
+            {/* 2b.35.1 — Overview tab removed. After the 2b.34.3 cleanup
+                the Overview tab contained only the Deal Overview cards,
+                which exactly duplicated the Deals tab next door. Two
+                tabs now: Activity (default, the operator's main lens)
+                and Deals (the canonical per-contact deals view). */}
+            <TabsList className="grid w-full grid-cols-2 max-w-xl">
               <TabsTrigger value="activities">Activity</TabsTrigger>
               <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
             </TabsList>
           </div>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="mt-0">
-            <div className="p-6 pb-24 bg-gray-50">
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading...</p>
-            </div>
-          ) : (
-            /* 2b.34.3 — Overview tab gutted. The "Customer Intelligence"
-               4-box (Total Value / Total Deals / Win Rate / Engagement)
-               and the AI Customer Summary placeholder are gone — they
-               duplicated the top KPI strip, the NBA card, and the
-               sidebar All-Deals list, putting the same £4,000 in three
-               places on one screen. The Deal Overview cards (below)
-               are also removed because the Deals tab next door is the
-               canonical deal-list view. */
-            <div className="space-y-6">
-
-              {/* Deal Overview Cards */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Deal Overview</h3>
-                </div>
-
-                {deals.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {deals.map(deal => {
-                      const isWon = deal.stage?.name?.toLowerCase() === 'closed_won'
-                      const isLost = deal.stage?.name?.toLowerCase() === 'closed_lost'
-                      const isActive = !isWon && !isLost
-                      
-                      return (
-                        <div
-                          key={deal.id}
-                          onClick={() => router.push(`/deals/${deal.id}`)}
-                          className={`p-4 rounded-lg border cursor-pointer group transition-all hover:shadow-md ${
-                            isActive ? 'bg-blue-50 border-blue-200 hover:border-blue-300' :
-                            isWon ? 'bg-green-50 border-green-200 hover:border-green-300' :
-                            isLost ? 'bg-red-50 border-red-200 hover:border-red-300' :
-                            'bg-gray-50 border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <h4 className={`font-semibold text-sm mb-1 ${
-                                isActive ? 'text-blue-900' :
-                                isWon ? 'text-green-900' :
-                                isLost ? 'text-red-900' :
-                                'text-gray-900'
-                              }`}>
-                                {deal.title}
-                              </h4>
-                              <Badge 
-                                variant="outline" 
-                                className={`text-xs ${
-                                  isActive ? 'border-blue-300 text-blue-700' :
-                                  isWon ? 'border-green-300 text-green-700' :
-                                  isLost ? 'border-red-300 text-red-700' :
-                                  'border-gray-300 text-gray-700'
-                                }`}
-                              >
-                                {deal.stage?.name}
-                              </Badge>
-                            </div>
-                            <ArrowRight className={`h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity ${
-                              isActive ? 'text-blue-400' :
-                              isWon ? 'text-green-400' :
-                              isLost ? 'text-red-400' :
-                              'text-gray-400'
-                            }`} />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            {deal.value_estimate_cents > 0 && (
-                              <div className={`text-lg font-bold ${
-                                isActive ? 'text-blue-700' :
-                                isWon ? 'text-green-700' :
-                                isLost ? 'text-red-700' :
-                                'text-gray-700'
-                              }`}>
-                                {formatCurrency(deal.value_estimate_cents)}
-                              </div>
-                            )}
-                            
-                            {deal.treatment_tags && deal.treatment_tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {deal.treatment_tags.slice(0, 2).map(tag => (
-                                  <Badge key={tag} variant="secondary" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))}
-                                {deal.treatment_tags.length > 2 && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    +{deal.treatment_tags.length - 2} more
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-                            
-                            <div className="text-xs text-gray-500">
-                              Created {new Date(deal.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">No deals yet</h4>
-                    <p className="text-gray-600 mb-4">Create the first deal for this customer</p>
-                    <Button onClick={() => setCreateDealDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create First Deal
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-            </div>
-          </TabsContent>
 
           {/* Deals Tab */}
           <TabsContent value="deals" className="mt-0">
