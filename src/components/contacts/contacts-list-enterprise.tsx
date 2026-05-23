@@ -78,6 +78,13 @@ interface EnhancedContact extends Contact {
   deal_count?: number
   total_deal_value?: number
   last_activity_at?: string
+  // 2b.34.2 — triage-inbox fields. last_inbound is the snippet shown
+  // on the row. needs_reply is true when the most recent inbound has
+  // no outbound after it (the practice owes a reply).
+  last_inbound_snippet?: string
+  last_inbound_type?: string
+  last_inbound_at?: string
+  needs_reply?: boolean
 }
 
 export function ContactsListEnterprise() {
@@ -110,7 +117,9 @@ export function ContactsListEnterprise() {
   const [ownerFilter, setOwnerFilter] = useState<string>('all')
   const [dateAddedFilter, setDateAddedFilter] = useState<string>('all')
 
-  // Sort
+  // Sort — 2b.34.2: default to most-recently-active first so the list
+  // doubles as a triage inbox. The full_name + created_at sorts are
+  // still selectable from the column headers.
   const [sortField, setSortField] = useState<'full_name' | 'created_at' | 'updated_at'>('updated_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
@@ -263,9 +272,13 @@ export function ContactsListEnterprise() {
       const contactIds = (data || []).map(c => c.id)
 
       if (contactIds.length > 0) {
-        // 2b.30.3: also fetch the latest activity timestamp per
-        // contact so the row sub-text can show "last touched 3h ago"
-        // — what an operator actually needs at a glance.
+        // 2b.30.3 + 2b.34.2 — pull deal stats + the per-contact
+        // activity signals the triage-inbox row needs:
+        //   - last activity timestamp (for the "Last touch X ago" chip)
+        //   - last inbound activity snippet + channel + timestamp
+        //     (for the inbox-style preview text on each row)
+        //   - last outbound activity timestamp (so we can decide
+        //     "needs reply" = inbound after last outbound)
         const [dealStatsRes, activityStatsRes] = await Promise.all([
           supabase
             .from('deals')
@@ -274,10 +287,11 @@ export function ContactsListEnterprise() {
             .eq('tenant_id', appUser?.active_tenant_id),
           supabase
             .from('activities')
-            .select('contact_id, occurred_at')
+            .select('contact_id, occurred_at, direction, type, description, snippet')
             .in('contact_id', contactIds)
             .eq('tenant_id', appUser?.active_tenant_id)
-            .order('occurred_at', { ascending: false }),
+            .order('occurred_at', { ascending: false })
+            .limit(2000),
         ])
 
         const dealMap = new Map<string, { count: number; value: number }>()
@@ -290,20 +304,70 @@ export function ContactsListEnterprise() {
         })
 
         // First-seen per contact_id wins (rows already sorted desc).
-        const lastActivityMap = new Map<string, string>()
-        activityStatsRes.data?.forEach(row => {
-          if (!row.occurred_at) return
-          if (!lastActivityMap.has(row.contact_id)) {
-            lastActivityMap.set(row.contact_id, row.occurred_at)
+        // 2b.34.2 — also build first-inbound + first-outbound per
+        // contact so we can derive "needs reply" + preview snippet.
+        interface ContactSignals {
+          lastActivityAt?: string
+          lastInboundAt?: string
+          lastInboundType?: string
+          lastInboundSnippet?: string
+          lastOutboundAt?: string
+        }
+        const signalMap = new Map<string, ContactSignals>()
+        for (const row of activityStatsRes.data ?? []) {
+          if (!row.contact_id || !row.occurred_at) continue
+          const existing = signalMap.get(row.contact_id) ?? {}
+          if (!existing.lastActivityAt) existing.lastActivityAt = row.occurred_at
+          if (row.direction === 'inbound' && !existing.lastInboundAt) {
+            existing.lastInboundAt = row.occurred_at
+            existing.lastInboundType = (row.type as string | null) ?? undefined
+            // Description holds the inbound body for ingestLead-driven
+            // rows; snippet is used elsewhere. Take whichever has text.
+            const body = ((row.description as string | null) ?? (row.snippet as string | null) ?? '')
+              .toString()
+              .trim()
+            if (body) existing.lastInboundSnippet = body
+          }
+          if (row.direction === 'outbound' && !existing.lastOutboundAt) {
+            existing.lastOutboundAt = row.occurred_at
+          }
+          signalMap.set(row.contact_id, existing)
+        }
+
+        const enhanced: EnhancedContact[] = (data || []).map(contact => {
+          const sig = signalMap.get(contact.id) ?? {}
+          // needs_reply is the canonical "this row needs attention"
+          // signal: inbound exists, and either no outbound at all OR
+          // the most recent inbound is newer than the most recent
+          // outbound. Notes/calls aren't inbound text and are
+          // already excluded by the direction filter above.
+          const needsReply = Boolean(
+            sig.lastInboundAt &&
+              (!sig.lastOutboundAt || sig.lastInboundAt > sig.lastOutboundAt)
+          )
+          return {
+            ...contact,
+            deal_count: dealMap.get(contact.id)?.count || 0,
+            total_deal_value: dealMap.get(contact.id)?.value || 0,
+            last_activity_at: sig.lastActivityAt,
+            last_inbound_snippet: sig.lastInboundSnippet,
+            last_inbound_type: sig.lastInboundType,
+            last_inbound_at: sig.lastInboundAt,
+            needs_reply: needsReply,
           }
         })
 
-        const enhanced: EnhancedContact[] = (data || []).map(contact => ({
-          ...contact,
-          deal_count: dealMap.get(contact.id)?.count || 0,
-          total_deal_value: dealMap.get(contact.id)?.value || 0,
-          last_activity_at: lastActivityMap.get(contact.id) ?? undefined,
-        }))
+        // 2b.34.2 — when the default updated_at sort is active, do an
+        // additional in-memory pass so contacts with REAL recent
+        // activity float above ones whose updated_at was bumped by
+        // some other write. Pure inbox feel.
+        if (sortField === 'updated_at' && sortOrder === 'desc') {
+          enhanced.sort((a, b) => {
+            const aT = a.last_activity_at ?? a.updated_at ?? ''
+            const bT = b.last_activity_at ?? b.updated_at ?? ''
+            return bT.localeCompare(aT)
+          })
+        }
 
         setContacts(enhanced)
       } else {
@@ -852,28 +916,49 @@ export function ContactsListEnterprise() {
                             {getInitials(contact.full_name)}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <div className="font-medium text-gray-900 hover:text-blue-600">
-                            {contact.full_name}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium text-gray-900 hover:text-blue-600 truncate">
+                              {contact.full_name || (contact.primary_phone ?? contact.primary_email ?? 'New contact')}
+                            </div>
+                            {contact.needs_reply && (
+                              // 2b.34.2 — bright "Reply" pill so the
+                              // operator can pattern-match unanswered
+                              // inbound messages at a glance.
+                              <Badge className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] uppercase tracking-wide px-1.5 py-0">
+                                Reply
+                              </Badge>
+                            )}
                           </div>
+                          {contact.last_inbound_snippet && (
+                            // 2b.34.2 — inbox-style preview line of the
+                            // most recent inbound. Truncates with ellipsis
+                            // when long. Lighter when already replied.
+                            <div
+                              className={cn(
+                                'text-xs mt-0.5 truncate max-w-[420px]',
+                                contact.needs_reply ? 'text-gray-800 font-medium' : 'text-gray-500'
+                              )}
+                            >
+                              {contact.last_inbound_snippet}
+                            </div>
+                          )}
                           {contact.source && (() => {
                             // 2b.30: pretty channel label + icon instead of raw enum.
                             const src = getSourceLabel(contact.source)
                             const Icon = src.icon
                             return (
-                              <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
                                 <Icon className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                 <span>{src.label}</span>
+                                {contact.last_activity_at && (
+                                  <span className="text-gray-400">
+                                    · {formatDistanceToNow(new Date(contact.last_activity_at), { addSuffix: true })}
+                                  </span>
+                                )}
                               </div>
                             )
                           })()}
-                          {contact.last_activity_at && (
-                            // 2b.30.3 — "last touched 3h ago" so the operator
-                            // doesn't have to click in to triage stale leads.
-                            <div className="text-xs text-gray-400">
-                              Last touch {formatDistanceToNow(new Date(contact.last_activity_at), { addSuffix: true })}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </td>
