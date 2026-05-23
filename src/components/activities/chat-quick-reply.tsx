@@ -158,11 +158,13 @@ export function ChatQuickReply({
       if (channel === 'email') {
         body.to = contactEmail
         body.subject = subject || `Quick reply to ${contactName ?? 'patient'}`
-        // Email composer expects either `message` (plain) or `html`.
-        body.html = `<p>${message
-          .split('\n')
-          .map((line) => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
-          .join('</p><p>')}</p>`
+        // 2b.57.1 (audit HIGH #8) — send plain text only. Let the
+        // /send-email endpoint route it through the dispatcher's
+        // canonical plaintext→HTML + DOMPurify path. Previously we
+        // hand-rolled HTML escaping here which risked diverging
+        // from the dispatcher's sanitiser rules. The `message`
+        // field on the endpoint accepts plain text and renders it
+        // safely.
       } else {
         body.to = contactPhone
       }

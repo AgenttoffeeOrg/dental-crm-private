@@ -54,11 +54,16 @@ interface CachedRow {
   is_fallback: boolean
 }
 
+interface CacheReadResult {
+  row: CachedRow | null
+  error: string | null
+}
+
 async function fetchCachedRow(
   supabase: ReturnType<typeof createServiceClient>,
   tenantId: string,
   contactId: string
-): Promise<CachedRow | null> {
+): Promise<CacheReadResult> {
   const { data, error } = await supabase
     .from('contact_persona_summaries')
     .select(
@@ -70,9 +75,14 @@ async function fetchCachedRow(
 
   if (error) {
     console.warn('[persona-summary] cache read failed', error.message)
-    return null
+    return { row: null, error: error.message }
   }
-  return (data as CachedRow | null) ?? null
+  return { row: (data as CachedRow | null) ?? null, error: null }
+}
+
+interface ActivityCountResult {
+  count: number
+  error: string | null
 }
 
 async function countActivitiesSince(
@@ -80,7 +90,7 @@ async function countActivitiesSince(
   tenantId: string,
   contactId: string,
   since: string | null
-): Promise<number> {
+): Promise<ActivityCountResult> {
   let q = supabase
     .from('activities')
     .select('id', { count: 'exact', head: true })
@@ -93,9 +103,9 @@ async function countActivitiesSince(
   const { count, error } = await q
   if (error) {
     console.warn('[persona-summary] activity count failed', error.message)
-    return 0
+    return { count: 0, error: error.message }
   }
-  return count ?? 0
+  return { count: count ?? 0, error: null }
 }
 
 // ---------------------------------------------------------------------------
@@ -115,25 +125,43 @@ export async function GET(
     const ctx = await getApiRequestContext(request)
     const service = createServiceClient()
 
-    const cached = await fetchCachedRow(service, ctx.tenantId, params.id)
-    if (!cached) {
+    // 2b.57.1 (audit HIGH #2) — surface cache-read errors instead of
+    // swallowing. Lets the UI distinguish "no cache yet → POST to
+    // generate" from "DB read failed → show error + retry".
+    const cacheResult = await fetchCachedRow(service, ctx.tenantId, params.id)
+    if (cacheResult.error) {
+      return NextResponse.json(
+        {
+          summary: null,
+          needs_generation: false,
+          stale: false,
+          error: 'cache_read_failed',
+          message: cacheResult.error,
+        },
+        { status: 500 }
+      )
+    }
+    if (!cacheResult.row) {
       return NextResponse.json({
         summary: null,
         needs_generation: true,
         stale: false,
       })
     }
+    const cached = cacheResult.row
 
     // Count NEW inbound/outbound activities since the last seen
     // timestamp. If ≥ AUTO_REFRESH_ACTIVITY_DELTA, the UI should
-    // fire a POST.
-    const newActivityCount = await countActivitiesSince(
+    // fire a POST. Errors here are non-fatal — we render the cached
+    // summary without the stale prompt.
+    const countResult = await countActivitiesSince(
       service,
       ctx.tenantId,
       params.id,
       cached.last_activity_seen_at
     )
-    const stale = newActivityCount >= AUTO_REFRESH_ACTIVITY_DELTA
+    const newActivityCount = countResult.count
+    const stale = countResult.error === null && newActivityCount >= AUTO_REFRESH_ACTIVITY_DELTA
 
     return NextResponse.json({
       summary: cached.summary,
@@ -145,6 +173,9 @@ export async function GET(
       new_activity_count: newActivityCount,
       stale,
       needs_generation: false,
+      ...(countResult.error
+        ? { activity_count_error: countResult.error }
+        : {}),
     })
   } catch (error) {
     return handleError(error)

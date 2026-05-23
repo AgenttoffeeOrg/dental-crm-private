@@ -47,12 +47,24 @@ interface DashboardGlobalSearchProps {
 const DEBOUNCE_MS = 200
 const MAX_PER_KIND = 5
 
+// 2b.57.1 (audit HIGH #6) — PostgREST `or=` string syntax uses
+// `,` `(` `)` and `:` as clause delimiters. Stripping them prevents
+// a search like `foo,full_name.eq.X` from breaking the parser.
+// SQL wildcards (`%` `_`) get squashed to spaces so they don't bleed
+// into the ILIKE. RLS still gates results — this is defence-in-depth
+// against query-parser misbehaviour, not RLS bypass.
+function sanitiseSearchInput(s: string): string {
+  return s.replace(/[%_,():]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 async function search(
   supabase: ReturnType<typeof createClient>,
   tenantId: string,
   q: string
 ): Promise<SearchResult[]> {
-  const wildcard = `%${q.replace(/[%_]/g, ' ')}%`
+  const safe = sanitiseSearchInput(q)
+  if (!safe) return []
+  const wildcard = `%${safe}%`
 
   const [contactsRes, dealsRes, activitiesRes] = await Promise.all([
     supabase

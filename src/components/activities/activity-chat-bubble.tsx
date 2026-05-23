@@ -235,8 +235,14 @@ export function ActivityChatBubble({
         if (!res.ok) return
         const body = (await res.json().catch(() => null)) as { summary?: string } | null
         if (!cancelled && body?.summary) setLazyEmailSummary(body.summary)
-      } catch {
-        // swallow — fallback to body preview
+      } catch (err) {
+        // 2b.57.1 — log so flaky Claude calls are visible in the
+        // browser console even though we fall back to the body
+        // preview for the user (audit HIGH #1).
+        console.warn('[activity-chat-bubble] summarise-email failed', {
+          activityId: activity.id,
+          err: err instanceof Error ? err.message : String(err),
+        })
       } finally {
         if (!cancelled) setEmailSummarising(false)
       }
