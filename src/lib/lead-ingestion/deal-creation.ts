@@ -216,6 +216,67 @@ export async function createDealForLead(
     }
   }
 
+  // 2b.34.7 — AI-uncertain → spawn a deal in the configured Unsorted
+  // pipeline. The activity still gets the attachmentUncertain flag so
+  // the operator's "AI unsure" marker + drag-to-classify UX still
+  // apply, but the deal is at least filed somewhere visible in the
+  // pipeline view rather than dumped onto whatever existing deal was
+  // most recently active.
+  if (attachment.kind === 'create_in_unsorted') {
+    const stageId = await resolveStageId(supabase, attachment.pipelineId, null)
+    if (!stageId) {
+      console.warn('[deal-creation] Unsorted pipeline has no stages — falling back to default', {
+        tenantId: input.tenantId,
+        unsortedPipelineId: attachment.pipelineId,
+      })
+      // Fall through to the existing resolveDealContext path so the
+      // default-pipeline fallback still works.
+    } else {
+      const ownerId = await resolveOwner(
+        supabase,
+        input.tenantId,
+        input.contactId,
+        attachment.pipelineId
+      )
+      const title = await generateDealTitle({
+        intentText: input.intentText,
+        pipelineName: 'Unsorted',
+        fallback: 'Inquiry',
+      })
+      const { data, error } = await supabase
+        .from('deals')
+        .insert({
+          tenant_id: input.tenantId,
+          contact_id: input.contactId,
+          pipeline_id: attachment.pipelineId,
+          stage_id: stageId,
+          title,
+          owner_user_id: ownerId,
+          value_estimate_cents: null,
+          currency: 'GBP',
+          source: input.sourceChannel,
+          treatment_tags: null,
+          status: 'open',
+          last_activity_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single()
+      if (!error && data) {
+        return {
+          ok: true,
+          dealId: (data as { id: string }).id,
+          reused: true,
+          context: null,
+          attachmentUncertain: true,
+        }
+      }
+      console.warn('[deal-creation] Unsorted insert failed — falling back to default', {
+        tenantId: input.tenantId,
+        error: error?.message ?? 'no row',
+      })
+    }
+  }
+
   const ctxResult = await resolveDealContext(supabase, input)
   if (!ctxResult.ok) {
     return ctxResult
@@ -282,8 +343,18 @@ type AttachmentDecision =
         | 'no_intent_text'
         | 'matching_pipeline'
         | 'uncertain_fallback'
+        | 'uncertain_to_unsorted_reused'
     }
   | { kind: 'create_new' }
+  /**
+   * Phase 2b.34.7 — AI was uncertain about the inbound and the tenant
+   * has a configured "Unsorted" pipeline. Caller creates a fresh deal
+   * in that pipeline so every activity always lands somewhere (the
+   * locked Q5 answer from the 2026-05-23 product discussion). The
+   * activity still gets the `attachmentUncertain` flag so the operator
+   * can move it to a real pipeline with one click.
+   */
+  | { kind: 'create_in_unsorted'; pipelineId: string }
 
 /**
  * Decide whether to reuse an existing open deal for this contact or
@@ -365,7 +436,25 @@ async function decideDealAttachment(
     return { kind: 'create_new' }
   }
 
-  // uncertain — fall back to legacy reuse rule + flag
+  // uncertain — per 2b.34.7 / Q5: route to the tenant's Unsorted
+  // pipeline so every activity has a home. If the contact already has
+  // an open deal in the Unsorted pipeline, reuse it. Otherwise the
+  // outer caller creates one. Fall back to legacy most-recent reuse
+  // if there's no Unsorted pipeline configured for the tenant.
+  const unsortedPipelineId = await getUnsortedPipelineId(supabase, input.tenantId)
+  if (unsortedPipelineId) {
+    const existingUnsorted = openDeals.find((d) => d.pipelineId === unsortedPipelineId)
+    if (existingUnsorted) {
+      return {
+        kind: 'reuse',
+        dealId: existingUnsorted.id,
+        attachmentUncertain: true,
+        reason: 'uncertain_to_unsorted_reused',
+      }
+    }
+    return { kind: 'create_in_unsorted', pipelineId: unsortedPipelineId }
+  }
+
   const reuseId = await findReusableOpenDeal(supabase, {
     tenantId: input.tenantId,
     contactId: input.contactId,
@@ -374,6 +463,27 @@ async function decideDealAttachment(
     return { kind: 'reuse', dealId: reuseId, attachmentUncertain: true, reason: 'uncertain_fallback' }
   }
   return { kind: 'create_new' }
+}
+
+async function getUnsortedPipelineId(
+  supabase: SupabaseClient,
+  tenantId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('tenant_routing_settings')
+    .select('unsorted_pipeline_id')
+    .eq('tenant_id', tenantId)
+    .maybeSingle()
+  if (error) {
+    console.warn('[deal-creation] unsorted-pipeline lookup failed', {
+      tenantId,
+      error: error.message,
+    })
+    return null
+  }
+  return (
+    (data as { unsorted_pipeline_id?: string | null } | null)?.unsorted_pipeline_id ?? null
+  )
 }
 
 async function fetchOpenDealsWithPipelines(
