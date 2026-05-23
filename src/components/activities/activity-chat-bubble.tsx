@@ -95,18 +95,58 @@ function bubbleSide(activity: BubbleActivity): 'left' | 'right' {
 }
 
 /**
- * Resolve the displayable text of the bubble. SMS / WhatsApp put
- * the body in `snippet` (outbound composer) or `description`
- * (ingestLead inbound path). Emails put HTML in `rich_content`
- * elsewhere; here we use snippet/description as plain preview until
- * 2b.43's summariser ships.
+ * Resolve the displayable text of the bubble.
+ *
+ *   - SMS / WhatsApp: body is in `snippet` (outbound composer path)
+ *     or `description` (ingestLead inbound path). Render verbatim;
+ *     they're short by nature.
+ *   - Emails (2b.44): prefer the cached AI summary from
+ *     `metadata.ai_email_summary` (lazy-populated by 2b.43). Falls
+ *     back to a body preview while the summariser is running so
+ *     the bubble is never empty.
+ *   - Calls (2b.44): prefer the call's `metadata.ai_summary` (which
+ *     the call-transcribe pipeline writes). Falls back to a status
+ *     line ("5m 23s · Connected") when no summary is cached — Q4
+ *     audit decision: graceful fallback, don't block call display
+ *     on AI processing.
+ *   - Notes / meetings: snippet / description.
  */
-function bubbleText(activity: BubbleActivity): string {
-  const candidates = [
-    activity.snippet,
-    activity.description,
-    activity.subject,
-  ]
+function bubbleText(
+  activity: BubbleActivity,
+  opts?: { emailSummary?: string | null }
+): string {
+  // Emails: AI summary preferred.
+  if (activity.type === 'email') {
+    const cachedSummary = (activity.metadata?.ai_email_summary as string | undefined) ?? null
+    const summary = opts?.emailSummary ?? cachedSummary
+    if (summary && summary.trim()) return summary.trim()
+    // No summary yet — show a short body preview.
+    const fallbackSource =
+      activity.snippet?.trim() || activity.description?.trim() || activity.subject?.trim() || ''
+    return fallbackSource ? fallbackSource.slice(0, 200) : '(email)'
+  }
+
+  // Calls: AI transcript summary preferred.
+  if (activity.type === 'call') {
+    const callSummary = activity.metadata?.ai_summary as string | undefined
+    if (callSummary && callSummary.trim()) return callSummary.trim()
+    // Fallback: short status line. The footer also shows duration +
+    // outcome so this can be brief.
+    if (activity.duration_seconds) {
+      const mins = Math.floor(activity.duration_seconds / 60)
+      const secs = activity.duration_seconds % 60
+      const dur = mins === 0 ? `${secs}s` : secs === 0 ? `${mins}m` : `${mins}m ${secs}s`
+      return activity.outcome
+        ? `${dur} · ${activity.outcome.replace(/_/g, ' ')}`
+        : `${dur} call`
+    }
+    return activity.outcome
+      ? `Call · ${activity.outcome.replace(/_/g, ' ')}`
+      : '(call)'
+  }
+
+  // Everything else: snippet → description → subject.
+  const candidates = [activity.snippet, activity.description, activity.subject]
   for (const c of candidates) {
     if (c && c.trim()) return c.trim()
   }
@@ -153,7 +193,6 @@ export function ActivityChatBubble({
 }: ActivityChatBubbleProps) {
   const side = bubbleSide(activity)
   const Icon = TYPE_ICON[activity.type] ?? FileText
-  const text = bubbleText(activity)
   const isFailed = activity.message_status === 'failed'
   const isUncertain = activity.metadata?.ai_attachment_uncertain === true
 
@@ -209,6 +248,14 @@ export function ActivityChatBubble({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity.id, activity.type])
 
+  // 2b.44 — resolve text after the lazy fetch state is known.
+  const text = bubbleText(activity, { emailSummary: lazyEmailSummary })
+  const isEmailSummarising = activity.type === 'email' && emailSummarising && !lazyEmailSummary && !cachedEmailSummary
+  const usingAiEmailSummary =
+    activity.type === 'email' && (Boolean(lazyEmailSummary) || Boolean(cachedEmailSummary))
+  const usingAiCallSummary =
+    activity.type === 'call' && Boolean(activity.metadata?.ai_summary)
+
   // Bubble styling by type + side.
   let bubbleClass: string
   if (activity.type === 'note') {
@@ -251,17 +298,55 @@ export function ActivityChatBubble({
           {activity.type === 'email' && activity.subject && (
             <div
               className={cn(
-                'text-[11px] font-medium mb-0.5 truncate',
+                'text-[11px] font-medium mb-0.5 truncate flex items-center gap-1.5',
                 side === 'right' ? 'text-blue-700' : 'text-gray-500'
               )}
             >
-              {activity.subject}
+              <span className="truncate flex-1">{activity.subject}</span>
+              {/* 2b.44 — "AI summary" pill when we're showing the
+                  summary instead of the full body. Tiny visual signal
+                  so the operator knows the bubble text isn't verbatim. */}
+              {usingAiEmailSummary && (
+                <span className="inline-flex items-center gap-0.5 px-1 rounded-sm bg-violet-100 text-violet-700 text-[9px] font-semibold uppercase tracking-wide flex-shrink-0">
+                  <Sparkles className="h-2 w-2" />
+                  AI
+                </span>
+              )}
             </div>
           )}
 
           <div className="text-sm leading-snug whitespace-pre-wrap break-words">
             {text}
           </div>
+
+          {/* 2b.44 — "Summarising…" pulse line while the lazy email
+              summariser is in flight. Hidden if a cached summary is
+              already shown or if it's not an email. */}
+          {isEmailSummarising && (
+            <div
+              className={cn(
+                'flex items-center gap-1 mt-1 text-[10px] italic',
+                side === 'right' ? 'text-blue-600/70' : 'text-gray-400'
+              )}
+            >
+              <Sparkles className="h-2.5 w-2.5 animate-pulse" />
+              AI is summarising this email…
+            </div>
+          )}
+
+          {/* 2b.44 — small "AI" pill for calls when we're showing
+              the transcript summary instead of the status line. */}
+          {usingAiCallSummary && (
+            <div
+              className={cn(
+                'flex items-center gap-1 mt-1 text-[10px]',
+                side === 'right' ? 'text-blue-600/70' : 'text-gray-400'
+              )}
+            >
+              <Sparkles className="h-2.5 w-2.5" />
+              <span className="uppercase tracking-wide font-semibold">AI transcript summary</span>
+            </div>
+          )}
 
           {/* Footer: icon · type · duration · outcome · failed · time.
               Compact, single line, no badges. */}
