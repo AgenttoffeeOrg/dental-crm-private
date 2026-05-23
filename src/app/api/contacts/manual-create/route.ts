@@ -104,23 +104,51 @@ export async function POST(request: NextRequest) {
     // After-ingest follow-ups that ingestLead doesn't handle for
     // manual entries: apply tags to the contact and assign the owner
     // on the new deal (if one was created).
+    //
+    // 2b.34.10 (MEDIUM #1 + #2) — each follow-up step now:
+    //   - filters by tenant_id for defence-in-depth (was missing on
+    //     the tag merge — diverged from the owner update),
+    //   - captures the .update() result and logs on failure so a
+    //     silent failure doesn't leave the operator thinking
+    //     everything saved when it didn't.
+    const partialFailures: string[] = []
+
     if (result.contact_id && Array.isArray(data.tags) && data.tags.length > 0) {
-      const { data: existing } = await supabase
+      const { data: existing, error: readErr } = await supabase
         .from('contacts')
         .select('tags')
         .eq('id', result.contact_id)
+        .eq('tenant_id', auth.tenantId)
         .maybeSingle()
-      const merged = Array.from(
-        new Set([...((existing?.tags as string[] | null) ?? []), ...data.tags])
-      )
-      await supabase
-        .from('contacts')
-        .update({ tags: merged, updated_at: new Date().toISOString() })
-        .eq('id', result.contact_id)
+      if (readErr) {
+        console.warn('[manual-create] tag-merge read failed', {
+          tenantId: auth.tenantId,
+          contactId: result.contact_id,
+          error: readErr.message,
+        })
+        partialFailures.push('tag merge (read)')
+      } else {
+        const merged = Array.from(
+          new Set([...((existing?.tags as string[] | null) ?? []), ...data.tags])
+        )
+        const { error: writeErr } = await supabase
+          .from('contacts')
+          .update({ tags: merged, updated_at: new Date().toISOString() })
+          .eq('id', result.contact_id)
+          .eq('tenant_id', auth.tenantId)
+        if (writeErr) {
+          console.warn('[manual-create] tag-merge write failed', {
+            tenantId: auth.tenantId,
+            contactId: result.contact_id,
+            error: writeErr.message,
+          })
+          partialFailures.push('tag merge (write)')
+        }
+      }
     }
 
     if (result.deal_id && data.owner_user_id) {
-      await supabase
+      const { error: ownerErr } = await supabase
         .from('deals')
         .update({
           owner_user_id: data.owner_user_id,
@@ -128,6 +156,14 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', result.deal_id)
         .eq('tenant_id', auth.tenantId)
+      if (ownerErr) {
+        console.warn('[manual-create] owner assignment failed', {
+          tenantId: auth.tenantId,
+          dealId: result.deal_id,
+          error: ownerErr.message,
+        })
+        partialFailures.push('owner assignment')
+      }
     }
 
     if (
@@ -152,6 +188,11 @@ export async function POST(request: NextRequest) {
         contact_id: result.contact_id,
         deal_id: result.deal_id,
         dedup_decision: result.dedup_decision,
+        // 2b.34.10 — surface partial failures so the UI can show a
+        // warning toast instead of pretending everything saved.
+        // Empty array = full success; populated = "some bits didn't
+        // stick, here's what".
+        partial_failures: partialFailures.length > 0 ? partialFailures : undefined,
       },
       { status: 200 }
     )

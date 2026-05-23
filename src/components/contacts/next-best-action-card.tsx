@@ -102,6 +102,11 @@ export function NextBestActionCard({
 }: NextBestActionCardProps) {
   const supabaseRef = useRef(createClient())
   const [loading, setLoading] = useState(true)
+  // 2b.34.10 (MEDIUM #3) — track fetch failure explicitly so the
+  // card can render "couldn't load suggestion" instead of falsely
+  // claiming "Nothing urgent" via the Rule 7 fallback when the
+  // inputs default to empty.
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [lastInboundAt, setLastInboundAt] = useState<string | null>(null)
   const [lastOutboundAt, setLastOutboundAt] = useState<string | null>(null)
   const [openDeals, setOpenDeals] = useState<OpenDealRef[]>([])
@@ -116,6 +121,7 @@ export function NextBestActionCard({
 
     const run = async () => {
       setLoading(true)
+      setLoadError(null)
       try {
         // Run the two reads in parallel — both are tenant + contact
         // bound so the typical query latency is <100ms each.
@@ -179,8 +185,17 @@ export function NextBestActionCard({
           }
         })
         setOpenDeals(deals)
+        // 2b.34.10 — surface query-level errors that didn't throw.
+        if (activitiesRes.error || dealsRes.error) {
+          setLoadError(
+            activitiesRes.error?.message ||
+              dealsRes.error?.message ||
+              'Unable to load suggestion'
+          )
+        }
       } catch (err) {
         console.error('[next-best-action] load failed', err)
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : 'load_failed')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -209,6 +224,26 @@ export function NextBestActionCard({
           <div className="flex-1 space-y-2">
             <div className="h-4 bg-gray-100 rounded animate-pulse w-1/2" />
             <div className="h-3 bg-gray-50 rounded animate-pulse w-3/4" />
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  // 2b.34.10 — explicit error state. Stops the card from falsely
+  // claiming "Nothing urgent" when the activity/deals query failed.
+  if (loadError) {
+    return (
+      <Card className="border-2 border-gray-200 p-4 bg-gray-50">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center">
+            <AlertCircle className="h-5 w-5 text-gray-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-700 text-sm">Couldn't load suggestion</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              The next-best-action couldn't be calculated. Refresh the page to retry.
+            </p>
           </div>
         </div>
       </Card>
