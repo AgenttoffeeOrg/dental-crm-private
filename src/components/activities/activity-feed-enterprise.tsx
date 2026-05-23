@@ -301,6 +301,9 @@ export function ActivityFeedEnterprise({
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState<string>('all')
+  // 2b.45 — direction filter. Operator can isolate inbound (patient)
+  // or outbound (practice) messages across all channels at once.
+  const [filterDirection, setFilterDirection] = useState<'all' | 'inbound' | 'outbound'>('all')
   // 2b.34.4 — deal-chip filter. 'all' = show every activity; a specific
   // dealId = show only activities attached to that deal; 'unsorted' =
   // show activities with no deal_id (unfiled). The chip strip above
@@ -684,6 +687,17 @@ const sanitizedContactPhone = useMemo(
       filtered = filtered.filter(a => a.type === filterType)
     }
 
+    // 2b.45 — direction filter. Notes have no direction (always
+    // practice-authored); the inbound filter excludes them, the
+    // outbound filter includes them.
+    if (filterDirection === 'inbound') {
+      filtered = filtered.filter(a => a.direction === 'inbound')
+    } else if (filterDirection === 'outbound') {
+      filtered = filtered.filter(
+        (a) => a.direction === 'outbound' || a.type === 'note'
+      )
+    }
+
     // 2b.34.4 — deal-chip filter
     if (filterDealId !== 'all') {
       if (filterDealId === 'unsorted') {
@@ -693,17 +707,30 @@ const sanitizedContactPhone = useMemo(
       }
     }
 
-    // Search
+    // 2b.45 — keyword search across snippet + subject + description +
+    // body + AI summary (the displayable text of the bubble is what
+    // the operator sees, so it should be what gets searched).
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(a =>
-        a.subject?.toLowerCase().includes(query) ||
-        a.snippet?.toLowerCase().includes(query)
-      )
+      filtered = filtered.filter((a) => {
+        const hay = [
+          a.subject,
+          a.snippet,
+          (a as any).description,
+          (a as any).body,
+          (a as any).metadata?.ai_email_summary,
+          (a as any).metadata?.ai_summary,
+          (a as any).metadata?.ai_purpose,
+        ]
+          .filter((x): x is string => typeof x === 'string')
+          .join(' ')
+          .toLowerCase()
+        return hay.includes(query)
+      })
     }
 
     return filtered
-  }, [activities, filterType, filterDealId, searchQuery])
+  }, [activities, filterType, filterDirection, filterDealId, searchQuery])
 
   // Group by date
   const groupedActivities = useMemo(() => {
@@ -1316,61 +1343,115 @@ const sanitizedContactPhone = useMemo(
         </div>
       )}
 
-      {/* Filters & Search */}
-      <div className="flex items-center gap-3">
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
-          <Button
-            size="sm"
-            variant={filterType === 'all' ? 'default' : 'ghost'}
-            onClick={() => setFilterType('all')}
-            className="h-7 text-xs"
-          >
-            All <Badge variant="secondary" className="ml-1">{counts.all}</Badge>
-          </Button>
-          <Button
-            size="sm"
-            variant={filterType === 'call' ? 'default' : 'ghost'}
-            onClick={() => setFilterType('call')}
-            className="h-7 text-xs"
-          >
-            Calls <Badge variant="secondary" className="ml-1">{counts.call}</Badge>
-          </Button>
-          <Button
-            size="sm"
-            variant={filterType === 'email' ? 'default' : 'ghost'}
-            onClick={() => setFilterType('email')}
-            className="h-7 text-xs"
-          >
-            Emails <Badge variant="secondary" className="ml-1">{counts.email}</Badge>
-          </Button>
-          <Button
-            size="sm"
-            variant={filterType === 'meeting' ? 'default' : 'ghost'}
-            onClick={() => setFilterType('meeting')}
-            className="h-7 text-xs"
-          >
-            Meetings <Badge variant="secondary" className="ml-1">{counts.meeting}</Badge>
-          </Button>
-          <Button
-            size="sm"
-            variant={filterType === 'note' ? 'default' : 'ghost'}
-            onClick={() => setFilterType('note')}
-            className="h-7 text-xs"
-          >
-            Notes <Badge variant="secondary" className="ml-1">{counts.note}</Badge>
-          </Button>
-        </div>
+      {/* 2b.45 — Filter row. Type tabs (All / Calls / SMS / WhatsApp /
+          Emails / Notes / Meetings), direction tabs (All / Inbound /
+          Outbound), and a keyword search box that hits subject +
+          snippet + description + body + AI summaries. Two rows on
+          narrow widths; one row when there's room. */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Type tabs */}
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg flex-wrap">
+            <Button
+              size="sm"
+              variant={filterType === 'all' ? 'default' : 'ghost'}
+              onClick={() => setFilterType('all')}
+              className="h-7 text-xs"
+            >
+              All <Badge variant="secondary" className="ml-1">{counts.all}</Badge>
+            </Button>
+            <Button
+              size="sm"
+              variant={filterType === 'call' ? 'default' : 'ghost'}
+              onClick={() => setFilterType('call')}
+              className="h-7 text-xs"
+            >
+              Calls <Badge variant="secondary" className="ml-1">{counts.call}</Badge>
+            </Button>
+            <Button
+              size="sm"
+              variant={filterType === 'sms' ? 'default' : 'ghost'}
+              onClick={() => setFilterType('sms')}
+              className="h-7 text-xs"
+            >
+              SMS <Badge variant="secondary" className="ml-1">{counts.sms}</Badge>
+            </Button>
+            <Button
+              size="sm"
+              variant={filterType === 'whatsapp' ? 'default' : 'ghost'}
+              onClick={() => setFilterType('whatsapp')}
+              className="h-7 text-xs"
+            >
+              WhatsApp <Badge variant="secondary" className="ml-1">{counts.whatsapp}</Badge>
+            </Button>
+            <Button
+              size="sm"
+              variant={filterType === 'email' ? 'default' : 'ghost'}
+              onClick={() => setFilterType('email')}
+              className="h-7 text-xs"
+            >
+              Emails <Badge variant="secondary" className="ml-1">{counts.email}</Badge>
+            </Button>
+            <Button
+              size="sm"
+              variant={filterType === 'note' ? 'default' : 'ghost'}
+              onClick={() => setFilterType('note')}
+              className="h-7 text-xs"
+            >
+              Notes <Badge variant="secondary" className="ml-1">{counts.note}</Badge>
+            </Button>
+            <Button
+              size="sm"
+              variant={filterType === 'meeting' ? 'default' : 'ghost'}
+              onClick={() => setFilterType('meeting')}
+              className="h-7 text-xs"
+            >
+              Meetings <Badge variant="secondary" className="ml-1">{counts.meeting}</Badge>
+            </Button>
+          </div>
 
-        {/* Search */}
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search activities..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 text-sm"
-          />
+          {/* Direction tabs — separate cluster so it's clear they're
+              orthogonal to the type filter (you can have type=all
+              with direction=inbound, etc.). */}
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+            <Button
+              size="sm"
+              variant={filterDirection === 'all' ? 'default' : 'ghost'}
+              onClick={() => setFilterDirection('all')}
+              className="h-7 text-xs"
+            >
+              Both
+            </Button>
+            <Button
+              size="sm"
+              variant={filterDirection === 'inbound' ? 'default' : 'ghost'}
+              onClick={() => setFilterDirection('inbound')}
+              className="h-7 text-xs"
+              title="Show only patient messages"
+            >
+              ← Patient
+            </Button>
+            <Button
+              size="sm"
+              variant={filterDirection === 'outbound' ? 'default' : 'ghost'}
+              onClick={() => setFilterDirection('outbound')}
+              className="h-7 text-xs"
+              title="Show only practice messages (and notes)"
+            >
+              Practice →
+            </Button>
+          </div>
+
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search messages, summaries, notes…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
         </div>
       </div>
 
