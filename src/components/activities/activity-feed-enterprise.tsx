@@ -227,6 +227,14 @@ export function ActivityFeedEnterprise({
   const [emailComposerOpen, setEmailComposerOpen] = useState(false)
   const [smsComposerOpen, setSmsComposerOpen] = useState(false)
   const [whatsappComposerOpen, setWhatsappComposerOpen] = useState(false)
+  // 2b.34.8 — when the operator has the deal-chip filter active
+  // (Q2 of the 2026-05-23 lock), the composer's outbound message
+  // attaches to THAT deal, not the page-level default. Filter
+  // values of 'all' / 'unsorted' fall back to the page dealId so
+  // we never write a synthetic 'unsorted' string into a real
+  // activity's deal_id column.
+  const effectiveOutboundDealId =
+    filterDealId !== 'all' && filterDealId !== 'unsorted' ? filterDealId : dealId
   const [callDialerOpen, setCallDialerOpen] = useState(false)
   const [composerContext, setComposerContext] = useState<any>({})
   const [contactDeals, setContactDeals] = useState<DealForAttachment[]>([])
@@ -835,7 +843,7 @@ const sanitizedContactPhone = useMemo(
             setComposerContext({
               to: contactEmail,
               contactId,
-              dealId,
+              dealId: effectiveOutboundDealId,
               contactName
             })
             setEmailComposerOpen(true)
@@ -854,7 +862,7 @@ const sanitizedContactPhone = useMemo(
             setComposerContext({
               phoneNumber: sanitizedContactPhone,
               contactId,
-              dealId,
+              dealId: effectiveOutboundDealId,
               contactName
             })
             setCallDialerOpen(true)
@@ -873,7 +881,7 @@ const sanitizedContactPhone = useMemo(
             setComposerContext({
               to: sanitizedContactPhone,
               contactId,
-              dealId,
+              dealId: effectiveOutboundDealId,
               contactName
             })
             setSmsComposerOpen(true)
@@ -892,7 +900,7 @@ const sanitizedContactPhone = useMemo(
             setComposerContext({
               to: sanitizedContactPhone,
               contactId,
-              dealId,
+              dealId: effectiveOutboundDealId,
               contactName
             })
             setWhatsappComposerOpen(true)
@@ -1096,7 +1104,7 @@ const sanitizedContactPhone = useMemo(
         }}
         to={composerContext.to}
         contactId={composerContext.contactId}
-        dealId={composerContext.dealId ?? dealId}
+        dealId={composerContext.dealId ?? effectiveOutboundDealId}
         deals={contactDeals}
         replyToActivityId={composerContext.replyToActivityId}
         tenantId={tenantId}
@@ -1112,7 +1120,7 @@ const sanitizedContactPhone = useMemo(
         }}
         to={composerContext.to}
         contactId={composerContext.contactId}
-        dealId={composerContext.dealId ?? dealId}
+        dealId={composerContext.dealId ?? effectiveOutboundDealId}
         deals={contactDeals}
         tenantId={tenantId}
         userId={userId}
@@ -1127,7 +1135,7 @@ const sanitizedContactPhone = useMemo(
         }}
         to={composerContext.to}
         contactId={composerContext.contactId}
-        dealId={composerContext.dealId ?? dealId}
+        dealId={composerContext.dealId ?? effectiveOutboundDealId}
         deals={contactDeals}
         tenantId={tenantId}
         userId={userId}
