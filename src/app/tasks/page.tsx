@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { useAuth } from '@/lib/auth'
 import { NoOrgEmptyState } from '@/components/guards'
@@ -63,6 +64,14 @@ const TASK_TYPE_ICONS = {
 export default function TasksPage() {
   const { appUser, loading: authLoading } = useAuth()
   const hasTenant = Boolean(appUser?.active_tenant_id || appUser?.tenant_id)
+  // 2b.54 — when the dashboard's "Today's Priorities" lane sends us
+  // here with ?mode=queue, auto-open the TaskQueuePanel after the
+  // initial task load. Also flips the filter tab to 'today' so the
+  // queue contains today's tasks (not the previous filter the user
+  // had selected last visit).
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const queueModeFromUrl = searchParams?.get('mode') === 'queue'
   
   // Show empty state if user has no tenant
   if (!hasTenant && !authLoading) {
@@ -99,6 +108,20 @@ export default function TasksPage() {
       loadTasks()
     },
   })
+
+  // 2b.54 — auto-open the queue panel when arriving via
+  // /tasks?mode=queue (the dashboard's Today's Priorities lane).
+  // Also flip the filter to 'today' so the queue contains today's
+  // tasks. Strip the param from the URL after consuming so a back
+  // navigation doesn't re-open the queue.
+  useEffect(() => {
+    if (!queueModeFromUrl) return
+    setActiveFilter('today')
+    setQueueOpen(true)
+    // Replace URL without the mode param.
+    router.replace('/tasks')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queueModeFromUrl])
 
   useEffect(() => {
     loadTasks()
