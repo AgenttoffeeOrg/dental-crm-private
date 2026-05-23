@@ -41,6 +41,7 @@ import { CreateDealSlideOver } from '@/components/deals/create-deal-slide-over'
 import { TodaysPriorities } from '@/components/dashboard/todays-priorities'
 import { DashboardTopMetricStrip } from '@/components/dashboard/dashboard-top-metric-strip'
 import { DashboardTriageLanes } from '@/components/dashboard/dashboard-triage-lanes'
+import { DashboardSmartPrompts } from '@/components/dashboard/dashboard-smart-prompts'
 import { AIInsightsWidget } from '@/components/dashboard/ai-insights-widget'
 import { LiveCoachPanel } from '@/components/dashboard/live-coach-panel'
 import { KeyboardShortcutsModal } from '@/components/dashboard/keyboard-shortcuts-modal'
@@ -372,11 +373,20 @@ export default function DashboardRedesigned() {
             tenantId={appUser?.active_tenant_id || appUser?.tenant_id || ''}
           />
 
-          {/* 2b.50 — Triage lanes part 1: Today's Priorities, Today's
-              Calls, New Inquiries, Stale Follow-ups. Each card routes
-              to the relevant workspace (tasks queue / call dialer /
-              deals kanban with filter). Auto-refresh every 60s. */}
+          {/* 2b.50/51 — Triage lanes: 8 clickable cards in a grid.
+              Today's Priorities, Today's Calls, New Inquiries, Stale
+              Follow-ups, Unread Inbound, Failed Sends, Voicemails,
+              AI-Needs-Your-Eye. Each card routes to the relevant
+              workspace. Auto-refresh every 60s. */}
           <DashboardTriageLanes
+            tenantId={appUser?.active_tenant_id || appUser?.tenant_id || ''}
+          />
+
+          {/* 2b.52 — Smart-prompt nudges. Practice Setup Incomplete,
+              Integration Warnings, AI Features Unconfigured (hide-
+              if-resolved), Re-engagement Opportunity (forever-dismiss).
+              Whole section vanishes when nothing applies. */}
+          <DashboardSmartPrompts
             tenantId={appUser?.active_tenant_id || appUser?.tenant_id || ''}
           />
 
