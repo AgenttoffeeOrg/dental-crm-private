@@ -242,6 +242,33 @@ export function TreatmentOfferingsTab({ embedded = false }: TreatmentOfferingsTa
         </div>
       )}
 
+      {/* 2b.35.4 — discoverability link for the new bulk setup wizard.
+          The per-row toggles + drawer are great for editing one offering
+          at a time; the wizard is the faster path for first-time setup
+          (pick treatments, choose merge-vs-create, apply in one shot). */}
+      <a
+        href="/settings/practice-setup"
+        className="block rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 hover:bg-purple-100 transition-colors"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="h-5 w-5 text-purple-600" />
+            <div>
+              <div className="font-medium text-purple-900 text-sm">
+                Quick setup wizard
+              </div>
+              <div className="text-xs text-purple-700">
+                Pick multiple treatments at once and auto-provision pipelines (including
+                Unsorted for AI-uncertain leads). Faster than toggling each one.
+              </div>
+            </div>
+          </div>
+          <span className="text-purple-700 text-sm font-medium whitespace-nowrap">
+            Open →
+          </span>
+        </div>
+      </a>
+
       {/* Section 1: Standard treatments */}
       <section className="space-y-3">
         <div>
