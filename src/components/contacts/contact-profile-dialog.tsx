@@ -5,12 +5,10 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-client'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+// 2b.47 — Outer wrapper converted from Dialog (centred) to Sheet
+// (right slide-over) per Q8 audit decision. Matches the
+// Create Contact / Create Deal patterns elsewhere in the app.
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -424,14 +422,21 @@ export function ContactProfileDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    /* 2b.47 — Right-side slide-over (Q8 audit decision). Matches the
+       Create Contact / Create Deal patterns; consistent with the other
+       "edit big entity" surfaces in the app. The previous centred
+       Dialog is gone; same form body, new wrapper. */
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-2xl overflow-y-auto p-6"
+      >
+        <SheetHeader className="pb-4 border-b border-gray-200 mb-6">
+          <SheetTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
             {mode === 'create' ? 'Create New Contact Profile' : 'Edit Contact Profile'}
-          </DialogTitle>
-        </DialogHeader>
+          </SheetTitle>
+        </SheetHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           {/* Basic Information Section */}
@@ -1010,7 +1015,7 @@ export function ContactProfileDialog({
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
