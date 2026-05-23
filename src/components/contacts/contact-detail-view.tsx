@@ -58,6 +58,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
 import { NextBestActionCard } from '@/components/contacts/next-best-action-card'
 import { ContactKpiStrip } from '@/components/contacts/contact-kpi-strip'
+import { ContactPersonaSummary } from '@/components/contacts/contact-persona-summary'
 
 // 2b.37 — Layout shell strip. Removed:
 //   - PSYCH_PROFILE_ENABLED feature flag + the entire Persona Insights
@@ -669,6 +670,12 @@ export function ContactDetailView({
               contact's relationship history. Open / closed split is by
               the stage's is_won / is_lost flags (locked principle #9). */}
           <ContactKpiStrip deals={deals} />
+
+          {/* 2b.40 — AI persona summary. 2-3 sentences synthesised from
+              the contact's conversation history. Auto-generates on first
+              load; auto-refreshes when ≥5 new activities arrive since
+              the last summary; manual refresh via the icon. */}
+          <ContactPersonaSummary contactId={contactId} />
 
           {/* 2b.31.2 — Next-Best-Action card sits at the top of the
               right column. Tells the operator what to DO with this
