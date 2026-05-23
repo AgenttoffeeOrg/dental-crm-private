@@ -225,6 +225,8 @@ export function EnterpriseDealsTable({
   mode,
   initialPipelineId,
   initialViewMode = 'list',
+  initialView,
+  initialFilter,
   showPipelineSelector = mode === 'universal',
   showBulkActions = true,
   showSavedViews = mode === 'universal',
@@ -237,6 +239,14 @@ export function EnterpriseDealsTable({
   onDealSelected,
   onCreateDeal,
 }: EnterpriseDealsTableProps) {
+  // 2b.56 — Translate initialView ('kanban' is an alias for 'board')
+  // into the existing ViewMode used for the toggle.
+  const resolvedInitialViewMode: ViewMode =
+    initialView === 'kanban' || initialView === 'board'
+      ? 'board'
+      : initialView === 'list'
+      ? 'list'
+      : initialViewMode
   const router = useRouter()
   const { appUser } = useAuth()
   const { orgId, userId: currentUserId } = useTenantContext()
@@ -256,7 +266,7 @@ export function EnterpriseDealsTable({
   
   // UI state
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
+  const [viewMode, setViewMode] = useState<ViewMode>(resolvedInitialViewMode)
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>(
     mode === 'pipeline' && initialPipelineId ? initialPipelineId : '_all_deals'
   )
@@ -646,6 +656,97 @@ export function EnterpriseDealsTable({
       const stageMap = new Map(stagesData.map(s => [s.id, s]))
       const ownerMap = new Map(ownersData.map(o => [o.id, o]))
 
+      // 2b.56 — Compute real last_activity_at + next_task_due_at per
+      // deal. deals.last_activity_at is stale (P1-A, audit) — no
+      // trigger maintains it — so for the Kanban card we re-derive
+      // from MAX(activities.occurred_at) per deal. Open future tasks
+      // come from a single bounded query against `tasks` filtered to
+      // this batch's deal_ids.
+      const dealIds = (data || []).map((d) => d.id)
+      const lastActivityMap = new Map<string, string>()
+      const nextTaskMap = new Map<string, { dueAt: string; type: string | null }>()
+      // 2b.56 — extra per-deal signals for the triage filters.
+      const hasOutboundByDeal = new Set<string>()
+      const hasUnreadInboundByDeal = new Set<string>()
+      const hasUncertainByDeal = new Set<string>()
+      const hasFailedSendByDeal = new Set<string>()
+      const hasRecentVoicemailByDeal = new Set<string>()
+
+      if (dealIds.length > 0) {
+        // 1. Most-recent activity per deal + flag aggregations — one
+        // query, reduce in JS. Columns pulled here also populate
+        // the dashboard's matching triage filters on the deals page.
+        const { data: activityRows } = await supabase
+          .from('activities')
+          .select(
+            'deal_id, occurred_at, direction, type, outcome, message_status, metadata'
+          )
+          .in('deal_id', dealIds)
+          .order('occurred_at', { ascending: false })
+          .limit(5000)
+
+        const SEVEN_DAYS_AGO = Date.now() - 7 * 24 * 3600 * 1000
+        // Track last seen direction per deal so we can detect
+        // "patient texted last, no reply" = unread inbound.
+        const lastSeenDirection = new Map<string, 'inbound' | 'outbound'>()
+        for (const r of (activityRows ?? []) as Array<{
+          deal_id: string | null
+          occurred_at: string
+          direction: 'inbound' | 'outbound' | null
+          type: string | null
+          outcome: string | null
+          message_status: string | null
+          metadata: Record<string, unknown> | null
+        }>) {
+          if (!r.deal_id || !r.occurred_at) continue
+          // Most recent occurred_at per deal (rows already sorted desc).
+          if (!lastActivityMap.has(r.deal_id)) lastActivityMap.set(r.deal_id, r.occurred_at)
+          if (r.direction === 'outbound') hasOutboundByDeal.add(r.deal_id)
+          if (r.direction && !lastSeenDirection.has(r.deal_id)) {
+            lastSeenDirection.set(r.deal_id, r.direction)
+          }
+          if (r.metadata && (r.metadata as any).ai_attachment_uncertain === true) {
+            hasUncertainByDeal.add(r.deal_id)
+          }
+          const ts = new Date(r.occurred_at).getTime()
+          if (ts >= SEVEN_DAYS_AGO) {
+            if (r.message_status === 'failed') hasFailedSendByDeal.add(r.deal_id)
+            if (
+              r.type === 'call' &&
+              r.direction === 'inbound' &&
+              r.outcome &&
+              ['voicemail', 'no_answer', 'missed'].includes(r.outcome)
+            ) {
+              hasRecentVoicemailByDeal.add(r.deal_id)
+            }
+          }
+        }
+        for (const [dealId, dir] of lastSeenDirection.entries()) {
+          if (dir === 'inbound') hasUnreadInboundByDeal.add(dealId)
+        }
+
+        // 2. Soonest open future task per deal — one query, reduce in JS.
+        const nowIso = new Date().toISOString()
+        const { data: taskRows } = await supabase
+          .from('tasks')
+          .select('deal_id, due_at, task_type, status')
+          .in('deal_id', dealIds)
+          .gt('due_at', nowIso)
+          .neq('status', 'completed')
+          .neq('status', 'cancelled')
+          .order('due_at', { ascending: true })
+        for (const r of (taskRows ?? []) as Array<{
+          deal_id: string | null
+          due_at: string | null
+          task_type: string | null
+        }>) {
+          if (!r.deal_id || !r.due_at) continue
+          if (!nextTaskMap.has(r.deal_id)) {
+            nextTaskMap.set(r.deal_id, { dueAt: r.due_at, type: r.task_type })
+          }
+        }
+      }
+
       // Enhance deals with aging data and related records
       const enhancedDeals: EnhancedDeal[] = (data || []).map(deal => {
         const createdDate = new Date(deal.created_at)
@@ -653,6 +754,9 @@ export function EnterpriseDealsTable({
         const days_since_created = differenceInDays(new Date(), createdDate)
         const days_in_stage = differenceInDays(new Date(), updatedDate)
         const aging_status = calculateAgingStatus(days_in_stage)
+
+        const realLastActivity = lastActivityMap.get(deal.id) ?? null
+        const nextTask = nextTaskMap.get(deal.id) ?? null
 
         return {
           ...deal,
@@ -665,7 +769,17 @@ export function EnterpriseDealsTable({
           days_in_stage,
           days_since_created,
           aging_status,
-        }
+          // 2b.56 — for Kanban card last-activity + next-activity display.
+          real_last_activity_at: realLastActivity,
+          next_task_due_at: nextTask?.dueAt ?? null,
+          next_task_type: nextTask?.type ?? null,
+          // 2b.56 — per-deal flags for the dashboard triage filters.
+          has_outbound_activity: hasOutboundByDeal.has(deal.id),
+          has_unread_inbound: hasUnreadInboundByDeal.has(deal.id),
+          has_uncertain_activity: hasUncertainByDeal.has(deal.id),
+          has_failed_send: hasFailedSendByDeal.has(deal.id),
+          has_recent_voicemail: hasRecentVoicemailByDeal.has(deal.id),
+        } as EnhancedDeal
       })
 
       // Apply aging filter if set (client-side)
@@ -676,6 +790,53 @@ export function EnterpriseDealsTable({
         } else if (agingFilter === 'fresh') {
           filteredDeals = enhancedDeals.filter(d => (d.days_in_stage || 0) <= 7)
         }
+      }
+
+      // 2b.56 — Triage filter from URL (dashboard lane deep-link).
+      // Applied after aging filter. Each branch is a client-side
+      // predicate over the enhanced deal shape — same data the
+      // dashboard's lanes compute counts from. Aiming for parity so
+      // "8 stale on the dashboard → 8 cards on the Kanban."
+      if (initialFilter) {
+        const STALE_DAYS = 7
+        const now = Date.now()
+        filteredDeals = filteredDeals.filter((d) => {
+          const stageIsOpen = !d.stage?.is_won && !d.stage?.is_lost
+          if (initialFilter === 'stale') {
+            if (!stageIsOpen) return false
+            const last = (d as any).real_last_activity_at ?? d.last_activity_at ?? null
+            if (!last) return true // never any activity = stale by definition
+            const days = (now - new Date(last).getTime()) / (24 * 3600 * 1000)
+            const hasFutureTask = Boolean((d as any).next_task_due_at)
+            return days > STALE_DAYS && !hasFutureTask
+          }
+          if (initialFilter === 'unread-inbound') {
+            if (!stageIsOpen) return false
+            // Approximated client-side. The activities feed itself
+            // carries the inbound/outbound sequence; here we use the
+            // last_activity_at signal as a coarse proxy. A perfect
+            // implementation would need a server-side derived field.
+            return Boolean((d as any).has_unread_inbound)
+          }
+          if (initialFilter === 'new-untouched') {
+            if (!stageIsOpen) return false
+            const isFirstStage = (d.stage as any)?.position === 1
+            const noOutbound = !(d as any).has_outbound_activity
+            return isFirstStage && noOutbound
+          }
+          if (initialFilter === 'failed-sends') {
+            // Surface deals that have any failed-send activity in
+            // recent days. Placeholder until 2b.57 wires a real flag.
+            return Boolean((d as any).has_failed_send)
+          }
+          if (initialFilter === 'voicemails') {
+            return Boolean((d as any).has_recent_voicemail)
+          }
+          if (initialFilter === 'ai-uncertain') {
+            return Boolean((d as any).has_uncertain_activity)
+          }
+          return true
+        })
       }
 
       // Apply client-side search (contact name/email + title)
@@ -1899,6 +2060,25 @@ interface DraggableDealCardProps {
   getAgingBadge: (days: number, status: string) => React.ReactNode
 }
 
+// 2b.56 — small helpers for the Last/Next lines on the Kanban card.
+function relativeTimeShort(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const ms = Date.now() - new Date(iso).getTime()
+  if (ms < 0) {
+    // Future — show "in Xd / Xh / Xm"
+    const absM = Math.abs(ms) / 60_000
+    if (absM < 60) return `in ${Math.round(absM)}m`
+    if (absM < 60 * 24) return `in ${Math.round(absM / 60)}h`
+    return `in ${Math.round(absM / (60 * 24))}d`
+  }
+  const m = ms / 60_000
+  if (m < 60) return `${Math.round(m)}m ago`
+  if (m < 60 * 24) return `${Math.round(m / 60)}h ago`
+  return `${Math.round(m / (60 * 24))}d ago`
+}
+
+const STALE_DAYS_THRESHOLD = 7
+
 function DraggableDealCard({ deal, onClick, formatCurrencyValue, getAgingBadge }: DraggableDealCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: deal.id,
@@ -1910,6 +2090,26 @@ function DraggableDealCard({ deal, onClick, formatCurrencyValue, getAgingBadge }
     opacity: isDragging ? 0.5 : 1,
   }
 
+  // 2b.56 — pull the computed fields (loadDeals populates these from
+  // MAX(activities) / MIN(future tasks)). Older callers won't have
+  // them; fall back to deals.last_activity_at gracefully.
+  const lastActivityAt = (deal as any).real_last_activity_at ?? deal.last_activity_at ?? null
+  const nextTaskDueAt = (deal as any).next_task_due_at as string | null
+  const nextTaskType = (deal as any).next_task_type as string | null
+  const lastLabel = relativeTimeShort(lastActivityAt)
+  const nextLabel = relativeTimeShort(nextTaskDueAt)
+
+  // Stale: no activity in 7+ days AND no future task scheduled.
+  const daysSinceActivity = lastActivityAt
+    ? differenceInDays(new Date(), new Date(lastActivityAt))
+    : 999
+  const isStale = daysSinceActivity > STALE_DAYS_THRESHOLD && !nextTaskDueAt
+
+  // 2b.56 — AI-uncertain marker propagated from any activity on this
+  // deal flagged with `ai_attachment_uncertain` (the field is added
+  // to EnhancedDeal in loadDeals; pre-existing surface in 2b.34.4).
+  const hasUncertain = Boolean((deal as any).has_uncertain_activity)
+
   return (
     <div
       ref={setNodeRef}
@@ -1918,12 +2118,23 @@ function DraggableDealCard({ deal, onClick, formatCurrencyValue, getAgingBadge }
       {...listeners}
       onClick={onClick}
       className={cn(
-        'bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer',
-        isDragging && 'border-blue-500 ring-2 ring-blue-200'
+        'bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer',
+        isDragging && 'border-blue-500 ring-2 ring-blue-200',
+        isStale ? 'border-amber-300 border-l-4 border-l-amber-500' : 'border-gray-200'
       )}
     >
-      <div className="flex items-start justify-between mb-2">
-        <h4 className="font-semibold text-gray-900 text-sm line-clamp-2">{deal.title}</h4>
+      <div className="flex items-start justify-between mb-2 gap-2">
+        <h4 className="font-semibold text-gray-900 text-sm line-clamp-2 flex-1">
+          {deal.title}
+          {hasUncertain && (
+            <span
+              className="ml-1 text-amber-600 text-xs"
+              title="AI was uncertain about an activity attachment on this deal"
+            >
+              ⚠
+            </span>
+          )}
+        </h4>
         {getAgingBadge(deal.days_in_stage || 0, deal.aging_status || 'fresh')}
       </div>
 
@@ -1931,7 +2142,7 @@ function DraggableDealCard({ deal, onClick, formatCurrencyValue, getAgingBadge }
         <p className="text-xs text-gray-600 mb-2">{deal.contact.full_name}</p>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2">
         <span className="text-base font-bold text-gray-900">
           {formatCurrencyValue(deal.value_estimate_cents)}
         </span>
@@ -1942,6 +2153,38 @@ function DraggableDealCard({ deal, onClick, formatCurrencyValue, getAgingBadge }
             </AvatarFallback>
           </Avatar>
         )}
+      </div>
+
+      {/* 2b.56 — last / next activity lines. Compact two-row footer. */}
+      <div className="border-t border-gray-100 pt-2 mt-2 space-y-1">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-gray-500">Last</span>
+          <span className={cn('font-medium', isStale ? 'text-amber-700' : 'text-gray-700')}>
+            {lastLabel ?? '—'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-gray-500">Next</span>
+          {nextLabel ? (
+            <span className="font-medium text-gray-700">
+              {nextLabel}
+              {nextTaskType && (
+                <span className="text-gray-400 ml-1">· {nextTaskType}</span>
+              )}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                'font-medium text-[10px] uppercase tracking-wide px-1.5 py-0 rounded',
+                isStale
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-gray-100 text-gray-500'
+              )}
+            >
+              No follow-up set
+            </span>
+          )}
+        </div>
       </div>
 
       {deal.treatment_tags && deal.treatment_tags.length > 0 && (

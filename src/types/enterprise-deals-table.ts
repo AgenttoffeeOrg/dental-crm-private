@@ -172,6 +172,22 @@ export interface EnterpriseDealsTableProps {
    * Custom CSS class for the container
    */
   className?: string
+
+  /**
+   * 2b.56 — Initial view ('kanban' alias for 'board' / 'list').
+   * Lets the page-level URL ?view= param drop the table into the
+   * right mode without taking over the toggle for the session.
+   */
+  initialView?: 'kanban' | 'board' | 'list'
+
+  /**
+   * 2b.56 — Initial triage filter (set by the dashboard's lane
+   * deep-links). One of: stale | unread-inbound | new-untouched |
+   * failed-sends | voicemails | ai-uncertain | null.
+   * Applied client-side on top of the existing filter set; survives
+   * until the operator clicks the page-level "Clear filter" button.
+   */
+  initialFilter?: string
   
   /**
    * Callback when a deal is selected (for deep linking)
