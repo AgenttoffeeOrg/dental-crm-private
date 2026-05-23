@@ -108,7 +108,9 @@ export function ContactDetailView({
   // Removed selectedDealId state - we navigate instead of showing modal
   const [showActivityTimeline, setShowActivityTimeline] = useState(false)
   const [showAI, setShowAI] = useState(false)
-  const [activeTab, setActiveTab] = useState<string>('overview')
+  // 2b.34.3 — default to the Activity timeline (the iMessage-style
+  // feed). Overview is now a minimal summary that lives one tab over.
+  const [activeTab, setActiveTab] = useState<string>('activities')
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   
@@ -382,14 +384,10 @@ export function ContactDetailView({
         iconColor: 'text-purple-600',
         iconBg: 'bg-purple-50',
       },
-      {
-        title: 'Persona Focus',
-        value: personaLabel,
-        helper: analyzingPersona ? 'Analysing…' : personaUpdatedLabel,
-        icon: Brain,
-        iconColor: 'text-amber-600',
-        iconBg: 'bg-amber-50',
-      },
+      // 2b.34.3 — Persona Focus card removed (PSYCH_PROFILE_ENABLED
+      // is false; rendering "Needs insights" here was noise). The
+      // strip is now Active Deals · Pipeline Value · Last Engagement —
+      // three numbers, each shown in exactly one place on the page.
     ],
     [
       openDeals.length,
@@ -893,39 +891,10 @@ export function ContactDetailView({
               </div>
               )}
 
-              {/* Customer Value Summary */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Customer Value
-                </h3>
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs text-gray-600 mb-1">Total Value</div>
-                      <div className="text-lg font-bold text-green-700">
-                        {deals.length > 0 
-                          ? formatCurrency(deals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))
-                          : '£0.00'
-                        }
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-600 mb-1">Active Deals</div>
-                      <div className="text-lg font-bold text-blue-700">
-                        {deals.filter(deal => !['closed_won', 'closed_lost'].includes(deal.stage?.name?.toLowerCase() || '')).length}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-green-200/50">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Won: {deals.filter(deal => deal.stage?.name?.toLowerCase() === 'closed_won').length}</span>
-                      <span className="text-gray-600">Lost: {deals.filter(deal => deal.stage?.name?.toLowerCase() === 'closed_lost').length}</span>
-                      <span className="text-gray-600">Total: {deals.length}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* 2b.34.3 — "Customer Value" sidebar card removed.
+                  £4,000 + active-deals count were already shown in the
+                  top KPI strip; rendering them here again was the third
+                  duplicate that earned the audit's wrath. */}
 
               {/* All Deals */}
               <div>
@@ -1216,9 +1185,9 @@ export function ContactDetailView({
         >
           <div className="px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
             <TabsList className="grid w-full grid-cols-3 max-w-xl">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="activities">Activity</TabsTrigger>
               <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
-              <TabsTrigger value="activities">Activities & Tasks</TabsTrigger>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
             </TabsList>
           </div>
 
@@ -1231,80 +1200,15 @@ export function ContactDetailView({
               <p className="text-gray-600">Loading...</p>
             </div>
           ) : (
-            /* Executive Summary View */
+            /* 2b.34.3 — Overview tab gutted. The "Customer Intelligence"
+               4-box (Total Value / Total Deals / Win Rate / Engagement)
+               and the AI Customer Summary placeholder are gone — they
+               duplicated the top KPI strip, the NBA card, and the
+               sidebar All-Deals list, putting the same £4,000 in three
+               places on one screen. The Deal Overview cards (below)
+               are also removed because the Deals tab next door is the
+               canonical deal-list view. */
             <div className="space-y-6">
-              {/* Customer Intelligence */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-purple-600" />
-                  Customer Intelligence
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  {/* Total Value */}
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <DollarSign className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-900">Total Value</span>
-                    </div>
-                    <div className="text-xl font-bold text-green-700">
-                      {deals.length > 0 
-                        ? formatCurrency(deals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))
-                        : '£0.00'
-                      }
-                    </div>
-                  </div>
-
-                  {/* Deal Count */}
-                  <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Target className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-900">Total Deals</span>
-                    </div>
-                    <div className="text-xl font-bold text-blue-700">{deals.length}</div>
-                  </div>
-
-                  {/* Win Rate */}
-                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm font-medium text-purple-900">Win Rate</span>
-                    </div>
-                    <div className="text-xl font-bold text-purple-700">
-                      {deals.length > 0 
-                        ? Math.round((deals.filter(deal => deal.stage?.name?.toLowerCase() === 'closed_won').length / deals.length) * 100)
-                        : 0
-                      }%
-                    </div>
-                  </div>
-
-                  {/* Engagement Score */}
-                  <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Star className="h-4 w-4 text-orange-600" />
-                      <span className="text-sm font-medium text-orange-900">Engagement</span>
-                    </div>
-                    <div className="text-xl font-bold text-orange-700">High</div>
-                  </div>
-                </div>
-
-                {/* AI Summary */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-600" />
-                    AI Customer Summary
-                  </h4>
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    {contact?.full_name} is a {deals.length > 0 ? 'valuable' : 'new'} customer with {deals.length} total deal{deals.length !== 1 ? 's' : ''}.
-                    {deals.length > 0 && (
-                      <> They have shown consistent engagement and have generated {formatCurrency(deals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0))} in total value.
-                      Recent interactions indicate they are {deals.filter(deal => !['closed_won', 'closed_lost'].includes(deal.stage?.name?.toLowerCase() || '')).length > 0 ? 'actively engaged with ongoing treatments' : 'a completed customer with potential for future services'}.
-                      </>
-                    )}
-                    {contact?.lead_score && contact.lead_score > 70 && ' High lead score indicates strong potential for additional services.'}
-                  </p>
-                </div>
-              </div>
 
               {/* Deal Overview Cards */}
               <div className="bg-white rounded-lg border border-gray-200 p-6">
