@@ -23,6 +23,7 @@
  *     by the parent via `onClick`).
  */
 
+import { useEffect, useRef, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import {
   Phone,
@@ -167,6 +168,46 @@ export function ActivityChatBubble({
   const aiOutcome = activity.type === 'call' ? shortLabel(activity.metadata?.ai_outcome) : null
   const aiSentiment = shortLabel(activity.metadata?.ai_sentiment)
   const hasAiLabels = aiPurpose || aiOutcome || aiSentiment
+
+  // 2b.43 — lazy email summariser. Fires once per bubble mount when
+  // the activity is an email AND we don't already have a cached
+  // summary on metadata. The local state holds whatever's been
+  // fetched so re-renders during this session don't refire.
+  const cachedEmailSummary = activity.metadata?.ai_email_summary as string | undefined
+  const [lazyEmailSummary, setLazyEmailSummary] = useState<string | null>(
+    cachedEmailSummary ?? null
+  )
+  const [emailSummarising, setEmailSummarising] = useState(false)
+  const lazyFiredRef = useRef(false)
+  useEffect(() => {
+    if (activity.type !== 'email') return
+    if (cachedEmailSummary) return
+    if (lazyFiredRef.current) return
+    lazyFiredRef.current = true
+    let cancelled = false
+    const run = async () => {
+      setEmailSummarising(true)
+      try {
+        const res = await fetch(`/api/activities/${activity.id}/summarise-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        })
+        if (!res.ok) return
+        const body = (await res.json().catch(() => null)) as { summary?: string } | null
+        if (!cancelled && body?.summary) setLazyEmailSummary(body.summary)
+      } catch {
+        // swallow — fallback to body preview
+      } finally {
+        if (!cancelled) setEmailSummarising(false)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity.id, activity.type])
 
   // Bubble styling by type + side.
   let bubbleClass: string
