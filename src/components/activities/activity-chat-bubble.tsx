@@ -52,10 +52,33 @@ interface BubbleActivity {
   deal_title?: string | null
 }
 
+// 2b.42 — AI inline label suggestion state (mirrors the shape used
+// by activity-feed-enterprise.tsx; the parent owns the map and
+// passes the per-activity entry in).
+export type AiSuggestionEntry =
+  | { status: 'fetching' }
+  | { status: 'accepting' }
+  | { status: 'none'; message: string }
+  | {
+      status: 'ready'
+      kind: 'reuse_matching_pipeline' | 'new_pipeline'
+      pipelineName: string | null
+      dealId: string | null
+      confidence: number | null
+      source: 'keyword' | 'ai'
+    }
+
 interface ActivityChatBubbleProps {
   activity: BubbleActivity
   onClick?: () => void
   isDragging?: boolean
+  // 2b.42 — AI inline-suggest handlers wired in from the parent feed.
+  // All optional; bubble renders gracefully when omitted (e.g. on
+  // the deal detail page if it ever mounts this component standalone).
+  aiSuggestion?: AiSuggestionEntry
+  onFetchAiSuggestion?: (activityId: string) => void
+  onAcceptAiSuggestion?: (activityId: string) => void
+  onDismissAiSuggestion?: (activityId: string) => void
 }
 
 /**
@@ -107,16 +130,43 @@ function formatDuration(seconds?: number): string | null {
   return `${mins}m ${secs}s`
 }
 
+// Render a single 1-2 word AI label. Heuristic: collapse any input
+// longer than two words to its first two; lowercase for visual
+// quiet; truncate stupidly long values at 20 chars.
+function shortLabel(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const s = raw.trim()
+  if (!s) return null
+  const words = s.split(/\s+/).slice(0, 2).join(' ').toLowerCase()
+  return words.length > 20 ? words.slice(0, 20) + '…' : words
+}
+
 export function ActivityChatBubble({
   activity,
   onClick,
   isDragging,
+  aiSuggestion,
+  onFetchAiSuggestion,
+  onAcceptAiSuggestion,
+  onDismissAiSuggestion,
 }: ActivityChatBubbleProps) {
   const side = bubbleSide(activity)
   const Icon = TYPE_ICON[activity.type] ?? FileText
   const text = bubbleText(activity)
   const isFailed = activity.message_status === 'failed'
   const isUncertain = activity.metadata?.ai_attachment_uncertain === true
+
+  // 2b.42 — pull the AI labels off metadata. Compact 1-2 word format
+  // per the 2026-05-23 product discussion. Outbound activities have
+  // dispatcher-heuristic AI fields (per audit P2-A) — they look AI-
+  // flavoured but are static; rendering them is still useful as a
+  // glance signal until a future phase replaces them with real
+  // Claude output.
+  const aiPurpose = shortLabel(activity.metadata?.ai_purpose)
+  // Calls are the only type with a real outcome label.
+  const aiOutcome = activity.type === 'call' ? shortLabel(activity.metadata?.ai_outcome) : null
+  const aiSentiment = shortLabel(activity.metadata?.ai_sentiment)
+  const hasAiLabels = aiPurpose || aiOutcome || aiSentiment
 
   // Bubble styling by type + side.
   let bubbleClass: string
@@ -172,7 +222,8 @@ export function ActivityChatBubble({
             {text}
           </div>
 
-          {/* Footer: icon · status · time. Compact. */}
+          {/* Footer: icon · type · duration · outcome · failed · time.
+              Compact, single line, no badges. */}
           <div
             className={cn(
               'flex items-center gap-1.5 mt-1 text-[10px]',
@@ -207,25 +258,137 @@ export function ActivityChatBubble({
               {formatDistanceToNow(new Date(activity.occurred_at), { addSuffix: true })}
             </span>
           </div>
+
+          {/* 2b.42 — inline AI labels. Up to three 1-2 word hints
+              underneath the body so an operator can scan the timeline
+              for "what was each conversation about / how did it go /
+              what was the patient's mood." No badges, no icons —
+              just dimmed text separated by middle dots. Hidden
+              entirely when no labels exist (the chat stays clean). */}
+          {hasAiLabels && (
+            <div
+              className={cn(
+                'flex items-center gap-1 mt-0.5 text-[10px] italic',
+                side === 'right'
+                  ? activity.type === 'note'
+                    ? 'text-amber-600/80'
+                    : 'text-blue-500/80'
+                  : 'text-gray-400'
+              )}
+            >
+              {aiPurpose && <span>{aiPurpose}</span>}
+              {aiPurpose && (aiOutcome || aiSentiment) && <span className="opacity-60">·</span>}
+              {aiOutcome && <span>{aiOutcome}</span>}
+              {aiOutcome && aiSentiment && <span className="opacity-60">·</span>}
+              {aiSentiment && <span>{aiSentiment}</span>}
+            </div>
+          )}
         </button>
 
-        {/* AI-uncertain marker outside the bubble so it doesn't widen
-            the message. Phase 2b.42 will replace this with the inline
-            1-2 word AI labels + the Suggest CTA wired into the new
-            layout. For now keep the simple amber pill as a placeholder
-            so the marker doesn't disappear. */}
+        {/* 2b.42 — AI-uncertain marker + inline Suggest CTA wired
+            against the parent's aiSuggestion handlers. Rendered
+            BELOW the bubble (compact, doesn't widen the message)
+            on the same side. Lifecycle: pill → Suggest button →
+            Thinking… → "Looks like X · Accept / ✕" → Moving…
+            On accept the activity moves onto the suggested deal
+            and the marker is cleared (parent handler refetches
+            and dismisses). */}
         {isUncertain && (
           <div
             className={cn(
-              'flex items-center gap-1 text-[10px] text-amber-700',
-              side === 'right' ? 'self-end' : 'self-start'
+              'flex flex-wrap items-center gap-1 text-[10px]',
+              side === 'right' ? 'self-end justify-end' : 'self-start'
             )}
-            title="AI wasn't sure which deal this belongs to."
           >
-            <AlertCircle className="h-2.5 w-2.5" />
-            <span>AI unsure</span>
-            <Sparkles className="h-2.5 w-2.5 opacity-60" />
-            <span className="opacity-70">(suggest UI returning in 2b.42)</span>
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0 rounded font-medium bg-amber-50 border border-amber-200 text-amber-700"
+              title="AI wasn't sure which deal this belongs to. Click Suggest to ask AI for a pipeline pick."
+            >
+              <AlertCircle className="h-2.5 w-2.5" />
+              AI unsure
+            </span>
+
+            {!aiSuggestion && onFetchAiSuggestion && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onFetchAiSuggestion(activity.id)
+                }}
+                className="inline-flex items-center gap-1 px-1.5 py-0 rounded font-medium bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100"
+              >
+                <Sparkles className="h-2.5 w-2.5" />
+                Suggest
+              </button>
+            )}
+
+            {aiSuggestion?.status === 'fetching' && (
+              <span className="inline-flex items-center gap-1 text-violet-700">
+                <Sparkles className="h-2.5 w-2.5 animate-pulse" />
+                Thinking…
+              </span>
+            )}
+
+            {aiSuggestion?.status === 'none' && (
+              <span className="inline-flex items-center gap-1 text-gray-500">
+                {aiSuggestion.message}
+                {onDismissAiSuggestion && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDismissAiSuggestion(activity.id)
+                    }}
+                    className="ml-1 text-gray-400 hover:text-gray-600"
+                    aria-label="Dismiss"
+                  >
+                    ✕
+                  </button>
+                )}
+              </span>
+            )}
+
+            {aiSuggestion?.status === 'ready' && (
+              <span className="inline-flex items-center gap-1.5 px-1.5 py-0 rounded font-medium bg-violet-50 border border-violet-200 text-violet-800">
+                <Sparkles className="h-2.5 w-2.5" />
+                Looks like {aiSuggestion.pipelineName ?? 'a different pipeline'}
+                {aiSuggestion.kind === 'new_pipeline' && (
+                  <span className="text-violet-500">(new)</span>
+                )}
+                {onAcceptAiSuggestion && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onAcceptAiSuggestion(activity.id)
+                    }}
+                    className="ml-1 px-1.5 py-0 rounded bg-violet-600 text-white hover:bg-violet-700"
+                  >
+                    Accept
+                  </button>
+                )}
+                {onDismissAiSuggestion && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDismissAiSuggestion(activity.id)
+                    }}
+                    className="text-violet-400 hover:text-violet-600 ml-0.5"
+                    aria-label="Dismiss"
+                  >
+                    ✕
+                  </button>
+                )}
+              </span>
+            )}
+
+            {aiSuggestion?.status === 'accepting' && (
+              <span className="inline-flex items-center gap-1 text-violet-700">
+                <Sparkles className="h-2.5 w-2.5 animate-pulse" />
+                Moving…
+              </span>
+            )}
           </div>
         )}
 

@@ -1406,6 +1406,10 @@ const sanitizedContactPhone = useMemo(
                       activity={activity as any}
                       isDragging={draggingActivityId === activity.id}
                       onClick={() => setSelectedActivityId(activity.id)}
+                      aiSuggestion={aiSuggestions[activity.id]}
+                      onFetchAiSuggestion={fetchAiSuggestion}
+                      onAcceptAiSuggestion={acceptAiSuggestion}
+                      onDismissAiSuggestion={dismissAiSuggestion}
                     />
                   </DraggableActivityRow>
                 ))}
