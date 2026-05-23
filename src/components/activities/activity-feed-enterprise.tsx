@@ -42,8 +42,24 @@ import {
   Upload,
   Paperclip,
   Target,
-  AlertCircle
+  AlertCircle,
+  GripVertical
 } from 'lucide-react'
+// 2b.35.3 — drag activities onto deal chips to reassign them. The
+// third classification method from the 2026-05-23 product discussion
+// (alongside manual Change-Deal and AI inline suggest). @dnd-kit
+// already shipped with /deals's kanban so no new dependency.
+import {
+  DndContext,
+  useDraggable,
+  useDroppable,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
 import { createClient } from '@/lib/supabase-client'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { toast } from 'sonner'
@@ -61,6 +77,80 @@ import { sanitizePhoneNumber } from '@/lib/utils/phone'
 import { ActivityMedia, type ActivityMediaItem } from './activity-media'
 import { signMessageMediaUrls } from '@/lib/inbound-media/signed-urls'
 import type { DealForAttachment } from '@/lib/deal-resolver'
+
+// 2b.35.3 — DnD wrapper components. Hooks can't be called inside
+// .map() callbacks, so these tiny components are the bridge between
+// dnd-kit and the existing chip / activity-row JSX.
+
+function DraggableActivityRow({
+  id,
+  isActive,
+  children,
+}: {
+  id: string
+  isActive: boolean
+  children: React.ReactNode
+}) {
+  const { setNodeRef, attributes, listeners, isDragging } = useDraggable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'relative group transition-opacity',
+        isDragging && 'opacity-40'
+      )}
+    >
+      {/* Drag handle — appears on hover so it doesn't visually clutter
+          the row. The whole row is NOT draggable; only the grip is, so
+          clicking anywhere else on the row still opens the detail
+          slide-in. */}
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className={cn(
+          'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-7 p-1 rounded text-gray-300 opacity-0 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-600 cursor-grab active:cursor-grabbing transition-opacity z-10',
+          isActive && 'opacity-100 text-purple-600'
+        )}
+        aria-label="Drag to reassign deal"
+        title="Drag onto a deal chip to reassign"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      {children}
+    </div>
+  )
+}
+
+function DroppableDealChip({
+  id,
+  children,
+  className,
+  onClick,
+  title,
+}: {
+  id: string
+  children: React.ReactNode
+  className?: string
+  onClick?: () => void
+  title?: string
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id })
+  return (
+    <button
+      type="button"
+      ref={setNodeRef}
+      onClick={onClick}
+      title={title}
+      className={cn(
+        className,
+        isOver && 'ring-2 ring-offset-1 ring-purple-500 scale-105'
+      )}
+    >
+      {children}
+    </button>
+  )
+}
 
 interface Activity {
   id: string
@@ -489,6 +579,63 @@ const sanitizedContactPhone = useMemo(
       delete next[activityId]
       return next
     })
+  }
+
+  // 2b.35.3 — drag-and-drop activity → deal chip. PATCH the same
+  // endpoint that powers the Change-Deal dropdown so the audit
+  // pattern is identical (audit-first, clear ai_attachment_uncertain
+  // flag on success). Visual + ergonomic difference only.
+  const [draggingActivityId, setDraggingActivityId] = useState<string | null>(null)
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, {
+      // 6px activation distance so a click-to-open-detail still
+      // works — only "real" drags grab the row.
+      activationConstraint: { distance: 6 },
+    })
+  )
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setDraggingActivityId(String(event.active.id))
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const dropped = draggingActivityId
+    setDraggingActivityId(null)
+    const { active, over } = event
+    if (!over || !active) return
+    const activityId = String(active.id)
+    const dropTargetId = String(over.id)
+    if (dropTargetId === 'all') return // 'All' isn't a real target
+
+    const newDealId = dropTargetId === 'unsorted' ? null : dropTargetId
+
+    // Optimistic: clear the suggestion + show toast. PATCH is
+    // audited server-side; on failure we revert by re-fetching.
+    try {
+      const res = await fetch(`/api/activities/${activityId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ deal_id: newDealId }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        toast.error(body?.error ?? 'Could not move activity.')
+        return
+      }
+      toast.success(
+        newDealId === null
+          ? 'Activity moved to Unsorted'
+          : 'Activity reassigned to deal'
+      )
+      // Drop any AI suggestion for the moved row (it's resolved now)
+      // and refresh the feed so chips + counts update.
+      if (dropped) dismissAiSuggestion(dropped)
+      fetchActivities()
+    } catch (err) {
+      console.error('[dnd] reassign failed', err)
+      toast.error('Network error moving activity.')
+    }
   }
 
   // 2b.34.4 — derive a deal-chip list from whatever's actually on the
@@ -996,7 +1143,20 @@ const sanitizedContactPhone = useMemo(
     )
   }
 
+  // 2b.35.3 — flat lookup for the dragged activity so DragOverlay
+  // can render a ghost preview without re-running the heavy
+  // renderActivityCard().
+  const draggedActivity = draggingActivityId
+    ? activities.find((a) => a.id === draggingActivityId) ?? null
+    : null
+
   return (
+    <DndContext
+      sensors={dndSensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setDraggingActivityId(null)}
+    >
     <div className="space-y-4">
       {/* Header with Stats & Quick Actions */}
       <div className="flex items-center justify-between">
@@ -1129,14 +1289,17 @@ const sanitizedContactPhone = useMemo(
             All
           </button>
           {dealChips.map((chip) => (
-            <button
+            // 2b.35.3 — each chip is also a drop target. Drag an activity
+            // onto it to reassign (via PATCH /api/activities/[id]).
+            <DroppableDealChip
               key={chip.id}
-              type="button"
+              id={chip.id}
               onClick={() =>
                 setFilterDealId(filterDealId === chip.id ? 'all' : chip.id)
               }
+              title="Drop an activity here to reassign it to this deal"
               className={cn(
-                'text-xs px-2.5 py-1 rounded-full transition-colors border',
+                'text-xs px-2.5 py-1 rounded-full transition-all border',
                 filterDealId === chip.id
                   ? chip.id === 'unsorted'
                     ? 'bg-amber-600 text-white border-amber-600'
@@ -1147,7 +1310,7 @@ const sanitizedContactPhone = useMemo(
               )}
             >
               {chip.title} · {chip.count}
-            </button>
+            </DroppableDealChip>
           ))}
         </div>
       )}
@@ -1225,11 +1388,15 @@ const sanitizedContactPhone = useMemo(
               </div>
 
               {/* Activities in this group */}
-              <div className="space-y-3">
+              <div className="space-y-3 pl-7">
                 {groupActivities.map(activity => (
-                  <div key={activity.id} className="group">
+                  <DraggableActivityRow
+                    key={activity.id}
+                    id={activity.id}
+                    isActive={draggingActivityId === activity.id}
+                  >
                     {renderActivityCard(activity)}
-                  </div>
+                  </DraggableActivityRow>
                 ))}
               </div>
             </div>
@@ -1350,6 +1517,27 @@ const sanitizedContactPhone = useMemo(
         userId={userId}
       />
     </div>
+
+    {/* 2b.35.3 — drag ghost. Cheap to render — just the activity's
+        subject + a "moving…" hint — to avoid mis-rendering the full
+        activity card which has its own click handlers etc. */}
+    <DragOverlay>
+      {draggedActivity ? (
+        <div className="px-3 py-2 rounded-lg shadow-lg bg-white border-2 border-purple-400 text-sm font-medium text-gray-900 flex items-center gap-2 max-w-md">
+          <GripVertical className="h-4 w-4 text-purple-500" />
+          <span className="truncate">
+            {draggedActivity.subject ||
+              draggedActivity.snippet ||
+              draggedActivity.description ||
+              `${draggedActivity.type} activity`}
+          </span>
+          <span className="text-xs text-purple-600 ml-auto whitespace-nowrap">
+            Drop on a deal chip
+          </span>
+        </div>
+      ) : null}
+    </DragOverlay>
+    </DndContext>
   )
 }
 
