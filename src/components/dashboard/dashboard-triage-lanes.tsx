@@ -25,6 +25,10 @@ import {
   Sparkles,
   Hourglass,
   Loader2,
+  MessageSquare,
+  AlertTriangle,
+  Voicemail,
+  Eye,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { Card } from '@/components/ui/card'
@@ -35,6 +39,11 @@ interface TriageCounts {
   todaysCalls: number
   newInquiries: number
   staleFollowUps: number
+  // 2b.51 — the secondary triage cluster.
+  unreadInbound: number
+  failedSends: number
+  voicemailsMissed: number
+  aiNeedsEye: number
 }
 
 const EMPTY: TriageCounts = {
@@ -42,6 +51,10 @@ const EMPTY: TriageCounts = {
   todaysCalls: 0,
   newInquiries: 0,
   staleFollowUps: 0,
+  unreadInbound: 0,
+  failedSends: 0,
+  voicemailsMissed: 0,
+  aiNeedsEye: 0,
 }
 
 const REFRESH_MS = 60_000
@@ -163,11 +176,78 @@ async function loadTriageCounts(
     staleFollowUps = staleCandidateIds.filter((id) => !scheduledIds.has(id)).length
   }
 
+  // ---------------------------------------------------------------
+  // 2b.51 — Secondary cluster.
+  // ---------------------------------------------------------------
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString()
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+
+  // 5. Unread Inbound — contacts whose most-recent activity (within
+  //    last 14d) is inbound. Same shape as the metric-strip's
+  //    "replies needed" but without the 4h threshold so this lane
+  //    catches everything pending. Bounded scan + client reduction.
+  const unreadScanRes = await supabase
+    .from('activities')
+    .select('contact_id, direction, occurred_at')
+    .eq('tenant_id', tenantId)
+    .gte('occurred_at', fourteenDaysAgo)
+    .in('direction', ['inbound', 'outbound'])
+    .order('occurred_at', { ascending: false })
+    .limit(2000)
+  const lastDirByContactUnread = new Map<string, 'inbound' | 'outbound'>()
+  for (const row of (unreadScanRes.data ?? []) as Array<{
+    contact_id: string | null
+    direction: 'inbound' | 'outbound' | null
+  }>) {
+    if (!row.contact_id || !row.direction) continue
+    if (!lastDirByContactUnread.has(row.contact_id)) {
+      lastDirByContactUnread.set(row.contact_id, row.direction)
+    }
+  }
+  let unreadInbound = 0
+  for (const dir of lastDirByContactUnread.values()) {
+    if (dir === 'inbound') unreadInbound += 1
+  }
+
+  // 6. Failed Sends — activities with message_status='failed' in
+  //    the last 7d.
+  const failedRes = await supabase
+    .from('activities')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('message_status', 'failed')
+    .gte('occurred_at', sevenDaysAgo)
+
+  // 7. Voicemails / Missed Calls — inbound calls with outcome in
+  //    {voicemail, no_answer, missed} in the last 7d.
+  const voicemailRes = await supabase
+    .from('activities')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('type', 'call')
+    .eq('direction', 'inbound')
+    .in('outcome', ['voicemail', 'no_answer', 'missed'])
+    .gte('occurred_at', sevenDaysAgo)
+
+  // 8. AI Needs Your Eye — activities flagged uncertain by the
+  //    2b.24 judge (or 2b.34.7 unsorted-fallback) that haven't been
+  //    reassigned yet. Filtered server-side via the metadata JSON
+  //    path. Bounded count.
+  const aiEyeRes = await supabase
+    .from('activities')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('metadata->>ai_attachment_uncertain', 'true')
+
   return {
     todaysPriorities: prioritiesRes.count ?? 0,
     todaysCalls: callsRes.count ?? 0,
     newInquiries,
     staleFollowUps,
+    unreadInbound,
+    failedSends: failedRes.count ?? 0,
+    voicemailsMissed: voicemailRes.count ?? 0,
+    aiNeedsEye: aiEyeRes.count ?? 0,
   }
 }
 
@@ -246,6 +326,51 @@ export function DashboardTriageLanes({ tenantId }: DashboardTriageLanesProps) {
           subtitle={`> ${STALE_DAYS}d untouched, no task`}
           onClick={() => router.push('/deals?view=kanban&filter=stale')}
           ctaLabel="Open Kanban →"
+        />
+
+        {/* 2b.51 — Secondary lane cluster. Same primitive, more
+            focused signals. Hidden cards remain in the grid as
+            empty-state placeholders so the layout doesn't shift
+            when a lane's count drops to zero. */}
+        <TriageLaneCard
+          label="Unread inbound"
+          count={counts.unreadInbound}
+          icon={MessageSquare}
+          tone="red"
+          loading={loading}
+          subtitle="Patient texted, no reply yet"
+          onClick={() => router.push('/deals?view=kanban&filter=unread-inbound')}
+          ctaLabel="Reply →"
+        />
+        <TriageLaneCard
+          label="Failed sends"
+          count={counts.failedSends}
+          icon={AlertTriangle}
+          tone="amber"
+          loading={loading}
+          subtitle="Bounced in last 7d"
+          onClick={() => router.push('/deals?view=kanban&filter=failed-sends')}
+          ctaLabel="Review →"
+        />
+        <TriageLaneCard
+          label="Voicemails / missed"
+          count={counts.voicemailsMissed}
+          icon={Voicemail}
+          tone="purple"
+          loading={loading}
+          subtitle="Inbound calls last 7d"
+          onClick={() => router.push('/deals?view=kanban&filter=voicemails')}
+          ctaLabel="Call back →"
+        />
+        <TriageLaneCard
+          label="AI needs your eye"
+          count={counts.aiNeedsEye}
+          icon={Eye}
+          tone="blue"
+          loading={loading}
+          subtitle="Uncertain attachments"
+          onClick={() => router.push('/deals?view=kanban&filter=ai-uncertain')}
+          ctaLabel="Classify →"
         />
       </div>
     </div>
