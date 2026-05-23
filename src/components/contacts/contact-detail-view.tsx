@@ -56,7 +56,13 @@ import { toast } from 'sonner'
 import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
 import { formatDistanceToNow } from 'date-fns'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
-import { NextBestActionCard } from '@/components/contacts/next-best-action-card'
+// 2b.48 — NextBestActionCard import removed. Per Q1 audit decision:
+// delete entirely from the contact page (not migrated to /deals/[id]).
+// The dashboard's "replies needed" + "stale follow-ups" triage lanes
+// (phases 2b.50/51) cover the same need at the practice-wide level.
+// The component file (next-best-action-card.tsx) and rule engine
+// (next-best-action.ts) are left in place for now; 2b.57's final
+// sweep decides whether to delete them outright.
 import { ContactKpiStrip } from '@/components/contacts/contact-kpi-strip'
 import { ContactPersonaSummary } from '@/components/contacts/contact-persona-summary'
 
@@ -677,30 +683,11 @@ export function ContactDetailView({
               the last summary; manual refresh via the icon. */}
           <ContactPersonaSummary contactId={contactId} />
 
-          {/* 2b.31.2 — Next-Best-Action card sits at the top of the
-              right column. Tells the operator what to DO with this
-              contact right now rather than just presenting data. */}
-          <NextBestActionCard
-            contactId={contactId}
-            tenantId={tenantId}
-            onSendSms={() => {
-              if (sanitizedPrimaryPhone) setSmsComposerOpen(true)
-              else toast.error('Add a phone number before sending an SMS.')
-            }}
-            onSendEmail={() => {
-              if (contact.primary_email) setEmailComposerOpen(true)
-              else toast.error('Add an email address before composing.')
-            }}
-            onSendWhatsapp={() => setCreateActivityDialogOpen(true)}
-            onCreateDeal={() => setCreateDealDialogOpen(true)}
-            onViewDeal={(dealId) => router.push(`/deals/${dealId}`)}
-          />
-
-          {/* 2b.39 — page-level Quick Actions row removed. Call · SMS ·
-              WhatsApp · Email are now in the left sidebar's Quick Actions
-              block. The NBA card above this still surfaces a single
-              contextual CTA when relevant. (NBA itself moves out in
-              2b.48; this row goes away with this phase.) */}
+          {/* 2b.48 — NextBestActionCard removed (Q1 audit decision). The
+              "what do I do next?" cue lives at the dashboard level now
+              (2b.50/51 triage lanes cover replies-needed + stale
+              follow-ups across the whole practice, which is more useful
+              than a per-contact card). */}
 
         </div>
 
