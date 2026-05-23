@@ -74,17 +74,16 @@ import { useSavedContactViews, type ContactFilters } from '@/hooks/use-saved-con
 import { BookmarkIcon, ChevronDown } from 'lucide-react'
 
 // Enhanced Contact type with computed fields
+//
+// 2b.36 — directory revert. The 2b.34.2 patch made the list inbox-style by
+// adding last_inbound_snippet / last_inbound_type / last_inbound_at /
+// needs_reply. The 2026-05-23 product discussion locked Contacts as a pure
+// deep-dive directory; triage signals belong on the Dashboard, not here.
+// Those fields + their backing query + the Reply pill + the snippet preview
+// are all gone in this phase.
 interface EnhancedContact extends Contact {
   deal_count?: number
   total_deal_value?: number
-  last_activity_at?: string
-  // 2b.34.2 — triage-inbox fields. last_inbound is the snippet shown
-  // on the row. needs_reply is true when the most recent inbound has
-  // no outbound after it (the practice owes a reply).
-  last_inbound_snippet?: string
-  last_inbound_type?: string
-  last_inbound_at?: string
-  needs_reply?: boolean
 }
 
 export function ContactsListEnterprise() {
@@ -117,11 +116,13 @@ export function ContactsListEnterprise() {
   const [ownerFilter, setOwnerFilter] = useState<string>('all')
   const [dateAddedFilter, setDateAddedFilter] = useState<string>('all')
 
-  // Sort — 2b.34.2: default to most-recently-active first so the list
-  // doubles as a triage inbox. The full_name + created_at sorts are
-  // still selectable from the column headers.
-  const [sortField, setSortField] = useState<'full_name' | 'created_at' | 'updated_at'>('updated_at')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  // Sort — 2b.36: directory default is alphabetical by name. The
+  // updated_at sort is still selectable (the 2b.34.2 inbox-style default
+  // bled into saved views; any user who pinned a view between 2b.34.2 and
+  // 2b.36 gets reset to full_name on first load). created_at remains a
+  // column-header sort option too.
+  const [sortField, setSortField] = useState<'full_name' | 'created_at' | 'updated_at'>('full_name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -272,30 +273,21 @@ export function ContactsListEnterprise() {
       const contactIds = (data || []).map(c => c.id)
 
       if (contactIds.length > 0) {
-        // 2b.30.3 + 2b.34.2 — pull deal stats + the per-contact
-        // activity signals the triage-inbox row needs:
-        //   - last activity timestamp (for the "Last touch X ago" chip)
-        //   - last inbound activity snippet + channel + timestamp
-        //     (for the inbox-style preview text on each row)
-        //   - last outbound activity timestamp (so we can decide
-        //     "needs reply" = inbound after last outbound)
-        const [dealStatsRes, activityStatsRes] = await Promise.all([
-          supabase
-            .from('deals')
-            .select('contact_id, value_estimate_cents')
-            .in('contact_id', contactIds)
-            .eq('tenant_id', appUser?.active_tenant_id),
-          supabase
-            .from('activities')
-            .select('contact_id, occurred_at, direction, type, description, snippet')
-            .in('contact_id', contactIds)
-            .eq('tenant_id', appUser?.active_tenant_id)
-            .order('occurred_at', { ascending: false })
-            .limit(2000),
-        ])
+        // 2b.36 — directory revert. The 2b.34.2 patch added a parallel
+        // `.from('activities').limit(2000)` to derive last_inbound_*
+        // signals for the inbox-style row layout; that query was the
+        // P3-C "unbounded last-activity scan" risk flagged in the
+        // 2b.36 audit. Now we only fetch deal stats — the row no longer
+        // needs activity signals because the inbox-style features were
+        // removed (triage moved to the Dashboard).
+        const { data: dealStatsData } = await supabase
+          .from('deals')
+          .select('contact_id, value_estimate_cents')
+          .in('contact_id', contactIds)
+          .eq('tenant_id', appUser?.active_tenant_id)
 
         const dealMap = new Map<string, { count: number; value: number }>()
-        dealStatsRes.data?.forEach(deal => {
+        dealStatsData?.forEach(deal => {
           const existing = dealMap.get(deal.contact_id) || { count: 0, value: 0 }
           dealMap.set(deal.contact_id, {
             count: existing.count + 1,
@@ -303,71 +295,11 @@ export function ContactsListEnterprise() {
           })
         })
 
-        // First-seen per contact_id wins (rows already sorted desc).
-        // 2b.34.2 — also build first-inbound + first-outbound per
-        // contact so we can derive "needs reply" + preview snippet.
-        interface ContactSignals {
-          lastActivityAt?: string
-          lastInboundAt?: string
-          lastInboundType?: string
-          lastInboundSnippet?: string
-          lastOutboundAt?: string
-        }
-        const signalMap = new Map<string, ContactSignals>()
-        for (const row of activityStatsRes.data ?? []) {
-          if (!row.contact_id || !row.occurred_at) continue
-          const existing = signalMap.get(row.contact_id) ?? {}
-          if (!existing.lastActivityAt) existing.lastActivityAt = row.occurred_at
-          if (row.direction === 'inbound' && !existing.lastInboundAt) {
-            existing.lastInboundAt = row.occurred_at
-            existing.lastInboundType = (row.type as string | null) ?? undefined
-            // Description holds the inbound body for ingestLead-driven
-            // rows; snippet is used elsewhere. Take whichever has text.
-            const body = ((row.description as string | null) ?? (row.snippet as string | null) ?? '')
-              .toString()
-              .trim()
-            if (body) existing.lastInboundSnippet = body
-          }
-          if (row.direction === 'outbound' && !existing.lastOutboundAt) {
-            existing.lastOutboundAt = row.occurred_at
-          }
-          signalMap.set(row.contact_id, existing)
-        }
-
-        const enhanced: EnhancedContact[] = (data || []).map(contact => {
-          const sig = signalMap.get(contact.id) ?? {}
-          // needs_reply is the canonical "this row needs attention"
-          // signal: inbound exists, and either no outbound at all OR
-          // the most recent inbound is newer than the most recent
-          // outbound. Notes/calls aren't inbound text and are
-          // already excluded by the direction filter above.
-          const needsReply = Boolean(
-            sig.lastInboundAt &&
-              (!sig.lastOutboundAt || sig.lastInboundAt > sig.lastOutboundAt)
-          )
-          return {
-            ...contact,
-            deal_count: dealMap.get(contact.id)?.count || 0,
-            total_deal_value: dealMap.get(contact.id)?.value || 0,
-            last_activity_at: sig.lastActivityAt,
-            last_inbound_snippet: sig.lastInboundSnippet,
-            last_inbound_type: sig.lastInboundType,
-            last_inbound_at: sig.lastInboundAt,
-            needs_reply: needsReply,
-          }
-        })
-
-        // 2b.34.2 — when the default updated_at sort is active, do an
-        // additional in-memory pass so contacts with REAL recent
-        // activity float above ones whose updated_at was bumped by
-        // some other write. Pure inbox feel.
-        if (sortField === 'updated_at' && sortOrder === 'desc') {
-          enhanced.sort((a, b) => {
-            const aT = a.last_activity_at ?? a.updated_at ?? ''
-            const bT = b.last_activity_at ?? b.updated_at ?? ''
-            return bT.localeCompare(aT)
-          })
-        }
+        const enhanced: EnhancedContact[] = (data || []).map(contact => ({
+          ...contact,
+          deal_count: dealMap.get(contact.id)?.count || 0,
+          total_deal_value: dealMap.get(contact.id)?.value || 0,
+        }))
 
         setContacts(enhanced)
       } else {
@@ -624,8 +556,19 @@ export function ContactsListEnterprise() {
                     setTypeFilter(filters.typeFilter || 'all')
                     setSourceFilter(filters.sourceFilter || 'all')
                     setTagFilter(filters.tagFilter || 'all')
-                    if (view.sort_field) setSortField(view.sort_field as any)
-                    if (view.sort_order) setSortOrder(view.sort_order)
+                    // 2b.36 — saved views created between 2b.34.2 and 2b.36
+                    // had updated_at as their default sort because the list
+                    // itself defaulted to that (inbox-style). The list is
+                    // now a directory; reset any inherited inbox-sort to
+                    // the new alphabetical default so legacy saved views
+                    // don't reintroduce the old behaviour.
+                    if (view.sort_field === 'updated_at') {
+                      setSortField('full_name')
+                      setSortOrder('asc')
+                    } else {
+                      if (view.sort_field) setSortField(view.sort_field as any)
+                      if (view.sort_order) setSortOrder(view.sort_order)
+                    }
                     toast.success(`Applied view: ${view.name}`)
                   }}
                   className={cn(
@@ -917,45 +860,22 @@ export function ContactsListEnterprise() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium text-gray-900 hover:text-blue-600 truncate">
-                              {contact.full_name || (contact.primary_phone ?? contact.primary_email ?? 'New contact')}
-                            </div>
-                            {contact.needs_reply && (
-                              // 2b.34.2 — bright "Reply" pill so the
-                              // operator can pattern-match unanswered
-                              // inbound messages at a glance.
-                              <Badge className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] uppercase tracking-wide px-1.5 py-0">
-                                Reply
-                              </Badge>
-                            )}
+                          {/* 2b.36 — directory revert. The Reply pill,
+                              inbound snippet preview line, and last-activity
+                              relative-time suffix on the source line all
+                              came from 2b.34.2's inbox-style design. With
+                              triage moved to the Dashboard the row is now
+                              just identity (name + source channel). */}
+                          <div className="font-medium text-gray-900 hover:text-blue-600 truncate">
+                            {contact.full_name || (contact.primary_phone ?? contact.primary_email ?? 'New contact')}
                           </div>
-                          {contact.last_inbound_snippet && (
-                            // 2b.34.2 — inbox-style preview line of the
-                            // most recent inbound. Truncates with ellipsis
-                            // when long. Lighter when already replied.
-                            <div
-                              className={cn(
-                                'text-xs mt-0.5 truncate max-w-[420px]',
-                                contact.needs_reply ? 'text-gray-800 font-medium' : 'text-gray-500'
-                              )}
-                            >
-                              {contact.last_inbound_snippet}
-                            </div>
-                          )}
                           {contact.source && (() => {
-                            // 2b.30: pretty channel label + icon instead of raw enum.
                             const src = getSourceLabel(contact.source)
                             const Icon = src.icon
                             return (
                               <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
                                 <Icon className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                 <span>{src.label}</span>
-                                {contact.last_activity_at && (
-                                  <span className="text-gray-400">
-                                    · {formatDistanceToNow(new Date(contact.last_activity_at), { addSuffix: true })}
-                                  </span>
-                                )}
                               </div>
                             )
                           })()}
