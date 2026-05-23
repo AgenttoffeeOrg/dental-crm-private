@@ -58,7 +58,8 @@ import { MultiOrgOnboarding } from '@/components/onboarding/multi-org-onboarding
 const getNavigation = (featureFlags: any) => [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: LABELS.DEAL.plural, href: '/deals', icon: DollarSign },
-  { name: 'Pipeline', href: '/pipeline', icon: Workflow },
+  // 2b.34.9 — Pipeline merged into Deals (List ↔ Kanban toggle).
+  // /pipeline still redirects to /deals for any bookmarks.
   { name: 'Call Coaching', href: '/call-coaching', icon: PhoneCall, badge: 'Coach', badgeColor: 'bg-emerald-600 text-white' },
   { name: 'Reception', href: '/reception', icon: Headphones, badge: 'Desk', badgeColor: 'bg-sky-600 text-white' },
   { name: LABELS.CONTACT.plural, href: '/contacts', icon: Users },

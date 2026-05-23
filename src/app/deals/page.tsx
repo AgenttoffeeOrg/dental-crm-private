@@ -29,9 +29,12 @@ export default function DealsPage() {
   return (
     <DashboardLayout>
       <div className="h-full flex flex-col">
-        <EnterpriseDealsTable 
+        {/* 2b.34.9 — List ↔ Kanban view toggle now lives on the Deals
+            page itself. /pipeline now redirects here. The previous
+            standalone Pipeline sidebar entry has been removed. */}
+        <EnterpriseDealsTable
           mode="universal"
-          showViewToggle={false}
+          showViewToggle={true}
           showSavedViews={true}
         />
       </div>
