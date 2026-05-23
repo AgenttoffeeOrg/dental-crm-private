@@ -77,6 +77,7 @@ import { sanitizePhoneNumber } from '@/lib/utils/phone'
 import { ActivityMedia, type ActivityMediaItem } from './activity-media'
 import { signMessageMediaUrls } from '@/lib/inbound-media/signed-urls'
 import type { DealForAttachment } from '@/lib/deal-resolver'
+import { ActivityChatBubble } from '@/components/activities/activity-chat-bubble'
 
 // 2b.35.3 — DnD wrapper components. Hooks can't be called inside
 // .map() callbacks, so these tiny components are the bridge between
@@ -1387,15 +1388,25 @@ const sanitizedContactPhone = useMemo(
                 <Badge variant="secondary" className="text-xs">{groupActivities.length}</Badge>
               </div>
 
-              {/* Activities in this group */}
-              <div className="space-y-3 pl-7">
+              {/* 2b.41 — Chat-bubble render. Each row is a compact
+                  WhatsApp-style bubble (practice right, patient left,
+                  notes always right). The DraggableActivityRow wrapper
+                  preserves the drag-to-reassign affordance from
+                  2b.35.3. Click opens the existing slide-in detail.
+                  Inline AI labels + the rich suggest UI return in
+                  phase 2b.42. */}
+              <div className="space-y-2 pl-7">
                 {groupActivities.map(activity => (
                   <DraggableActivityRow
                     key={activity.id}
                     id={activity.id}
                     isActive={draggingActivityId === activity.id}
                   >
-                    {renderActivityCard(activity)}
+                    <ActivityChatBubble
+                      activity={activity as any}
+                      isDragging={draggingActivityId === activity.id}
+                      onClick={() => setSelectedActivityId(activity.id)}
+                    />
                   </DraggableActivityRow>
                 ))}
               </div>
