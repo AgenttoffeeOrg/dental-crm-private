@@ -78,6 +78,7 @@ import { ActivityMedia, type ActivityMediaItem } from './activity-media'
 import { signMessageMediaUrls } from '@/lib/inbound-media/signed-urls'
 import type { DealForAttachment } from '@/lib/deal-resolver'
 import { ActivityChatBubble } from '@/components/activities/activity-chat-bubble'
+import { ChatQuickReply } from '@/components/activities/chat-quick-reply'
 
 // 2b.35.3 — DnD wrapper components. Hooks can't be called inside
 // .map() callbacks, so these tiny components are the bridge between
@@ -1507,7 +1508,7 @@ const sanitizedContactPhone = useMemo(
                 {searchQuery || filterType !== 'all' ? 'No activities found' : 'No activities yet'}
               </h3>
               <p className="text-gray-600 mb-4">
-                {searchQuery || filterType !== 'all' 
+                {searchQuery || filterType !== 'all'
                   ? 'Try adjusting your filters or search'
                   : 'Log your first activity to get started'
                 }
@@ -1522,6 +1523,31 @@ const sanitizedContactPhone = useMemo(
           </Card>
         )}
       </div>
+
+      {/* 2b.46 — Pinned inline quick-reply. Sticky at the bottom of the
+          chat area; picks SMS / WhatsApp / Email; defaults to whichever
+          channel was last used outbound; inherits the active deal-chip
+          filter via `effectiveOutboundDealId` from 2b.34.8 so the
+          outbound activity attaches to the right deal. ⌘+Enter sends. */}
+      <ChatQuickReply
+        contactId={contactId}
+        contactName={contactName}
+        contactPhone={sanitizedContactPhone}
+        contactEmail={contactEmail}
+        tenantId={tenantId}
+        dealId={effectiveOutboundDealId ?? null}
+        lastChannel={(() => {
+          // Find the most-recent outbound activity that's SMS/WhatsApp/Email.
+          for (const a of activities) {
+            if (a.direction !== 'outbound') continue
+            if (a.type === 'sms' || a.type === 'whatsapp' || a.type === 'email') {
+              return a.type
+            }
+          }
+          return null
+        })()}
+        onSent={() => fetchActivities()}
+      />
 
       {/* Log Activity Panel */}
       <LogActivityPanel
