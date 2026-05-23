@@ -113,6 +113,9 @@ export function ContactDetailView({
   const [smsComposerOpen, setSmsComposerOpen] = useState(false)
   const [callDialerOpen, setCallDialerOpen] = useState(false)
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false)
+  // 2b.39 — "View all deals" toggle for the sidebar list. Active deals
+  // (open) render by default; expanding shows closed-won + closed-lost.
+  const [showAllDeals, setShowAllDeals] = useState(false)
 
   const primaryDealId = recommendedOutboundDealId
 
@@ -440,22 +443,211 @@ export function ContactDetailView({
               )}
 
 
-              {/* 2b.35.1 — sidebar "All Deals" list removed. With the
-                  deal-chip filter row above the activity timeline + the
-                  dedicated Deals tab, this third rendering of deals was
-                  the last redundancy on the page. The "New Deal" button
-                  that lived inside the empty-state CTA is preserved in
-                  the Quick Actions section below for the no-deals case. */}
+              {/* 2b.39 — Active deals list (open only) + "View all"
+                  expansion that surfaces closed-won + closed-lost.
+                  Compact cards: deal title · stage · value. Clicking
+                  a card navigates to /deals/[id]. The Deals tab on
+                  the page itself is gone — this sidebar list is now
+                  the canonical per-contact deals surface. */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium text-gray-900">Active deals</h3>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-xs text-blue-600 hover:bg-blue-50"
+                    onClick={() => setCreateDealDialogOpen(true)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    New
+                  </Button>
+                </div>
+                {(() => {
+                  const isOpen = (d: DealWithRelations) => {
+                    const s = d.stage as { is_won?: boolean | null; is_lost?: boolean | null } | null
+                    return !s?.is_won && !s?.is_lost
+                  }
+                  const openDealsLocal = deals.filter(isOpen)
+                  const closedDealsLocal = deals.filter((d) => !isOpen(d))
+                  return (
+                    <>
+                      {openDealsLocal.length === 0 ? (
+                        <div className="text-xs text-gray-500 italic py-2">No open deals yet</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {openDealsLocal.map((deal) => (
+                            <button
+                              key={deal.id}
+                              type="button"
+                              onClick={() => router.push(`/deals/${deal.id}`)}
+                              className="w-full text-left p-2.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 transition-colors group"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-blue-900 truncate">
+                                    {deal.title}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {deal.stage && (
+                                      <span className="text-[11px] text-blue-700">
+                                        {(deal.stage as { name?: string } | null)?.name}
+                                      </span>
+                                    )}
+                                    {(deal.value_estimate_cents as number | null) ? (
+                                      <span className="text-[11px] font-medium text-blue-700">
+                                        £{Math.round(((deal.value_estimate_cents as number) ?? 0) / 100).toLocaleString('en-GB')}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <ArrowRight className="h-3.5 w-3.5 text-blue-400 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-0.5" />
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
-              {/* 2b.35.1 — sidebar "Quick Actions" block removed. The
-                  same Call / Email / SMS / Log Activity / New Deal
-                  buttons live on the page-level quick-actions row in
-                  the right column (below the NBA card). Keeping them
-                  here too put quick actions in THREE places (sidebar +
-                  page-level + activity-feed composer toggles). The
-                  page-level row stays canonical; the activity feed
-                  toggles stay because they carry the deal-chip filter
-                  context (compose attaches to the active deal). */}
+                      {closedDealsLocal.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllDeals((s) => !s)}
+                          className="mt-2 text-xs text-gray-600 hover:text-gray-800 underline"
+                        >
+                          {showAllDeals
+                            ? `Hide ${closedDealsLocal.length} closed`
+                            : `View all (${closedDealsLocal.length} closed)`}
+                        </button>
+                      )}
+
+                      {showAllDeals && closedDealsLocal.length > 0 && (
+                        <div className="space-y-2 mt-2">
+                          {closedDealsLocal.map((deal) => {
+                            const s = deal.stage as { name?: string; is_won?: boolean | null } | null
+                            const isWon = Boolean(s?.is_won)
+                            return (
+                              <button
+                                key={deal.id}
+                                type="button"
+                                onClick={() => router.push(`/deals/${deal.id}`)}
+                                className={`w-full text-left p-2.5 rounded-lg border transition-colors group ${
+                                  isWon
+                                    ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div
+                                      className={`text-sm font-medium truncate ${
+                                        isWon ? 'text-emerald-900' : 'text-gray-700'
+                                      }`}
+                                    >
+                                      {deal.title}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <span
+                                        className={`text-[11px] ${
+                                          isWon ? 'text-emerald-700' : 'text-gray-500'
+                                        }`}
+                                      >
+                                        {s?.name}
+                                      </span>
+                                      {(deal.value_estimate_cents as number | null) ? (
+                                        <span
+                                          className={`text-[11px] font-medium ${
+                                            isWon ? 'text-emerald-700' : 'text-gray-500'
+                                          }`}
+                                        >
+                                          £
+                                          {Math.round(((deal.value_estimate_cents as number) ?? 0) / 100).toLocaleString('en-GB')}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                  <ArrowRight
+                                    className={`h-3.5 w-3.5 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-0.5 ${
+                                      isWon ? 'text-emerald-400' : 'text-gray-400'
+                                    }`}
+                                  />
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
+              </div>
+
+              {/* 2b.39 — Sidebar Quick Actions block. Replaces the
+                  page-level quick-actions row that lived in the right
+                  column (now removed). The activity feed's own
+                  composer toggles will be removed when the inline
+                  quick-reply ships in 2b.46. */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Quick actions</h3>
+                <div className="space-y-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      if (sanitizedPrimaryPhone) {
+                        setCallDialerOpen(true)
+                      } else {
+                        toast.error('Add a phone number before placing a call.')
+                      }
+                    }}
+                    disabled={!sanitizedPrimaryPhone}
+                  >
+                    <PhoneCall className="h-3.5 w-3.5 mr-2 text-blue-600" />
+                    Call
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      if (sanitizedPrimaryPhone) {
+                        setSmsComposerOpen(true)
+                      } else {
+                        toast.error('Add a phone number before sending an SMS.')
+                      }
+                    }}
+                    disabled={!sanitizedPrimaryPhone}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5 mr-2 text-purple-600" />
+                    Send SMS
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => setCreateActivityDialogOpen(true)}
+                    disabled={!sanitizedPrimaryPhone}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 mr-2 text-emerald-600" />
+                    Send WhatsApp
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      if (contact.primary_email) {
+                        setEmailComposerOpen(true)
+                      } else {
+                        toast.error('Add an email address before composing.')
+                      }
+                    }}
+                    disabled={!contact.primary_email}
+                  >
+                    <Mail className="h-3.5 w-3.5 mr-2 text-amber-600" />
+                    Send Email
+                  </Button>
+                </div>
+              </div>
             </>
           ) : (
             <div className="text-center py-8">
@@ -497,77 +689,11 @@ export function ContactDetailView({
             onViewDeal={(dealId) => router.push(`/deals/${dealId}`)}
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Quick actions
-              </p>
-              {/* 2b.31.3 — duplicated contact name removed; left
-                  sidebar header is the canonical place. */}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (sanitizedPrimaryPhone) {
-                    setCallDialerOpen(true)
-                  } else {
-                    toast.error('Add a phone number before placing a call.')
-                  }
-                }}
-                disabled={!sanitizedPrimaryPhone}
-              >
-                <PhoneCall className="h-4 w-4 mr-2" />
-                Call
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  if (contact.primary_email) {
-                    setEmailComposerOpen(true)
-                  } else {
-                    toast.error('Add an email address before composing.')
-                  }
-                }}
-                disabled={!contact.primary_email}
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Email
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  if (sanitizedPrimaryPhone) {
-                    setSmsComposerOpen(true)
-                  } else {
-                    toast.error('Add a phone number before sending an SMS.')
-                  }
-                }}
-                disabled={!sanitizedPrimaryPhone}
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                SMS
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setCreateActivityDialogOpen(true)}
-              >
-                <ActivityIcon className="h-4 w-4 mr-2" />
-                Log Activity
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setCreateDealDialogOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Deal
-              </Button>
-            </div>
-          </div>
+          {/* 2b.39 — page-level Quick Actions row removed. Call · SMS ·
+              WhatsApp · Email are now in the left sidebar's Quick Actions
+              block. The NBA card above this still surfaces a single
+              contextual CTA when relevant. (NBA itself moves out in
+              2b.48; this row goes away with this phase.) */}
 
         </div>
 
