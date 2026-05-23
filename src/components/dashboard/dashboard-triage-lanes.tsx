@@ -179,35 +179,20 @@ async function loadTriageCounts(
   // ---------------------------------------------------------------
   // 2b.51 — Secondary cluster.
   // ---------------------------------------------------------------
-  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString()
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
 
-  // 5. Unread Inbound — contacts whose most-recent activity (within
-  //    last 14d) is inbound. Same shape as the metric-strip's
-  //    "replies needed" but without the 4h threshold so this lane
-  //    catches everything pending. Bounded scan + client reduction.
-  const unreadScanRes = await supabase
-    .from('activities')
-    .select('contact_id, direction, occurred_at')
-    .eq('tenant_id', tenantId)
-    .gte('occurred_at', fourteenDaysAgo)
-    .in('direction', ['inbound', 'outbound'])
-    .order('occurred_at', { ascending: false })
-    .limit(2000)
-  const lastDirByContactUnread = new Map<string, 'inbound' | 'outbound'>()
-  for (const row of (unreadScanRes.data ?? []) as Array<{
-    contact_id: string | null
-    direction: 'inbound' | 'outbound' | null
-  }>) {
-    if (!row.contact_id || !row.direction) continue
-    if (!lastDirByContactUnread.has(row.contact_id)) {
-      lastDirByContactUnread.set(row.contact_id, row.direction)
+  // 5. Unread Inbound — server-side RPC (2b.57.2 fix for HIGH #4).
+  // Same shape as the metric-strip's "replies needed" but no age
+  // threshold so this lane catches everything pending.
+  const { data: unreadInboundRaw } = await supabase.rpc(
+    'dashboard_replies_needed_count',
+    {
+      p_tenant_id: tenantId,
+      p_window_days: 14,
+      p_min_age_hours: 0,
     }
-  }
-  let unreadInbound = 0
-  for (const dir of lastDirByContactUnread.values()) {
-    if (dir === 'inbound') unreadInbound += 1
-  }
+  )
+  const unreadInbound = typeof unreadInboundRaw === 'number' ? unreadInboundRaw : 0
 
   // 6. Failed Sends — activities with message_status='failed' in
   //    the last 7d.

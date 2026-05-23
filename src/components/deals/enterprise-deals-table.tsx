@@ -673,21 +673,39 @@ export function EnterpriseDealsTable({
       const hasRecentVoicemailByDeal = new Set<string>()
 
       if (dealIds.length > 0) {
-        // 1. Most-recent activity per deal + flag aggregations — one
-        // query, reduce in JS. Columns pulled here also populate
-        // the dashboard's matching triage filters on the deals page.
+        // 2b.57.2 (audit HIGH #5) — `last_activity_at` is now
+        // maintained by a trigger (touch_deal_last_activity_at).
+        // We READ it from deals directly instead of pulling 5000
+        // activity rows and reducing client-side. The fall-back
+        // path was producing wrong results for tenants whose
+        // newest activity fell outside the 5000-row cap.
+        for (const d of (data ?? []) as Array<{ id: string; last_activity_at: string | null }>) {
+          if (d.last_activity_at) lastActivityMap.set(d.id, d.last_activity_at)
+        }
+
+        // For the triage flags (has_outbound / has_unread_inbound /
+        // has_uncertain / has_failed_send / has_recent_voicemail) we
+        // STILL need to scan recent activities — but we can constrain
+        // it to the last 14 days because every flag we compute is
+        // either time-bounded (failed/voicemail = 7d) or "last seen
+        // within 14d" (the unread-inbound rule mirrors the dashboard
+        // lane). That ceiling makes the scan O(recent activity
+        // volume) rather than O(history), and we keep the .limit
+        // as a safety net.
+        const fourteenDaysAgo = new Date(
+          Date.now() - 14 * 24 * 3600 * 1000
+        ).toISOString()
         const { data: activityRows } = await supabase
           .from('activities')
           .select(
             'deal_id, occurred_at, direction, type, outcome, message_status, metadata'
           )
           .in('deal_id', dealIds)
+          .gte('occurred_at', fourteenDaysAgo)
           .order('occurred_at', { ascending: false })
           .limit(5000)
 
         const SEVEN_DAYS_AGO = Date.now() - 7 * 24 * 3600 * 1000
-        // Track last seen direction per deal so we can detect
-        // "patient texted last, no reply" = unread inbound.
         const lastSeenDirection = new Map<string, 'inbound' | 'outbound'>()
         for (const r of (activityRows ?? []) as Array<{
           deal_id: string | null
@@ -699,8 +717,6 @@ export function EnterpriseDealsTable({
           metadata: Record<string, unknown> | null
         }>) {
           if (!r.deal_id || !r.occurred_at) continue
-          // Most recent occurred_at per deal (rows already sorted desc).
-          if (!lastActivityMap.has(r.deal_id)) lastActivityMap.set(r.deal_id, r.occurred_at)
           if (r.direction === 'outbound') hasOutboundByDeal.add(r.deal_id)
           if (r.direction && !lastSeenDirection.has(r.deal_id)) {
             lastSeenDirection.set(r.deal_id, r.direction)

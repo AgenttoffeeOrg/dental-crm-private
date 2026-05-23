@@ -79,7 +79,6 @@ async function loadMetrics(
 ): Promise<DashboardMetrics> {
   const now = new Date()
   const weekAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString()
-  const fourHoursAgo = new Date(now.getTime() - REPLIES_NEEDED_THRESHOLD_HOURS * 3600 * 1000).toISOString()
 
   // 1. Open deals — pull rows + values (no good way to get sum +
   // count in a single Supabase query without an RPC).
@@ -105,70 +104,32 @@ async function loadMetrics(
     .gte('created_at', weekAgo)
     .neq('source', 'manual_entry')
 
-  // 3. Replies needed — derived from activities. Pull last-touch
-  // direction per contact in the window, then count contacts where
-  // the latest direction is inbound. This is a coarse client-side
-  // computation; a stored function would be cheaper if this becomes
-  // hot.
-  const repliesScanRes = await supabase
-    .from('activities')
-    .select('contact_id, direction, occurred_at')
-    .eq('tenant_id', tenantId)
-    .lt('occurred_at', fourHoursAgo)
-    .gte('occurred_at', new Date(now.getTime() - 14 * 24 * 3600 * 1000).toISOString())
-    .in('direction', ['inbound', 'outbound'])
-    .order('occurred_at', { ascending: false })
-    .limit(2000)
-
-  const lastDirByContact = new Map<string, 'inbound' | 'outbound'>()
-  for (const row of (repliesScanRes.data ?? []) as Array<{
-    contact_id: string | null
-    direction: 'inbound' | 'outbound' | null
-  }>) {
-    if (!row.contact_id || !row.direction) continue
-    if (!lastDirByContact.has(row.contact_id)) lastDirByContact.set(row.contact_id, row.direction)
-  }
-  let repliesNeeded = 0
-  for (const dir of lastDirByContact.values()) {
-    if (dir === 'inbound') repliesNeeded += 1
-  }
-
-  // 4. Avg response time (last 7 days). Pair each inbound with the
-  // first outbound after it on the same contact; average the
-  // diffs. Bounded scan (limit 1000 inbound activities).
-  const responseScanRes = await supabase
-    .from('activities')
-    .select('contact_id, direction, occurred_at')
-    .eq('tenant_id', tenantId)
-    .gte('occurred_at', weekAgo)
-    .in('direction', ['inbound', 'outbound'])
-    .order('occurred_at', { ascending: true })
-    .limit(1000)
-
-  const responseRows = (responseScanRes.data ?? []) as Array<{
-    contact_id: string | null
-    direction: 'inbound' | 'outbound' | null
-    occurred_at: string
-  }>
-  const pendingByContact = new Map<string, string>()
-  const responseMinutes: number[] = []
-  for (const r of responseRows) {
-    if (!r.contact_id || !r.direction) continue
-    if (r.direction === 'inbound') {
-      if (!pendingByContact.has(r.contact_id)) pendingByContact.set(r.contact_id, r.occurred_at)
-    } else if (r.direction === 'outbound') {
-      const inboundTs = pendingByContact.get(r.contact_id)
-      if (inboundTs) {
-        const diffMin = (new Date(r.occurred_at).getTime() - new Date(inboundTs).getTime()) / 60_000
-        if (diffMin > 0 && diffMin < 14 * 24 * 60) responseMinutes.push(diffMin)
-        pendingByContact.delete(r.contact_id)
-      }
+  // 3. Replies needed — server-side RPC (2b.57.2 fix for HIGH #3).
+  // Previously a 2000-row client scan + reduction; now a single
+  // scalar.
+  const { data: repliesNeededRaw } = await supabase.rpc(
+    'dashboard_replies_needed_count',
+    {
+      p_tenant_id: tenantId,
+      p_window_days: 14,
+      p_min_age_hours: REPLIES_NEEDED_THRESHOLD_HOURS,
     }
-  }
+  )
+  const repliesNeeded = typeof repliesNeededRaw === 'number' ? repliesNeededRaw : 0
+
+  // 4. Avg response time (last 7 days) — server-side RPC (2b.57.2
+  // fix for HIGH #4). Previously a 1000-row client scan + paired-
+  // reduction; now a single numeric (or NULL when under-sample).
+  const { data: avgRaw } = await supabase.rpc('dashboard_avg_response_minutes', {
+    p_tenant_id: tenantId,
+    p_window_days: 7,
+  })
   const avgResponseMinutes7d =
-    responseMinutes.length === 0
+    typeof avgRaw === 'number'
+      ? avgRaw
+      : avgRaw == null
       ? null
-      : responseMinutes.reduce((s, n) => s + n, 0) / responseMinutes.length
+      : Number(avgRaw)
 
   return {
     openDealsCount,
