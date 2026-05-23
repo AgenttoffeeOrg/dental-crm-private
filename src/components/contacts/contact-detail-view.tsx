@@ -57,6 +57,7 @@ import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
 import { formatDistanceToNow } from 'date-fns'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
 import { NextBestActionCard } from '@/components/contacts/next-best-action-card'
+import { ContactKpiStrip } from '@/components/contacts/contact-kpi-strip'
 
 // 2b.37 — Layout shell strip. Removed:
 //   - PSYCH_PROFILE_ENABLED feature flag + the entire Persona Insights
@@ -469,6 +470,14 @@ export function ContactDetailView({
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
         <div className="border-b border-gray-200 bg-white px-6 py-5 space-y-4">
+          {/* 2b.38 — top KPI strip. One line: deal counts (open / closed)
+              + LTV split (£open + £won + £lost). Replaces the 3-card grid
+              that was removed in 2b.37. Closed-lost contributes to LTV
+              by design — it's still revenue that flowed through this
+              contact's relationship history. Open / closed split is by
+              the stage's is_won / is_lost flags (locked principle #9). */}
+          <ContactKpiStrip deals={deals} />
+
           {/* 2b.31.2 — Next-Best-Action card sits at the top of the
               right column. Tells the operator what to DO with this
               contact right now rather than just presenting data. */}
