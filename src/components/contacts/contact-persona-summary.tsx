@@ -175,7 +175,7 @@ export function ContactPersonaSummary({ contactId }: ContactPersonaSummaryProps)
         <div className="flex items-start gap-2.5">
           <AlertCircle className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1 text-sm text-gray-600">
-            Couldn't load summary. <button onClick={() => void regenerate(true)} className="underline">Retry</button>
+            Couldn&apos;t load summary. <button onClick={() => void regenerate(true)} className="underline">Retry</button>
           </div>
         </div>
       </Card>
@@ -189,7 +189,7 @@ export function ContactPersonaSummary({ contactId }: ContactPersonaSummaryProps)
         <div className="flex items-start gap-2.5">
           <Loader2 className="h-4 w-4 text-violet-500 flex-shrink-0 mt-0.5 animate-spin" />
           <div className="flex-1 text-sm text-violet-700 italic">
-            Generating persona summary from this contact's history…
+            Generating persona summary from this contact&apos;s history…
           </div>
         </div>
       </Card>

@@ -97,7 +97,10 @@ export function buildSummariserPrompt(input: SummariseEmailInput): {
 function cleanOutput(raw: string | null): string | null {
   if (!raw) return null
   let s = raw.trim()
-  s = s.replace(/^["'"]+|["'"]+$/g, '').trim()
+  // 2b.57.3 (LOW #6) — strip leading/trailing straight quotes ("),
+  // straight apostrophes ('), and curly Unicode quotes. Replaces a
+  // regex with a duplicate " character class element.
+  s = s.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim()
   s = s.replace(/^\s*(SUMMARY|OUTPUT)\s*[:\-—]\s*/i, '').trim()
   s = s.replace(/^```[\s\S]*?```$/m, '').trim()
   if (s.length < 8) return null

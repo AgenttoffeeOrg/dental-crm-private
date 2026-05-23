@@ -240,7 +240,7 @@ export function NextBestActionCard({
             <AlertCircle className="h-5 w-5 text-gray-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-700 text-sm">Couldn't load suggestion</h3>
+            <h3 className="font-semibold text-gray-700 text-sm">Couldn&apos;t load suggestion</h3>
             <p className="text-sm text-gray-500 mt-1">
               The next-best-action couldn't be calculated. Refresh the page to retry.
             </p>

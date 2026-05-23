@@ -152,7 +152,11 @@ function cleanModelOutput(raw: string | null): string | null {
   if (!raw) return null
   let s = raw.trim()
   // Strip leading "Summary:" or quotes
-  s = s.replace(/^["'"]+|["'"]+$/g, '').trim()
+  // 2b.57.3 (LOW #6) — strip leading/trailing straight quotes ("),
+  // straight apostrophes ('), and curly Unicode quotes (“
+  // ” ‘ ’). The previous regex had a duplicate "
+  // character class element (no smart-quote handling).
+  s = s.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim()
   s = s.replace(/^\s*(SUMMARY|OUTPUT|PERSONA)\s*[:\-—]\s*/i, '').trim()
   // Drop any code fences
   s = s.replace(/^```[\s\S]*?```$/m, '').trim()

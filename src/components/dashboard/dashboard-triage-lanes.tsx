@@ -236,6 +236,14 @@ async function loadTriageCounts(
   }
 }
 
+// 2b.57.3 (LOW #3) — Build /deals deep-links via URLSearchParams
+// instead of string concatenation. Keeps escaping clean and lets
+// us add params without bug-prone fence-post errors.
+function dealsKanbanUrl(filter: string): string {
+  const p = new URLSearchParams({ view: 'kanban', filter })
+  return `/deals?${p.toString()}`
+}
+
 export function DashboardTriageLanes({ tenantId }: DashboardTriageLanesProps) {
   const router = useRouter()
   const [counts, setCounts] = useState<TriageCounts>(EMPTY)
@@ -299,7 +307,7 @@ export function DashboardTriageLanes({ tenantId }: DashboardTriageLanesProps) {
           tone="blue"
           loading={loading}
           subtitle="Untouched leads"
-          onClick={() => router.push('/deals?view=kanban&filter=new-untouched')}
+          onClick={() => router.push(dealsKanbanUrl('new-untouched'))}
           ctaLabel="Open Kanban →"
         />
         <TriageLaneCard
@@ -309,7 +317,7 @@ export function DashboardTriageLanes({ tenantId }: DashboardTriageLanesProps) {
           tone="amber"
           loading={loading}
           subtitle={`> ${STALE_DAYS}d untouched, no task`}
-          onClick={() => router.push('/deals?view=kanban&filter=stale')}
+          onClick={() => router.push(dealsKanbanUrl('stale'))}
           ctaLabel="Open Kanban →"
         />
 
@@ -324,7 +332,7 @@ export function DashboardTriageLanes({ tenantId }: DashboardTriageLanesProps) {
           tone="red"
           loading={loading}
           subtitle="Patient texted, no reply yet"
-          onClick={() => router.push('/deals?view=kanban&filter=unread-inbound')}
+          onClick={() => router.push(dealsKanbanUrl('unread-inbound'))}
           ctaLabel="Reply →"
         />
         <TriageLaneCard
@@ -334,7 +342,7 @@ export function DashboardTriageLanes({ tenantId }: DashboardTriageLanesProps) {
           tone="amber"
           loading={loading}
           subtitle="Bounced in last 7d"
-          onClick={() => router.push('/deals?view=kanban&filter=failed-sends')}
+          onClick={() => router.push(dealsKanbanUrl('failed-sends'))}
           ctaLabel="Review →"
         />
         <TriageLaneCard
@@ -344,7 +352,7 @@ export function DashboardTriageLanes({ tenantId }: DashboardTriageLanesProps) {
           tone="purple"
           loading={loading}
           subtitle="Inbound calls last 7d"
-          onClick={() => router.push('/deals?view=kanban&filter=voicemails')}
+          onClick={() => router.push(dealsKanbanUrl('voicemails'))}
           ctaLabel="Call back →"
         />
         <TriageLaneCard
@@ -354,7 +362,7 @@ export function DashboardTriageLanes({ tenantId }: DashboardTriageLanesProps) {
           tone="blue"
           loading={loading}
           subtitle="Uncertain attachments"
-          onClick={() => router.push('/deals?view=kanban&filter=ai-uncertain')}
+          onClick={() => router.push(dealsKanbanUrl('ai-uncertain'))}
           ctaLabel="Classify →"
         />
       </div>

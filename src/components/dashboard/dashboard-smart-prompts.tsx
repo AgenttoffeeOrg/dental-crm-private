@@ -37,6 +37,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase-client'
 import { cn } from '@/lib/utils'
+import { addMonths } from 'date-fns'
 
 const DISMISS_KEY_RE_ENGAGE = 're-engage-dismissed-v1'
 
@@ -129,8 +130,12 @@ async function loadSetupState(
   // 4. Re-engagement — count of deals closed-lost ~6 months ago.
   //    Window: 5-7 months ago (sliding band so the prompt doesn't
   //    appear once and disappear before the operator notices).
-  const sixMo = new Date(Date.now() - 6 * 30 * 24 * 3600 * 1000).toISOString()
-  const fiveMo = new Date(Date.now() - 5 * 30 * 24 * 3600 * 1000).toISOString()
+  //    2b.57.3 (MEDIUM #3) — use date-fns addMonths instead of
+  //    multiplying days; the 30-days-per-month approximation drifts
+  //    ~5 days per year and the lane is labelled "6 months ago".
+  const now = new Date()
+  const sixMo = addMonths(now, -7).toISOString()
+  const fiveMo = addMonths(now, -5).toISOString()
   const closedLostRes = await supabase
     .from('deals')
     .select('id, pipeline_stages!inner(is_lost)', { count: 'exact', head: true })

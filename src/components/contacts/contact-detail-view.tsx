@@ -171,6 +171,10 @@ export function ContactDetailView({
 
       if (dealsError) {
         console.error('Deals error:', dealsError)
+        // 2b.57.3 (LOW #5) — surface as a toast so the operator
+        // notices the missing data instead of seeing an empty deals
+        // sidebar silently. The page still renders.
+        toast.error('Couldn\'t load this contact\'s deals.')
       } else {
         setDeals(dealsData || [])
       }

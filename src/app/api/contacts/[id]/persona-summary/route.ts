@@ -267,6 +267,10 @@ export async function POST(
     })
 
     // 5. Upsert into the cache table.
+    // 2b.57.3 (MEDIUM #7) — Cache-write only; no audit_trail entry
+    // by design. Persona summaries are AI-derived metadata, not an
+    // operator-driven mutation of the contact's record. Matches the
+    // ai_attachment_uncertain + email_summary patterns elsewhere.
     const mostRecentActivity = activities[0]?.occurred_at ?? null
     const { error: upsertErr } = await service
       .from('contact_persona_summaries')

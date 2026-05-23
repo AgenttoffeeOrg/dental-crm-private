@@ -612,14 +612,9 @@ export function EnterpriseDealsTable({
 
       const { data, error, count } = await query
 
-      console.log('[EnterpriseDealsTable] Query result:', { 
-        dataCount: data?.length, 
-        error: error, 
-        count: count,
-        mode,
-        selectedPipelineId,
-        tenantId,
-      })
+      // 2b.57.3 (LOW #4) — chatty per-render console.log removed.
+      // The error path below still logs via console.error; that's
+      // what we actually want to see in production.
 
       if (error) {
         console.error('[EnterpriseDealsTable] Query error:', error)
@@ -742,6 +737,10 @@ export function EnterpriseDealsTable({
         }
 
         // 2. Soonest open future task per deal — one query, reduce in JS.
+        // 2b.57.3 (MEDIUM #2) — `.limit(1000)` added defensively so
+        // a long-tenured tenant doesn't pull thousands of future tasks
+        // in one round-trip. With 25 deals per page the cap is generous;
+        // we only need the soonest task per deal anyway.
         const nowIso = new Date().toISOString()
         const { data: taskRows } = await supabase
           .from('tasks')
@@ -751,6 +750,7 @@ export function EnterpriseDealsTable({
           .neq('status', 'completed')
           .neq('status', 'cancelled')
           .order('due_at', { ascending: true })
+          .limit(1000)
         for (const r of (taskRows ?? []) as Array<{
           deal_id: string | null
           due_at: string | null

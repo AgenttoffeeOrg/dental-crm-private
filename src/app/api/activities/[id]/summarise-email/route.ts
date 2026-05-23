@@ -121,6 +121,12 @@ export async function POST(
       ai_email_summary_model: result.modelVersion,
     }
 
+    // 2b.57.3 (MEDIUM #6) — Cache-write only; no audit_trail entry
+    // by design. Matches the ai_attachment_uncertain flip pattern in
+    // PATCH /api/activities/[id]: AI-derived metadata updates are
+    // not operator-driven mutations and don't carry deal/contact
+    // significance worth auditing. If we ever broaden this to write
+    // user-visible fields, switch to logAuditServer first.
     const { error: updateErr } = await service
       .from('activities')
       .update({ metadata: newMeta })
