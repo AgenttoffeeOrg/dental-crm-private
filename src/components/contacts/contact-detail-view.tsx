@@ -15,12 +15,11 @@ import { DealTasks } from '@/components/deals/deal-tasks'
 import { EmailComposerPanel } from '@/components/communications/email-composer-panel'
 import { SMSComposerPanel } from '@/components/communications/sms-composer-panel'
 import { ClickToCallDialer } from '@/components/communications/click-to-call-dialer'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { 
-  Phone, 
-  Mail, 
+import {
+  Phone,
+  Mail,
   Calendar,
   MapPin,
   User,
@@ -34,7 +33,6 @@ import {
   ArrowRight,
   DollarSign,
   Activity as ActivityIcon,
-  Brain,
   Sparkles,
   Target,
   TrendingUp,
@@ -53,38 +51,34 @@ import {
   Deal,
   DealWithRelations,
   PipelineStage,
-  ContactPsychProfile,
-  ContactPsychProfileHistory,
 } from '@/types/database'
 import { toast } from 'sonner'
 import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
-import { NextBestScriptPanel } from '@/components/scripts/next-best-script-panel'
 import { formatDistanceToNow } from 'date-fns'
 import { sanitizePhoneNumber } from '@/lib/utils/phone'
-import { LearningLoopSummary } from '@/components/contacts/learning-loop-summary'
 import { NextBestActionCard } from '@/components/contacts/next-best-action-card'
 
-/**
- * Phase 2b.30.2 — Persona / psych-profile feature is paused.
- *
- * The underlying tables (`contact_psych_profiles`,
- * `contact_psych_profile_history`) don't exist yet, so every contact
- * page render was generating a Postgres 404 in the browser console.
- * Per the 2026-05-22 product discussion, we keep the code (don't
- * delete) but flip it off so the contact page is clean. Flip this
- * to `true` once the table + analyze API are designed and built.
- */
-const PSYCH_PROFILE_ENABLED = false
-
-/**
- * Phase 2b.31.1 — Learning Loop signals (sales-script success rates,
- * adoption leaders, revenue leaders) are gated too. The query against
- * `sales_script_metrics` works, but the test tenant + every fresh
- * practice has zero data, so the panel renders three "Need more data"
- * placeholder boxes that make the page look unfinished. Pause until
- * the sales-script system has organic data to surface.
- */
-const LEARNING_LOOP_ENABLED = false
+// 2b.37 — Layout shell strip. Removed:
+//   - PSYCH_PROFILE_ENABLED feature flag + the entire Persona Insights
+//     UI block (anxiety / trust sliders / communication style / etc.)
+//     The schema (`contact_psych_profiles`, `contact_psych_profile_history`)
+//     was paused in 2b.30.2 and is being permanently replaced by the
+//     lighter persona summary blurb shipping in phase 2b.40.
+//   - LEARNING_LOOP_ENABLED feature flag + the LearningLoopSummary mount.
+//     Sales-script metrics will live elsewhere if needed; not on the
+//     contact page.
+//   - The 3-card KPI summary strip (Active Deals · Pipeline Value · Last
+//     Engagement). Replaced by the one-line top KPI strip in 2b.38.
+//   - Activity/Deals tab structure. Replaced by the WhatsApp-style chat
+//     timeline in 2b.41 (currently a "Chat layout TK" placeholder).
+//   - ContactPsychProfile / ContactPsychProfileHistory type imports,
+//     LearningLoopSummary + NextBestScriptPanel imports, the Brain icon.
+//
+// Kept for later phases:
+//   - NextBestActionCard mount (removed in 2b.48).
+//   - Quick-actions row in the right column (moves to sidebar in 2b.39).
+//   - Contact-fields sidebar + Edit-Profile dialog (Edit-Profile
+//     converts to a slide-over in 2b.47).
 
 interface ContactDetailViewProps {
   contactId: string
@@ -105,12 +99,6 @@ export function ContactDetailView({
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [createDealDialogOpen, setCreateDealDialogOpen] = useState(false)
   const [createActivityDialogOpen, setCreateActivityDialogOpen] = useState(false)
-  // Removed selectedDealId state - we navigate instead of showing modal
-  const [showActivityTimeline, setShowActivityTimeline] = useState(false)
-  const [showAI, setShowAI] = useState(false)
-  // 2b.34.3 — default to the Activity timeline (the iMessage-style
-  // feed). Overview is now a minimal summary that lives one tab over.
-  const [activeTab, setActiveTab] = useState<string>('activities')
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   
@@ -124,9 +112,6 @@ export function ContactDetailView({
   const [smsComposerOpen, setSmsComposerOpen] = useState(false)
   const [callDialerOpen, setCallDialerOpen] = useState(false)
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false)
-  const [psychProfile, setPsychProfile] = useState<ContactPsychProfile | null>(null)
-  const [psychHistory, setPsychHistory] = useState<ContactPsychProfileHistory[]>([])
-  const [analyzingPersona, setAnalyzingPersona] = useState(false)
 
   const primaryDealId = recommendedOutboundDealId
 
@@ -187,76 +172,14 @@ export function ContactDetailView({
     }
   }
 
-  const fetchPsychProfile = async () => {
-    try {
-      const supabase = createClient()
-
-      const { data: profileData, error: profileError } = await supabase
-        .from('contact_psych_profiles')
-        .select('*')
-        .eq('contact_id', contactId)
-        .maybeSingle()
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Psych profile error:', profileError)
-        throw profileError
-      }
-
-      setPsychProfile(profileData ?? null)
-
-      const { data: historyData, error: historyError } = await supabase
-        .from('contact_psych_profile_history')
-        .select('*')
-        .eq('contact_id', contactId)
-        .order('recorded_at', { ascending: false })
-        .limit(5)
-
-      if (historyError) {
-        console.error('Psych history error:', historyError)
-      } else {
-        setPsychHistory(historyData ?? [])
-      }
-    } catch (error) {
-      console.error('Error fetching psychological profile:', error)
-      toast.error('Failed to load persona insights')
-    }
-  }
-
-  const handleRefreshPersonaInsights = async () => {
-    try {
-      setAnalyzingPersona(true)
-      const response = await fetch('/api/psych-profiles/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ contactId }),
-      })
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}))
-        throw new Error(body.error || 'Unable to refresh persona insights')
-      }
-
-      await fetchPsychProfile()
-      toast.success('Persona insights updated')
-    } catch (error) {
-      console.error('Failed to refresh persona insights:', error)
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to refresh persona insights. Try again shortly.'
-      )
-    } finally {
-      setAnalyzingPersona(false)
-    }
-  }
+  // 2b.37 — fetchPsychProfile + handleRefreshPersonaInsights removed
+  // entirely. The contact_psych_profiles + contact_psych_profile_history
+  // tables were paused in 2b.30.2 and are being permanently replaced by
+  // the lighter persona summary blurb shipping in phase 2b.40 (its own
+  // schema, its own helper). Don't revive the old schema.
 
   useEffect(() => {
     fetchContactData()
-    // 2b.30.2: psych profile is paused — skip the fetch so we don't
-    // hit the missing table and 404 in the console on every render.
-    if (PSYCH_PROFILE_ENABLED) {
-      fetchPsychProfile()
-    }
   }, [contactId])
 
   useEffect(() => {
@@ -294,112 +217,17 @@ export function ContactDetailView({
     }).format(cents / 100)
   }
 
-  const isDealClosed = (deal: DealWithRelations) => isDealClosedByStage(deal.stage)
+  // 2b.37 — isDealClosed / openDeals / openPipelineValue / wonPipelineValue
+  // useMemos removed. They only existed to feed the now-removed summaryCards.
+  // Phase 2b.38 will re-derive deal counts and LTV from `deals` directly
+  // inside the new top KPI strip component.
 
-  const openDeals = useMemo(
-    () => deals.filter((deal) => !isDealClosed(deal)),
-    [deals]
-  )
-
-  const openPipelineValue = useMemo(
-    () => openDeals.reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0),
-    [openDeals]
-  )
-
-  const wonPipelineValue = useMemo(
-    () =>
-      deals
-        .filter((deal) => Boolean(deal.stage?.is_won))
-        .reduce((sum, deal) => sum + (deal.value_estimate_cents || 0), 0),
-    [deals]
-  )
-
-  const lastInteractionTimestamp = useMemo(() => {
-    const timestamps: string[] = []
-    if (contact?.updated_at) timestamps.push(contact.updated_at)
-    deals.forEach((deal) => {
-      if (deal.updated_at) timestamps.push(deal.updated_at)
-      if ((deal as any).last_activity_at) timestamps.push((deal as any).last_activity_at)
-    })
-    psychHistory.forEach((entry) => {
-      if (entry.recorded_at) timestamps.push(entry.recorded_at)
-    })
-    if (timestamps.length === 0) return null
-    return timestamps.reduce((latest, current) =>
-      new Date(current) > new Date(latest) ? current : latest
-    )
-  }, [contact?.updated_at, deals, psychHistory])
-
-  const lastInteractionLabel = useMemo(() => {
-    if (!lastInteractionTimestamp) return 'No activity yet'
-    try {
-      return formatDistanceToNow(new Date(lastInteractionTimestamp), { addSuffix: true })
-    } catch {
-      return 'No activity yet'
-    }
-  }, [lastInteractionTimestamp])
-
-  const personaLabel = useMemo(() => {
-    if (!psychProfile?.dominant_trait) return 'Needs insights'
-    return psychProfile.dominant_trait.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
-  }, [psychProfile?.dominant_trait])
-
-  const personaUpdatedLabel = useMemo(() => {
-    const timestamp = psychProfile?.updated_at || psychHistory[0]?.recorded_at || null
-    if (!timestamp) return 'Never analysed'
-    try {
-      return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
-    } catch {
-      return 'Never analysed'
-    }
-  }, [psychProfile?.updated_at, psychHistory])
-
-  const summaryCards = useMemo(
-    () => [
-      {
-        title: 'Active Deals',
-        value: openDeals.length,
-        helper: deals.length ? `${deals.length} total` : 'No deals yet',
-        icon: Target,
-        iconColor: 'text-blue-600',
-        iconBg: 'bg-blue-50',
-      },
-      {
-        title: 'Pipeline Value',
-        value: formatCurrency(openPipelineValue),
-        helper: wonPipelineValue
-          ? `Won ${formatCurrency(wonPipelineValue)}`
-          : 'No closed deals yet',
-        icon: DollarSign,
-        iconColor: 'text-emerald-600',
-        iconBg: 'bg-emerald-50',
-      },
-      {
-        title: 'Last Engagement',
-        value: lastInteractionLabel,
-        helper: openDeals.length
-          ? `${openDeals.length} in progress`
-          : 'No active engagements',
-        icon: ActivityIcon,
-        iconColor: 'text-purple-600',
-        iconBg: 'bg-purple-50',
-      },
-      // 2b.34.3 — Persona Focus card removed (PSYCH_PROFILE_ENABLED
-      // is false; rendering "Needs insights" here was noise). The
-      // strip is now Active Deals · Pipeline Value · Last Engagement —
-      // three numbers, each shown in exactly one place on the page.
-    ],
-    [
-      openDeals.length,
-      deals.length,
-      openPipelineValue,
-      wonPipelineValue,
-      lastInteractionLabel,
-      personaLabel,
-      personaUpdatedLabel,
-      analyzingPersona,
-    ]
-  )
+  // 2b.37 — lastInteractionTimestamp / lastInteractionLabel /
+  // personaLabel / personaUpdatedLabel / summaryCards useMemos removed.
+  // The summary KPI strip they fed has been gutted; phase 2b.38 will
+  // rebuild the one-line deal-counts + LTV strip with its own minimal
+  // derivations from `deals`. Persona metadata is no longer surfaced
+  // on the page until 2b.40 ships the new persona summary block.
 
   if (loading) {
     return (
@@ -610,286 +438,6 @@ export function ContactDetailView({
                 </div>
               )}
 
-              {/* 2b.30.2 — Persona Insights paused. Code preserved
-                  behind the PSYCH_PROFILE_ENABLED flag at the top of
-                  this file. Flip the flag back to `true` once the
-                  schema + analyze API are ready. */}
-              {PSYCH_PROFILE_ENABLED && (
-              <div className="rounded-xl border border-blue-100 bg-white shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-blue-100 px-4 py-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                      <Brain className="h-4 w-4 text-blue-600" />
-                      Persona Insights
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      AI-guided profile to shape tone, pacing, and follow-up strategy.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 text-xs gap-1"
-                      onClick={() => router.push(`/call-coaching?contactId=${contactId}`)}
-                    >
-                      <Bot className="h-3.5 w-3.5" />
-                      Call Coaching
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 text-xs gap-1"
-                      onClick={handleRefreshPersonaInsights}
-                      disabled={analyzingPersona}
-                    >
-                      {analyzingPersona ? (
-                        <>
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Updating…
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-3 w-3" />
-                          {psychProfile ? 'Refresh' : 'Generate'}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                {psychProfile ? (
-                  <div className="px-5 py-5 space-y-5 text-sm">
-                    <div className="flex flex-wrap items-end justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
-                          Primary Persona
-                        </p>
-                        <h4 className="text-lg font-semibold text-slate-900">{personaLabel}</h4>
-                        <p className="text-xs text-slate-500">
-                          Updated {personaUpdatedLabel}
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="text-[11px] bg-blue-100 text-blue-700">
-                        AI Generated
-                      </Badge>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {psychProfile.anxiety_level !== null && psychProfile.anxiety_level !== undefined && (
-                        <div className="rounded-lg border border-red-100 bg-red-50/60 p-4">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">
-                              Anxiety
-                            </span>
-                            <span className="text-xs text-red-600 font-medium">
-                              {psychProfile.anxiety_level} / 100
-                            </span>
-                          </div>
-                          <div className="mt-2 h-2 rounded-full bg-red-100 overflow-hidden">
-                            <div
-                              className="h-full bg-red-500"
-                              style={{ width: `${Math.max(0, Math.min(psychProfile.anxiety_level ?? 0, 100))}%` }}
-                            />
-                          </div>
-                          <p className="mt-2 text-xs text-red-700">
-                            {psychProfile.anxiety_level >= 70
-                              ? 'High anxiety — lead with reassurance and allow space for questions.'
-                              : psychProfile.anxiety_level >= 45
-                              ? 'Moderate anxiety — acknowledge concerns and set clear expectations.'
-                              : 'Low anxiety — focus on outcomes and keep momentum.'}
-                          </p>
-                        </div>
-                      )}
-
-                      {psychProfile.trust_score !== null && psychProfile.trust_score !== undefined && (
-                        <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
-                              Trust Score
-                            </span>
-                            <span className="text-xs text-emerald-600 font-medium">
-                              {psychProfile.trust_score} / 100
-                            </span>
-                          </div>
-                          <div className="mt-2 h-2 rounded-full bg-emerald-100 overflow-hidden">
-                            <div
-                              className="h-full bg-emerald-500"
-                              style={{ width: `${Math.max(0, Math.min(psychProfile.trust_score ?? 0, 100))}%` }}
-                            />
-                          </div>
-                          <p className="mt-2 text-xs text-emerald-700">
-                            {psychProfile.trust_score >= 70
-                              ? 'High trust — you can recommend next steps confidently.'
-                              : psychProfile.trust_score >= 45
-                              ? 'Building trust — reinforce credibility with social proof.'
-                              : 'Low trust — invest time in rapport and validation.'}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-                          Communication Style
-                        </p>
-                        <p className="text-sm text-slate-900 capitalize">
-                          {psychProfile.communication_style?.replace(/_/g, ' ') || 'Unknown'}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {(() => {
-                            const style = psychProfile.communication_style?.toLowerCase()
-                            switch (style) {
-                              case 'analytical':
-                                return 'Lead with data, comparisons, and clear next steps.'
-                              case 'expressive':
-                                return 'Use storytelling, energy, and future-focused language.'
-                              case 'driver':
-                                return 'Be concise, outcome-oriented, and respect their time.'
-                              case 'amiable':
-                                return 'Prioritize rapport and reassurance before details.'
-                              default:
-                                return 'Mirror their tone during the conversation to build trust.'
-                            }
-                          })()}
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-                          Decision Style
-                        </p>
-                        <p className="text-sm text-slate-900 capitalize">
-                          {psychProfile.decision_style?.replace(/_/g, ' ') || 'Unknown'}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {(() => {
-                            const style = psychProfile.decision_style?.toLowerCase()
-                            switch (style) {
-                              case 'logical':
-                                return 'Expect detailed reasoning and comparison before commitment.'
-                              case 'collaborative':
-                                return 'Invite them into the plan and co-create next steps.'
-                              case 'decisive':
-                                return 'Provide a confident recommendation and a clear action.'
-                              case 'deliberate':
-                                return 'Give space for follow-up questions and documentation.'
-                              default:
-                                return 'Clarify their decision process to keep momentum.'
-                            }
-                          })()}
-                        </p>
-                      </div>
-                    </div>
-
-                    {Array.isArray(psychProfile.snapshot?.persona_tags) &&
-                      psychProfile.snapshot.persona_tags.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-                            Persona Tags
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {psychProfile.snapshot.persona_tags.map((tag: string) => (
-                              <Badge key={tag} variant="secondary" className="text-[11px] capitalize">
-                                #{tag.replace(/_/g, ' ')}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                    {Array.isArray(psychProfile.snapshot?.primary_concerns) &&
-                      psychProfile.snapshot.primary_concerns.length > 0 && (
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">
-                            Primary Concerns
-                          </p>
-                          <ul className="list-disc pl-4 text-xs text-slate-600 space-y-1">
-                            {psychProfile.snapshot.primary_concerns.map((concern: string, idx: number) => (
-                              <li key={idx}>{concern}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                    {psychProfile.snapshot?.recommended_approach && (
-                      <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-4 text-xs text-slate-700">
-                        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">
-                          Recommended Approach
-                        </p>
-                        <p>{psychProfile.snapshot.recommended_approach}</p>
-                      </div>
-                    )}
-
-                    {psychHistory.length > 0 && (
-                      <div className="pt-4 border-t border-blue-100">
-                        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">
-                          Recent AI updates
-                        </p>
-                        <div className="space-y-2">
-                          {psychHistory.slice(0, 3).map((entry) => {
-                            const when = entry.recorded_at
-                              ? formatDistanceToNow(new Date(entry.recorded_at), { addSuffix: true })
-                              : 'Recently'
-                            const tags = Array.isArray(entry.snapshot?.persona_tags)
-                              ? entry.snapshot.persona_tags.slice(0, 3).map((tag: string) => `#${tag.replace(/_/g, ' ')}`).join(', ')
-                              : null
-
-                            return (
-                              <div
-                                key={entry.id}
-                                className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600"
-                              >
-                                <div className="flex-1">
-                                  <p className="font-medium text-slate-800">
-                                    Persona refreshed
-                                  </p>
-                                  <p className="text-[11px] text-slate-500">
-                                    {tags ? `Tags: ${tags}` : 'Insights updated'}
-                                  </p>
-                                </div>
-                                <span className="text-[11px] text-slate-400 whitespace-nowrap">
-                                  {when}
-                                </span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="px-5 py-6 text-sm text-blue-800">
-                    <div className="rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-6 text-center">
-                      <p className="text-sm font-semibold text-blue-800 mb-2">
-                        No persona insights yet
-                      </p>
-                      <p className="text-xs text-blue-700 max-w-xs mx-auto mb-4">
-                        Run the analyzer to understand this patient&apos;s motivations, trust posture, and the tone that resonates best.
-                      </p>
-                      <Button
-                        size="sm"
-                        className="gap-2"
-                        onClick={handleRefreshPersonaInsights}
-                        disabled={analyzingPersona}
-                      >
-                        {analyzingPersona ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Analysing…
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4" />
-                            Generate Persona Profile
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              )}
 
               {/* 2b.35.1 — sidebar "All Deals" list removed. With the
                   deal-chip filter row above the activity timeline + the
@@ -1012,172 +560,21 @@ export function ContactDetailView({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {summaryCards.map((card) => {
-              const Icon = card.icon
-              return (
-                <Card key={card.title} className="border border-gray-200 rounded-2xl shadow-sm">
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          {card.title}
-                        </p>
-                        <p className="mt-2 text-lg font-semibold text-gray-900">
-                          {card.value}
-                        </p>
-                        {card.helper && (
-                          <p className="text-xs text-gray-500 mt-1">{card.helper}</p>
-                        )}
-                      </div>
-                      <div
-                        className={`h-10 w-10 rounded-full flex items-center justify-center ${card.iconBg}`}
-                      >
-                        <Icon className={`h-5 w-5 ${card.iconColor}`} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
+        </div>
+
+        {/* 2b.37 — placeholder for the WhatsApp-style chat layout that
+            phases 2b.41–2b.46 will build in. The old Activity/Deals tabs
+            + the inbox-style activity feed have been removed. During the
+            intermediate phases the chat area is intentionally blank so
+            each layout piece can ship in isolation behind a visible
+            "TK" marker. */}
+        <div className="flex-1 flex items-center justify-center p-6 bg-gray-50">
+          <div className="text-center text-gray-400 text-sm">
+            <p className="font-medium text-gray-500 mb-1">Chat layout TK</p>
+            <p>Phases 2b.41–2b.46 will build the WhatsApp-style timeline here.</p>
           </div>
         </div>
 
-        {LEARNING_LOOP_ENABLED && (
-          <div className="mt-4">
-            <LearningLoopSummary
-              tenantId={tenantId}
-              onOpenCoaching={() => router.push(`/call-coaching?contactId=${contactId}`)}
-            />
-          </div>
-        )}
-
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-0"
-        >
-          <div className="px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
-            {/* 2b.35.1 — Overview tab removed. After the 2b.34.3 cleanup
-                the Overview tab contained only the Deal Overview cards,
-                which exactly duplicated the Deals tab next door. Two
-                tabs now: Activity (default, the operator's main lens)
-                and Deals (the canonical per-contact deals view). */}
-            <TabsList className="grid w-full grid-cols-2 max-w-xl">
-              <TabsTrigger value="activities">Activity</TabsTrigger>
-              <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Deals Tab */}
-          <TabsContent value="deals" className="mt-0">
-            <div className="p-6 bg-gray-50">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">All Deals</h3>
-                <Button size="sm" onClick={() => setCreateDealDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Deal
-                </Button>
-              </div>
-              
-              {deals.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {deals.map(deal => {
-                    const isWon = deal.stage?.name?.toLowerCase() === 'closed_won'
-                    const isLost = deal.stage?.name?.toLowerCase() === 'closed_lost'
-                    const isActive = !isWon && !isLost
-                    
-                    return (
-                      <div
-                        key={deal.id}
-                        onClick={() => router.push(`/deals/${deal.id}`)}
-                        className={`p-4 rounded-lg border cursor-pointer group transition-all hover:shadow-md ${
-                          isActive ? 'bg-white border-blue-200 hover:border-blue-300' :
-                          isWon ? 'bg-green-50 border-green-200 hover:border-green-300' :
-                          isLost ? 'bg-red-50 border-red-200 hover:border-red-300' :
-                          'bg-gray-50 border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h4 className={`font-semibold text-sm mb-1 ${
-                              isActive ? 'text-blue-900' :
-                              isWon ? 'text-green-900' :
-                              isLost ? 'text-red-900' :
-                              'text-gray-900'
-                            }`}>
-                              {deal.title}
-                            </h4>
-                            <Badge 
-                              variant="outline" 
-                              className={`text-xs ${
-                                isActive ? 'border-blue-300 text-blue-700' :
-                                isWon ? 'border-green-300 text-green-700' :
-                                isLost ? 'border-red-300 text-red-700' :
-                                'border-gray-300 text-gray-700'
-                              }`}
-                            >
-                              {deal.stage?.name}
-                            </Badge>
-                          </div>
-                          <ArrowRight className={`h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity ${
-                            isActive ? 'text-blue-400' :
-                            isWon ? 'text-green-400' :
-                            isLost ? 'text-red-400' :
-                            'text-gray-400'
-                          }`} />
-                        </div>
-                        
-                        {deal.value_estimate_cents > 0 && (
-                          <div className={`text-lg font-bold mb-2 ${
-                            isActive ? 'text-blue-700' :
-                            isWon ? 'text-green-700' :
-                            isLost ? 'text-red-700' :
-                            'text-gray-700'
-                          }`}>
-                            {formatCurrency(deal.value_estimate_cents)}
-                          </div>
-                        )}
-                        
-                        <div className="text-xs text-gray-500">
-                          Created {new Date(deal.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <Card>
-                  <CardContent className="text-center py-12">
-                    <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">No deals yet</h4>
-                    <p className="text-gray-600 mb-4">Create the first deal for this customer</p>
-                    <Button onClick={() => setCreateDealDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create First Deal
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Activities & Tasks Tab */}
-          <TabsContent value="activities" className="mt-0">
-            <div className="p-6 bg-gray-50">
-              <ActivityFeedEnterprise
-                contactId={contactId}
-                dealId={recommendedOutboundDealId ?? undefined}
-                onActivityCreated={fetchContactData}
-                showAllContactActivities={true}
-                tenantId={tenantId}
-                contactEmail={contact?.primary_email}
-                contactPhone={sanitizedPrimaryPhone}
-                contactName={contact?.full_name}
-              />
-            </div>
-          </TabsContent>
-        </Tabs>
       </div>
 
       {/* Dialogs - Only render when contact is loaded */}
