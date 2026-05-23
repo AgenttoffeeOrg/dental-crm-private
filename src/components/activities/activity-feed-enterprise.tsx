@@ -238,7 +238,23 @@ export function ActivityFeedEnterprise({
   const [callDialerOpen, setCallDialerOpen] = useState(false)
   const [composerContext, setComposerContext] = useState<any>({})
   const [contactDeals, setContactDeals] = useState<DealForAttachment[]>([])
-  
+
+  // 2b.35.2 — AI inline suggestion state. Keyed by activity id so each
+  // row in the feed has its own preview / accept lifecycle.
+  type AiSuggestionState =
+    | { status: 'fetching' }
+    | { status: 'accepting' }
+    | { status: 'none'; message: string }
+    | {
+        status: 'ready'
+        kind: 'reuse_matching_pipeline' | 'new_pipeline'
+        pipelineName: string | null
+        dealId: string | null
+        confidence: number | null
+        source: 'keyword' | 'ai'
+      }
+  const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestionState>>({})
+
   const supabase = createClient()
 
 const sanitizedContactPhone = useMemo(
@@ -378,6 +394,101 @@ const sanitizedContactPhone = useMemo(
     setEditingId(null)
     setEditSubject('')
     setEditSnippet('')
+  }
+
+  // 2b.35.2 — fetch the AI's pipeline suggestion for one activity.
+  // The server re-runs the judgement against the activity's text + the
+  // contact's current open deals; nothing on the client influences the
+  // outcome beyond "which activity am I asking about."
+  const fetchAiSuggestion = async (activityId: string) => {
+    setAiSuggestions((prev) => ({ ...prev, [activityId]: { status: 'fetching' } }))
+    try {
+      const res = await fetch(`/api/activities/${activityId}/suggest-pipeline`, {
+        method: 'GET',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        setAiSuggestions((prev) => ({
+          ...prev,
+          [activityId]: { status: 'none', message: 'Could not load suggestion.' },
+        }))
+        return
+      }
+      const body = await res.json().catch(() => null)
+      if (!body || !body.suggestion) {
+        setAiSuggestions((prev) => ({
+          ...prev,
+          [activityId]: {
+            status: 'none',
+            message: body?.message ?? 'AI is still not confident enough to suggest a pipeline.',
+          },
+        }))
+        return
+      }
+      const s = body.suggestion as {
+        kind: 'reuse_matching_pipeline' | 'new_pipeline'
+        pipeline_name: string | null
+        deal_id: string | null
+        confidence: number | null
+        source: 'keyword' | 'ai'
+      }
+      setAiSuggestions((prev) => ({
+        ...prev,
+        [activityId]: {
+          status: 'ready',
+          kind: s.kind,
+          pipelineName: s.pipeline_name,
+          dealId: s.deal_id,
+          confidence: s.confidence,
+          source: s.source,
+        },
+      }))
+    } catch (err) {
+      console.error('[ai-suggest] fetch failed', err)
+      setAiSuggestions((prev) => ({
+        ...prev,
+        [activityId]: { status: 'none', message: 'Network error loading suggestion.' },
+      }))
+    }
+  }
+
+  const acceptAiSuggestion = async (activityId: string) => {
+    setAiSuggestions((prev) => ({ ...prev, [activityId]: { status: 'accepting' } }))
+    try {
+      const res = await fetch(`/api/activities/${activityId}/suggest-pipeline`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        toast.error(body?.message ?? 'Could not apply suggestion.')
+        // Restore the previous "ready" state so the operator can retry.
+        // Re-fetch is cheaper than tracking the prior state locally.
+        fetchAiSuggestion(activityId)
+        return
+      }
+      toast.success('Activity moved to the suggested deal.')
+      // Drop the suggestion (the activity no longer needs one) and
+      // refresh the feed so the chip strip + activity row update.
+      setAiSuggestions((prev) => {
+        const next = { ...prev }
+        delete next[activityId]
+        return next
+      })
+      fetchActivities()
+    } catch (err) {
+      console.error('[ai-suggest] accept failed', err)
+      toast.error('Network error applying suggestion.')
+      fetchAiSuggestion(activityId)
+    }
+  }
+
+  const dismissAiSuggestion = (activityId: string) => {
+    setAiSuggestions((prev) => {
+      const next = { ...prev }
+      delete next[activityId]
+      return next
+    })
   }
 
   // 2b.34.4 — derive a deal-chip list from whatever's actually on the
@@ -532,20 +643,103 @@ const sanitizedContactPhone = useMemo(
                     {formatDuration(activity.duration_seconds)}
                   </Badge>
                 )}
-                {/* 2b.24.3: AI-uncertain attachment marker. Set on inbound
-                    activities where AI couldn't confidently choose between
-                    reusing an open deal vs creating a new one. Cleared
-                    automatically when the operator reassigns the activity
-                    to a different deal. */}
-                {activity.metadata?.ai_attachment_uncertain === true && (
-                  <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0 rounded text-xs font-medium bg-amber-50 border border-amber-200 text-amber-700"
-                    title="AI wasn't sure this message belonged here — review and reassign if needed."
-                  >
-                    <AlertCircle className="h-3 w-3" />
-                    AI unsure
-                  </span>
-                )}
+                {/* 2b.24.3 + 2b.35.2 — AI-uncertain attachment marker with
+                    inline "Suggest" CTA. Click ✨ to ask AI for a pipeline
+                    pick; on response, accept moves the activity onto that
+                    deal (creating one in the suggested pipeline if needed)
+                    and the marker is cleared. */}
+                {activity.metadata?.ai_attachment_uncertain === true && (() => {
+                  const suggestion = aiSuggestions[activity.id]
+                  return (
+                    <span className="inline-flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0 rounded text-xs font-medium bg-amber-50 border border-amber-200 text-amber-700"
+                        title="AI wasn't sure this message belonged here — review or accept a suggestion."
+                      >
+                        <AlertCircle className="h-3 w-3" />
+                        AI unsure
+                      </span>
+
+                      {!suggestion && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            fetchAiSuggestion(activity.id)
+                          }}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          Suggest
+                        </button>
+                      )}
+
+                      {suggestion?.status === 'fetching' && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs text-violet-700">
+                          <Sparkles className="h-3 w-3 animate-pulse" />
+                          Thinking…
+                        </span>
+                      )}
+
+                      {suggestion?.status === 'none' && (
+                        <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                          {suggestion.message}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              dismissAiSuggestion(activity.id)
+                            }}
+                            className="ml-1 text-gray-400 hover:text-gray-600"
+                            aria-label="Dismiss"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      )}
+
+                      {suggestion?.status === 'ready' && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-violet-50 border border-violet-200 text-violet-800">
+                          <Sparkles className="h-3 w-3" />
+                          Looks like {suggestion.pipelineName ?? 'a different pipeline'}
+                          {suggestion.kind === 'new_pipeline' && (
+                            <span className="text-violet-500">(new deal)</span>
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-5 px-1.5 py-0 text-xs bg-violet-600 text-white hover:bg-violet-700 hover:text-white"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              acceptAiSuggestion(activity.id)
+                            }}
+                          >
+                            Accept
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              dismissAiSuggestion(activity.id)
+                            }}
+                            className="text-violet-400 hover:text-violet-600"
+                            aria-label="Dismiss"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      )}
+
+                      {suggestion?.status === 'accepting' && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs text-violet-700">
+                          <Sparkles className="h-3 w-3 animate-pulse" />
+                          Moving…
+                        </span>
+                      )}
+                    </span>
+                  )
+                })()}
               </div>
               <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
                 {formatDistanceToNow(new Date(activity.occurred_at), { addSuffix: true })}
