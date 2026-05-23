@@ -50,6 +50,7 @@ import {
   fetchMaxActivityTimestampsForDeals,
 } from '@/lib/deal-resolver'
 import { judgeInboundDealAttachment } from './judge-deal-attachment'
+import { generateDealTitle } from './deal-title'
 import type { SourceChannelEnum } from './types'
 
 // ---------------------------------------------------------------------------
@@ -617,8 +618,26 @@ async function buildRoutedPartial(
         : route.source === 'ai'
         ? 'router_ai'
         : 'router_unsorted'
+
+    // 2b.34.1 — fetch pipeline name (for the title prompt's hint) and
+    // ask Claude for a 3-word title. Both calls are best-effort:
+    // failures fall back to 'Inquiry' so deal creation never stalls.
+    const { data: pipelineRow } = await supabase
+      .from('pipelines')
+      .select('name')
+      .eq('id', route.pipelineId)
+      .eq('tenant_id', input.tenantId)
+      .maybeSingle()
+    const pipelineName = (pipelineRow as { name?: string | null } | null)?.name ?? null
+
+    const title = await generateDealTitle({
+      intentText: input.intentText,
+      pipelineName,
+      fallback: 'Inquiry',
+    })
+
     return {
-      title: 'Inquiry',
+      title,
       pipelineId: route.pipelineId,
       stageOverride: route.stageId ?? null,
       valueEstimateCents: null,
