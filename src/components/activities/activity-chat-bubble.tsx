@@ -254,6 +254,114 @@ export function ActivityChatBubble({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity.id, activity.type])
 
+  // 2b.61 — Lazy AI commitment detector. Same lazy-on-mount pattern
+  // as the email summariser above. Fires once per bubble mount for
+  // ANY activity (calls, SMS, WhatsApp, email, note) when no
+  // commitment suggestion is cached on metadata. Below the
+  // PILL_RENDER_CONFIDENCE_THRESHOLD (0.7), the pill stays hidden.
+  const PILL_THRESHOLD = 0.7
+  const cachedCommitmentRaw = activity.metadata?.ai_commitment_suggestion as
+    | {
+        has_commitment: boolean
+        action: string | null
+        deadline_iso: string | null
+        confidence: number
+        by: 'patient' | 'practice' | null
+        dismissed_at?: string | null
+        accepted_task_id?: string | null
+      }
+    | undefined
+  const [commitmentSuggestion, setCommitmentSuggestion] = useState<typeof cachedCommitmentRaw>(
+    cachedCommitmentRaw ?? undefined
+  )
+  const [commitmentAccepting, setCommitmentAccepting] = useState(false)
+  const commitmentFiredRef = useRef(false)
+  useEffect(() => {
+    if (!activity.id) return
+    if (cachedCommitmentRaw) return
+    if (commitmentFiredRef.current) return
+    commitmentFiredRef.current = true
+    let cancelled = false
+    const run = async () => {
+      try {
+        const res = await fetch(
+          `/api/activities/${activity.id}/detect-commitment`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+          }
+        )
+        if (!res.ok) return
+        const body = (await res.json().catch(() => null)) as
+          | { suggestion?: typeof cachedCommitmentRaw }
+          | null
+        if (!cancelled && body?.suggestion) setCommitmentSuggestion(body.suggestion)
+      } catch (err) {
+        console.warn('[activity-chat-bubble] detect-commitment failed', {
+          activityId: activity.id,
+          err: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity.id])
+
+  const showCommitmentPill = Boolean(
+    commitmentSuggestion?.has_commitment &&
+      commitmentSuggestion.confidence >= PILL_THRESHOLD &&
+      commitmentSuggestion.action &&
+      !commitmentSuggestion.dismissed_at &&
+      !commitmentSuggestion.accepted_task_id
+  )
+
+  const acceptCommitment = async () => {
+    if (!activity.id) return
+    setCommitmentAccepting(true)
+    try {
+      const res = await fetch(
+        `/api/activities/${activity.id}/accept-commitment-suggestion`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: '{}',
+        }
+      )
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null)
+        console.warn('[activity-chat-bubble] accept commitment failed', errBody)
+        return
+      }
+      const body = (await res.json()) as { task?: { id: string } }
+      if (body.task?.id && commitmentSuggestion) {
+        // Optimistic: mark accepted locally so pill disappears immediately.
+        setCommitmentSuggestion({
+          ...commitmentSuggestion,
+          accepted_task_id: body.task.id,
+        })
+      }
+    } finally {
+      setCommitmentAccepting(false)
+    }
+  }
+
+  const dismissCommitment = () => {
+    if (commitmentSuggestion) {
+      setCommitmentSuggestion({
+        ...commitmentSuggestion,
+        dismissed_at: new Date().toISOString(),
+      })
+    }
+    // (Per-user dismiss persistence to localStorage / a small PATCH
+    // would be a follow-up nicety; for now the dismissal lives only
+    // for this session.)
+  }
+
   // 2b.44 — resolve text after the lazy fetch state is known.
   const text = bubbleText(activity, { emailSummary: lazyEmailSummary })
   const isEmailSummarising = activity.type === 'email' && emailSummarising && !lazyEmailSummary && !cachedEmailSummary
@@ -529,6 +637,78 @@ export function ActivityChatBubble({
             to that single deal (deal-chip filter already gives that
             context). Helps a long-tenured contact's timeline make
             sense across deals. */}
+        {/* 2b.61 — AI commitment pill (Path 3 from product
+            discussion). Renders below the bubble when AI detected
+            a future-action commitment with confidence ≥ 0.7.
+            One-click [Create task] uses the parsed defaults
+            (action / deadline / tenant default assignee). [✕]
+            dismisses for this session. Same compact pattern as the
+            ai_attachment_uncertain marker above. */}
+        {showCommitmentPill && commitmentSuggestion && (
+          <div
+            className={cn(
+              'flex flex-wrap items-center gap-1 text-[10px] mt-0.5',
+              side === 'right' ? 'self-end justify-end' : 'self-start'
+            )}
+          >
+            <span className="inline-flex items-center gap-1 px-1.5 py-0 rounded font-medium bg-violet-50 border border-violet-200 text-violet-800">
+              <Sparkles className="h-2.5 w-2.5" />
+              AI heard:{' '}
+              <span className="font-semibold">
+                {commitmentSuggestion.action}
+              </span>
+              {commitmentSuggestion.deadline_iso && (
+                <span className="text-violet-600">
+                  ({new Date(commitmentSuggestion.deadline_iso).toLocaleString('en-GB', {
+                    weekday: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })})
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                void acceptCommitment()
+              }}
+              disabled={commitmentAccepting}
+              className="inline-flex items-center gap-1 px-1.5 py-0 rounded font-medium bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
+              title="Create a task from this commitment"
+            >
+              {commitmentAccepting ? 'Creating…' : 'Create task'}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                dismissCommitment()
+              }}
+              className="text-violet-400 hover:text-violet-600 ml-0.5"
+              aria-label="Dismiss"
+              title="Dismiss this suggestion"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Confirmation pill — when the operator just accepted, show
+            a brief "Task created" badge so they know it worked
+            without a toast. */}
+        {commitmentSuggestion?.accepted_task_id && (
+          <div
+            className={cn(
+              'flex items-center gap-1 text-[10px] text-emerald-700 mt-0.5',
+              side === 'right' ? 'self-end' : 'self-start'
+            )}
+          >
+            <Sparkles className="h-2.5 w-2.5" />
+            <span>Task created from this message</span>
+          </div>
+        )}
+
         {activity.deal_title && (
           <div
             className={cn(
