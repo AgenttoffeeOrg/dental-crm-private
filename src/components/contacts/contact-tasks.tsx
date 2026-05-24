@@ -17,7 +17,9 @@ import {
   Clock
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { CreateTaskDialog } from '@/components/tasks/create-task-dialog'
+// 2b.60 — consolidated onto CreateTaskSlideOver (the canonical creator).
+// CreateTaskDialog + CreateTaskPanel are deleted in this phase.
+import { CreateTaskSlideOver } from '@/components/tasks/create-task-slide-over'
 import { 
   formatDate, 
   isOverdue, 
@@ -272,10 +274,10 @@ export function ContactTasks({
         </Card>
       )}
 
-      {/* Create Task Dialog */}
-      <CreateTaskDialog
+      {/* 2b.60 — CreateTaskDialog → CreateTaskSlideOver consolidation. */}
+      <CreateTaskSlideOver
         open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
         onTaskCreated={handleTaskCreated}
         preselectedContactId={contactId}
       />

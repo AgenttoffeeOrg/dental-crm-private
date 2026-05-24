@@ -19,7 +19,9 @@ import {
   ExternalLink
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { CreateTaskPanel } from '@/components/tasks/create-task-panel'
+// 2b.60 — consolidated onto CreateTaskSlideOver (the canonical creator).
+// CreateTaskDialog + CreateTaskPanel are deleted in this phase.
+import { CreateTaskSlideOver } from '@/components/tasks/create-task-slide-over'
 import { TaskQueuePanel } from '@/components/tasks/task-queue-panel'
 import { formatDateTime, getActivityAge } from '@/lib/dates'
 import { formatDistanceToNow, isPast, isToday } from 'date-fns'
@@ -351,13 +353,14 @@ export function DealTasks({
         </div>
       )}
 
-      {/* Create Task Panel */}
-      <CreateTaskPanel
+      {/* 2b.60 — CreateTaskPanel → CreateTaskSlideOver consolidation.
+          Prop names also normalised (prefilled* → preselected*). */}
+      <CreateTaskSlideOver
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
         onTaskCreated={fetchTasks}
-        prefilledDealId={dealId}
-        prefilledContactId={contactId}
+        preselectedDealId={dealId}
+        preselectedContactId={contactId}
       />
 
       {/* Task Queue Panel */}
