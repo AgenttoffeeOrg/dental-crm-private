@@ -137,8 +137,11 @@ try {
   })
 
   await checkpoint('Created task appears in /tasks list', async () => {
-    // Force a refresh in case the UI is stale.
+    // The /tasks page defaults to "Today" filter; a free-floating task
+    // with no due date lands in "No Due Date". Click that bucket first.
     await page.goto(`${BASE}/tasks`, { waitUntil: 'domcontentloaded' })
+    const noDueDate = page.getByRole('button', { name: /no due date/i }).first()
+    if ((await noDueDate.count()) > 0) await noDueDate.click()
     await page.waitForSelector(`text=${testTaskTitle}`, { timeout: 15000 })
   }, page)
 
