@@ -33,6 +33,7 @@ import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/lib/auth'
 import { useTenantContext } from '@/lib/hooks/use-tenant-context'
 import { LABELS } from '@/lib/constants/labels'
+import { DealCloseTaskPrompt } from '@/components/deals/deal-close-task-prompt'
 
 // UI Components
 import { Card } from '@/components/ui/card'
@@ -273,6 +274,12 @@ export function EnterpriseDealsTable({
   const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set())
   const [showCreateDeal, setShowCreateDeal] = useState(false)
   const [draggedDeal, setDraggedDeal] = useState<EnhancedDeal | null>(null)
+  // 2b.67 — Deal-close prompt state. Fires when a Kanban drag
+  // moves a deal into a closed_won / closed_lost stage AND the
+  // deal has open tasks. Modal handles the empty case silently.
+  const [closeTaskPromptDealId, setCloseTaskPromptDealId] = useState<string | null>(null)
+  const [closeTaskPromptDealTitle, setCloseTaskPromptDealTitle] = useState<string | null>(null)
+  const [closeTaskPromptClosedAs, setCloseTaskPromptClosedAs] = useState<'Won' | 'Lost' | null>(null)
   
   // Pipeline management state
   const [editingPipelineName, setEditingPipelineName] = useState(false)
@@ -1091,10 +1098,20 @@ export function EnterpriseDealsTable({
 
     if (!deal || deal.stage_id === newStageId) return
 
+    const newStage = stages.find(s => s.id === newStageId)
+    const oldStage = deal.stage as { is_won?: boolean; is_lost?: boolean } | null
+    // 2b.67 — Detect the won/lost transition. Only fire the prompt
+    // when the deal CROSSES into a closed stage (not just moves
+    // between closed stages). Prevents the modal opening on every
+    // closed→closed swap.
+    const wasOpen = !oldStage?.is_won && !oldStage?.is_lost
+    const becameClosed = Boolean(newStage?.is_won || newStage?.is_lost)
+    const justClosed = wasOpen && becameClosed
+
     // Optimistic update
-    const updatedDeals = deals.map(d => 
-      d.id === dealId 
-        ? { ...d, stage_id: newStageId, stage: stages.find(s => s.id === newStageId)! }
+    const updatedDeals = deals.map(d =>
+      d.id === dealId
+        ? { ...d, stage_id: newStageId, stage: newStage! }
         : d
     )
     setDeals(updatedDeals)
@@ -1102,7 +1119,7 @@ export function EnterpriseDealsTable({
     try {
       const { error } = await supabase
         .from('deals')
-        .update({ 
+        .update({
           stage_id: newStageId,
           last_activity_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -1112,6 +1129,15 @@ export function EnterpriseDealsTable({
       if (error) throw error
 
       toast.success('Deal moved successfully')
+
+      // 2b.67 — Open the close-task prompt for newly-closed deals.
+      // The modal itself checks for open tasks (silent close if
+      // none) so it's safe to fire unconditionally here.
+      if (justClosed && newStage) {
+        setCloseTaskPromptDealId(dealId)
+        setCloseTaskPromptDealTitle((deal as { title?: string | null }).title ?? null)
+        setCloseTaskPromptClosedAs(newStage.is_won ? 'Won' : 'Lost')
+      }
     } catch (error) {
       console.error('Error moving deal:', error)
       toast.error('Failed to move deal')
@@ -2061,6 +2087,24 @@ export function EnterpriseDealsTable({
           </div>
         </>
       )}
+
+      {/* 2b.67 — Deal-close prompt. Fires after a Kanban drag moves
+          a deal into a closed_won / closed_lost stage. Modal
+          silently auto-closes when the deal has no open tasks. */}
+      <DealCloseTaskPrompt
+        open={Boolean(closeTaskPromptDealId)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setCloseTaskPromptDealId(null)
+            setCloseTaskPromptDealTitle(null)
+            setCloseTaskPromptClosedAs(null)
+          }
+        }}
+        dealId={closeTaskPromptDealId}
+        dealTitle={closeTaskPromptDealTitle}
+        closedAs={closeTaskPromptClosedAs}
+        onResolved={() => loadDeals()}
+      />
     </div>
   )
 }
