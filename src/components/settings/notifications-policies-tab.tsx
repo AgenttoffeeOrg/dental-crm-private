@@ -30,15 +30,17 @@ import { useAuth } from '@/lib/auth'
 interface PolicyRow {
   retention_days: number | null
   manager_overdue_hours: number | null
-  rate_limit_per_hour: number | null
-  rate_limit_enabled: boolean | null
+  // 2b.88 — `rate_limits` is a JSONB column in the existing schema
+  // ({ per_hour: number, enabled: boolean }). The earlier flat
+  // rate_limit_per_hour / rate_limit_enabled fields don't exist as
+  // real columns.
+  rate_limits: { per_hour?: number; enabled?: boolean } | null
 }
 
 const DEFAULTS: PolicyRow = {
   retention_days: 30,
   manager_overdue_hours: 24,
-  rate_limit_per_hour: 20,
-  rate_limit_enabled: false,
+  rate_limits: { per_hour: 20, enabled: false },
 }
 
 export function NotificationsPoliciesTab() {
@@ -75,7 +77,7 @@ export function NotificationsPoliciesTab() {
 
         const { data } = await supabase
           .from('notification_policies')
-          .select('retention_days, manager_overdue_hours, rate_limit_per_hour, rate_limit_enabled')
+          .select('retention_days, manager_overdue_hours, rate_limits')
           .eq('tenant_id', tId)
           .maybeSingle()
         if (data) {
@@ -83,10 +85,7 @@ export function NotificationsPoliciesTab() {
             retention_days: (data as any).retention_days ?? DEFAULTS.retention_days,
             manager_overdue_hours:
               (data as any).manager_overdue_hours ?? DEFAULTS.manager_overdue_hours,
-            rate_limit_per_hour:
-              (data as any).rate_limit_per_hour ?? DEFAULTS.rate_limit_per_hour,
-            rate_limit_enabled:
-              (data as any).rate_limit_enabled ?? DEFAULTS.rate_limit_enabled,
+            rate_limits: (data as any).rate_limits ?? DEFAULTS.rate_limits,
           })
         }
       } finally {
@@ -211,11 +210,16 @@ export function NotificationsPoliciesTab() {
             </Label>
             <Switch
               id="rl-on"
-              checked={Boolean(policy.rate_limit_enabled)}
-              onCheckedChange={(v) => setPolicy((p) => ({ ...p, rate_limit_enabled: v }))}
+              checked={Boolean(policy.rate_limits?.enabled)}
+              onCheckedChange={(v) =>
+                setPolicy((p) => ({
+                  ...p,
+                  rate_limits: { ...(p.rate_limits ?? {}), enabled: v },
+                }))
+              }
             />
           </div>
-          {policy.rate_limit_enabled && (
+          {policy.rate_limits?.enabled && (
             <div>
               <Label htmlFor="rl-num" className="text-xs">
                 Max per user per hour
@@ -225,11 +229,14 @@ export function NotificationsPoliciesTab() {
                 type="number"
                 min={1}
                 max={500}
-                value={policy.rate_limit_per_hour ?? 20}
+                value={policy.rate_limits?.per_hour ?? 20}
                 onChange={(e) =>
                   setPolicy((p) => ({
                     ...p,
-                    rate_limit_per_hour: parseInt(e.target.value, 10) || 20,
+                    rate_limits: {
+                      ...(p.rate_limits ?? {}),
+                      per_hour: parseInt(e.target.value, 10) || 20,
+                    },
                   }))
                 }
               />

@@ -205,10 +205,13 @@ export async function POST(request: NextRequest) {
       deal_id: data.deal_id ?? null,
       location_id: resolvedLocationId,
       auto_created: false,
-      created_by_user_id: user.id,
-      // 2b.87 — pass recurring_rule_id through if supplied. The
-      // CreateTaskSlideOver creates the rule first, then this insert
-      // stamps the link so the daily recurring-generator cron can find it.
+      // 2b.88 — `created_by_user_id` column doesn't exist on tasks
+      // (the route was passing a phantom field, silently 500ing every
+      // task create). The closest real column is `owner_user_id` —
+      // assign that to the operator who created the task. Caught by
+      // first interactive E2E run.
+      owner_user_id: user.id,
+      // 2b.87 — pass recurring_rule_id through if supplied.
       recurring_rule_id: data.recurring_rule_id ?? null,
       is_recurring: data.is_recurring ?? Boolean(data.recurring_rule_id),
     }
