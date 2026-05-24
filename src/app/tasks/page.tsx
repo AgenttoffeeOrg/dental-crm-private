@@ -85,8 +85,24 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([])
   const [locations, setLocations] = useState<any[]>([]) // NEW: Locations for filtering
   const [loading, setLoading] = useState(true)
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('today')
+  const [activeFilter, setActiveFilter] = useState<FilterTab>(() => {
+    // 2b.66 — URL persistence: ?tab= overrides the default Today tab.
+    const tab = searchParams?.get('tab') as FilterTab | null
+    return tab && ['all', 'overdue', 'today', 'tomorrow', 'this_week', 'no_due_date'].includes(tab)
+      ? tab
+      : 'today'
+  })
   const [searchQuery, setSearchQuery] = useState('')
+  // 2b.66 — Channel-batch filter chips (Calls / Messages / All).
+  // The queue inherits this on Start Queue per the 2026-05-24
+  // product discussion. Initial value comes from ?channel= URL
+  // param so the dashboard's "Today's Calls" lane can deep-link
+  // directly into a calls-only queue.
+  const channelFromUrl = searchParams?.get('channel')
+  const [channelFilter, setChannelFilter] = useState<'all' | 'calls' | 'messages'>(() => {
+    if (channelFromUrl === 'calls' || channelFromUrl === 'messages') return channelFromUrl
+    return 'all'
+  })
   const [locationFilter, setLocationFilter] = useState<string>('all')
   const [contactFilter, setContactFilter] = useState<string>('all')
   const [dealFilter, setDealFilter] = useState<string>('all')
@@ -112,16 +128,43 @@ export default function TasksPage() {
   // 2b.54 — auto-open the queue panel when arriving via
   // /tasks?mode=queue (the dashboard's Today's Priorities lane).
   // Also flip the filter to 'today' so the queue contains today's
-  // tasks. Strip the param from the URL after consuming so a back
-  // navigation doesn't re-open the queue.
+  // tasks. Strip the mode param after consuming so a back navigation
+  // doesn't re-open the queue. Other query params (tab/channel) are
+  // preserved so the channel-chip choice survives the rewrite.
   useEffect(() => {
     if (!queueModeFromUrl) return
     setActiveFilter('today')
     setQueueOpen(true)
-    // Replace URL without the mode param.
-    router.replace('/tasks')
+    const sp = new URLSearchParams(searchParams?.toString() ?? '')
+    sp.delete('mode')
+    router.replace(`/tasks${sp.toString() ? `?${sp.toString()}` : ''}`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queueModeFromUrl])
+
+  // 2b.66 — Push tab + channel state to the URL so a refresh / back
+  // button preserves the operator's view. Pattern matches the 2b.45
+  // chat filter row.
+  useEffect(() => {
+    const sp = new URLSearchParams(searchParams?.toString() ?? '')
+    if (activeFilter === 'today') {
+      sp.delete('tab')
+    } else {
+      sp.set('tab', activeFilter)
+    }
+    if (channelFilter === 'all') {
+      sp.delete('channel')
+    } else {
+      sp.set('channel', channelFilter)
+    }
+    const next = sp.toString()
+    const target = `/tasks${next ? `?${next}` : ''}`
+    // Don't rewrite when nothing changed (prevents an infinite loop
+    // from the router replace re-triggering this effect).
+    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== target) {
+      router.replace(target)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilter, channelFilter])
 
   useEffect(() => {
     loadTasks()
@@ -267,8 +310,21 @@ export default function TasksPage() {
     }
   }
 
+  // 2b.66 — Channel chip filter intersects with date-tab + search.
+  // Calls = task_type 'call'. Messages = sms / whatsapp / email /
+  // note (the bucket the inline composer can handle). All = no
+  // further filter.
+  const matchesChannel = (t: any): boolean => {
+    if (channelFilter === 'all') return true
+    if (channelFilter === 'calls') return t.task_type === 'call'
+    if (channelFilter === 'messages') {
+      return ['sms', 'whatsapp', 'email', 'note'].includes(t.task_type)
+    }
+    return true
+  }
+
   // Enhanced search that includes all relevant fields
-  const filteredTasks = searchQuery
+  const filteredTasks = (searchQuery
     ? filterTasks(tasks, activeFilter).filter(t => {
         const query = searchQuery.toLowerCase()
         return (
@@ -283,6 +339,7 @@ export default function TasksPage() {
         )
       })
     : filterTasks(tasks, activeFilter)
+  ).filter(matchesChannel)
 
   // Apply all filters
   const applyFilters = (tasks: any[]) => {
@@ -371,6 +428,32 @@ export default function TasksPage() {
               New Task
             </Button>
           </div>
+        </div>
+
+        {/* 2b.66 — Channel-batch chips per the 2026-05-24 product
+            discussion. Active chip determines the queue's mode on
+            Start Queue:
+              All       → mixed (both call + message tasks)
+              Calls     → call tasks only (full-takeover call queue)
+              Messages  → sms / whatsapp / email / note tasks only
+            URL-persistent (?channel=) so dashboard's "Today's Calls"
+            lane can deep-link with calls pre-selected. */}
+        <div className="flex items-center gap-1.5 mb-3 bg-gray-100 p-1 rounded-lg w-fit">
+          {(['all', 'calls', 'messages'] as const).map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              onClick={() => setChannelFilter(chip)}
+              className={cn(
+                'px-3 py-1 rounded text-xs font-medium transition-colors capitalize',
+                channelFilter === chip
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-700 hover:bg-gray-200'
+              )}
+            >
+              {chip === 'all' ? 'All channels' : chip}
+            </button>
+          ))}
         </div>
 
         {/* HubSpot-Style Filter Tabs */}
