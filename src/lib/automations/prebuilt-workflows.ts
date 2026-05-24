@@ -237,6 +237,196 @@ export const DEAL_WORKFLOWS: WorkflowTemplate[] = [
 // TASK WORKFLOW TEMPLATES
 // =====================================================
 
+// 2b.62 — Playbook task-creation templates (Path 2 from the 2026-05-24
+// product discussion). Eight templates that get installed via the
+// existing POST /api/automations/install-template route. Each maps
+// to a `create_task` action that the 2b.58-fixed automation engine
+// now writes correctly. Templates carry a `default_on` hint the
+// /automations cards UI uses to render the 3 ON-by-default templates
+// as toggled-on (matches the spec — Practice Setup wizard can also
+// install the ON defaults on first tenant boot).
+
+export const PLAYBOOK_TASK_TEMPLATES: WorkflowTemplate[] = [
+  {
+    id: 'playbook_new_lead_call_within_1bd',
+    name: 'New lead → Call within 1 business day',
+    description:
+      'When a new contact arrives via any lead source, create a "Call within 1 business day" task assigned per the tenant default-assignee policy.',
+    category: 'task',
+    icon: 'PhoneCall',
+    trigger_type: 'contact_created',
+    trigger_config: {},
+    actions: [
+      {
+        type: 'create_task',
+        config: {
+          title: 'Call {contact.full_name} — new lead',
+          task_type: 'call',
+          priority: 'high',
+          due_in_days: 1,
+        },
+      },
+    ],
+  },
+  {
+    id: 'playbook_deal_stalled_7d_check_in',
+    name: 'No activity on deal for 7 days → check-in task',
+    description:
+      'When a deal has had no activity for 7 days, create a check-in task for the contact owner. Default OFF — flip on in /automations when you want this nudge.',
+    category: 'task',
+    icon: 'Hourglass',
+    trigger_type: 'deal_aging',
+    trigger_config: { days: 7 },
+    actions: [
+      {
+        type: 'create_task',
+        config: {
+          title: 'Check in on {contact.full_name} — {deal.title} (7d quiet)',
+          task_type: 'todo',
+          priority: 'normal',
+          due_in_days: 1,
+        },
+      },
+    ],
+  },
+  {
+    id: 'playbook_deal_lost_6mo_re_engage',
+    name: 'Deal Closed Lost → re-engagement task in 6 months',
+    description:
+      'When a deal closes Lost, create a 6-month follow-up task to re-engage the contact. Sometimes they convert later.',
+    category: 'task',
+    icon: 'RotateCcw',
+    trigger_type: 'deal_lost',
+    trigger_config: {},
+    actions: [
+      {
+        type: 'create_task',
+        config: {
+          title: 'Re-engage {contact.full_name} — was Lost in {deal.title}',
+          task_type: 'call',
+          priority: 'normal',
+          due_in_days: 180,
+        },
+      },
+    ],
+  },
+  {
+    id: 'playbook_consult_booked_confirm_24h',
+    name: 'Consult booked → confirm 24h before',
+    description:
+      'When a deal moves into a "Consult Booked" stage, create a task to confirm the appointment 24h before. Trigger fires on stage transition — practice configures which stage counts as "consult booked" in the rule.',
+    category: 'task',
+    icon: 'Calendar',
+    trigger_type: 'deal_stage_change',
+    trigger_config: {
+      // Practice edits to match their pipeline's actual stage name —
+      // e.g. "Consult Booked" / "Appointment Confirmed".
+      to_stage_name: 'Consult Booked',
+    },
+    actions: [
+      {
+        type: 'create_task',
+        config: {
+          title: 'Confirm consult with {contact.full_name} — {deal.title}',
+          task_type: 'call',
+          priority: 'high',
+          due_in_days: 1,
+        },
+      },
+    ],
+  },
+  {
+    id: 'playbook_quote_sent_follow_up_3d',
+    name: 'Quote sent → follow up in 3 days',
+    description:
+      'When a deal moves into a "Quote Sent" stage, create a follow-up task 3 days later. Most quotes need a nudge.',
+    category: 'task',
+    icon: 'Send',
+    trigger_type: 'deal_stage_change',
+    trigger_config: {
+      to_stage_name: 'Quote Sent',
+    },
+    actions: [
+      {
+        type: 'create_task',
+        config: {
+          title: 'Follow up on quote for {contact.full_name} ({deal.value})',
+          task_type: 'call',
+          priority: 'normal',
+          due_in_days: 3,
+        },
+      },
+    ],
+  },
+  {
+    id: 'playbook_deposit_paid_fitting_reminder',
+    name: 'Deposit paid → schedule fitting reminder',
+    description:
+      'When a deal moves into a "Deposit Paid" stage, create a task to schedule the fitting in 7 days.',
+    category: 'task',
+    icon: 'CheckSquare',
+    trigger_type: 'deal_stage_change',
+    trigger_config: {
+      to_stage_name: 'Deposit Paid',
+    },
+    actions: [
+      {
+        type: 'create_task',
+        config: {
+          title: 'Schedule fitting for {contact.full_name} — {deal.title}',
+          task_type: 'call',
+          priority: 'high',
+          due_in_days: 7,
+        },
+      },
+    ],
+  },
+  {
+    id: 'playbook_deal_stuck_in_stage_5d_nudge',
+    name: 'Deal stalled in stage for 5 days → nudge patient',
+    description:
+      'When a deal has been stuck in the same stage for 5 days, create a nudge task. Default OFF — turn on once your team is in a rhythm and you trust the system.',
+    category: 'task',
+    icon: 'Bell',
+    trigger_type: 'deal_aging',
+    trigger_config: { days: 5 },
+    actions: [
+      {
+        type: 'create_task',
+        config: {
+          title: 'Nudge {contact.full_name} — stuck in {stage.name} 5 days',
+          task_type: 'sms',
+          priority: 'normal',
+          due_in_days: 1,
+        },
+      },
+    ],
+  },
+  {
+    id: 'playbook_vip_tag_call_within_1h',
+    name: 'VIP-tagged contact arrives → call within 1 hour',
+    description:
+      'When a contact arrives with the "VIP" tag, create an URGENT call-back task due within the hour. Default OFF — only enable if you actively tag VIPs.',
+    category: 'task',
+    icon: 'Star',
+    trigger_type: 'contact_created',
+    trigger_config: {
+      has_tag: 'VIP',
+    },
+    actions: [
+      {
+        type: 'create_task',
+        config: {
+          title: 'URGENT call — VIP contact {contact.full_name}',
+          task_type: 'call',
+          priority: 'urgent',
+          due_in_days: 0,
+        },
+      },
+    ],
+  },
+]
+
 export const TASK_WORKFLOWS: WorkflowTemplate[] = [
   {
     id: 'task_overdue_escalation',
@@ -405,8 +595,19 @@ export const CONTACT_WORKFLOWS: WorkflowTemplate[] = [
 export const ALL_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   ...DEAL_WORKFLOWS,
   ...TASK_WORKFLOWS,
+  ...PLAYBOOK_TASK_TEMPLATES, // 2b.62
   ...CONTACT_WORKFLOWS,
 ]
+
+// 2b.62 — The subset of templates the Practice Setup wizard installs
+// by default on first tenant boot. Matches the spec's "default ON?"
+// column: 3 of the 8 playbook task templates ship as ready-to-fire.
+// Practices flip the others on per their preference.
+export const DEFAULT_ON_TASK_PLAYBOOK_TEMPLATE_IDS = [
+  'playbook_new_lead_call_within_1bd',
+  'playbook_consult_booked_confirm_24h',
+  'playbook_quote_sent_follow_up_3d',
+] as const
 
 // =====================================================
 // HELPER FUNCTIONS
