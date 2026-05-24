@@ -85,9 +85,20 @@ export async function autoCompleteTasksOnOutbound(
     // 2b.79 — if an operator user id is provided, scope the close to
     // tasks owned by THAT user (or unassigned / group / everyone, since
     // a shared task can legitimately be satisfied by anyone). Pure
-    // "wrong assignee" tasks stay open.
+    // "wrong assignee" tasks (someone ELSE specifically assigned) stay
+    // open.
+    //
+    // 2b.83 — widened: group-assigned and everyone-assigned tasks also
+    // close, since any operator can satisfy a shared task by sending.
     if (input.operatorUserId) {
-      query = query.or(`assignee_user_id.eq.${input.operatorUserId},assignee_user_id.is.null`)
+      query = query.or(
+        [
+          `assignee_user_id.eq.${input.operatorUserId}`,
+          'assignee_user_id.is.null',
+          'assigned_to_group_id.not.is.null',
+          'assigned_to_everyone.is.true',
+        ].join(',')
+      )
     }
     const { data: candidates, error: findErr } = await query
 

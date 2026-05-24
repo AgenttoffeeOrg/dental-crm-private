@@ -1,13 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { createClient } from '@/lib/supabase-client'
 
 interface EditUserModalProps {
   open: boolean
@@ -18,33 +17,82 @@ interface EditUserModalProps {
     email: string
     role: string
     status: string
+    manager_user_id?: string | null
   }
   onUserUpdated: () => void
+}
+
+interface ManagerCandidate {
+  id: string
+  full_name: string | null
+  email: string | null
 }
 
 export function EditUserModal({ open, onOpenChange, user, onUserUpdated }: EditUserModalProps) {
   const [formData, setFormData] = useState({
     full_name: user.full_name,
     role: user.role,
-    status: user.status
+    status: user.status,
+    manager_user_id: user.manager_user_id ?? null,
   })
   const [saving, setSaving] = useState(false)
+  const [managerCandidates, setManagerCandidates] = useState<ManagerCandidate[]>([])
+  const [loadingManagers, setLoadingManagers] = useState(false)
+
+  // 2b.81 — load potential managers (active tenant members other than
+  // this user) for the dropdown. Uses the GET /api/users?in_tenant=1
+  // endpoint introduced in 2b.80.
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setLoadingManagers(true)
+    fetch('/api/users?in_tenant=1', { credentials: 'include' })
+      .then(async (r) => {
+        if (!r.ok) {
+          console.warn('[edit-user-modal] manager-candidates fetch failed', r.status)
+          return null
+        }
+        const body = await r.json()
+        return body.users as ManagerCandidate[]
+      })
+      .then((users) => {
+        if (cancelled) return
+        if (users) setManagerCandidates(users.filter((u) => u.id !== user.id))
+      })
+      .catch((err) => {
+        console.warn('[edit-user-modal] manager-candidates fetch threw', err)
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingManagers(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, user.id])
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('app_users')
-        .update({
+      // 2b.85 — route through PATCH /api/users/[id] so the update goes
+      // through audit-first + service-role + tenant scoping.
+      // Previously this was a direct client-side update on app_users,
+      // which skipped audit (CLAUDE.md operational principle).
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           full_name: formData.full_name,
           role: formData.role,
           status: formData.status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
+          manager_user_id: formData.manager_user_id,
+        }),
+      })
 
-      if (error) throw error
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? body.message ?? `http_${res.status}`)
+      }
 
       toast.success('User updated successfully!')
       onUserUpdated()
@@ -106,6 +154,37 @@ export function EditUserModal({ open, onOpenChange, user, onUserUpdated }: EditU
               </SelectContent>
             </Select>
           </div>
+
+          <div>
+            <Label>Manager</Label>
+            <Select
+              value={formData.manager_user_id ?? '__none'}
+              onValueChange={(value) =>
+                setFormData({
+                  ...formData,
+                  manager_user_id: value === '__none' ? null : value,
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={loadingManagers ? 'Loading…' : '— no manager —'}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— no manager —</SelectItem>
+                {managerCandidates.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.full_name ?? c.email ?? c.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Sets who gets pinged when this person's urgent tasks go overdue 24h+.
+              Manager must also have the "Overdue task alerts for my reports" toggle ON.
+            </p>
+          </div>
         </div>
 
         <div className="flex justify-end gap-3">
@@ -120,5 +199,3 @@ export function EditUserModal({ open, onOpenChange, user, onUserUpdated }: EditU
     </Dialog>
   )
 }
-
-

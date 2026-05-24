@@ -247,7 +247,10 @@ export default function TasksPage() {
         if (!t.snoozed_until) return true
         try {
           return new Date(t.snoozed_until).getTime() <= nowMs
-        } catch {
+        } catch (parseErr) {
+          // 2b.83 — log invalid timestamps so they're traceable
+          // instead of silently treating them as not-snoozed.
+          console.warn('[tasks/page] invalid snoozed_until — showing task', t.id, parseErr)
           return true
         }
       })

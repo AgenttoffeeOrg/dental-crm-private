@@ -134,7 +134,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           /* best-effort */
         }
       }
-      const status = insertErr.message.includes('duplicate') ? 409 : 500
+      // 2b.83 — unique_violation by code, not message-substring.
+      const status = (insertErr as { code?: string }).code === '23505' ? 409 : 500
       return NextResponse.json(
         { error: status === 409 ? 'already_member' : 'insert_failed', message: insertErr.message },
         { status }

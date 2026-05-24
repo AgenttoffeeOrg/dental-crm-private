@@ -130,7 +130,9 @@ export async function POST(request: NextRequest) {
         }
       }
       // Unique constraint on (tenant_id, name) — surface as 409.
-      const status = insertErr.message.includes('duplicate') ? 409 : 500
+      // 2b.83 — Postgres unique_violation is code 23505; message
+      // includes-match is fragile across driver/locale combinations.
+      const status = (insertErr as { code?: string }).code === '23505' ? 409 : 500
       return NextResponse.json(
         { error: status === 409 ? 'name_already_taken' : 'insert_failed', message: insertErr.message },
         { status }

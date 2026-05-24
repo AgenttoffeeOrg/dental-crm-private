@@ -35,8 +35,104 @@ export const dynamic = 'force-dynamic'
 
 const DUE_SOON_LOOKAHEAD_MIN = 5
 const OVERDUE_THRESHOLD_MIN = 30
-const MANAGER_ESCALATION_THRESHOLD_HOURS = 24
+const MANAGER_ESCALATION_THRESHOLD_HOURS_DEFAULT = 24
 const EVERYONE_FANOUT_CAP = 25
+
+/**
+ * 2b.82 — Per-tenant manager threshold cache. Built once per cron run
+ * to avoid re-querying notification_policies for every task.
+ */
+const tenantManagerThresholdCache = new Map<string, number>()
+
+async function getTenantManagerThresholdHours(
+  service: ReturnType<typeof createServiceClient>,
+  tenantId: string
+): Promise<number> {
+  const cached = tenantManagerThresholdCache.get(tenantId)
+  if (cached !== undefined) return cached
+  const { data } = await service
+    .from('notification_policies')
+    .select('manager_overdue_hours')
+    .eq('tenant_id', tenantId)
+    .maybeSingle()
+  const hours =
+    (data as { manager_overdue_hours?: number | null } | null)?.manager_overdue_hours ??
+    MANAGER_ESCALATION_THRESHOLD_HOURS_DEFAULT
+  tenantManagerThresholdCache.set(tenantId, hours)
+  return hours
+}
+
+/**
+ * 2b.82 — Per-user quiet-hours check. Returns true if the user has
+ * quiet hours enabled AND the current instant falls inside the window
+ * (interpreted in the user's local timezone, falling back to the
+ * tenant's, falling back to UTC).
+ *
+ * Stored shape: { enabled: bool, start: "HH:MM", end: "HH:MM" }.
+ * Windows wrap midnight when start > end (e.g. 21:00–08:00).
+ */
+async function isUserInQuietHours(
+  service: ReturnType<typeof createServiceClient>,
+  userId: string,
+  tenantTimezone: string | null
+): Promise<boolean> {
+  const { data } = await service
+    .from('notification_preferences')
+    .select('quiet_hours')
+    .eq('user_id', userId)
+    .maybeSingle()
+  const qh = (data as { quiet_hours?: any } | null)?.quiet_hours
+  if (!qh || !qh.enabled || typeof qh.start !== 'string' || typeof qh.end !== 'string') {
+    return false
+  }
+
+  // Resolve user's local hh:mm via the user's timezone (falls back to
+  // tenant timezone, then UTC).
+  const { data: userRow } = await service
+    .from('app_users')
+    .select('timezone')
+    .eq('id', userId)
+    .maybeSingle()
+  const tz =
+    (userRow as { timezone?: string | null } | null)?.timezone ?? tenantTimezone ?? 'UTC'
+
+  let hh: string
+  let mm: string
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date())
+    hh = parts.find((p) => p.type === 'hour')?.value ?? '00'
+    mm = parts.find((p) => p.type === 'minute')?.value ?? '00'
+  } catch {
+    return false
+  }
+  const hhmm = `${hh.padStart(2, '0')}:${mm.padStart(2, '0')}`
+  const start = qh.start as string
+  const end = qh.end as string
+  if (start <= end) return hhmm >= start && hhmm < end
+  // Wrap-around window (e.g. 21:00 → 08:00).
+  return hhmm >= start || hhmm < end
+}
+
+const tenantTimezoneCache = new Map<string, string | null>()
+async function getTenantTimezone(
+  service: ReturnType<typeof createServiceClient>,
+  tenantId: string
+): Promise<string | null> {
+  if (tenantTimezoneCache.has(tenantId)) return tenantTimezoneCache.get(tenantId) ?? null
+  const { data } = await service
+    .from('tenants')
+    .select('timezone')
+    .eq('id', tenantId)
+    .maybeSingle()
+  const tz = (data as { timezone?: string | null } | null)?.timezone ?? null
+  tenantTimezoneCache.set(tenantId, tz)
+  return tz
+}
 
 interface TaskRow {
   id: string
@@ -127,6 +223,12 @@ export async function GET(request: NextRequest) {
   }
 
   const service = createServiceClient()
+  // 2b.85 — clear the module-scoped caches at the top of each cron
+  // invocation so a tenant editing notification_policies.manager_overdue_hours
+  // or app_users.timezone sees the change on the next 5-min tick, not
+  // whenever Vercel happens to cold-start.
+  tenantManagerThresholdCache.clear()
+  tenantTimezoneCache.clear()
   const nowIso = new Date().toISOString()
   const dueSoonCutoffIso = new Date(Date.now() + DUE_SOON_LOOKAHEAD_MIN * 60 * 1000).toISOString()
   const overdueThresholdIso = new Date(Date.now() - OVERDUE_THRESHOLD_MIN * 60 * 1000).toISOString()
@@ -161,7 +263,17 @@ export async function GET(request: NextRequest) {
       const recipients = await resolveRecipients(service, task)
       recipientsTotal += recipients.length
       const payload = bodyForTask(task, false)
+      const tenantTz = await getTenantTimezone(service, task.tenant_id)
+      const isUrgent = task.priority === 'urgent'
       for (const userId of recipients) {
+        // 2b.82 — quiet hours: non-urgent due-soon pings get
+        // suppressed during the receiving user's quiet window. We
+        // still stamp notified_at so we don't ping when they wake
+        // up either (they'll see it in the dashboard + queue —
+        // the cron's job was the live ping, which has now passed).
+        if (!isUrgent && (await isUserInQuietHours(service, userId, tenantTz))) {
+          continue
+        }
         const { delivered, pruned } = await sendPushToUser(userId, {
           ...payload,
           taskId: task.id,
@@ -218,11 +330,37 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // --- 3. Manager-overdue: urgent/high tasks ≥24h overdue,
-  //        assigned to a user with a registered manager, manager
-  //        opted in to overdue alerts. Once per task. ---
+  // --- 3. Manager-overdue: urgent/high tasks past the per-tenant
+  //        threshold (default 24h), assigned to a user with a
+  //        registered manager, manager opted in to overdue alerts.
+  //        Once per task. ---
+  //
+  // 2b.82 — pre-load every tenant's threshold once before the scan
+  // so we can use the tightest threshold (smallest hours value) in the
+  // initial query. We then re-check per-task with the tenant-specific
+  // value to filter out tasks that aren't quite overdue yet for their
+  // own tenant.
+  //
+  // First pass: find candidate tasks using the SMALLEST tenant
+  // threshold (or default if no overrides exist). Per-tenant trim
+  // happens in the loop below.
+  let smallestThresholdHours = MANAGER_ESCALATION_THRESHOLD_HOURS_DEFAULT
+  const { data: allPolicies } = await service
+    .from('notification_policies')
+    .select('tenant_id, manager_overdue_hours')
+  for (const p of (allPolicies ?? []) as Array<{
+    tenant_id: string
+    manager_overdue_hours: number | null
+  }>) {
+    if (p.manager_overdue_hours != null) {
+      tenantManagerThresholdCache.set(p.tenant_id, p.manager_overdue_hours)
+      if (p.manager_overdue_hours < smallestThresholdHours) {
+        smallestThresholdHours = p.manager_overdue_hours
+      }
+    }
+  }
   const managerCutoffIso = new Date(
-    Date.now() - MANAGER_ESCALATION_THRESHOLD_HOURS * 3600 * 1000
+    Date.now() - smallestThresholdHours * 3600 * 1000
   ).toISOString()
   let managerPinged = 0
 
@@ -244,8 +382,18 @@ export async function GET(request: NextRequest) {
   }
 
   for (const task of (managerCandidates ?? []) as TaskRow[]) {
-    if (!task.assignee_user_id) continue
+    if (!task.assignee_user_id || !task.due_at) continue
 
+    // 2b.82 — per-tenant threshold trim.
+    const tenantThresholdHours = await getTenantManagerThresholdHours(service, task.tenant_id)
+    const taskAgeMs = Date.now() - new Date(task.due_at).getTime()
+    if (taskAgeMs < tenantThresholdHours * 3600 * 1000) continue
+
+    // 2b.83 — wrap the per-task work in try/finally so a mid-send
+    // exception still stamps escalated_to_manager_at (same race
+    // protection as the due-soon and overdue rails).
+    let shouldStamp = false
+    try {
     // Look up the assignee's manager (and whether they opted in).
     const { data: assigneeRow } = await service
       .from('app_users')
@@ -254,7 +402,11 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
 
     const managerId = (assigneeRow as { manager_user_id?: string | null } | null)?.manager_user_id
-    if (!managerId) continue
+    if (!managerId) {
+      // No manager → no escalation possible. Don't stamp; if a
+      // manager gets set later we want this task to flow through.
+      continue
+    }
 
     const { data: managerRow } = await service
       .from('app_users')
@@ -263,19 +415,12 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
 
     if (!(managerRow as { manager_overdue_alerts_enabled?: boolean } | null)?.manager_overdue_alerts_enabled) {
-      // Still stamp escalated_to_manager_at so we don't keep
-      // re-querying the same dead task next tick. Operator opted
-      // OUT — respect that.
-      //
       // 2b.79 asymmetry note: if the manager later flips the toggle
       // back ON, the stamp means this task will NOT retroactively
       // escalate. New overdue tasks will. Opt-in does not back-fill;
       // that's by design (avoids the "I just turned this on and got
       // 200 historical pings" antipattern).
-      await service
-        .from('tasks')
-        .update({ escalated_to_manager_at: nowIso })
-        .eq('id', task.id)
+      shouldStamp = true
       continue
     }
 
@@ -291,11 +436,18 @@ export async function GET(request: NextRequest) {
     })
     if (delivered > 0) managerPinged += 1
     prunedTotal += pruned
-
-    await service
-      .from('tasks')
-      .update({ escalated_to_manager_at: nowIso })
-      .eq('id', task.id)
+    shouldStamp = true
+    } catch (err) {
+      console.warn('[cron/task-push-notifications] manager rail loop threw', task.id, err)
+      shouldStamp = true
+    } finally {
+      if (shouldStamp) {
+        await service
+          .from('tasks')
+          .update({ escalated_to_manager_at: nowIso })
+          .eq('id', task.id)
+      }
+    }
   }
 
   return NextResponse.json(

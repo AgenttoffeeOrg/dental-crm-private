@@ -66,6 +66,23 @@ export function CreateTaskSlideOver({
     location_id: '',
     assignee_user_id: '',
   })
+  // 2b.81 — recurring rule state. Off by default; if 'on', creates a
+  // task_recurring_rules row on submit and stamps tasks.recurring_rule_id.
+  const [recurring, setRecurring] = useState<{
+    enabled: boolean
+    frequency: 'daily' | 'weekly' | 'monthly'
+    interval_count: number
+    weekly_days: number[]
+    monthly_day: number | null
+    ends_at: string
+  }>({
+    enabled: false,
+    frequency: 'weekly',
+    interval_count: 1,
+    weekly_days: [],
+    monthly_day: null,
+    ends_at: '',
+  })
 
   // Load contacts, deals, and users when component opens
   useEffect(() => {
@@ -132,15 +149,30 @@ export function CreateTaskSlideOver({
     try {
       const supabase = createClient()
       
+      // 2b.85 — route through the same /api/users?in_tenant=1 endpoint
+      // as TeamMembersTab / EditUserModal so membership filtering is
+      // consistent. Direct supabase reads here would leak inactive /
+      // cross-tenant users if RLS ever loosened.
       const [contactsRes, dealsRes, usersRes] = await Promise.all([
         supabase.from('contacts').select('id, full_name').eq('tenant_id', appUser.tenant_id).order('full_name').limit(100),
         supabase.from('deals').select('id, title').eq('tenant_id', appUser.tenant_id).order('title').limit(100),
-        supabase.from('app_users').select('id, full_name').eq('tenant_id', appUser.tenant_id).order('full_name')
+        fetch('/api/users?in_tenant=1', { credentials: 'include' })
+          .then(async (r) => {
+            if (!r.ok) {
+              console.warn('[create-task-slide-over] users fetch failed', r.status)
+              return { users: [] as Array<{ id: string; full_name: string | null }> }
+            }
+            return r.json() as Promise<{ users: Array<{ id: string; full_name: string | null }> }>
+          })
+          .catch((err) => {
+            console.warn('[create-task-slide-over] users fetch threw', err)
+            return { users: [] as Array<{ id: string; full_name: string | null }> }
+          }),
       ])
 
       setContacts(contactsRes.data || [])
       setDeals(dealsRes.data || [])
-      setUsers(usersRes.data || [])
+      setUsers(usersRes.users || [])
     } catch (error) {
       console.error('Error loading data:', error)
       toast.error('Failed to load form data')
@@ -165,7 +197,52 @@ export function CreateTaskSlideOver({
     setLoading(true)
 
     try {
-      const taskData = {
+      // 2b.81 — if recurring is on, create the rule first so we can
+      // stamp the task with recurring_rule_id. If the rule create fails
+      // we abort the task create entirely (better to surface the error
+      // than create an orphan task that won't repeat).
+      let recurringRuleId: string | null = null
+      if (recurring.enabled) {
+        if (!formData.due_date) {
+          toast.error('Recurring tasks need a due date.')
+          setLoading(false)
+          return
+        }
+        try {
+          const res = await fetch('/api/task-recurring-rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              frequency: recurring.frequency,
+              interval_count: recurring.interval_count,
+              weekly_days:
+                recurring.frequency === 'weekly' && recurring.weekly_days.length > 0
+                  ? recurring.weekly_days
+                  : undefined,
+              monthly_day:
+                recurring.frequency === 'monthly' ? recurring.monthly_day : undefined,
+              ends_at: recurring.ends_at
+                ? new Date(recurring.ends_at).toISOString()
+                : undefined,
+            }),
+          })
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}))
+            throw new Error(body.error ?? `http_${res.status}`)
+          }
+          const body = await res.json()
+          recurringRuleId = body.id
+        } catch (err) {
+          toast.error(
+            `Couldn't save recurrence: ${err instanceof Error ? err.message : 'unknown'}`
+          )
+          setLoading(false)
+          return
+        }
+      }
+
+      const taskData: Record<string, unknown> = {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         task_type: formData.task_type,
@@ -176,8 +253,12 @@ export function CreateTaskSlideOver({
         location_id: formData.location_id || undefined,
         assignee_user_id: formData.assignee_user_id || appUser?.id || undefined,
       }
+      if (recurringRuleId) {
+        taskData.recurring_rule_id = recurringRuleId
+        taskData.is_recurring = true
+      }
 
-      await createTask(taskData)
+      await createTask(taskData as any)
       
       // Reset form
       setFormData({
@@ -424,6 +505,136 @@ export function CreateTaskSlideOver({
                   onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                   className="h-11"
                 />
+              </div>
+
+              {/* 2b.81 — Recurring */}
+              <div className="space-y-3 border rounded-md p-4 bg-gray-50">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={recurring.enabled}
+                    onChange={(e) =>
+                      setRecurring((r) => ({ ...r, enabled: e.target.checked }))
+                    }
+                  />
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Repeat className="h-4 w-4" />
+                    Repeat this task
+                  </span>
+                </label>
+                {recurring.enabled && (
+                  <div className="space-y-3 pl-6">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Frequency</Label>
+                        <Select
+                          value={recurring.frequency}
+                          onValueChange={(v) =>
+                            setRecurring((r) => ({
+                              ...r,
+                              frequency: v as 'daily' | 'weekly' | 'monthly',
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Every</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={recurring.interval_count}
+                          onChange={(e) =>
+                            setRecurring((r) => ({
+                              ...r,
+                              interval_count: parseInt(e.target.value, 10) || 1,
+                            }))
+                          }
+                          className="h-9"
+                        />
+                      </div>
+                    </div>
+                    {recurring.frequency === 'weekly' && (
+                      <div>
+                        <Label className="text-xs">On days</Label>
+                        <div className="flex gap-1 mt-1">
+                          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label, idx) => {
+                            const active = recurring.weekly_days.includes(idx)
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() =>
+                                  setRecurring((r) => ({
+                                    ...r,
+                                    weekly_days: active
+                                      ? r.weekly_days.filter((d) => d !== idx)
+                                      : [...r.weekly_days, idx].sort(),
+                                  }))
+                                }
+                                className={`text-xs px-2 py-1 rounded border ${
+                                  active
+                                    ? 'bg-orange-600 text-white border-orange-600'
+                                    : 'bg-white text-gray-700 border-gray-300'
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Leave empty to repeat on the same weekday as the original.
+                        </p>
+                      </div>
+                    )}
+                    {recurring.frequency === 'monthly' && (
+                      <div>
+                        <Label className="text-xs">Day of month</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={31}
+                          placeholder="Same day as the original"
+                          value={recurring.monthly_day ?? ''}
+                          onChange={(e) =>
+                            setRecurring((r) => ({
+                              ...r,
+                              monthly_day: e.target.value
+                                ? parseInt(e.target.value, 10)
+                                : null,
+                            }))
+                          }
+                          className="h-9"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <Label className="text-xs">Stop on (optional)</Label>
+                      <Input
+                        type="date"
+                        value={recurring.ends_at}
+                        onChange={(e) =>
+                          setRecurring((r) => ({ ...r, ends_at: e.target.value }))
+                        }
+                        className="h-9"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      When you mark this task done or cancelled, the next instance
+                      gets created automatically the next day.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Location */}

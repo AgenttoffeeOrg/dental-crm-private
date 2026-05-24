@@ -84,7 +84,10 @@ export function NotificationsPreferencesTab() {
     })()
   }, [appUser?.id])
 
-  async function persist(patch: Partial<PrefsRow & { quiet_hours: QuietHours }>) {
+  async function persist(
+    patch: Partial<PrefsRow & { quiet_hours: QuietHours }>,
+    options: { silent?: boolean } = {}
+  ) {
     if (!appUser?.id) return
     setSaving(true)
     const supabase = createClient()
@@ -100,6 +103,9 @@ export function NotificationsPreferencesTab() {
           { onConflict: 'user_id' }
         )
       if (error) throw error
+      // 2b.83 — confirmation toast on success so the user has
+      // feedback that the optimistic toggle actually persisted.
+      if (!options.silent) toast.success('Saved.')
     } catch (err) {
       toast.error(`Couldn't save: ${err instanceof Error ? err.message : 'unknown'}`)
     } finally {
