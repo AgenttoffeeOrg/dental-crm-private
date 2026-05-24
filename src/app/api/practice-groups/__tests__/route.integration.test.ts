@@ -83,7 +83,7 @@ describeIntegration('POST /api/practice-groups (integration)', () => {
     })
     expect(audit).not.toBeNull()
     expect(audit?.tenant_id).toBe(TEST_TENANT_ID)
-    expect(audit?.category).toBe('user')
+    expect(audit?.action_category).toBe('user')
     expect(audit?.action_type).toBe('create')
   })
 

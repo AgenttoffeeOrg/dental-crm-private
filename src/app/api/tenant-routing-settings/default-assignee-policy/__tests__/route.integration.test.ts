@@ -87,7 +87,7 @@ describeIntegration('PATCH default-assignee-policy (integration)', () => {
     })
     expect(audit).not.toBeNull()
     expect(audit?.action_type).toBe('update')
-    expect(audit?.category).toBe('setting')
+    expect(audit?.action_category).toBe('setting')
   })
 
   it('group mode without group_id fails Zod refinement (no audit written)', async () => {
