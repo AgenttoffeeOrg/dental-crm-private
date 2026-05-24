@@ -13,11 +13,12 @@
  * (unlike the metadata writes which are cache-only).
  */
 
+import { randomUUID } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { ApiContextError, getApiRequestContext } from '@/lib/api/context'
 import { createServiceClient } from '@/lib/supabase-server'
-import { logAuditServer, AuditLogWriteError } from '@/lib/auto-audit'
+import { logAuditServer, deleteAuditRowServer, AuditLogWriteError } from '@/lib/auto-audit'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -190,8 +191,10 @@ export async function POST(
       assigneeResolution = await resolveDefaultAssignee(service, ctx.tenantId, a.contact_id)
     }
 
-    // Insert the task.
+    // Pre-generate the task id so we can audit BEFORE the insert.
+    const newTaskId = randomUUID()
     const insertPayload = {
+      id: newTaskId,
       tenant_id: ctx.tenantId,
       title,
       status: 'open' as const,
@@ -209,6 +212,34 @@ export async function POST(
       assigned_to_everyone: assigneeResolution.assigned_to_everyone,
     }
 
+    // Audit FIRST. If audit write fails, abort before mutating.
+    let auditId: string | null = null
+    try {
+      auditId = await logAuditServer({
+        tenantId: ctx.tenantId,
+        userId: ctx.user.id,
+        actionType: 'create',
+        category: 'task',
+        entityType: 'task',
+        entityId: newTaskId,
+        description: 'Task created from accepted AI commitment suggestion',
+        beforeState: undefined,
+        afterState: insertPayload,
+        changedFields: Object.keys(insertPayload),
+        severity: 'info',
+        tags: ['task', 'ai_commitment_accepted'],
+      })
+    } catch (err) {
+      if (err instanceof AuditLogWriteError) {
+        return NextResponse.json(
+          { error: 'audit_log_failed', internal_error_id: err.internalErrorId },
+          { status: 500 }
+        )
+      }
+      throw err
+    }
+
+    // Insert the task. On failure, compensate-delete the audit row.
     const { data: inserted, error: insertErr } = await service
       .from('tasks')
       .insert([insertPayload])
@@ -217,39 +248,17 @@ export async function POST(
 
     if (insertErr || !inserted) {
       console.error('[API:accept-commitment] task insert failed', insertErr)
+      if (auditId) {
+        try {
+          await deleteAuditRowServer(auditId, ctx.tenantId)
+        } catch {
+          /* best-effort */
+        }
+      }
       return NextResponse.json(
         { error: 'task_insert_failed', message: insertErr?.message ?? 'unknown' },
         { status: 500 }
       )
-    }
-
-    const newTask = inserted as { id: string }
-
-    // Audit — operator-driven creation, goes through logAuditServer
-    // (unlike the metadata cache writes elsewhere).
-    try {
-      await logAuditServer({
-        tenantId: ctx.tenantId,
-        userId: ctx.user.id,
-        actionType: 'create',
-        category: 'task',
-        entityType: 'task',
-        entityId: newTask.id,
-        description: 'Task created from accepted AI commitment suggestion',
-        beforeState: undefined,
-        afterState: { ...insertPayload, id: newTask.id },
-        changedFields: Object.keys(insertPayload),
-        severity: 'info',
-        tags: ['task', 'ai_commitment_accepted'],
-      })
-    } catch (err) {
-      // Audit failure is non-blocking on a create — the task already
-      // exists. Log + continue.
-      if (err instanceof AuditLogWriteError) {
-        console.warn('[API:accept-commitment] audit write failed', err.internalErrorId)
-      } else {
-        throw err
-      }
     }
 
     return NextResponse.json({

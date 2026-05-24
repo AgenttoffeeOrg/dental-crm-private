@@ -56,6 +56,7 @@ export async function POST(
     const service = createServiceClient()
     const result = await logCallOutcome(service, {
       tenantId: ctx.tenantId,
+      userId: ctx.user.id,
       taskId: params.id,
       outcome: parsed.data.outcome as CallOutcome,
       note: parsed.data.note,

@@ -60,6 +60,46 @@ function formatTime(iso: string, tz: string): string {
   }
 }
 
+/**
+ * Returns the tenant timezone's UTC offset for the current instant in
+ * the form "+01:00" / "-05:00" / "+00:00". Used to build an
+ * offset-aware ISO string for "tenant-local midnight" so the day
+ * window resolves correctly regardless of the runtime TZ (which is
+ * UTC on Vercel).
+ *
+ * Caveat: returns the offset for `now`, not for the requested date.
+ * On DST transition days the start-of-day instant can be off by 1h —
+ * acceptable because:
+ *   (a) the digest fires at 8am tenant-local, well past midnight, so
+ *       `now`'s offset matches today's start-of-day offset; and
+ *   (b) the morning digest is "tasks due today" not "tasks due in
+ *       exactly the next 24h" — a 1h slip near the boundary is
+ *       indistinguishable from a task scheduled an hour early.
+ */
+function tenantOffsetSuffix(timezone: string): string {
+  try {
+    const part = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'longOffset',
+    })
+      .formatToParts(new Date())
+      .find((p) => p.type === 'timeZoneName')?.value || 'GMT'
+    if (part === 'GMT' || part === 'UTC') return '+00:00'
+    // "GMT+01:00" → "+01:00", "GMT-5" → "-05:00"
+    let raw = part.replace(/^GMT/, '').replace(/^UTC/, '')
+    if (!raw) return '+00:00'
+    // Pad single-digit hours, ensure HH:MM shape.
+    const match = raw.match(/^([+-])(\d{1,2})(?::?(\d{2}))?$/)
+    if (!match) return '+00:00'
+    const sign = match[1]
+    const hh = match[2].padStart(2, '0')
+    const mm = (match[3] ?? '00').padStart(2, '0')
+    return `${sign}${hh}:${mm}`
+  } catch {
+    return '+00:00'
+  }
+}
+
 function classifyBucket(taskType: string | null): 'calls' | 'messages' | 'general' {
   if (taskType === 'call') return 'calls'
   if (taskType === 'sms' || taskType === 'whatsapp' || taskType === 'email' || taskType === 'note') {
@@ -90,9 +130,12 @@ export async function buildDigestForUser(
     day: '2-digit',
   })
   const ymd = localFormatter.format(now) // e.g. "2026-05-24"
-  // Naive ISO at local midnight + 24h. Crude but accurate enough for
-  // a day-bucket filter.
-  const localStart = new Date(`${ymd}T00:00:00`)
+  // Construct offset-aware ISO so "midnight" resolves in the tenant's
+  // timezone, not the runtime TZ (which is UTC on Vercel). Crucial:
+  // `new Date("2026-05-24T00:00:00")` on Vercel = 00:00 UTC, but
+  // London in BST wants 23:00 UTC the prior day.
+  const offsetSuffix = tenantOffsetSuffix(tenantTimezone)
+  const localStart = new Date(`${ymd}T00:00:00${offsetSuffix}`)
   const localEnd = new Date(localStart.getTime() + 24 * 3600 * 1000)
 
   // Find tasks assigned to user OR shared (group with the user as

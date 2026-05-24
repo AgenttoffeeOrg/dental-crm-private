@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { ApiContextError, getApiRequestContext } from '@/lib/api/context'
 import { createServiceClient } from '@/lib/supabase-server'
-import { logAuditServer, AuditLogWriteError } from '@/lib/auto-audit'
+import { logAuditServer, deleteAuditRowServer, AuditLogWriteError } from '@/lib/auto-audit'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -139,34 +139,18 @@ export async function POST(
       })
     }
 
-    // 2. Bulk UPDATE to cancelled. Recurring chain terminates per
-    //    the 2b.58 schema rule (cancellation stops next-instance).
+    // 2. Audit FIRST per task. If any audit insert fails, abort
+    //    without mutating and compensate-delete every audit row we
+    //    already wrote. Per CLAUDE.md: audit failures must fail the
+    //    request — never leave a "cancelled" task without an audit
+    //    entry.
     const nowIso = new Date().toISOString()
-    const { error: updateErr } = await service
-      .from('tasks')
-      .update({
-        status: 'cancelled',
-        completed_at: nowIso,
-        updated_at: nowIso,
-      })
-      .in('id', toClose.map((t) => t.id))
-      .eq('tenant_id', ctx.tenantId)
+    const writtenAuditIds: string[] = []
+    let auditFailedErrorId: string | null = null
 
-    if (updateErr) {
-      return NextResponse.json(
-        { error: 'bulk_cancel_failed', message: updateErr.message },
-        { status: 500 }
-      )
-    }
-
-    // 3. Audit per task. Failures are logged but don't roll back the
-    //    cancel — the operator already saw the deal close + chose
-    //    these tasks to close. Audit best-effort.
-    let auditWritten = 0
-    let auditFailed = 0
     for (const t of toClose) {
       try {
-        await logAuditServer({
+        const auditId = await logAuditServer({
           tenantId: ctx.tenantId,
           userId: ctx.user.id,
           actionType: 'update',
@@ -180,16 +164,62 @@ export async function POST(
           severity: 'info',
           tags: ['task', 'deal_close_cancel'],
         })
-        auditWritten += 1
+        writtenAuditIds.push(auditId)
       } catch (err) {
-        auditFailed += 1
         if (err instanceof AuditLogWriteError) {
+          auditFailedErrorId = err.internalErrorId
           console.warn(
-            '[API:close-open-tasks] audit write failed',
+            '[API:close-open-tasks] audit write failed — aborting',
             err.internalErrorId
           )
+        } else {
+          throw err
+        }
+        break
+      }
+    }
+
+    if (auditFailedErrorId) {
+      // Compensate: roll back any audit rows we already wrote.
+      for (const auditId of writtenAuditIds) {
+        try {
+          await deleteAuditRowServer(auditId, ctx.tenantId)
+        } catch {
+          /* logged inside helper */
         }
       }
+      return NextResponse.json(
+        { error: 'audit_log_failed', internal_error_id: auditFailedErrorId },
+        { status: 500 }
+      )
+    }
+
+    // 3. Bulk UPDATE to cancelled. Recurring chain terminates per
+    //    the 2b.58 schema rule (cancellation stops next-instance).
+    const { error: updateErr } = await service
+      .from('tasks')
+      .update({
+        status: 'cancelled',
+        completed_at: nowIso,
+        updated_at: nowIso,
+      })
+      .in('id', toClose.map((t) => t.id))
+      .eq('tenant_id', ctx.tenantId)
+
+    if (updateErr) {
+      // Compensate: delete all audit rows we wrote since the cancel
+      // didn't happen.
+      for (const auditId of writtenAuditIds) {
+        try {
+          await deleteAuditRowServer(auditId, ctx.tenantId)
+        } catch {
+          /* best-effort */
+        }
+      }
+      return NextResponse.json(
+        { error: 'bulk_cancel_failed', message: updateErr.message },
+        { status: 500 }
+      )
     }
 
     const skippedCount = parsed.data.task_ids.length - toClose.length
@@ -198,8 +228,7 @@ export async function POST(
       ok: true,
       closed_count: toClose.length,
       skipped_count: skippedCount,
-      audit_written: auditWritten,
-      audit_failed: auditFailed,
+      audit_written: writtenAuditIds.length,
     })
   } catch (error) {
     return handleError(error)

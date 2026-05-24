@@ -18,14 +18,22 @@
  * The follow-up tasks inherit the original task's assignee,
  * contact, deal, and location. Type stays 'call'. Priority stays
  * the same.
+ *
+ * Audit-first per CLAUDE.md: every mutation (close + follow-up
+ * insert) writes the audit row BEFORE the mutation, with
+ * compensating-delete on mutation failure. Audit failure aborts
+ * the whole operation.
  */
 
+import { randomUUID } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { logAuditServer, deleteAuditRowServer, AuditLogWriteError } from '@/lib/auto-audit'
 
 export type CallOutcome = 'connected' | 'voicemail' | 'no_answer' | 'busy' | 'wrong_number'
 
 export interface LogCallOutcomeInput {
   tenantId: string
+  userId: string
   taskId: string
   outcome: CallOutcome
   /** Optional note the operator typed in the post-call panel. */
@@ -50,6 +58,7 @@ interface TaskRow {
   assigned_to_group_id: string | null
   assigned_to_everyone: boolean | null
   priority: string | null
+  status: string | null
 }
 
 function shiftIso(hours: number): string {
@@ -60,11 +69,12 @@ export async function logCallOutcome(
   supabase: SupabaseClient,
   input: LogCallOutcomeInput
 ): Promise<LogCallOutcomeResult> {
-  // 1. Load the original task so we can copy fields onto a follow-up.
+  // 1. Load the original task so we can audit the before-state and
+  //    copy fields onto a follow-up.
   const { data: task, error: loadErr } = await supabase
     .from('tasks')
     .select(
-      'id, tenant_id, title, contact_id, deal_id, location_id, assignee_user_id, assigned_to_group_id, assigned_to_everyone, priority'
+      'id, tenant_id, title, contact_id, deal_id, location_id, assignee_user_id, assigned_to_group_id, assigned_to_everyone, priority, status'
     )
     .eq('id', input.taskId)
     .eq('tenant_id', input.tenantId)
@@ -80,8 +90,39 @@ export async function logCallOutcome(
     return { ok: true, taskClosed: false, followUpTaskId: null }
   }
 
-  // Connected / voicemail / no_answer → close the task.
+  // --- Connected / voicemail / no_answer → close the task. ---
   const nowIso = new Date().toISOString()
+
+  // Audit FIRST so an audit-trail failure aborts the close.
+  let closeAuditId: string | null = null
+  try {
+    closeAuditId = await logAuditServer({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      actionType: 'update',
+      category: 'task',
+      entityType: 'task',
+      entityId: input.taskId,
+      description: `Task closed via call outcome: ${input.outcome}`,
+      beforeState: { status: t.status ?? 'open' },
+      afterState: { status: 'done', completed_at: nowIso },
+      changedFields: ['status', 'completed_at'],
+      severity: 'info',
+      tags: ['task', 'call_outcome', input.outcome],
+    })
+  } catch (err) {
+    if (err instanceof AuditLogWriteError) {
+      return {
+        ok: false,
+        taskClosed: false,
+        followUpTaskId: null,
+        error: `audit_log_failed:${err.internalErrorId}`,
+      }
+    }
+    throw err
+  }
+
+  // Now mutate.
   const { error: closeErr } = await supabase
     .from('tasks')
     .update({
@@ -93,6 +134,15 @@ export async function logCallOutcome(
     .eq('tenant_id', input.tenantId)
 
   if (closeErr) {
+    // Compensate: delete the audit row so we don't leave a phantom
+    // "closed" entry on an still-open task.
+    if (closeAuditId) {
+      try {
+        await deleteAuditRowServer(closeAuditId, input.tenantId)
+      } catch {
+        /* compensate best-effort; logged inside helper */
+      }
+    }
     return { ok: false, taskClosed: false, followUpTaskId: null, error: closeErr.message }
   }
 
@@ -101,17 +151,17 @@ export async function logCallOutcome(
     return { ok: true, taskClosed: true, followUpTaskId: null }
   }
 
-  // Voicemail → tomorrow follow-up. No-answer → +3h follow-up.
+  // --- Voicemail / no_answer → create follow-up task. ---
+  const followUpId = randomUUID()
   const followUpDueAt =
-    input.outcome === 'voicemail'
-      ? shiftIso(24)
-      : shiftIso(3)
+    input.outcome === 'voicemail' ? shiftIso(24) : shiftIso(3)
   const followUpTitle =
     input.outcome === 'voicemail'
       ? `Call back — left voicemail: ${t.title}`
       : `Try again — no answer: ${t.title}`
 
   const followUpPayload = {
+    id: followUpId,
     tenant_id: t.tenant_id,
     title: followUpTitle,
     status: 'open' as const,
@@ -129,27 +179,65 @@ export async function logCallOutcome(
     // suggestion; it's from a call outcome rule.
   }
 
-  const { data: followUp, error: createErr } = await supabase
+  // Audit FIRST (we control the id so this works even on a create).
+  let followUpAuditId: string | null = null
+  try {
+    followUpAuditId = await logAuditServer({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      actionType: 'create',
+      category: 'task',
+      entityType: 'task',
+      entityId: followUpId,
+      description: `Follow-up task auto-created from call outcome: ${input.outcome}`,
+      beforeState: undefined,
+      afterState: followUpPayload,
+      changedFields: Object.keys(followUpPayload),
+      severity: 'info',
+      tags: ['task', 'call_outcome_follow_up', input.outcome],
+    })
+  } catch (err) {
+    // The original close already succeeded. Don't fail the whole
+    // operation, but surface the audit failure so the caller knows
+    // the follow-up wasn't created.
+    if (err instanceof AuditLogWriteError) {
+      console.warn('[log-call-outcome] follow-up audit failed', err.internalErrorId)
+      return {
+        ok: true,
+        taskClosed: true,
+        followUpTaskId: null,
+        error: `follow_up_audit_failed:${err.internalErrorId}`,
+      }
+    }
+    throw err
+  }
+
+  const { error: createErr } = await supabase
     .from('tasks')
     .insert([followUpPayload])
-    .select('id')
-    .single()
 
-  if (createErr || !followUp) {
-    // The original task is already closed; don't fail the whole
-    // operation just because the follow-up couldn't be created.
-    console.warn('[log-call-outcome] follow-up insert failed', createErr?.message)
+  if (createErr) {
+    // Compensate-delete the audit row so we don't leave a phantom
+    // "create" entry for a task that doesn't exist.
+    if (followUpAuditId) {
+      try {
+        await deleteAuditRowServer(followUpAuditId, input.tenantId)
+      } catch {
+        /* best-effort */
+      }
+    }
+    console.warn('[log-call-outcome] follow-up insert failed', createErr.message)
     return {
       ok: true,
       taskClosed: true,
       followUpTaskId: null,
-      error: `follow_up_create_failed: ${createErr?.message ?? 'unknown'}`,
+      error: `follow_up_create_failed: ${createErr.message}`,
     }
   }
 
   return {
     ok: true,
     taskClosed: true,
-    followUpTaskId: (followUp as { id: string }).id,
+    followUpTaskId: followUpId,
   }
 }
