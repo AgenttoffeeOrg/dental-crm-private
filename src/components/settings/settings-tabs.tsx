@@ -164,14 +164,21 @@ export function SettingsTabs() {
   }
   
   const [activeSection, setActiveSection] = useState(getInitialState().section)
+  // 2b.87 — honour URL ?tab= for the inbound section, not just account.
+  // Previously a deep-link like ?section=communications&tab=notifications
+  // would land on the section's hard-coded default ('integrations') and
+  // ignore the URL's tab value.
+  const initial = getInitialState()
+  const sectionDefault = (s: string) =>
+    initial.section === s ? initial.tab : SECTION_TABS[s as keyof typeof SECTION_TABS]?.[0]?.id || 'profile'
   const [activeTabs, setActiveTabs] = useState<Record<string, string>>({
-    account: getInitialState().section === 'account' ? getInitialState().tab : 'profile',
-    team: 'members',
-    workflow: 'pipelines',
-    communications: 'integrations',
-    ai: 'ai-assistant',
-    integrations: 'integrations',
-    system: 'security-privacy',
+    account: sectionDefault('account'),
+    team: sectionDefault('team'),
+    workflow: sectionDefault('workflow'),
+    communications: sectionDefault('communications'),
+    ai: sectionDefault('ai'),
+    integrations: sectionDefault('integrations'),
+    system: sectionDefault('system'),
   })
 
   // Handle section change with org check
