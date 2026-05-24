@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { contactId } = parseResult.data
-    const apiContext = await getApiRequestContext()
+    const apiContext = await getApiRequestContext(request)
     const { tenantId, user } = apiContext
 
     const result = await analyzeContactPsychProfile({

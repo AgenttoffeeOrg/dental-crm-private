@@ -35,7 +35,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const payload = parseResult.data
-    const apiContext = await getApiRequestContext()
+    const apiContext = await getApiRequestContext(request)
     const supabase = apiContext.supabase
 
     const updatePayload: Record<string, any> = {}

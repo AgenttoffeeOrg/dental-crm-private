@@ -27,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid deal id' }, { status: 400 })
     }
 
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, membership, accessibleLocationIds } = context
 
     const { data: deal, error } = await supabase
@@ -93,7 +93,7 @@ export async function PATCH(
 
     const data = validation.data
     const { script_outcome: scriptOutcome, ...dealPayload } = data
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, membership, accessibleLocationIds } = context
 
     const { data: existing, error: existingError } = await supabase
@@ -258,7 +258,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid deal id' }, { status: 400 })
     }
 
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, membership, accessibleLocationIds } = context
 
     const { data: deal } = await supabase

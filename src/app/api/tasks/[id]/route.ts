@@ -15,7 +15,7 @@ function handleError(error: unknown) {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -24,7 +24,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid task id' }, { status: 400 })
     }
 
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, membership, accessibleLocationIds } = context
 
     const { data: task, error } = await supabase
@@ -86,7 +86,7 @@ export async function PATCH(
     }
 
     const data = validation.data
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, user, activeLocationId, membership, accessibleLocationIds } = context
 
     const { data: existing, error: existingError } = await supabase
@@ -226,7 +226,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -235,7 +235,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid task id' }, { status: 400 })
     }
 
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, membership, accessibleLocationIds } = context
 
     const { data: task } = await supabase

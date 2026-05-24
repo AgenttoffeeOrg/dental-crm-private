@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = parseResult.data
-    const apiContext = await getApiRequestContext()
+    const apiContext = await getApiRequestContext(request)
     const supabase = apiContext.supabase
 
     const { data: version, error: versionError } = await supabase

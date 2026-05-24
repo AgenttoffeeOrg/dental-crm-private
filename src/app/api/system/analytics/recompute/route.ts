@@ -16,7 +16,7 @@ const QUEUE_ENABLED = process.env.QUEUE_ANALYTICS === 'true'
 
 export async function POST(request: NextRequest) {
   try {
-    const apiContext = await getApiRequestContext()
+    const apiContext = await getApiRequestContext(request)
     const payload = await request.json()
     const parseResult = BodySchema.safeParse(payload)
 

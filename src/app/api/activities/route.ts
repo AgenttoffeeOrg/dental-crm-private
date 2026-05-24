@@ -4,7 +4,7 @@ import { ActivityCreateSchema, ActivityQuerySchema, safeValidateActivity } from 
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, membership, accessibleLocationIds } = context
 
     const rawParams = Object.fromEntries(request.nextUrl.searchParams)
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, user, activeLocationId, membership, accessibleLocationIds } = context
     const data = validation.data
 

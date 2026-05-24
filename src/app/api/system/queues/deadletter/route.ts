@@ -30,9 +30,9 @@ function resolveDeadLetterQueue(param?: string | null) {
   return param
 }
 
-async function requireQueueAdmin() {
+async function requireQueueAdmin(request: NextRequest) {
   try {
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const allowedRoles = ['owner', 'admin']
     if (!allowedRoles.includes(context.membership.role)) {
       throw new ApiContextError(403, 'Admin role required')
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    await requireQueueAdmin()
+    await requireQueueAdmin(request)
   } catch (error) {
     if (error instanceof ApiContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await requireQueueAdmin()
+    await requireQueueAdmin(request)
   } catch (error) {
     if (error instanceof ApiContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status })

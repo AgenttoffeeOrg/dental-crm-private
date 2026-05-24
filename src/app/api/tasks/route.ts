@@ -4,7 +4,7 @@ import { TaskCreateSchema, TaskQuerySchema, safeValidateTask } from '@/schemas/t
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, membership, accessibleLocationIds } = context
 
     const rawParams = Object.fromEntries(request.nextUrl.searchParams)
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const context = await getApiRequestContext()
+    const context = await getApiRequestContext(request)
     const { supabase, tenantId, user, activeLocationId, membership, accessibleLocationIds } = context
     const data = validation.data
 
@@ -206,6 +206,11 @@ export async function POST(request: NextRequest) {
       location_id: resolvedLocationId,
       auto_created: false,
       created_by_user_id: user.id,
+      // 2b.87 — pass recurring_rule_id through if supplied. The
+      // CreateTaskSlideOver creates the rule first, then this insert
+      // stamps the link so the daily recurring-generator cron can find it.
+      recurring_rule_id: data.recurring_rule_id ?? null,
+      is_recurring: data.is_recurring ?? Boolean(data.recurring_rule_id),
     }
 
     const { data: task, error } = await supabase

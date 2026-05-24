@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = parseResult.data
-    const apiContext = await getApiRequestContext()
+    const apiContext = await getApiRequestContext(request)
     const { supabase, tenantId, user } = apiContext
 
     const { data: usage, error: usageError } = await supabase

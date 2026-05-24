@@ -42,6 +42,11 @@ export const TaskCreateSchema = z.object({
     .datetime({ offset: true })
     .nullable()
     .optional(),
+  // 2b.87 — recurring rule linkage. Caller (CreateTaskSlideOver) creates
+  // a task_recurring_rules row first via POST /api/task-recurring-rules,
+  // then passes its id here so the cron knows to spawn the next instance.
+  recurring_rule_id: z.string().uuid('Invalid recurring rule id').nullable().optional(),
+  is_recurring: z.boolean().optional(),
 })
 
 export const TaskUpdateSchema = TaskCreateSchema.partial().extend({
