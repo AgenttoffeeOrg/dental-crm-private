@@ -26,6 +26,7 @@ import {
 import { createClient } from '@/lib/supabase-client'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { TaskActionsMenu } from '@/components/tasks/task-actions-menu'
 import { formatDistanceToNow } from 'date-fns'
 
 interface TaskQueuePanelProps {
@@ -561,7 +562,7 @@ export function TaskQueuePanel({
             {hasNext ? 'Complete & Next' : 'Complete & Finish'}
           </Button>
         </div>
-        
+
         <div className="flex gap-2">
           {hasPrev && (
             <Button
@@ -582,6 +583,33 @@ export function TaskQueuePanel({
             {hasNext ? 'Skip to Next' : 'Close Queue'}
           </Button>
         </div>
+
+        {/* 2b.63 — Snooze / Reschedule / Reassign / Edit. Reusable
+            component (TaskActionsMenu) so the same surface lives
+            per-row on the /tasks table in 2b.66.
+
+            Operators + groups dropdown sources need wiring per
+            tenant context — for v1 we pass empty arrays so the
+            reassign menu only offers "Everyone (shared inbox)".
+            Resolving full operator + group lists in this surface
+            is wired in 2b.66 alongside the table rebuild. */}
+        <TaskActionsMenu
+          task={{
+            id: currentTask.id,
+            title: currentTask.title,
+            description: (currentTask as any).description ?? null,
+            due_at: (currentTask as any).due_at ?? null,
+            priority: (currentTask as any).priority ?? 'normal',
+            task_type: (currentTask as any).task_type ?? 'todo',
+            assignee_user_id: (currentTask as any).assignee_user_id ?? null,
+            assigned_to_group_id: (currentTask as any).assigned_to_group_id ?? null,
+            assigned_to_everyone: (currentTask as any).assigned_to_everyone ?? false,
+          }}
+          onChange={() => {
+            if (onTasksChange) onTasksChange()
+          }}
+          variant="queue"
+        />
 
         <Button
           variant="ghost"

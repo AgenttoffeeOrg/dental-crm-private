@@ -2,7 +2,19 @@ import { z } from 'zod'
 
 export const TaskStatusEnum = z.enum(['open', 'in_progress', 'done', 'cancelled'])
 export const TaskPriorityEnum = z.enum(['low', 'normal', 'high', 'urgent'])
-export const TaskTypeEnum = z.enum(['call', 'email', 'meeting', 'todo', 'follow_up'])
+// 2b.63 — extended to cover sms / whatsapp / note so the Edit form
+// can pick the right channel-bucket (queue's channel-batch chip
+// from 2b.65 reads this field).
+export const TaskTypeEnum = z.enum([
+  'call',
+  'email',
+  'meeting',
+  'todo',
+  'follow_up',
+  'sms',
+  'whatsapp',
+  'note',
+])
 
 export const TaskCreateSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
@@ -19,6 +31,10 @@ export const TaskCreateSchema = z.object({
   deal_id: z.string().uuid('Invalid deal id').nullable().optional(),
   location_id: z.string().uuid('Invalid location id').nullable().optional(),
   assignee_user_id: z.string().uuid('Invalid assignee id').nullable().optional(),
+  // 2b.63 — group + everyone assignment (columns added in 2b.59).
+  // Exactly one of these three should be set in practice; UI enforces.
+  assigned_to_group_id: z.string().uuid('Invalid group id').nullable().optional(),
+  assigned_to_everyone: z.boolean().optional(),
 })
 
 export const TaskUpdateSchema = TaskCreateSchema.partial().extend({

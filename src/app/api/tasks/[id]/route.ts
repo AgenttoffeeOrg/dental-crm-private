@@ -199,16 +199,12 @@ export async function PATCH(
       }
     }
 
-    // Enforce non-null location_id - require location to be set
-    if (!resolvedLocationId) {
-      return NextResponse.json(
-        { error: 'Location is required. Please link task to a contact/deal with a location or specify a location.' },
-        { status: 400 }
-      )
+    // 2b.63 — Free-floating tasks (no location) are allowed per the
+    // product spec, same change applied to POST in 2b.58. Don't
+    // hard-400 when no location resolves; only write it when known.
+    if (resolvedLocationId) {
+      updatePayload.location_id = resolvedLocationId
     }
-
-    // Always set resolved location_id (inherited or explicit)
-    updatePayload.location_id = resolvedLocationId
 
     const { data: updated, error: updateError } = await supabase
       .from('tasks')
