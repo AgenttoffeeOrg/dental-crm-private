@@ -35,6 +35,18 @@ export interface AutoCompleteInput {
   channel: AutoCompleteChannel
   activityId: string
   activityOccurredAt: string
+  /**
+   * Phase 2b.79 — assignee scoping. When provided, only close tasks
+   * assigned to this user (or unassigned/group/everyone). Without it,
+   * the original 2b.64 behaviour (cross-assignee batch close) stays
+   * as the default — useful when a single send legitimately satisfies
+   * the practice's collective intent across operators.
+   *
+   * Recommended: dispatcher passes the sender's user id when known.
+   * Leave undefined when the send originates from an automation
+   * (no operator owner) or when an admin wants the broad sweep.
+   */
+  operatorUserId?: string | null
 }
 
 export interface AutoCompleteResult {
@@ -61,21 +73,30 @@ export async function autoCompleteTasksOnOutbound(
     //    created BEFORE the outbound happened. The
     //    created_at < occurred_at guard prevents closing a brand-new
     //    task that was created moments after the send.
-    const { data: candidates, error: findErr } = await supabase
+    let query = supabase
       .from('tasks')
-      .select('id')
+      .select('id, assignee_user_id')
       .eq('tenant_id', input.tenantId)
       .eq('contact_id', input.contactId)
       .eq('task_type', input.channel)
       .in('status', ['open', 'in_progress'])
       .lt('created_at', input.activityOccurredAt)
 
+    // 2b.79 — if an operator user id is provided, scope the close to
+    // tasks owned by THAT user (or unassigned / group / everyone, since
+    // a shared task can legitimately be satisfied by anyone). Pure
+    // "wrong assignee" tasks stay open.
+    if (input.operatorUserId) {
+      query = query.or(`assignee_user_id.eq.${input.operatorUserId},assignee_user_id.is.null`)
+    }
+    const { data: candidates, error: findErr } = await query
+
     if (findErr) {
       console.warn('[auto-complete-on-outbound] candidates lookup failed', findErr.message)
       return { completedTaskIds: [], error: findErr.message }
     }
 
-    const ids = ((candidates ?? []) as Array<{ id: string }>).map((t) => t.id)
+    const ids = ((candidates ?? []) as Array<{ id: string; assignee_user_id: string | null }>).map((t) => t.id)
     if (ids.length === 0) {
       return { completedTaskIds: [] }
     }

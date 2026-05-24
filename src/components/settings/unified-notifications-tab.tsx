@@ -23,7 +23,10 @@ export function UnifiedNotificationsTab() {
   const { appUser } = useAuth()
   const [activeTab, setActiveTab] = useState('basic')
   
-  const isAdmin = appUser?.role === 'admin' || appUser?.role === 'owner'
+  // 2b.78 — AppUser doesn't carry a role field. Show the tab heading
+  // for any signed-in user; the Policies tab itself gates access via
+  // a user_tenant_memberships role lookup.
+  const isAdmin = Boolean(appUser)
 
   return (
     <div className="space-y-2">

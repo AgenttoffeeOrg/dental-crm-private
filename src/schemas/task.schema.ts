@@ -35,6 +35,13 @@ export const TaskCreateSchema = z.object({
   // Exactly one of these three should be set in practice; UI enforces.
   assigned_to_group_id: z.string().uuid('Invalid group id').nullable().optional(),
   assigned_to_everyone: z.boolean().optional(),
+  // 2b.73 — snooze persistence. Hide-until timestamp; queue + dashboard
+  // filter out tasks where snoozed_until > now(). Reschedule clears it.
+  snoozed_until: z
+    .string()
+    .datetime({ offset: true })
+    .nullable()
+    .optional(),
 })
 
 export const TaskUpdateSchema = TaskCreateSchema.partial().extend({

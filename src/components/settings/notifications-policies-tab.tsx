@@ -1,320 +1,247 @@
 'use client'
 
 /**
- * Notification Policies Tab (ADMIN ONLY)
- * 
- * Org-level notification governance:
- * - Role defaults (what each role receives by default)
- * - Escalation rules (auto-escalate unread notifications)
- * - Rate limits (prevent notification spam)
- * - Data retention (auto-delete old notifications)
- * - Compliance settings (GDPR/CCPA)
+ * Phase 2b.78 — Notifications "Policies" tab.
+ *
+ * Admin-only. Reworked from a 320-line stub that didn't compile.
+ * Holds tenant-wide notification governance:
+ *
+ *   - Notification retention (days before auto-archive of read
+ *     in-app notifications).
+ *   - Manager-overdue threshold (hours).
+ *   - Rate limit per user per hour (anti-spam).
+ *
+ * Persisted to `notification_policies` (existing table). Visibility
+ * gated to admin / owner via membership lookup since AppUser doesn't
+ * carry a role field.
  */
 
-import { useState, useEffect } from 'react'
-import { Card } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Shield, Users, TrendingUp, Clock, Save, AlertTriangle } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Shield, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase-client'
 import { useAuth } from '@/lib/auth'
 
+interface PolicyRow {
+  retention_days: number | null
+  manager_overdue_hours: number | null
+  rate_limit_per_hour: number | null
+  rate_limit_enabled: boolean | null
+}
+
+const DEFAULTS: PolicyRow = {
+  retention_days: 30,
+  manager_overdue_hours: 24,
+  rate_limit_per_hour: 20,
+  rate_limit_enabled: false,
+}
+
 export function NotificationsPoliciesTab() {
-  const { appUser, tenant } = useAuth()
-  const [policies, setPolicies] = useState<any>(null)
+  const { appUser } = useAuth()
+  const [tenantId, setTenantId] = useState<string | null>(null)
+  const [policy, setPolicy] = useState<PolicyRow>(DEFAULTS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  
-  // Only admins/owners can access
-  const isAdmin = appUser?.role === 'admin' || appUser?.role === 'owner'
-  
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+
   useEffect(() => {
-    if (tenant?.id && isAdmin) {
-      loadPolicies()
-    }
-  }, [tenant?.id, isAdmin])
-  
-  const loadPolicies = async () => {
-    if (!tenant?.id) return
-    
-    try {
-      const supabase = createClient()
-      
-      const { data, error } = await supabase
-        .from('notification_policies')
-        .select('*')
-        .eq('tenant_id', tenant.id)
-        .single()
-      
-      if (error && error.code !== 'PGRST116') throw error
-      
-      // Set defaults if no policies exist
-      setPolicies(data || {
-        role_defaults: {
-          owner: { channels: ['in_app', 'email', 'sms'], events: ['*'] },
-          admin: { channels: ['in_app', 'email'], events: ['*'] },
-          manager: { channels: ['in_app', 'email'], events: ['deal.*', 'task.*', 'contact.*'] },
-          staff: { channels: ['in_app'], events: ['task.assigned', 'deal.assigned'] },
-          marketing: { channels: ['in_app', 'email'], events: ['campaign.*', 'form.*', 'audit.*'] },
-        },
-        escalation_rules: [],
-        rate_limits: {
-          max_per_hour: 50,
-          max_emails_per_day: 100,
-          max_sms_per_day: 10,
-          batch_delay_minutes: 5,
-        },
-        retention_days: 90,
-        require_email_opt_in: false,
-        require_sms_opt_in: true,
-        allow_notification_export: true,
-      })
-    } catch (error) {
-      console.error('[Policies] Error loading:', error)
-      toast.error('Failed to load policies')
-    } finally {
-      setLoading(false)
-    }
-  }
-  
-  const handleSave = async () => {
-    if (!tenant?.id) return
-    
+    if (!appUser?.id) return
+    const supabase = createClient()
+    ;(async () => {
+      setLoading(true)
+      try {
+        const tId = (appUser as any).active_tenant_id ?? (appUser as any).tenant_id ?? null
+        setTenantId(tId)
+        if (!tId) {
+          setIsAdmin(false)
+          return
+        }
+
+        const { data: membership } = await supabase
+          .from('user_tenant_memberships')
+          .select('role')
+          .eq('user_id', appUser.id)
+          .eq('tenant_id', tId)
+          .maybeSingle()
+        const role = (membership as { role?: string } | null)?.role ?? null
+        const admin = role === 'admin' || role === 'owner'
+        setIsAdmin(admin)
+        if (!admin) return
+
+        const { data } = await supabase
+          .from('notification_policies')
+          .select('retention_days, manager_overdue_hours, rate_limit_per_hour, rate_limit_enabled')
+          .eq('tenant_id', tId)
+          .maybeSingle()
+        if (data) {
+          setPolicy({
+            retention_days: (data as any).retention_days ?? DEFAULTS.retention_days,
+            manager_overdue_hours:
+              (data as any).manager_overdue_hours ?? DEFAULTS.manager_overdue_hours,
+            rate_limit_per_hour:
+              (data as any).rate_limit_per_hour ?? DEFAULTS.rate_limit_per_hour,
+            rate_limit_enabled:
+              (data as any).rate_limit_enabled ?? DEFAULTS.rate_limit_enabled,
+          })
+        }
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [appUser?.id])
+
+  async function save() {
+    if (!tenantId) return
     setSaving(true)
-    
+    const supabase = createClient()
     try {
-      const supabase = createClient()
-      
       const { error } = await supabase
         .from('notification_policies')
-        .upsert({
-          tenant_id: tenant.id,
-          ...policies,
-        })
-      
+        .upsert({ tenant_id: tenantId, ...policy }, { onConflict: 'tenant_id' })
       if (error) throw error
-      
-      toast.success('Notification policies saved')
-    } catch (error) {
-      console.error('[Policies] Error saving:', error)
-      toast.error('Failed to save policies')
+      toast.success('Policies saved.')
+    } catch (err) {
+      toast.error(`Couldn't save: ${err instanceof Error ? err.message : 'unknown'}`)
     } finally {
       setSaving(false)
     }
   }
-  
+
+  if (loading) {
+    return (
+      <div className="text-sm text-gray-500 flex items-center gap-2">
+        <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+      </div>
+    )
+  }
+
   if (!isAdmin) {
     return (
-      <Card className="p-8 text-center">
-        <Shield className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-        <p className="text-gray-600">Only admins can manage notification policies</p>
+      <Card>
+        <CardContent className="py-6 text-sm text-gray-500 flex items-center gap-2">
+          <Shield className="h-4 w-4" />
+          Admin or owner role required to view tenant-wide notification policies.
+        </CardContent>
       </Card>
     )
   }
-  
-  if (loading || !policies) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    )
-  }
-  
+
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">Notification Policies</h3>
-        <p className="text-sm text-gray-600">Organization-wide notification governance</p>
-      </div>
-      
-      {/* Role Defaults */}
-      <Card className="p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Users className="h-5 w-5 text-blue-600" />
-          <h4 className="font-semibold">Role Defaults</h4>
-        </div>
-        
-        <p className="text-sm text-gray-600 mb-4">
-          New users will inherit these notification settings based on their role
-        </p>
-        
-        <div className="space-y-4">
-          {Object.entries(policies.role_defaults || {}).map(([role, config]: [string, any]) => (
-            <div key={role} className="p-4 border rounded-lg">
-              <div className="flex items-center justify-between mb-3">
-                <Badge className="capitalize text-sm">{role}</Badge>
-                <p className="text-xs text-gray-600">
-                  {config.channels?.join(', ')} • {config.events?.length || 0} events
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Channels</Label>
-                  <p className="text-xs text-gray-700 mt-1">
-                    {config.channels?.join(', ') || 'None'}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs">Events</Label>
-                  <p className="text-xs text-gray-700 mt-1">
-                    {config.events?.[0] === '*' ? 'All events' : `${config.events?.length || 0} events`}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Retention
+          </CardTitle>
+          <CardDescription>
+            How long read in-app notifications are kept before auto-archive.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label htmlFor="retention" className="text-xs">
+              Retention (days)
+            </Label>
+            <Input
+              id="retention"
+              type="number"
+              min={1}
+              max={365}
+              value={policy.retention_days ?? 30}
+              onChange={(e) =>
+                setPolicy((p) => ({ ...p, retention_days: parseInt(e.target.value, 10) || 30 }))
+              }
+            />
+          </div>
+        </CardContent>
       </Card>
-      
-      {/* Rate Limits */}
-      <Card className="p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <TrendingUp className="h-5 w-5 text-orange-600" />
-          <h4 className="font-semibold">Rate Limits (Anti-Spam)</h4>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Manager-overdue threshold</CardTitle>
+          <CardDescription>
+            How long an urgent task must be overdue before escalating to the
+            assignee's manager (via the push notifications cron).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
           <div>
-            <Label>Max Notifications Per Hour (Per User)</Label>
+            <Label htmlFor="mgr-hours" className="text-xs">
+              Threshold (hours)
+            </Label>
             <Input
+              id="mgr-hours"
               type="number"
-              value={policies.rate_limits?.max_per_hour || 50}
-              onChange={(e) => setPolicies({
-                ...policies,
-                rate_limits: { ...policies.rate_limits, max_per_hour: parseInt(e.target.value) }
-              })}
+              min={1}
+              max={168}
+              value={policy.manager_overdue_hours ?? 24}
+              onChange={(e) =>
+                setPolicy((p) => ({
+                  ...p,
+                  manager_overdue_hours: parseInt(e.target.value, 10) || 24,
+                }))
+              }
             />
-            <p className="text-xs text-gray-600 mt-1">Prevents notification spam</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Currently the cron uses a hard-coded 24h — this setting is wired
+              for a future cron refactor that respects per-tenant overrides.
+            </p>
           </div>
-          
-          <div>
-            <Label>Max Emails Per Day (Per User)</Label>
-            <Input
-              type="number"
-              value={policies.rate_limits?.max_emails_per_day || 100}
-              onChange={(e) => setPolicies({
-                ...policies,
-                rate_limits: { ...policies.rate_limits, max_emails_per_day: parseInt(e.target.value) }
-              })}
-            />
-          </div>
-          
-          <div>
-            <Label>Max SMS Per Day (Per User)</Label>
-            <Input
-              type="number"
-              value={policies.rate_limits?.max_sms_per_day || 10}
-              onChange={(e) => setPolicies({
-                ...policies,
-                rate_limits: { ...policies.rate_limits, max_sms_per_day: parseInt(e.target.value) }
-              })}
-            />
-          </div>
-          
-          <div>
-            <Label>Batch Delay (Minutes)</Label>
-            <Input
-              type="number"
-              value={policies.rate_limits?.batch_delay_minutes || 5}
-              onChange={(e) => setPolicies({
-                ...policies,
-                rate_limits: { ...policies.rate_limits, batch_delay_minutes: parseInt(e.target.value) }
-              })}
-            />
-            <p className="text-xs text-gray-600 mt-1">Batch similar notifications</p>
-          </div>
-        </div>
+        </CardContent>
       </Card>
-      
-      {/* Data Retention */}
-      <Card className="p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Clock className="h-5 w-5 text-indigo-600" />
-          <h4 className="font-semibold">Data Retention</h4>
-        </div>
-        
-        <div>
-          <Label>Auto-Delete After (Days)</Label>
-          <div className="flex items-center gap-2 mt-1">
-            <Input
-              type="number"
-              value={policies.retention_days || 90}
-              onChange={(e) => setPolicies({ ...policies, retention_days: parseInt(e.target.value) })}
-              className="w-32"
-            />
-            <span className="text-sm text-gray-600">days</span>
-          </div>
-          <p className="text-xs text-gray-600 mt-1">
-            Notifications older than this will be automatically deleted
-          </p>
-        </div>
-      </Card>
-      
-      {/* Compliance */}
-      <Card className="p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Shield className="h-5 w-5 text-green-600" />
-          <h4 className="font-semibold">Compliance (GDPR/CCPA)</h4>
-        </div>
-        
-        <div className="space-y-4">
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Rate limit</CardTitle>
+          <CardDescription>
+            Cap notifications per user per hour to prevent spam during runaway
+            automations or webhook storms.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <Label>Require Email Opt-In</Label>
-              <p className="text-xs text-gray-600">Users must explicitly consent to email notifications</p>
-            </div>
+            <Label htmlFor="rl-on" className="font-medium">
+              Enable rate limit
+            </Label>
             <Switch
-              checked={policies.require_email_opt_in}
-              onCheckedChange={(checked) => setPolicies({ ...policies, require_email_opt_in: checked })}
+              id="rl-on"
+              checked={Boolean(policy.rate_limit_enabled)}
+              onCheckedChange={(v) => setPolicy((p) => ({ ...p, rate_limit_enabled: v }))}
             />
           </div>
-          
-          <div className="flex items-center justify-between">
+          {policy.rate_limit_enabled && (
             <div>
-              <Label>Require SMS Opt-In</Label>
-              <p className="text-xs text-gray-600">Users must explicitly consent to SMS (recommended for compliance)</p>
+              <Label htmlFor="rl-num" className="text-xs">
+                Max per user per hour
+              </Label>
+              <Input
+                id="rl-num"
+                type="number"
+                min={1}
+                max={500}
+                value={policy.rate_limit_per_hour ?? 20}
+                onChange={(e) =>
+                  setPolicy((p) => ({
+                    ...p,
+                    rate_limit_per_hour: parseInt(e.target.value, 10) || 20,
+                  }))
+                }
+              />
             </div>
-            <Switch
-              checked={policies.require_sms_opt_in}
-              onCheckedChange={(checked) => setPolicies({ ...policies, require_sms_opt_in: checked })}
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Allow Notification Export</Label>
-              <p className="text-xs text-gray-600">Users can export their notification history (GDPR right to access)</p>
-            </div>
-            <Switch
-              checked={policies.allow_notification_export}
-              onCheckedChange={(checked) => setPolicies({ ...policies, allow_notification_export: checked })}
-            />
-          </div>
-        </div>
+          )}
+        </CardContent>
       </Card>
-      
-      {/* Save Button */}
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={loadPolicies}>
-          Reset
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? 'Saving...' : 'Save Policies'}
-        </Button>
-      </div>
+
+      <Button onClick={save} disabled={saving}>
+        {saving && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
+        Save policies
+      </Button>
     </div>
   )
 }
-

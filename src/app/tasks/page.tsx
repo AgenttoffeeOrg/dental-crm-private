@@ -239,7 +239,19 @@ export default function TasksPage() {
         .order('due_at', { ascending: true, nullsFirst: false })
 
       if (error) throw error
-      setTasks(data || [])
+      // 2b.73 — snooze filter. Hide tasks where snoozed_until > now().
+      // Filter client-side so the queue stays in sync without a view
+      // change. Reschedule + complete both clear/skip snoozed_until.
+      const nowMs = Date.now()
+      const visible = (data || []).filter((t: any) => {
+        if (!t.snoozed_until) return true
+        try {
+          return new Date(t.snoozed_until).getTime() <= nowMs
+        } catch {
+          return true
+        }
+      })
+      setTasks(visible)
     } catch (error) {
       console.error('Error loading tasks:', error)
       toast.error('Failed to load tasks')

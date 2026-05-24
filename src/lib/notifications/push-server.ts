@@ -103,8 +103,8 @@ export async function sendPushTo(
         .from('push_subscriptions')
         .update({ last_used_at: new Date().toISOString() })
         .eq('id', subscription.id)
-    } catch {
-      /* swallow timestamp errors */
+    } catch (timestampErr) {
+      console.warn('[push-server] last_used_at update failed', timestampErr)
     }
     return { success: true, pruned: false }
   } catch (err: any) {
@@ -114,8 +114,8 @@ export async function sendPushTo(
       try {
         const service = createServiceClient()
         await service.from('push_subscriptions').delete().eq('id', subscription.id)
-      } catch {
-        /* swallow */
+      } catch (pruneErr) {
+        console.warn('[push-server] prune-on-dead failed', pruneErr)
       }
       return { success: false, pruned: true, statusCode, error: 'gone' }
     }

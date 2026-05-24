@@ -40,6 +40,7 @@ import { BillingSubscriptionTab } from './billing-subscription-tab'
 
 // Team Section Components
 import { TeamMembersTab } from './team-members-tab'
+import { PracticeGroupsTab } from './practice-groups-tab'
 import { CustomRolesTab } from './custom-roles-tab'
 import { TeamInvitesTab } from './team-invites-tab'
 // import { OnboardingFieldsAdmin } from './onboarding-fields-admin' // Removed earlier
@@ -97,6 +98,7 @@ const SECTION_TABS = {
   team: [
     { id: 'members', label: 'Team Members' },
     { id: 'roles', label: 'Roles & Permissions' },
+    { id: 'groups', label: 'Practice Groups' },
     { id: 'invites', label: 'Team Invites' },
     // { id: 'onboarding-config', label: 'Onboarding Config' }, // Removed - component doesn't exist
   ],
@@ -360,7 +362,11 @@ function renderTeamTabs(tab: string, tenantId: string | null) {
       <TabsContent value="roles" className="space-y-6">
         <CustomRolesTab tenantId={tenantId} />
       </TabsContent>
-      
+
+      <TabsContent value="groups" className="space-y-6">
+        <PracticeGroupsTab />
+      </TabsContent>
+
       <TabsContent value="invites" className="space-y-6">
         <TeamInvitesTab />
       </TabsContent>

@@ -85,6 +85,8 @@ async function loadTriageCounts(
 
   // 1. Today's Priorities — tasks due today (any type), not completed.
   //    Includes overdue tasks (due_date < today, status != done).
+  //    2b.73 — exclude snoozed tasks (snoozed_until IS NULL OR <= now()).
+  const nowSnoozeIso = new Date().toISOString()
   const prioritiesRes = await supabase
     .from('tasks')
     .select('id', { count: 'exact', head: true })
@@ -92,6 +94,7 @@ async function loadTriageCounts(
     .lte('due_at', endToday)
     .neq('status', 'completed')
     .neq('status', 'cancelled')
+    .or(`snoozed_until.is.null,snoozed_until.lte.${nowSnoozeIso}`)
 
   // 2. Today's Calls — tasks of type "call" scheduled today.
   //    Falls back to 0 when the tasks table lacks a `task_type` column
@@ -106,6 +109,7 @@ async function loadTriageCounts(
     .eq('task_type', 'call')
     .neq('status', 'completed')
     .neq('status', 'cancelled')
+    .or(`snoozed_until.is.null,snoozed_until.lte.${nowSnoozeIso}`)
 
   // 3. New Inquiries — deals currently sitting at the first stage of
   //    their pipeline (position = 1) with no outbound activity yet.

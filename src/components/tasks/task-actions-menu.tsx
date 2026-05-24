@@ -179,7 +179,11 @@ export function TaskActionsMenu({
 
   const doSnooze = async (iso: string) => {
     setSnoozeBusy(true)
-    const res = await patchTask(task.id, { due_at: iso })
+    // 2b.73 — snooze writes snoozed_until, NOT due_at. The deadline
+    // stays put; the task just disappears from queue/dashboard until
+    // the snooze time arrives. Persists across devices because it's
+    // a column write, not local UI state.
+    const res = await patchTask(task.id, { snoozed_until: iso })
     setSnoozeBusy(false)
     if (res.ok) {
       toast.success('Snoozed.')
@@ -196,7 +200,9 @@ export function TaskActionsMenu({
     }
     setRescheduleBusy(true)
     const iso = new Date(reschedulePickerValue).toISOString()
-    const res = await patchTask(task.id, { due_at: iso })
+    // Clear snoozed_until on reschedule — the operator is actively
+    // moving the deadline, so any prior "hide until" intent is moot.
+    const res = await patchTask(task.id, { due_at: iso, snoozed_until: null })
     setRescheduleBusy(false)
     if (res.ok) {
       toast.success('Rescheduled.')
