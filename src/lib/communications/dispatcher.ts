@@ -462,6 +462,19 @@ export async function dispatchEmail(options: {
       )
     }
 
+    // 2b.64 — Path X auto-done. If the operator had any open
+    // type='email' tasks for this contact, close them now and
+    // stamp this activity as the cause. Fail-soft — task hiccups
+    // don't bubble up as dispatcher errors.
+    const { autoCompleteTasksOnOutbound } = await import('@/lib/tasks/auto-complete-on-outbound')
+    await autoCompleteTasksOnOutbound(supabase, {
+      tenantId: context.tenantId,
+      contactId: context.contactId ?? null,
+      channel: 'email',
+      activityId: activity.id,
+      activityOccurredAt: emailOccurredAt,
+    })
+
     return {
       activityId: activity.id,
       externalId: sendResult.externalId || null,
@@ -601,6 +614,18 @@ export async function dispatchSms(options: {
         supabase
       )
     }
+
+    // 2b.64 — Path X auto-done for outbound SMS.
+    const { autoCompleteTasksOnOutbound: autoCompleteSms } = await import(
+      '@/lib/tasks/auto-complete-on-outbound'
+    )
+    await autoCompleteSms(supabase, {
+      tenantId: context.tenantId,
+      contactId: context.contactId ?? null,
+      channel: 'sms',
+      activityId: activity.id,
+      activityOccurredAt: smsOccurredAt,
+    })
 
     return {
       activityId: activity.id,
@@ -755,6 +780,18 @@ export async function dispatchWhatsApp(options: {
         supabase
       )
     }
+
+    // 2b.64 — Path X auto-done for outbound WhatsApp.
+    const { autoCompleteTasksOnOutbound: autoCompleteWa } = await import(
+      '@/lib/tasks/auto-complete-on-outbound'
+    )
+    await autoCompleteWa(supabase, {
+      tenantId: context.tenantId,
+      contactId: context.contactId ?? null,
+      channel: 'whatsapp',
+      activityId: activity.id,
+      activityOccurredAt: whatsappOccurredAt,
+    })
 
     return {
       activityId: activity.id,
