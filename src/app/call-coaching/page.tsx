@@ -1,65 +1,38 @@
 'use client'
 
 /**
- * /call-coaching — coaching workspace + optional queue mode.
+ * /call-coaching — coaching workspace.
  *
- * 2b.55 — Adds the `?mode=queue` URL parameter so the dashboard's
- * "Today's Calls" lane can launch the workspace pre-engaged in
- * dial-then-next mode. The CallCoachingWorkspace itself already
- * loads a queue of deals + has the ClickToCallDialer wired; this
- * page reads the param, surfaces a queue-mode banner, and exposes
- * the param to the workspace via a prop so it can change behaviour
- * (auto-advance after a call ends, "Previous" button always
- * visible per Q7 audit decision).
+ * 2b.68 reframe. Per the 2026-05-24 product discussion this page
+ * exists for two reasons ONLY:
+ *
+ *   1. Live coaching DURING a call. The task queue (when it hits
+ *      a task of type='call') will invoke the CallCoachingWorkspace
+ *      as a full-screen takeover — this same workspace, reused.
+ *      Wiring lives at the queue side (TaskQueuePanel + 2b.66
+ *      channel-batch chips). No URL state needed here.
+ *
+ *   2. Post-call review + AI feedback. Operator visits standalone
+ *      to look back at past calls, listen to recordings, see AI
+ *      coaching scores. This page is the destination for that.
+ *
+ * The 2b.55 ?mode=queue URL parameter + the banner it surfaced are
+ * gone. They duplicated what the task queue now does properly. The
+ * Reception sidebar entry is gone for the same reason (2b.68
+ * sidebar cleanup — see dashboard-layout.tsx).
+ *
+ * Operators arriving via legacy bookmarks with `?mode=queue` see
+ * the bare workspace; the param is harmless.
  */
 
 import { Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { GlobalAIAssistant } from '@/components/ai/global-ai-assistant'
 import { CallCoachingWorkspace } from '@/components/call-coaching/call-coaching-workspace'
-import { Button } from '@/components/ui/button'
-import { Phone, ArrowLeft, X } from 'lucide-react'
 
 function CallCoachingPageInner() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const queueMode = searchParams?.get('mode') === 'queue'
-
   return (
     <DashboardLayout>
-      {queueMode && (
-        <div className="bg-purple-50 border-b border-purple-200 px-6 py-2.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-purple-900">
-            <Phone className="h-4 w-4 text-purple-600" />
-            <span className="font-semibold">Queue mode:</span>
-            <span>
-              Working through today&apos;s calls. Dial each contact, log the
-              outcome, then move to the next.
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => router.push('/dashboard')}
-              className="text-purple-700 hover:bg-purple-100 h-7 text-xs"
-            >
-              <ArrowLeft className="h-3 w-3 mr-1" />
-              Back to dashboard
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => router.replace('/call-coaching')}
-              className="text-purple-700 hover:bg-purple-100 h-7 text-xs"
-              title="Exit queue mode"
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-      )}
       <CallCoachingWorkspace />
       <GlobalAIAssistant />
     </DashboardLayout>
@@ -67,8 +40,8 @@ function CallCoachingPageInner() {
 }
 
 export default function CallCoachingPage() {
-  // Suspense boundary because useSearchParams in App Router requires
-  // one (Next.js >= 14 strict mode).
+  // Suspense boundary kept for compatibility — the workspace itself
+  // may use useSearchParams internally for contactId deep-links.
   return (
     <Suspense fallback={<DashboardLayout><div /></DashboardLayout>}>
       <CallCoachingPageInner />

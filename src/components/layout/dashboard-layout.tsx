@@ -60,8 +60,14 @@ const getNavigation = (featureFlags: any) => [
   { name: LABELS.DEAL.plural, href: '/deals', icon: DollarSign },
   // 2b.34.9 — Pipeline merged into Deals (List ↔ Kanban toggle).
   // /pipeline still redirects to /deals for any bookmarks.
+  // 2b.68 — Call Coaching reframed: live coaching during a call
+  // (auto-opens from task queue when current task is type=call) +
+  // post-call review (standalone). NOT for processing today's call
+  // list — that's the task queue.
   { name: 'Call Coaching', href: '/call-coaching', icon: PhoneCall, badge: 'Coach', badgeColor: 'bg-emerald-600 text-white' },
-  { name: 'Reception', href: '/reception', icon: Headphones, badge: 'Desk', badgeColor: 'bg-sky-600 text-white' },
+  // 2b.68 — /reception removed. Its job is split across Dashboard
+  // (triage lanes), Tasks (the queue), and Call Coaching. Single
+  // operator-home eliminates the duplication that confused users.
   { name: LABELS.CONTACT.plural, href: '/contacts', icon: Users },
   { name: 'Dedup Queue', href: '/dedup-queue', icon: GitMerge, dynamicKey: 'dedup_queue' as const },
   { name: 'Booking Widget', href: '/settings/booking-widget', icon: MessageSquare },
