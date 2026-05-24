@@ -27,6 +27,7 @@ import { createClient } from '@/lib/supabase-client'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { TaskActionsMenu } from '@/components/tasks/task-actions-menu'
+import { CallTakeoverPanel } from '@/components/call-coaching/call-takeover-panel'
 import { formatDistanceToNow } from 'date-fns'
 
 interface TaskQueuePanelProps {
@@ -270,6 +271,35 @@ export function TaskQueuePanel({
           </div>
         </div>
       </div>
+    )
+  }
+
+  // 2b.89.2 — Call tasks take over the full screen via the Coaching
+  // workspace. After the outcome is logged (or skipped), advance the
+  // queue and show the next task. This is what makes "filter to Calls
+  // only + Start Queue" actually run back-to-back calls per the
+  // 2026-05-24 product decision.
+  if (currentTask.task_type === 'call') {
+    const advance = async (skipped: boolean) => {
+      if (!skipped) {
+        setSessionCompletedCount((c) => c + 1)
+      }
+      if (onTasksChange) onTasksChange()
+      if (hasNext) {
+        setCurrentIndex((prev) => prev + 1)
+      } else {
+        setShowCelebration(true)
+      }
+    }
+    return (
+      <CallTakeoverPanel
+        taskId={currentTask.id}
+        contactId={currentTask.contact_id ?? null}
+        taskTitle={currentTask.title}
+        position={{ current: currentIndex + 1, total: tasks.length }}
+        onComplete={advance}
+        onExit={onClose}
+      />
     )
   }
 
