@@ -258,7 +258,28 @@ export function CreateTaskSlideOver({
         taskData.is_recurring = true
       }
 
-      await createTask(taskData as any)
+      try {
+        await createTask(taskData as any)
+      } catch (taskErr) {
+        // 2b.86 — orphan cleanup. If the rule was created but the task
+        // INSERT failed, drop the rule so we don't leave a dangling
+        // recurring rule no one can see or use.
+        if (recurringRuleId) {
+          try {
+            await fetch(`/api/task-recurring-rules/${recurringRuleId}`, {
+              method: 'DELETE',
+              credentials: 'include',
+            })
+          } catch (cleanupErr) {
+            console.warn(
+              '[create-task-slide-over] orphan recurring-rule cleanup failed',
+              recurringRuleId,
+              cleanupErr
+            )
+          }
+        }
+        throw taskErr
+      }
       
       // Reset form
       setFormData({
