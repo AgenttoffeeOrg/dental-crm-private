@@ -53,6 +53,14 @@ export function TaskQueuePanel({
   const [dealDetails, setDealDetails] = useState<any>(null)
   const supabase = createClient()
 
+  // 2b.65 — Celebration state. Set when the operator completes /
+  // skips past the last task. The panel renders the celebration
+  // screen instead of the "no tasks in queue" empty state so the
+  // operator gets credit for the work she did this session.
+  const [showCelebration, setShowCelebration] = useState(false)
+  const [sessionStartedAt] = useState(() => Date.now())
+  const [sessionCompletedCount, setSessionCompletedCount] = useState(0)
+
   // Find initial task index if initialTaskId is provided
   useEffect(() => {
     if (initialTaskId && tasks.length > 0) {
@@ -144,7 +152,7 @@ export function TaskQueuePanel({
       if (error) throw error
 
       toast.success('Task completed!')
-      
+
       // Call parent callback if provided
       if (onTaskComplete) {
         await onTaskComplete(currentTask.id)
@@ -152,14 +160,16 @@ export function TaskQueuePanel({
       if (onTasksChange) {
         onTasksChange()
       }
-      
-      // Move to next task
+
+      setSessionCompletedCount((c) => c + 1)
+
+      // 2b.65 — Move to next task OR show celebration when this was
+      // the last one. Celebration replaces the silent toast +
+      // panel-close so the operator sees a "nice work" moment.
       if (hasNext) {
         setCurrentIndex(prev => prev + 1)
       } else {
-        // Queue complete!
-        toast.success('🎉 All tasks completed!')
-        onClose()
+        setShowCelebration(true)
       }
     } catch (error) {
       console.error('Error completing task:', error)
@@ -190,6 +200,61 @@ export function TaskQueuePanel({
   }
 
   if (!open) return null
+
+  // 2b.65 — Celebration screen. Renders when the operator has
+  // completed (or skipped past) the last task in the queue. Shows
+  // session stats + onward CTAs so she has somewhere to go next
+  // rather than the panel just closing.
+  if (showCelebration) {
+    const elapsedMs = Date.now() - sessionStartedAt
+    const elapsedMin = Math.max(1, Math.round(elapsedMs / 60_000))
+    return (
+      <div
+        className={cn(
+          'fixed right-0 top-0 h-full w-[500px] bg-white border-l border-gray-200 shadow-2xl z-50 transform transition-transform duration-300',
+          open ? 'translate-x-0' : 'translate-x-full'
+        )}
+      >
+        <div className="flex items-center justify-center h-full p-8">
+          <div className="text-center max-w-sm">
+            <div className="text-6xl mb-4">🎉</div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Task queue empty — nice work!
+            </h2>
+            <p className="text-gray-600 mb-6">
+              You completed <strong>{sessionCompletedCount}</strong> task
+              {sessionCompletedCount === 1 ? '' : 's'} in {elapsedMin} minute
+              {elapsedMin === 1 ? '' : 's'}.
+            </p>
+            <div className="space-y-2">
+              <Button
+                onClick={() => {
+                  setShowCelebration(false)
+                  onClose()
+                }}
+                className="w-full"
+              >
+                Back to dashboard
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCelebration(false)
+                  onClose()
+                  // Same window — operator can click "Today's Calls"
+                  // lane on the dashboard if they want the call queue
+                  // next. Direct deep-link is wired in 2b.66.
+                }}
+                className="w-full"
+              >
+                I'm done for now
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!currentTask) {
     return (
