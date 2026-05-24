@@ -166,16 +166,13 @@ export async function POST(request: NextRequest) {
       resolvedLocationId = resolvedLocationId ?? deal.location_id ?? null
     }
 
-    // Enforce non-null location_id - require location to be set
-    if (!resolvedLocationId) {
-      return NextResponse.json(
-        { error: 'Location is required. Please link task to a contact/deal with a location or specify a location.' },
-        { status: 400 }
-      )
-    }
-
-    // Validate location access
-    if (!membership.all_locations) {
+    // 2b.58 — Free-floating tasks (no contact, no deal, no location)
+    // are allowed per the product spec. The previous hard 400 blocked
+    // operators from creating "general practice" tasks like "call
+    // dental supplies vendor". Schema already permits NULL; the API
+    // was the only enforcement point. Location access still gated for
+    // tasks that DO carry a location.
+    if (resolvedLocationId && !membership.all_locations) {
       if (!accessibleLocationIds?.includes(resolvedLocationId)) {
         return NextResponse.json({ error: 'Location access denied' }, { status: 403 })
       }

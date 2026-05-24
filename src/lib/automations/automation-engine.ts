@@ -492,27 +492,66 @@ export class AutomationEngine {
       }
 
       case 'create_task': {
+        // 2b.58 P0 fix — every column name here was wrong against the
+        // live `tasks` schema (due_date / assigned_to / created_by /
+        // status:'pending'). Result: every automation-fired task
+        // INSERT silently errored at the DB. Caught by the rebuild
+        // audit. Now uses the real column names; surfaces insert
+        // errors instead of swallowing them; flags auto_created so the
+        // UI can distinguish system-fired tasks from operator-created.
         const cfg = (node.config ?? {}) as {
           title?: string
           description?: string
           due_in_days?: number
-          assigned_to?: string
+          assignee_user_id?: string
+          task_type?: string
+          priority?: string
         }
-        const dueDate = new Date()
+        const dueAt = new Date()
         if (typeof cfg.due_in_days === 'number') {
-          dueDate.setDate(dueDate.getDate() + cfg.due_in_days)
+          dueAt.setDate(dueAt.getDate() + cfg.due_in_days)
         }
         const contactId = await this.runContactId(runId)
-        await this.supabase.from('tasks').insert({
+
+        // Inherit location_id from the contact when one is linked.
+        // Free-floating automations (no contact) leave it null.
+        let locationId: string | null = null
+        if (contactId) {
+          const { data: contact } = await this.supabase
+            .from('contacts')
+            .select('location_id')
+            .eq('id', contactId as string)
+            .single()
+          locationId =
+            (contact as { location_id?: string | null } | null)?.location_id ?? null
+        }
+
+        const { error } = await this.supabase.from('tasks').insert({
           tenant_id: tenantId,
           contact_id: contactId,
           title: cfg.title ?? 'Follow up',
           description: cfg.description ?? 'Automated task',
-          due_date: dueDate.toISOString(),
-          status: 'pending',
-          assigned_to: cfg.assigned_to ?? null,
-          created_by: 'automation',
+          due_at: dueAt.toISOString(),
+          status: 'open',
+          task_type: cfg.task_type ?? 'todo',
+          priority: cfg.priority ?? 'normal',
+          assignee_user_id: cfg.assignee_user_id ?? null,
+          location_id: locationId,
+          auto_created: true,
         })
+
+        if (error) {
+          console.error('[automation-engine] create_task INSERT failed', {
+            tenantId,
+            contactId,
+            cfg,
+            error: error.message,
+          })
+          return {
+            kind: 'continue',
+            output: { created_task: false, error: error.message },
+          }
+        }
         return { kind: 'continue', output: { created_task: true } }
       }
 
