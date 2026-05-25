@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { TaskActionsMenu } from '@/components/tasks/task-actions-menu'
 import { CallTakeoverPanel } from '@/components/call-coaching/call-takeover-panel'
+import { TaskContextBriefing } from '@/components/tasks/task-context-briefing'
 import { EmailComposerPanel } from '@/components/communications/email-composer-panel'
 import { SMSComposerPanel } from '@/components/communications/sms-composer-panel'
 import { WhatsAppComposerPanel } from '@/components/communications/whatsapp-composer-panel'
@@ -315,16 +316,16 @@ export function TaskQueuePanel({
     )
   }
 
-  // 2b.94 — narrowed from 900px (two-column with templated right)
-  // to 640px single-column. Right column was static template strings
-  // ("Patient expressed interest in [treatment]", "Quote sent X ago",
-  // "Suggested Opening" boilerplate, hardcoded Call Checklist) that
-  // interpolated 1-2 real fields and misled the operator. Stripped.
-  // Call tasks go through CallTakeoverPanel with the real Claude
-  // pre-call brief.
+  // 2b.95 — back to two-column at 1200px. The 2b.94 strip removed
+  // the templated right column for a reason (it was misleading
+  // template strings). 2b.95 brings the right column back with
+  // REAL data: Claude pre-message brief + recent conversation
+  // history + talking points + objection scripts. Per Toffee:
+  // "how would an operator know what SMS/WhatsApp/email to send
+  // without context".
   return (
     <div className={cn(
-      "fixed right-0 top-0 h-full w-[640px] bg-white border-l border-gray-200 shadow-2xl z-50 transform transition-transform duration-300",
+      "fixed right-0 top-0 h-full w-[1200px] max-w-[95vw] bg-white border-l border-gray-200 shadow-2xl z-50 transform transition-transform duration-300",
       open ? "translate-x-0" : "translate-x-full"
     )}>
       {/* Header */}
@@ -348,10 +349,12 @@ export function TaskQueuePanel({
         />
       </div>
 
-      {/* Task Content - Single column (2b.94: stripped templated
-          AI Briefing right column; only real data remains). */}
-      <div className="h-[calc(100vh-200px)]">
-        <ScrollArea className="h-full">
+      {/* Task Content — two-column at 1200px.
+          LEFT (~45%): task details + contact card + send buttons + notes.
+          RIGHT (~55%): real AI brief + recent conversation history +
+          talking points (TaskContextBriefing). */}
+      <div className="h-[calc(100vh-200px)] grid grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+        <ScrollArea className="border-r border-gray-200">
           <div className="p-6 space-y-6">
           {/* Task Title & Type */}
           <div>
@@ -600,20 +603,17 @@ export function TaskQueuePanel({
           )}
           </div>
         </ScrollArea>
+
+        {/* 2b.95 — RIGHT COLUMN: real AI brief + recent conversation
+            + talking points + objection scripts. Channel-agnostic. */}
+        <TaskContextBriefing
+          contactId={currentTask.contact_id ?? null}
+          dealId={currentTask.deal_id ?? null}
+          taskTitle={currentTask.title}
+          taskType={currentTask.task_type ?? null}
+        />
       </div>
 
-      {/*
-        2b.94 cleanup note (no JSX):
-        The right column "AI Briefing" was deleted here. It rendered
-        template strings that interpolated one or two deal fields but
-        otherwise stayed identical across every task. Toffee called
-        this out 2026-05-25 - "80% of the modal does not change
-        between tasks".
-        For call tasks the CallTakeoverPanel shows a real Claude-
-        generated pre-call brief + persona deep-dive + recent
-        activities + scripts. For other task types the left column
-        already shows real contact + deal + notes.
-      */}
       {/* Actions Footer */}
       <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white space-y-2">
         <div className="flex gap-2">
