@@ -82,6 +82,12 @@ interface ContactRow {
   primary_email: string | null
 }
 
+interface PreCallBrief {
+  summary: string
+  talking_points: string[]
+  generated_at: string
+}
+
 interface PersonaRow {
   dominant_persona: string | null
   trust_score: number | null
@@ -142,8 +148,60 @@ export function CallTakeoverPanel({
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState<CallOutcome | null>(null)
   const [dialerOpen, setDialerOpen] = useState(false)
+  // 2b.93 — Claude-generated pre-call brief (summary + talking points)
+  const [brief, setBrief] = useState<PreCallBrief | null>(null)
+  const [briefStale, setBriefStale] = useState(false)
+  const [briefLoading, setBriefLoading] = useState(false)
   const { tenantId } = useTenant()
   const { userId: currentUserId } = useCurrentUser()
+
+  // 2b.93 — load cached pre-call brief on mount.
+  useEffect(() => {
+    if (!contactId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/contacts/${contactId}/pre-call-brief`, {
+          credentials: 'include',
+        })
+        if (!res.ok) return
+        const body = await res.json()
+        if (!cancelled) {
+          setBrief(body.brief ?? null)
+          setBriefStale(Boolean(body.stale))
+        }
+      } catch {
+        /* silent — UI shows the Generate button */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [contactId])
+
+  const generateBrief = useCallback(async () => {
+    if (!contactId) return
+    setBriefLoading(true)
+    try {
+      const res = await fetch(`/api/contacts/${contactId}/pre-call-brief`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ taskTitle }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? `http_${res.status}`)
+      }
+      const body = await res.json()
+      setBrief(body.brief)
+      setBriefStale(false)
+    } catch (err) {
+      toast.error(`Couldn't generate brief: ${err instanceof Error ? err.message : 'unknown'}`)
+    } finally {
+      setBriefLoading(false)
+    }
+  }, [contactId, taskTitle])
 
   useEffect(() => {
     if (!contactId) {
@@ -307,6 +365,97 @@ export function CallTakeoverPanel({
                       {contact.primary_phone ? 'Call now' : 'No phone on record'}
                     </Button>
                   </div>
+
+                  {/* 2b.93 — Pre-call brief (Claude-generated) */}
+                  <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between gap-2 text-sm">
+                        <span className="flex items-center gap-2">
+                          <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                          Pre-call brief
+                        </span>
+                        {brief && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            onClick={generateBrief}
+                            disabled={briefLoading}
+                          >
+                            {briefLoading ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : briefStale ? (
+                              'Refresh (new activity)'
+                            ) : (
+                              'Regenerate'
+                            )}
+                          </Button>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0 space-y-3">
+                      {brief ? (
+                        <>
+                          <p className="text-sm text-gray-800 leading-relaxed">
+                            {brief.summary}
+                          </p>
+                          {brief.talking_points.length > 0 && (
+                            <div>
+                              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1.5">
+                                Talking points for this call
+                              </p>
+                              <ul className="space-y-1.5">
+                                {brief.talking_points.map((p, i) => (
+                                  <li
+                                    key={i}
+                                    className="flex gap-2 text-sm text-gray-800"
+                                  >
+                                    <span className="text-purple-600 font-medium shrink-0">
+                                      {i + 1}.
+                                    </span>
+                                    <span>{p}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {briefStale && (
+                            <p className="text-[10px] text-amber-700">
+                              ⚠ New activity since this brief was generated — click Refresh.
+                            </p>
+                          )}
+                          <p className="text-[10px] text-gray-400">
+                            Generated {formatDistanceToNow(new Date(brief.generated_at), { addSuffix: true })}
+                          </p>
+                        </>
+                      ) : (
+                        <div className="text-center py-2">
+                          <p className="text-xs text-gray-600 mb-3">
+                            Let Claude read the history + persona and prep a 2-line
+                            recap + 3-5 talking points specific to this patient.
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={generateBrief}
+                            disabled={briefLoading}
+                            className="bg-purple-600 hover:bg-purple-700"
+                          >
+                            {briefLoading ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                Generating…
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                                Generate brief
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
 
                   {/* Patient persona — deep-dive */}
                   <Card>
