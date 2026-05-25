@@ -28,6 +28,11 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { TaskActionsMenu } from '@/components/tasks/task-actions-menu'
 import { CallTakeoverPanel } from '@/components/call-coaching/call-takeover-panel'
+import { EmailComposerPanel } from '@/components/communications/email-composer-panel'
+import { SMSComposerPanel } from '@/components/communications/sms-composer-panel'
+import { WhatsAppComposerPanel } from '@/components/communications/whatsapp-composer-panel'
+import { ClickToCallDialer } from '@/components/communications/click-to-call-dialer'
+import { useTenant, useCurrentUser } from '@/lib/hooks/use-tenant'
 import { formatDistanceToNow } from 'date-fns'
 
 interface TaskQueuePanelProps {
@@ -52,6 +57,12 @@ export function TaskQueuePanel({
   const [completing, setCompleting] = useState(false)
   const [contactDetails, setContactDetails] = useState<any>(null)
   const [dealDetails, setDealDetails] = useState<any>(null)
+  // 2b.90 — composer state. For message tasks (sms/whatsapp/email)
+  // and any task with a contact, the operator can fire off a message
+  // directly from the queue without leaving the panel.
+  const [composerOpen, setComposerOpen] = useState<'sms' | 'whatsapp' | 'email' | 'call' | null>(null)
+  const { tenantId } = useTenant()
+  const { userId: currentUserId } = useCurrentUser()
   const supabase = createClient()
 
   // 2b.65 — Celebration state. Set when the operator completes /
@@ -446,6 +457,68 @@ export function TaskQueuePanel({
             </div>
           )}
 
+          {/* 2b.90 — Send action buttons. Always visible when a
+              contact is attached; the button matching the task's
+              channel is highlighted. Opens the in-app composer for
+              that channel; on send the auto-done-on-outbound rule
+              closes the task automatically. */}
+          {contactDetails && (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Button
+                variant={currentTask.task_type === 'call' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setComposerOpen('call')}
+                disabled={!contactDetails.primary_phone}
+                className={cn(
+                  'h-9',
+                  currentTask.task_type === 'call' && 'bg-emerald-600 hover:bg-emerald-700'
+                )}
+              >
+                <Phone className="h-3.5 w-3.5 mr-1.5" />
+                Call
+              </Button>
+              <Button
+                variant={currentTask.task_type === 'sms' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setComposerOpen('sms')}
+                disabled={!contactDetails.primary_phone}
+                className={cn(
+                  'h-9',
+                  currentTask.task_type === 'sms' && 'bg-blue-600 hover:bg-blue-700'
+                )}
+              >
+                <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                SMS
+              </Button>
+              <Button
+                variant={currentTask.task_type === 'whatsapp' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setComposerOpen('whatsapp')}
+                disabled={!contactDetails.primary_phone}
+                className={cn(
+                  'h-9',
+                  currentTask.task_type === 'whatsapp' && 'bg-green-600 hover:bg-green-700'
+                )}
+              >
+                <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                WhatsApp
+              </Button>
+              <Button
+                variant={currentTask.task_type === 'email' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setComposerOpen('email')}
+                disabled={!contactDetails.primary_email}
+                className={cn(
+                  'h-9',
+                  currentTask.task_type === 'email' && 'bg-purple-600 hover:bg-purple-700'
+                )}
+              >
+                <Mail className="h-3.5 w-3.5 mr-1.5" />
+                Email
+              </Button>
+            </div>
+          )}
+
           {/* DEAL INFORMATION - CONTEXT */}
           {dealDetails && (
             <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
@@ -714,6 +787,63 @@ export function TaskQueuePanel({
           Exit Queue
         </Button>
       </div>
+
+      {/* 2b.90 — Composers mounted at the panel root so they overlay
+          the queue cleanly. After send, the dispatcher's auto-done-
+          on-outbound hook closes the matching open task; the queue
+          refreshes via onTasksChange. */}
+      {contactDetails && (
+        <>
+          <SMSComposerPanel
+            isOpen={composerOpen === 'sms'}
+            onClose={() => {
+              setComposerOpen(null)
+              if (onTasksChange) onTasksChange()
+            }}
+            to={contactDetails.primary_phone ?? undefined}
+            contactId={contactDetails.id}
+            dealId={currentTask.deal_id ?? undefined}
+            tenantId={tenantId ?? undefined}
+            userId={currentUserId ?? undefined}
+          />
+          <WhatsAppComposerPanel
+            isOpen={composerOpen === 'whatsapp'}
+            onClose={() => {
+              setComposerOpen(null)
+              if (onTasksChange) onTasksChange()
+            }}
+            to={contactDetails.primary_phone ?? undefined}
+            contactId={contactDetails.id}
+            dealId={currentTask.deal_id ?? undefined}
+            tenantId={tenantId ?? undefined}
+            userId={currentUserId ?? undefined}
+          />
+          <EmailComposerPanel
+            isOpen={composerOpen === 'email'}
+            onClose={() => {
+              setComposerOpen(null)
+              if (onTasksChange) onTasksChange()
+            }}
+            to={contactDetails.primary_email ?? undefined}
+            contactId={contactDetails.id}
+            dealId={currentTask.deal_id ?? undefined}
+            tenantId={tenantId ?? undefined}
+            userId={currentUserId ?? undefined}
+          />
+          {contactDetails.primary_phone && (
+            <ClickToCallDialer
+              isOpen={composerOpen === 'call'}
+              onClose={() => setComposerOpen(null)}
+              phoneNumber={contactDetails.primary_phone}
+              contactName={contactDetails.full_name ?? undefined}
+              contactId={contactDetails.id}
+              dealId={currentTask.deal_id ?? undefined}
+              tenantId={tenantId ?? undefined}
+              userId={currentUserId ?? undefined}
+            />
+          )}
+        </>
+      )}
     </div>
   )
 }

@@ -115,6 +115,9 @@ export default function TasksPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [queueOpen, setQueueOpen] = useState(false)
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
+  // 2b.90 — single-task open (row click). Distinct from selectedTasks
+  // (multi-select via checkbox) and from the queue's full filtered list.
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [focusedTaskIndex, setFocusedTaskIndex] = useState(0)
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'analytics'>('list')
   const [showHelp, setShowHelp] = useState(false)
@@ -778,10 +781,18 @@ export default function TasksPage() {
                 return (
                   <div
                     key={task.id}
+                    onClick={() => {
+                      // 2b.90 — row click opens the queue panel with this
+                      // single task. Same panel as Start Queue, same
+                      // action buttons + composers + outcome flow — just
+                      // one task instead of N.
+                      setSelectedTaskId(task.id)
+                      setQueueOpen(true)
+                    }}
                     className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-gray-50 transition-colors group cursor-pointer"
                   >
                     {/* Checkbox */}
-                    <div className="col-span-1 flex items-center">
+                    <div className="col-span-1 flex items-center" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedTasks.includes(task.id)}
                         onCheckedChange={() => toggleTaskSelection(task.id)}
@@ -912,8 +923,19 @@ export default function TasksPage() {
 
       <TaskQueuePanel
         open={queueOpen}
-        onClose={() => setQueueOpen(false)}
-        tasks={filteredTasks}
+        onClose={() => {
+          setQueueOpen(false)
+          setSelectedTaskId(null)
+        }}
+        // 2b.90 — when the operator clicked a row (selectedTaskId is
+        // set AND we didn't enter via Start Queue), show JUST that
+        // task. The panel is the same component; tasks=[oneTask].
+        tasks={
+          selectedTaskId
+            ? filteredTasks.filter((t) => t.id === selectedTaskId)
+            : filteredTasks
+        }
+        initialTaskId={selectedTaskId ?? undefined}
         onTaskComplete={handleCompleteTask}
         onTasksChange={loadTasks}
       />
