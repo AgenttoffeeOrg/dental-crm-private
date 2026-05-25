@@ -83,17 +83,22 @@ async function loadTriageCounts(
   const endToday = endOfTodayIso()
   const staleCutoff = new Date(Date.now() - STALE_DAYS * 24 * 3600 * 1000).toISOString()
 
-  // 1. Today's Priorities — tasks due today (any type), not completed.
-  //    Includes overdue tasks (due_date < today, status != done).
-  //    2b.73 — exclude snoozed tasks (snoozed_until IS NULL OR <= now()).
+  // 1. Today's Priorities — tasks due TODAY only. Overdue tasks
+  //    count toward the "Overdue" chip on /tasks, not here.
+  //    Previously the lane was "today + everything overdue back to
+  //    the start of time" which made the dashboard count diverge
+  //    wildly from the /tasks "Today" filter. Toffee feedback
+  //    2026-05-25: dashboard shows 65, /tasks Today shows 0 because
+  //    of this. Fixed to match.
+  //    2b.73 — exclude snoozed tasks.
   const nowSnoozeIso = new Date().toISOString()
   const prioritiesRes = await supabase
     .from('tasks')
     .select('id', { count: 'exact', head: true })
     .eq('tenant_id', tenantId)
+    .gte('due_at', startToday)
     .lte('due_at', endToday)
-    .neq('status', 'completed')
-    .neq('status', 'cancelled')
+    .in('status', ['open', 'in_progress'])
     .or(`snoozed_until.is.null,snoozed_until.lte.${nowSnoozeIso}`)
 
   // 2. Today's Calls — tasks of type "call" scheduled today.
@@ -107,8 +112,7 @@ async function loadTriageCounts(
     .gte('due_at', startToday)
     .lte('due_at', endToday)
     .eq('task_type', 'call')
-    .neq('status', 'completed')
-    .neq('status', 'cancelled')
+    .in('status', ['open', 'in_progress'])
     .or(`snoozed_until.is.null,snoozed_until.lte.${nowSnoozeIso}`)
 
   // 3. New Inquiries — deals currently sitting at the first stage of
@@ -170,8 +174,7 @@ async function loadTriageCounts(
       .eq('tenant_id', tenantId)
       .in('deal_id', staleCandidateIds)
       .gt('due_at', new Date().toISOString())
-      .neq('status', 'completed')
-      .neq('status', 'cancelled')
+      .in('status', ['open', 'in_progress'])
     const scheduledIds = new Set(
       ((futureTasksRes.data ?? []) as Array<{ deal_id: string | null }>)
         .map((r) => r.deal_id)

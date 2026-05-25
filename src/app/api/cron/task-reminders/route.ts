@@ -55,9 +55,7 @@ export async function GET(request: NextRequest) {
   const { data: activeTenantsRaw, error: scanErr } = await service
     .from('tasks')
     .select('tenant_id')
-    .neq('status', 'done')
-    .neq('status', 'completed')
-    .neq('status', 'cancelled')
+    .in('status', ['open', 'in_progress'])
     .gte('due_at', windowStart)
     .lte('due_at', windowEnd)
     .not('due_at', 'is', null)

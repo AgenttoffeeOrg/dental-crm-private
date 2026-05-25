@@ -144,7 +144,10 @@ export default function DashboardRedesigned() {
       const [dealsRes, contactsRes, tasksRes, metricsData] = await Promise.all([
         supabase.from('deals').select('value_estimate_cents, created_at').eq('tenant_id', tenantId),
         supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-        supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).neq('status', 'completed'),
+        // 2b.94 — status enum migrated from completed→done in 2b.88.
+        // Filter on the real open states; otherwise this counts done
+        // tasks as still-open.
+        supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).in('status', ['open', 'in_progress']),
         getDashboardMetrics(tenantId)
       ])
 

@@ -754,8 +754,7 @@ export function EnterpriseDealsTable({
           .select('deal_id, due_at, task_type, status')
           .in('deal_id', dealIds)
           .gt('due_at', nowIso)
-          .neq('status', 'completed')
-          .neq('status', 'cancelled')
+          .in('status', ['open', 'in_progress'])
           .order('due_at', { ascending: true })
           .limit(1000)
         for (const r of (taskRows ?? []) as Array<{

@@ -122,7 +122,7 @@ export default function DashboardNewPage() {
       const [dealsRes, contactsRes, tasksRes, metricsData] = await Promise.all([
         supabase.from('deals').select('value_estimate_cents, created_at').eq('tenant_id', tenantId),
         supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-        supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).neq('status', 'completed'),
+        supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).in('status', ['open', 'in_progress']),
         getDashboardMetrics(tenantId)
       ])
 

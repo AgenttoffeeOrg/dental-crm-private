@@ -315,9 +315,16 @@ export function TaskQueuePanel({
     )
   }
 
+  // 2b.94 — narrowed from 900px (two-column with templated right)
+  // to 640px single-column. Right column was static template strings
+  // ("Patient expressed interest in [treatment]", "Quote sent X ago",
+  // "Suggested Opening" boilerplate, hardcoded Call Checklist) that
+  // interpolated 1-2 real fields and misled the operator. Stripped.
+  // Call tasks go through CallTakeoverPanel with the real Claude
+  // pre-call brief.
   return (
     <div className={cn(
-      "fixed right-0 top-0 h-full w-[900px] bg-white border-l border-gray-200 shadow-2xl z-50 transform transition-transform duration-300",
+      "fixed right-0 top-0 h-full w-[640px] bg-white border-l border-gray-200 shadow-2xl z-50 transform transition-transform duration-300",
       open ? "translate-x-0" : "translate-x-full"
     )}>
       {/* Header */}
@@ -341,10 +348,10 @@ export function TaskQueuePanel({
         />
       </div>
 
-      {/* Task Content - 2 Column Layout */}
-      <div className="h-[calc(100vh-200px)] grid grid-cols-2 gap-0">
-        {/* LEFT COLUMN: Task Details */}
-        <ScrollArea className="border-r border-gray-200">
+      {/* Task Content - Single column (2b.94: stripped templated
+          AI Briefing right column; only real data remains). */}
+      <div className="h-[calc(100vh-200px)]">
+        <ScrollArea className="h-full">
           <div className="p-6 space-y-6">
           {/* Task Title & Type */}
           <div>
@@ -593,132 +600,20 @@ export function TaskQueuePanel({
           )}
           </div>
         </ScrollArea>
-
-        {/* RIGHT COLUMN: AI-Powered Deal Insights */}
-        <ScrollArea className="bg-gradient-to-b from-purple-50 to-blue-50">
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">AI Briefing</h3>
-                <p className="text-xs text-gray-500">Everything you need to know</p>
-              </div>
-            </div>
-
-            {dealDetails ? (
-              <>
-                {/* Deal Summary */}
-                <div className="p-4 bg-white rounded-lg border border-purple-200 shadow-sm">
-                  <h4 className="text-xs font-semibold text-purple-900 mb-2">📊 Deal Overview</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Value:</span>
-                      <span className="font-semibold text-green-700">
-                        £{((dealDetails.value_estimate_cents || 0) / 100).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Stage:</span>
-                      <Badge variant="secondary">{dealDetails.stage?.name}</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Treatment:</span>
-                      <span className="text-gray-900">{dealDetails.treatment_tags?.[0] || 'General'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* AI-Generated Talking Points */}
-                <div className="p-4 bg-white rounded-lg border border-blue-200 shadow-sm">
-                  <h4 className="text-xs font-semibold text-blue-900 mb-3">💬 Key Discussion Points</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-2">
-                      <span className="text-blue-600 font-bold text-xs">1.</span>
-                      <p className="text-xs text-gray-700">
-                        Patient expressed interest in {dealDetails.treatment_tags?.[0] || 'treatment'} during last conversation
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-blue-600 font-bold text-xs">2.</span>
-                      <p className="text-xs text-gray-700">
-                        Quote sent {formatDistanceToNow(new Date(dealDetails.created_at), { addSuffix: true })} - follow up on pricing questions
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-blue-600 font-bold text-xs">3.</span>
-                      <p className="text-xs text-gray-700">
-                        Discuss payment plan options and insurance coverage
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Critical Alerts */}
-                <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                  <h4 className="text-xs font-semibold text-orange-900 mb-2 flex items-center gap-1.5">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    Important Notes
-                  </h4>
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-orange-800">
-                      • High-value deal (&gt;£5k) - priority follow-up
-                    </p>
-                    <p className="text-xs text-orange-800">
-                      • Last contact was {dealDetails.last_activity_at ? formatDistanceToNow(new Date(dealDetails.last_activity_at), { addSuffix: true }) : 'unknown'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Suggested Opening Lines */}
-                <div className="p-4 bg-white rounded-lg border border-green-200 shadow-sm">
-                  <h4 className="text-xs font-semibold text-green-900 mb-3">✨ Suggested Opening</h4>
-                  <div className="p-3 bg-green-50 rounded border border-green-200">
-                    <p className="text-xs text-gray-700 italic">
-                      "Hi {contactDetails?.full_name?.split(' ')[0]}, this is [Your Name] from [Practice Name]. 
-                      I'm following up on the {dealDetails.treatment_tags?.[0] || 'treatment'} plan we discussed. 
-                      Do you have a few minutes to go over the details?"
-                    </p>
-                  </div>
-                </div>
-
-                {/* Quick Actions Based on Task Type */}
-                {currentTask.task_type === 'call' && (
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="text-xs font-semibold text-blue-900 mb-2">📋 Call Checklist</h4>
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-2 text-xs text-gray-700">
-                        <input type="checkbox" className="rounded" />
-                        Confirm patient availability
-                      </label>
-                      <label className="flex items-center gap-2 text-xs text-gray-700">
-                        <input type="checkbox" className="rounded" />
-                        Discuss treatment timeline
-                      </label>
-                      <label className="flex items-center gap-2 text-xs text-gray-700">
-                        <input type="checkbox" className="rounded" />
-                        Address pricing questions
-                      </label>
-                      <label className="flex items-center gap-2 text-xs text-gray-700">
-                        <input type="checkbox" className="rounded" />
-                        Schedule next appointment
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <Sparkles className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">No deal associated</p>
-                <p className="text-xs mt-1">AI insights available when linked to a deal</p>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
       </div>
 
+      {/*
+        2b.94 cleanup note (no JSX):
+        The right column "AI Briefing" was deleted here. It rendered
+        template strings that interpolated one or two deal fields but
+        otherwise stayed identical across every task. Toffee called
+        this out 2026-05-25 - "80% of the modal does not change
+        between tasks".
+        For call tasks the CallTakeoverPanel shows a real Claude-
+        generated pre-call brief + persona deep-dive + recent
+        activities + scripts. For other task types the left column
+        already shows real contact + deal + notes.
+      */}
       {/* Actions Footer */}
       <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white space-y-2">
         <div className="flex gap-2">

@@ -172,7 +172,7 @@ export async function getTodaysPriorities(
         .from('tasks')
         .select('*')
         .eq('tenant_id', tenantId)
-        .neq('status', 'completed')
+        .in('status', ['open', 'in_progress'])
         .order('due_at', { ascending: true })
         .limit(20),
       
