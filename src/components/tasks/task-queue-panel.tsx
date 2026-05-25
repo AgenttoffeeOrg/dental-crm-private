@@ -306,6 +306,7 @@ export function TaskQueuePanel({
       <CallTakeoverPanel
         taskId={currentTask.id}
         contactId={currentTask.contact_id ?? null}
+        dealId={currentTask.deal_id ?? null}
         taskTitle={currentTask.title}
         position={{ current: currentIndex + 1, total: tasks.length }}
         onComplete={advance}
