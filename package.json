@@ -131,7 +131,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.8.3",
     "@lhci/cli": "^0.15.1",
-    "@mermaid-js/mermaid-cli": "^10.6.1",
+    "@mermaid-js/mermaid-cli": "^11.15.0",
     "@playwright/test": "^1.40.1",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
