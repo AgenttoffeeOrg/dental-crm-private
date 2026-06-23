@@ -1,19 +1,19 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Progress } from '@/components/ui/progress'
-import { 
+} from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import {
   Upload,
   FileSpreadsheet,
   CheckCircle2,
@@ -21,19 +21,19 @@ import {
   Users,
   ArrowRight,
   Download,
-  X
-} from 'lucide-react'
-import { createClient } from '@/lib/supabase-client'
-import { useTenantContext } from '@/lib/hooks/use-tenant-context'
-import { toast } from 'sonner'
+  X,
+} from 'lucide-react';
+import { createClient } from '@/lib/supabase-client';
+import { useTenantContext } from '@/lib/hooks/use-tenant-context';
+import { toast } from 'sonner';
 
 interface CSVRow {
-  [key: string]: string
+  [key: string]: string;
 }
 
 interface FieldMapping {
-  csvColumn: string
-  crmField: string
+  csvColumn: string;
+  crmField: string;
 }
 
 const CRM_FIELDS = [
@@ -45,126 +45,128 @@ const CRM_FIELDS = [
   { value: 'source', label: 'Source', required: false },
   { value: 'tags', label: 'Tags (comma-separated)', required: false },
   { value: 'notes', label: 'Notes', required: false },
-]
+];
 
 function parseCSVRow(line: string, headers: string[]): CSVRow {
-  const values = line.split(',').map(v => v.trim())
-  const row: CSVRow = {}
+  const values = line.split(',').map((v) => v.trim());
+  const row: CSVRow = {};
   headers.forEach((header, index) => {
-    row[header] = values[index] || ''
-  })
-  return row
+    row[header] = values[index] || '';
+  });
+  return row;
 }
 
 export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
-  const [step, setStep] = useState(1)
-  const [file, setFile] = useState<File | null>(null)
-  const [csvData, setCsvData] = useState<CSVRow[]>([])
-  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
-  const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([])
-  const [importing, setImporting] = useState(false)
+  const [step, setStep] = useState(1);
+  const [file, setFile] = useState<File | null>(null);
+  const [csvData, setCsvData] = useState<CSVRow[]>([]);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([]);
+  const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<{
-    total: number
-    imported: number
-    duplicates: number
-    errors: number
-  }>({ total: 0, imported: 0, duplicates: 0, errors: 0 })
+    total: number;
+    imported: number;
+    duplicates: number;
+    errors: number;
+  }>({ total: 0, imported: 0, duplicates: 0, errors: 0 });
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFile = event.target.files?.[0]
-    if (!uploadedFile) return
+    const uploadedFile = event.target.files?.[0];
+    if (!uploadedFile) return;
 
     if (!uploadedFile.name.endsWith('.csv')) {
-      toast.error('Please upload a CSV file')
-      return
+      toast.error('Please upload a CSV file');
+      return;
     }
 
-    setFile(uploadedFile)
+    setFile(uploadedFile);
 
     // Parse CSV
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target?.result as string
-      const lines = text.split('\n').filter(line => line.trim())
-      
+      const text = e.target?.result as string;
+      const lines = text.split('\n').filter((line) => line.trim());
+
       if (lines.length < 2) {
-        toast.error('CSV file is empty or invalid')
-        return
+        toast.error('CSV file is empty or invalid');
+        return;
       }
 
       // Parse headers
-      const headers = lines[0].split(',').map(h => h.trim())
-      setCsvHeaders(headers)
+      const headers = lines[0].split(',').map((h) => h.trim());
+      setCsvHeaders(headers);
 
       // Auto-map common fields
-      const autoMappings: FieldMapping[] = headers.map(header => {
-        const lowerHeader = header.toLowerCase()
-        let crmField = 'skip'
+      const autoMappings: FieldMapping[] = headers.map((header) => {
+        const lowerHeader = header.toLowerCase();
+        let crmField = 'skip';
 
-        if (lowerHeader.includes('first') && lowerHeader.includes('name')) crmField = 'first_name'
-        else if (lowerHeader.includes('last') && lowerHeader.includes('name')) crmField = 'last_name'
-        else if (lowerHeader.includes('email')) crmField = 'email'
-        else if (lowerHeader.includes('phone') || lowerHeader.includes('mobile')) crmField = 'phone'
-        else if (lowerHeader.includes('company')) crmField = 'company'
-        else if (lowerHeader.includes('source')) crmField = 'source'
-        else if (lowerHeader.includes('tag')) crmField = 'tags'
-        else if (lowerHeader.includes('note')) crmField = 'notes'
+        if (lowerHeader.includes('first') && lowerHeader.includes('name')) crmField = 'first_name';
+        else if (lowerHeader.includes('last') && lowerHeader.includes('name'))
+          crmField = 'last_name';
+        else if (lowerHeader.includes('email')) crmField = 'email';
+        else if (lowerHeader.includes('phone') || lowerHeader.includes('mobile'))
+          crmField = 'phone';
+        else if (lowerHeader.includes('company')) crmField = 'company';
+        else if (lowerHeader.includes('source')) crmField = 'source';
+        else if (lowerHeader.includes('tag')) crmField = 'tags';
+        else if (lowerHeader.includes('note')) crmField = 'notes';
 
-        return { csvColumn: header, crmField }
-      })
+        return { csvColumn: header, crmField };
+      });
 
-      setFieldMappings(autoMappings)
+      setFieldMappings(autoMappings);
 
       // Parse data rows
-      const rows = lines.slice(1).map(line => parseCSVRow(line, headers))
+      const rows = lines.slice(1).map((line) => parseCSVRow(line, headers));
 
-      setCsvData(rows)
-      setStep(2)
-      toast.success(`Loaded ${rows.length} contacts from CSV`)
-    }
+      setCsvData(rows);
+      setStep(2);
+      toast.success(`Loaded ${rows.length} contacts from CSV`);
+    };
 
-    reader.readAsText(uploadedFile)
-  }
+    reader.readAsText(uploadedFile);
+  };
 
   const updateFieldMapping = (csvColumn: string, crmField: string) => {
-    setFieldMappings(fieldMappings.map(mapping =>
-      mapping.csvColumn === csvColumn
-        ? { ...mapping, crmField }
-        : mapping
-    ))
-  }
+    setFieldMappings(
+      fieldMappings.map((mapping) =>
+        mapping.csvColumn === csvColumn ? { ...mapping, crmField } : mapping
+      )
+    );
+  };
 
   const handleImport = async () => {
-    setImporting(true)
-    setStep(3)
+    setImporting(true);
+    setStep(3);
 
     try {
-      const supabase = createClient()
-      const tenantId
+      const supabase = createClient();
+      const tenantId;
 
-      let imported = 0
-      let duplicates = 0
-      let errors = 0
+      let imported = 0;
+      let duplicates = 0;
+      let errors = 0;
 
       for (const row of csvData) {
         try {
           // Map CSV row to contact object
-          const contactData: any = { tenant_id: tenantId }
-          
-          fieldMappings.forEach(mapping => {
+          const contactData: any = { tenant_id: tenantId };
+
+          fieldMappings.forEach((mapping) => {
             if (mapping.crmField !== 'skip' && row[mapping.csvColumn]) {
               if (mapping.crmField === 'tags') {
-                contactData.tags = row[mapping.csvColumn].split(',').map(t => t.trim())
+                contactData.tags = row[mapping.csvColumn].split(',').map((t) => t.trim());
               } else {
-                contactData[mapping.crmField] = row[mapping.csvColumn]
+                contactData[mapping.crmField] = row[mapping.csvColumn];
               }
             }
-          })
+          });
 
           // Check if required fields are present
           if (!contactData.email && !contactData.phone) {
-            errors++
-            continue
+            errors++;
+            continue;
           }
 
           // Check for duplicates
@@ -173,26 +175,24 @@ export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
             .select('id')
             .eq('tenant_id', tenantId)
             .or(`email.eq.${contactData.email},phone.eq.${contactData.phone}`)
-            .single()
+            .single();
 
           if (existing) {
-            duplicates++
-            continue
+            duplicates++;
+            continue;
           }
 
           // Insert contact
-          const { error } = await supabase
-            .from('contacts')
-            .insert(contactData)
+          const { error } = await supabase.from('contacts').insert(contactData);
 
           if (error) {
-            errors++
+            errors++;
           } else {
-            imported++
+            imported++;
           }
         } catch (error) {
-          errors++
-          console.error('[IMPORT] Error importing row:', error)
+          errors++;
+          console.error('[IMPORT] Error importing row:', error);
         }
       }
 
@@ -200,18 +200,18 @@ export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
         total: csvData.length,
         imported,
         duplicates,
-        errors
-      })
+        errors,
+      });
 
-      toast.success(`Import complete! ${imported} contacts imported`)
+      toast.success(`Import complete! ${imported} contacts imported`);
     } catch (error) {
-      console.error('[IMPORT] Error:', error)
-      toast.error('Import failed')
+      console.error('[IMPORT] Error:', error);
+      toast.error('Import failed');
     } finally {
-      setImporting(false)
-      setStep(4)
+      setImporting(false);
+      setStep(4);
     }
-  }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -242,18 +242,14 @@ export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
                 <p className="text-lg font-semibold text-gray-900 mb-1">Click to upload CSV</p>
                 <p className="text-sm text-gray-600">or drag and drop</p>
               </div>
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
+              <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
             </label>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm font-medium text-blue-900 mb-2">Required Columns:</p>
               <p className="text-sm text-blue-800">
-                Your CSV must include at least one of: <strong>email</strong> or <strong>phone</strong>
+                Your CSV must include at least one of: <strong>email</strong> or{' '}
+                <strong>phone</strong>
               </p>
               <p className="text-sm text-blue-800 mt-2">
                 Optional columns: first_name, last_name, company, source, tags, notes
@@ -272,15 +268,13 @@ export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
       {step === 2 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Map CSV Columns to CRM Fields
-            </CardTitle>
+            <CardTitle className="flex items-center gap-2">Map CSV Columns to CRM Fields</CardTitle>
             <p className="text-sm text-gray-600">
               Found {csvData.length} contacts. Map your CSV columns to CRM fields.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {fieldMappings.map(mapping => (
+            {fieldMappings.map((mapping) => (
               <div key={mapping.csvColumn} className="flex items-center gap-4">
                 <div className="flex-1">
                   <Label className="text-sm font-medium">{mapping.csvColumn}</Label>
@@ -299,7 +293,7 @@ export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="skip">Skip (Don't Import)</SelectItem>
-                      {CRM_FIELDS.map(field => (
+                      {CRM_FIELDS.map((field) => (
                         <SelectItem key={field.value} value={field.value}>
                           {field.label} {field.required && '*'}
                         </SelectItem>
@@ -373,9 +367,7 @@ export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                 <X className="h-5 w-5 text-red-600 mt-0.5" />
                 <div>
-                  <p className="font-medium text-red-900">
-                    {importResults.errors} Errors
-                  </p>
+                  <p className="font-medium text-red-900">{importResults.errors} Errors</p>
                   <p className="text-sm text-red-800">
                     Some rows couldn't be imported (missing required fields)
                   </p>
@@ -391,8 +383,5 @@ export function CSVImportWizard({ onComplete }: { onComplete?: () => void }) {
         </Card>
       )}
     </div>
-  )
+  );
 }
-
-
-
