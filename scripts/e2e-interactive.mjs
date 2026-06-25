@@ -390,9 +390,48 @@ try {
   // =================================================================
   // 12. CALL COACHING — workspace loads
   // =================================================================
-  await checkpoint('Call Coaching workspace loads', async () => {
+  await checkpoint('Standalone /call-coaching is review-only (no Start Call buttons)', async () => {
     await page.goto(`${BASE}/call-coaching`, { waitUntil: 'domcontentloaded' })
-    await page.waitForSelector('text=/Coach|Workspace|Call/i', { timeout: 15000 })
+    // Must render the new review heading.
+    await page.waitForSelector('text=/Recent calls|To make calls/i', { timeout: 15000 })
+    // Must NOT show a Start Call action button (the old Live Queue UI).
+    const startCallBtn = page.getByRole('button', { name: /^start call$/i })
+    if ((await startCallBtn.count()) > 0) {
+      throw new Error('Standalone page still has a Start Call button — Live Queue not fully stripped')
+    }
+    // Must NOT show Send SMS / Send Email action buttons.
+    const sendSmsBtn = page.getByRole('button', { name: /^send sms$/i })
+    if ((await sendSmsBtn.count()) > 0) {
+      throw new Error('Standalone page still has Send SMS — Live Queue not fully stripped')
+    }
+  }, page)
+
+  await checkpoint('Task Queue → Call Takeover renders for call tasks', async () => {
+    // Create a call task to drive the takeover.
+    const callTaskTitle = `${TEST_RUN_ID} call task`
+    const res = await page.request.post(`${BASE}/api/tasks`, {
+      data: {
+        title: callTaskTitle,
+        task_type: 'call',
+        priority: 'normal',
+        contact_id: 'eff2b8c1-9b25-47e5-bc33-0cd6e64d5848', // Joey Baby
+      },
+    })
+    if (!res.ok()) {
+      throw new Error(`Could not seed call task: ${res.status()} ${(await res.text()).slice(0, 150)}`)
+    }
+    const { task } = await res.json()
+    createdIds.tasks.push(task.id)
+
+    // Open /tasks and start the queue at this task.
+    await page.goto(`${BASE}/tasks?taskId=${task.id}&mode=queue`, { waitUntil: 'domcontentloaded' })
+    // The takeover header says "Call Coaching" (h2 text).
+    await page.waitForSelector('h2:has-text("Call Coaching")', { timeout: 15000 })
+    // The outcome bar should show "Connected" button.
+    await page.waitForSelector('button:has-text("Connected")', { timeout: 5000 })
+    // Skip to back out cleanly.
+    const skip = page.getByRole('button', { name: /^skip/i }).first()
+    if ((await skip.count()) > 0) await skip.click()
   }, page)
 
   // =================================================================
